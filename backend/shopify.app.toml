@@ -1,0 +1,44 @@
+# Shopify App Configuration
+# This file is used by Shopify CLI to configure your app
+
+name = "Buysialdropship"
+client_id = "076a19e7291e002e51535256e2de28b3"
+
+[access_scopes]
+scopes = "read_products,write_products,read_orders,write_orders,read_inventory,write_inventory"
+
+[auth]
+redirect_urls = [
+  "https://buysial.com/api/shopify/callback"
+]
+
+[webhooks]
+api_version = "2024-07"
+
+# GDPR Compliance Webhooks - Required for app distribution
+[[webhooks.subscriptions]]
+compliance_topics = [
+  "customers/data_request",
+  "customers/redact",
+  "shop/redact"
+]
+uri = "https://buysial.com/api/shopify/webhooks"
+
+# Order webhooks
+[[webhooks.subscriptions]]
+topics = ["orders/create"]
+uri = "https://buysial.com/api/shopify/webhooks/orders/create"
+
+[[webhooks.subscriptions]]
+topics = ["orders/fulfilled"]
+uri = "https://buysial.com/api/shopify/webhooks/orders/fulfilled"
+
+[[webhooks.subscriptions]]
+topics = ["orders/cancelled"]
+uri = "https://buysial.com/api/shopify/webhooks/orders/cancelled"
+
+[pos]
+embedded = true
+
+[build]
+automatically_update_urls_on_dev = true

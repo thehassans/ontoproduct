@@ -1,0 +1,915 @@
+/* ============================================
+   ULTRA PREMIUM INVESTORS PAGE
+   Modern glassmorphism with full responsiveness
+   ============================================ */
+
+:root {
+  --investor-primary: #6366f1;
+  --investor-primary-light: #818cf8;
+  --investor-secondary: #8b5cf6;
+  --investor-success: #10b981;
+  --investor-warning: #f59e0b;
+  --investor-danger: #ef4444;
+  --investor-glass-bg: rgba(255, 255, 255, 0.7);
+  --investor-glass-border: rgba(255, 255, 255, 0.3);
+  --investor-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  --investor-shadow-hover: 0 20px 60px rgba(0, 0, 0, 0.12);
+}
+
+[data-theme="dark"] {
+  --investor-glass-bg: rgba(30, 41, 59, 0.6);
+  --investor-glass-border: rgba(255, 255, 255, 0.08);
+  --investor-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+  --investor-shadow-hover: 0 20px 60px rgba(0, 0, 0, 0.35);
+}
+
+.investors-container {
+  padding: clamp(16px, 4vw, 32px);
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 50%, #fce7f3 100%);
+}
+
+[data-theme="dark"] .investors-container {
+  background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #312e81 100%);
+}
+
+/* ============================================
+   HEADER SECTION - Ultra Premium
+   ============================================ */
+
+.investors-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32px;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.investors-header-text {
+  flex: 1;
+  min-width: 250px;
+}
+
+.investors-title {
+  font-size: clamp(28px, 5vw, 42px);
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--investor-primary) 0%, var(--investor-secondary) 50%, #ec4899 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0 0 8px 0;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.investors-subtitle {
+  font-size: 15px;
+  color: var(--muted);
+  margin: 0;
+  font-weight: 500;
+}
+
+.investors-add-btn {
+  background: linear-gradient(135deg, var(--investor-primary) 0%, var(--investor-secondary) 100%);
+  color: #fff;
+  border: none;
+  padding: 14px 28px;
+  border-radius: 14px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.35);
+}
+
+.investors-add-btn:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 16px 40px rgba(99, 102, 241, 0.45);
+}
+
+.investors-add-btn svg {
+  stroke-width: 2.5;
+}
+
+/* ============================================
+   STATS CARDS - Glassmorphism Design
+   ============================================ */
+
+.investors-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+  margin-bottom: 32px;
+}
+
+.investors-stat-card {
+  background: var(--investor-glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--investor-glass-border);
+  border-radius: 20px;
+  padding: 24px;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.investors-stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--investor-primary), var(--investor-secondary), #ec4899);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.investors-stat-card:hover {
+  transform: translateY(-6px) scale(1.02);
+  box-shadow: var(--investor-shadow-hover);
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
+.investors-stat-card:hover::before {
+  opacity: 1;
+}
+
+.investors-stat-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.investors-stat-icon {
+  font-size: 24px;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.1));
+}
+
+.investors-stat-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.investors-stat-value {
+  font-size: clamp(24px, 4vw, 32px);
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--investor-primary) 0%, var(--investor-secondary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ============================================
+   FORM CARD - Premium Glassmorphism
+   ============================================ */
+
+.investors-form-card {
+  background: var(--investor-glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--investor-glass-border);
+  border-radius: 24px;
+  padding: 28px;
+  margin-bottom: 32px;
+  box-shadow: var(--investor-shadow);
+  animation: slideDown 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-30px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.investors-form-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--investor-glass-border);
+}
+
+.investors-form-title {
+  font-size: 22px;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--investor-primary) 0%, var(--investor-secondary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0;
+}
+
+.investors-form-close {
+  background: rgba(0, 0, 0, 0.05);
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+  color: var(--text);
+}
+
+.investors-form-close:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--investor-danger);
+  transform: rotate(90deg);
+}
+
+.investors-form-error {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(239, 68, 68, 0.08) 100%);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 14px;
+  padding: 16px 20px;
+  margin-bottom: 24px;
+  color: var(--investor-danger);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.investors-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  margin-bottom: 28px;
+}
+
+.investors-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.investors-form-field label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.investors-form-field input,
+.investors-form-field select {
+  width: 100%;
+  padding: 15px 18px;
+  border-radius: 12px;
+  border: 2px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  outline: none;
+}
+
+.investors-form-field input:focus,
+.investors-form-field select:focus {
+  border-color: var(--investor-primary);
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.12);
+  transform: translateY(-1px);
+}
+
+.investors-form-field input::placeholder {
+  color: var(--muted);
+  opacity: 0.6;
+}
+
+.investors-form-actions {
+  display: flex;
+  gap: 14px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.investors-btn-primary {
+  background: linear-gradient(135deg, var(--investor-primary) 0%, var(--investor-secondary) 100%);
+  color: #fff;
+  border: none;
+  padding: 15px 36px;
+  border-radius: 13px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.3);
+}
+
+.investors-btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 12px 32px rgba(99, 102, 241, 0.45);
+}
+
+.investors-btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.investors-btn-secondary {
+  background: transparent;
+  color: var(--text);
+  border: 2px solid var(--border);
+  padding: 15px 28px;
+  border-radius: 13px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.investors-btn-secondary:hover {
+  background: var(--hover-bg);
+  border-color: var(--investor-primary);
+  color: var(--investor-primary);
+}
+
+.investors-btn-danger {
+  background: linear-gradient(135deg, var(--investor-danger) 0%, #dc2626 100%);
+  color: #fff;
+  border: none;
+  padding: 15px 28px;
+  border-radius: 13px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.investors-btn-danger:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(239, 68, 68, 0.4);
+}
+
+/* ============================================
+   LOADING & EMPTY STATES
+   ============================================ */
+
+.investors-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 100px 20px;
+}
+
+.investors-loading-spinner {
+  width: 56px;
+  height: 56px;
+  border: 4px solid var(--border);
+  border-top-color: var(--investor-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 20px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.investors-loading p {
+  color: var(--muted);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.investors-empty {
+  text-align: center;
+  padding: 80px 24px;
+  background: var(--investor-glass-bg);
+  backdrop-filter: blur(20px);
+  border: 2px dashed var(--border);
+  border-radius: 24px;
+}
+
+.investors-empty-icon {
+  font-size: 72px;
+  margin-bottom: 20px;
+  filter: grayscale(0.3);
+}
+
+.investors-empty p {
+  color: var(--muted);
+  font-size: 16px;
+  margin-bottom: 28px;
+  line-height: 1.6;
+  max-width: 450px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ============================================
+   INVESTORS GRID - Premium Cards
+   ============================================ */
+
+.investors-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 24px;
+}
+
+.investor-card {
+  background: var(--investor-glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--investor-glass-border);
+  border-radius: 24px;
+  padding: 28px;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.investor-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--investor-primary), var(--investor-secondary), #ec4899);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.investor-card:hover {
+  transform: translateY(-8px) scale(1.01);
+  box-shadow: var(--investor-shadow-hover);
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
+.investor-card:hover::before {
+  transform: scaleX(1);
+}
+
+.investor-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.investor-card-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--investor-primary) 0%, var(--investor-secondary) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: 800;
+  color: #fff;
+  flex-shrink: 0;
+  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.35);
+}
+
+.investor-card-info {
+  flex: 1;
+  min-width: 140px;
+}
+
+.investor-card-name {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--text);
+  margin-bottom: 4px;
+  line-height: 1.3;
+}
+
+.investor-card-email {
+  font-size: 13px;
+  color: var(--muted);
+  word-break: break-word;
+}
+
+.investor-card-phone {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 4px;
+  opacity: 0.8;
+}
+
+.investor-status {
+  padding: 7px 16px;
+  border-radius: 24px;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.investor-status-active {
+  background: linear-gradient(135deg, var(--investor-success) 0%, #059669 100%);
+  color: #fff;
+}
+
+.investor-status-inactive {
+  background: linear-gradient(135deg, var(--investor-warning) 0%, #d97706 100%);
+  color: #fff;
+}
+
+.investor-status-completed {
+  background: linear-gradient(135deg, var(--investor-secondary) 0%, #7c3aed 100%);
+  color: #fff;
+}
+
+/* Investment Details */
+.investor-card-details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.investor-detail-box {
+  padding: 16px;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.investor-detail-investment {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(99, 102, 241, 0.06) 100%);
+}
+
+.investor-detail-profit {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.12) 0%, rgba(139, 92, 246, 0.06) 100%);
+}
+
+.investor-detail-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.investor-detail-value {
+  font-size: 19px;
+  font-weight: 800;
+}
+
+.investor-detail-investment .investor-detail-value {
+  color: var(--investor-primary);
+}
+
+.investor-detail-profit .investor-detail-value {
+  color: var(--investor-secondary);
+}
+
+/* Progress Bar */
+.investor-progress {
+  margin-bottom: 24px;
+}
+
+.investor-progress-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.investor-progress-bar {
+  height: 10px;
+  background: var(--border);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+.investor-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--investor-success) 0%, #34d399 100%);
+  border-radius: 20px;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
+}
+
+.investor-progress-fill.completed {
+  background: linear-gradient(90deg, var(--investor-secondary) 0%, #a78bfa 100%);
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.4);
+}
+
+.investor-completed-badge {
+  margin-top: 14px;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(139, 92, 246, 0.1) 100%);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 12px;
+  text-align: center;
+  color: var(--investor-secondary);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+/* Action Buttons */
+.investor-card-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.investor-action-btn {
+  padding: 11px 18px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: none;
+}
+
+.investor-action-btn.start {
+  flex: 1;
+  background: linear-gradient(135deg, var(--investor-success) 0%, #059669 100%);
+  color: #fff;
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3);
+}
+
+.investor-action-btn.start:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(16, 185, 129, 0.4);
+}
+
+.investor-action-btn.pause {
+  flex: 1;
+  background: linear-gradient(135deg, var(--investor-warning) 0%, #d97706 100%);
+  color: #fff;
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.3);
+}
+
+.investor-action-btn.pause:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(245, 158, 11, 0.4);
+}
+
+.investor-action-btn.edit {
+  background: var(--panel);
+  border: 2px solid var(--border);
+  color: var(--text);
+}
+
+.investor-action-btn.edit:hover {
+  background: var(--hover-bg);
+  border-color: var(--investor-primary);
+  color: var(--investor-primary);
+  transform: translateY(-2px);
+}
+
+.investor-action-btn.delete {
+  background: transparent;
+  border: 2px solid rgba(239, 68, 68, 0.3);
+  color: var(--investor-danger);
+}
+
+.investor-action-btn.delete:hover {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: var(--investor-danger);
+  transform: translateY(-2px);
+}
+
+/* ============================================
+   MODAL - Premium Overlay
+   ============================================ */
+
+.investors-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.investors-modal {
+  background: var(--investor-glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--investor-glass-border);
+  border-radius: 24px;
+  padding: 36px;
+  max-width: 460px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(40px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.investors-modal-icon {
+  font-size: 64px;
+  margin-bottom: 20px;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.15));
+}
+
+.investors-modal h3 {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--text);
+  margin: 0 0 14px 0;
+}
+
+.investors-modal p {
+  color: var(--muted);
+  font-size: 15px;
+  margin-bottom: 28px;
+  line-height: 1.7;
+}
+
+.investors-modal p strong {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.investors-modal-actions {
+  display: flex;
+  gap: 14px;
+}
+
+.investors-modal-actions button {
+  flex: 1;
+}
+
+/* ============================================
+   RESPONSIVE DESIGN - Mobile First
+   ============================================ */
+
+@media (max-width: 1024px) {
+  .investors-container {
+    padding: clamp(12px, 3vw, 24px);
+  }
+  
+  .investors-grid {
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  .investors-container {
+    padding: 16px;
+  }
+  
+  .investors-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .investors-add-btn {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .investors-stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+  }
+  
+  .investors-stat-card {
+    padding: 18px;
+  }
+  
+  .investors-form-card {
+    padding: 20px;
+  }
+  
+  .investors-form-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .investors-form-actions {
+    flex-direction: column-reverse;
+  }
+  
+  .investors-form-actions button {
+    width: 100%;
+  }
+  
+  .investors-grid {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+  
+  .investor-card {
+    padding: 22px;
+  }
+  
+  .investor-card-header {
+    flex-wrap: nowrap;
+  }
+  
+  .investor-card-avatar {
+    width: 48px;
+    height: 48px;
+    font-size: 20px;
+  }
+  
+  .investor-card-name {
+    font-size: 16px;
+  }
+  
+  .investor-status {
+    font-size: 10px;
+    padding: 6px 12px;
+  }
+  
+  .investor-card-details {
+    gap: 12px;
+  }
+  
+  .investor-detail-box {
+    padding: 14px;
+  }
+  
+  .investor-detail-value {
+    font-size: 17px;
+  }
+}
+
+@media (max-width: 480px) {
+  .investors-stats {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  .investor-card-header {
+    gap: 12px;
+  }
+  
+  .investor-card-avatar {
+    width: 44px;
+    height: 44px;
+    font-size: 18px;
+    border-radius: 14px;
+  }
+  
+  .investor-card-name {
+    font-size: 15px;
+  }
+  
+  .investor-card-email {
+    font-size: 12px;
+  }
+  
+  .investor-card-details {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  
+  .investor-action-btn {
+    font-size: 12px;
+    padding: 10px 14px;
+  }
+  
+  .investors-modal {
+    padding: 28px 20px;
+  }
+}
