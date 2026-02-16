@@ -220,6 +220,14 @@ const ProductDetail = () => {
     }
   }
 
+  useEffect(() => {
+    if (!id) return
+    setSelectedImage(0)
+    setQuantity(1)
+    loadProduct()
+    loadReviews()
+  }, [id])
+
   const handleAddToCart = (e) => {
     if (!product) return
 
