@@ -47,10 +47,10 @@ export function ToastProvider({ children }){
   return (
     <ToastCtx.Provider value={api}>
       {children}
-      {/* Minimal toast - bottom center */}
+      {/* Ultra-premium minimalist toast */}
       <div style={{ 
         position: 'fixed', 
-        bottom: 24, 
+        bottom: 90, 
         left: '50%', 
         transform: 'translateX(-50%)', 
         zIndex: 99999, 
@@ -58,37 +58,46 @@ export function ToastProvider({ children }){
         flexDirection: 'column', 
         gap: 8,
         alignItems: 'center',
-        pointerEvents: 'none'
+        pointerEvents: 'none',
+        width: '92%',
+        maxWidth: 380
       }} aria-live="polite" aria-atomic="true">
         {toasts.map(t => (
-          <div key={t.id} role="status" style={{
+          <div key={t.id} role="status" onClick={() => remove(t.id)} style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 8,
-            padding: '10px 20px',
-            borderRadius: 50,
-            background: t.type === 'error' ? '#dc2626' 
-                      : t.type === 'success' ? '#16a34a' 
-                      : t.type === 'warn' ? '#d97706' 
-                      : '#0f172a',
-            color: '#fff',
+            gap: 10,
+            padding: '14px 20px',
+            borderRadius: 16,
+            background: 'rgba(255,255,255,0.85)',
+            WebkitBackdropFilter: 'blur(20px)',
+            backdropFilter: 'blur(20px)',
+            color: '#1e293b',
             fontSize: 14,
             fontWeight: 500,
-            boxShadow: '0 4px 20px rgba(0,0,0,0.25)',
-            animation: 'toastSlideUp 0.3s ease',
-            pointerEvents: 'auto'
+            boxShadow: '0 8px 32px rgba(0,0,0,0.10), 0 1px 3px rgba(0,0,0,0.06)',
+            border: '1px solid rgba(255,255,255,0.6)',
+            animation: 'toastSlideUp 0.35s cubic-bezier(0.16,1,0.3,1)',
+            pointerEvents: 'auto',
+            cursor: 'pointer',
+            width: '100%'
           }}>
-            <span style={{ fontSize: 16 }}>
+            <span style={{
+              width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+              display: 'grid', placeItems: 'center', fontSize: 13, fontWeight: 700,
+              background: t.type === 'error' ? '#fef2f2' : t.type === 'success' ? '#f0fdf4' : t.type === 'warn' ? '#fffbeb' : '#f0f9ff',
+              color: t.type === 'error' ? '#dc2626' : t.type === 'success' ? '#16a34a' : t.type === 'warn' ? '#d97706' : '#0284c7'
+            }}>
               {t.type === 'error' ? '✕' : t.type === 'success' ? '✓' : t.type === 'warn' ? '!' : 'i'}
             </span>
-            <span>{t.message}</span>
+            <span style={{ flex: 1, lineHeight: 1.4 }}>{t.message}</span>
           </div>
         ))}
       </div>
       <style>{`
         @keyframes toastSlideUp {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
+          from { opacity: 0; transform: translateY(16px) scale(0.96); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
         }
       `}</style>
     </ToastCtx.Provider>

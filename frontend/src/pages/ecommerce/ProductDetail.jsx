@@ -161,7 +161,7 @@ const ProductDetail = () => {
     } catch (error) { console.error('Error loading reviews:', error) }
   }
 
-  useEffect(() => { if (!id) return; setSelectedImage(0); setQuantity(1); loadProduct(); loadReviews() }, [id])
+  useEffect(() => { if (!id) return; setSelectedImage(0); setQuantity(1); loadProduct(); loadReviews(); try { window.scrollTo({ top: 0, behavior: 'instant' }) } catch {} }, [id])
 
   const handleAddToCart = () => {
     if (!product) return
@@ -302,6 +302,14 @@ const ProductDetail = () => {
 
   const goBack = () => { try { if (window.history.length > 1) navigate(-1); else navigate('/catalog') } catch { navigate('/catalog') } }
 
+  const handleShare = async () => {
+    const shareData = { title: product?.name || 'Product', text: product?.name || '', url: window.location.href }
+    try {
+      if (navigator.share) { await navigator.share(shareData) }
+      else { await navigator.clipboard.writeText(window.location.href); toast.success('Link copied') }
+    } catch (err) { if (err.name !== 'AbortError') { try { await navigator.clipboard.writeText(window.location.href); toast.success('Link copied') } catch {} } }
+  }
+
   const scrollToImage = (idx) => {
     setSelectedImage(idx)
     if (mobileGalleryRef.current) {
@@ -424,8 +432,8 @@ const ProductDetail = () => {
             <div className="flex w-max">
               {images.length > 0 ? images.map((img, idx) => (
                 <div key={idx} className="w-screen flex-shrink-0 snap-center">
-                  <div className="relative bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center" style={{ minHeight: '55vh' }}>
-                    <img src={img} alt={`Product ${idx + 1}`} className="w-full h-full object-contain p-6 drop-shadow-[0_20px_40px_rgba(0,0,0,0.08)]" style={{ maxHeight: '55vh' }} onError={e => { e.target.src = '/placeholder-product.svg' }} />
+                  <div className="relative bg-gradient-to-b from-[#f0f0f3] to-[#e8e8ec] flex items-center justify-center" style={{ minHeight: '60vh' }}>
+                    <img src={img} alt={`Product ${idx + 1}`} className="w-full h-full object-cover" style={{ maxHeight: '60vh' }} onError={e => { e.target.src = '/placeholder-product.svg' }} />
                   </div>
                 </div>
               )) : !hasVideo ? (
@@ -441,10 +449,13 @@ const ProductDetail = () => {
               <svg className="w-5 h-5 text-gray-800" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
             </button>
           </div>
-          <div className="absolute top-6 right-5 z-20 flex gap-3">
+          <div className="absolute top-6 right-5 z-20 flex gap-2.5">
+            <button onClick={handleShare} className="bg-white/90 backdrop-blur-sm w-11 h-11 rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.10)] flex items-center justify-center hover:scale-110 transition-transform">
+              <svg className="w-[18px] h-[18px] text-gray-700" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+            </button>
             {isCustomer && (
-              <button onClick={onToggleWishlist} disabled={wishBusy} className={`w-12 h-12 rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.12)] flex items-center justify-center hover:scale-110 transition-transform ${wishlisted ? 'bg-orange-500 text-white' : 'bg-white text-gray-800'}`}>
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill={wishlisted ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+              <button onClick={onToggleWishlist} disabled={wishBusy} className={`w-11 h-11 rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.10)] flex items-center justify-center hover:scale-110 transition-transform ${wishlisted ? 'bg-orange-500 text-white' : 'bg-white/90 backdrop-blur-sm text-gray-700'}`}>
+                <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill={wishlisted ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
               </button>
             )}
           </div>
@@ -502,16 +513,16 @@ const ProductDetail = () => {
           <RelatedSection />
         </div>
 
-        {/* Mobile Bottom Bar */}
+        {/* Mobile Bottom Bar - Glassmorphism */}
         <div className="fixed bottom-0 left-0 right-0 z-50" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0)' }}>
-          <div className="bg-gray-900 mx-3 mb-3 rounded-[20px] shadow-2xl px-4 py-3 flex items-center gap-3">
+          <div className="bg-white/70 backdrop-blur-xl mx-3 mb-3 rounded-[22px] shadow-[0_8px_40px_rgba(0,0,0,0.10)] border border-white/60 px-4 py-3 flex items-center gap-3">
             <div className="flex-shrink-0">
-              <span className="text-white font-bold text-lg">{priceDisplay}</span>
+              <span className="text-gray-900 font-bold text-xl tabular-nums">{priceDisplay}</span>
               {origPriceDisplay && <span className="text-gray-400 text-xs line-through ml-1.5">{origPriceDisplay}</span>}
             </div>
             <div className="flex-1 flex gap-2 justify-end">
-              <button onClick={handleAddToCart} className="flex-1 max-w-[160px] bg-gradient-to-r from-orange-500 to-orange-400 text-white font-bold py-3 rounded-2xl shadow-lg shadow-orange-500/30 hover:scale-[1.02] transition-all flex items-center justify-center gap-2 text-sm">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+              <button onClick={handleAddToCart} className="flex-1 max-w-[160px] bg-gray-900 text-white font-semibold py-3.5 rounded-2xl shadow-lg hover:bg-gray-800 hover:scale-[1.02] transition-all flex items-center justify-center gap-2 text-sm">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                 Add to cart
               </button>
               {waUrl && <a href={waUrl} target="_blank" rel="noopener noreferrer" className="w-12 h-12 bg-green-500 text-white rounded-2xl grid place-items-center shadow-lg flex-shrink-0"><svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d={waPath} /></svg></a>}
