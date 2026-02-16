@@ -430,8 +430,8 @@ const ProductDetail = () => {
             <div className="flex w-max">
               {images.length > 0 ? images.map((img, idx) => (
                 <div key={idx} className="w-screen flex-shrink-0 snap-center">
-                  <div className="relative bg-white w-full" style={{ height: '60vh' }}>
-                    <img src={img} alt={`Product ${idx + 1}`} className="w-full h-full object-cover object-center" onError={e => { e.target.src = '/placeholder-product.svg' }} />
+                  <div className="relative bg-[#f5f5f7] w-full" style={{ height: '56vh' }}>
+                    <img src={img} alt={`Product ${idx + 1}`} className="w-full h-full object-contain" onError={e => { e.target.src = '/placeholder-product.svg' }} />
                   </div>
                 </div>
               )) : !hasVideo ? (

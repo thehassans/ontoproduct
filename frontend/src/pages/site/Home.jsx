@@ -343,60 +343,73 @@ export default function Home(){
 
         {/* Mobile-only floating glassmorphism controls INSIDE banner */}
         <div className="md:hidden absolute top-3 left-3 right-3 z-30 flex items-center justify-between">
-          {/* Left: Hamburger menu */}
+          {/* Left: Ultra-minimal transparent hamburger */}
           <button
             onClick={() => setMobileMenuOpen(true)}
-            className="w-10 h-10 rounded-full bg-white/60 backdrop-blur-xl shadow-[0_2px_16px_rgba(0,0,0,0.10)] border border-white/40 flex items-center justify-center active:scale-95 transition-transform"
+            className="w-10 h-10 rounded-full bg-white/30 backdrop-blur-md flex items-center justify-center active:scale-95 transition-transform"
           >
-            <svg className="w-[18px] h-[18px] text-gray-800" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><line x1="3" y1="7" x2="21" y2="7" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="17" x2="21" y2="17" /></svg>
+            <svg className="w-5 h-5 text-gray-900" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><line x1="4" y1="7" x2="20" y2="7" /><line x1="4" y1="12" x2="20" y2="12" /><line x1="4" y1="17" x2="20" y2="17" /></svg>
           </button>
 
-          {/* Center: Country selector */}
-          <div className="relative">
+          {/* Right group: Country + Cart */}
+          <div className="flex items-center gap-2">
+            {/* Country selector */}
+            <div className="relative">
+              <button
+                onClick={() => setMobileCountryOpen(!mobileCountryOpen)}
+                className="h-9 px-3 rounded-full bg-white/80 backdrop-blur-xl shadow-[0_2px_12px_rgba(0,0,0,0.08)] border border-white/50 flex items-center gap-1.5 active:scale-95 transition-transform"
+              >
+                <span className="text-sm">{currentFlag}</span>
+                <span className="text-xs font-semibold text-gray-800">{currentCountryName}</span>
+                <svg className="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" /></svg>
+              </button>
+              {mobileCountryOpen && (
+                <div className="absolute top-12 right-0 w-48 max-h-64 overflow-y-auto bg-white/95 backdrop-blur-2xl rounded-2xl shadow-[0_12px_48px_rgba(0,0,0,0.15)] border border-white/60 py-1 z-50">
+                  {COUNTRY_LIST_LOCAL.map(c => (
+                    <button key={c.code} onClick={() => handleMobileCountryChange(c.code)} className={`w-full px-4 py-2.5 flex items-center gap-2.5 text-left text-sm transition-colors ${selectedCountry === c.code ? 'bg-orange-50 text-orange-600 font-semibold' : 'text-gray-700 hover:bg-gray-50'}`}>
+                      <span>{c.flag}</span><span>{c.name}</span>
+                      {selectedCountry === c.code && <svg className="w-3.5 h-3.5 ml-auto text-orange-500" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" /></svg>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Cart */}
             <button
-              onClick={() => setMobileCountryOpen(!mobileCountryOpen)}
-              className="h-9 px-3 rounded-full bg-white/60 backdrop-blur-xl shadow-[0_2px_16px_rgba(0,0,0,0.10)] border border-white/40 flex items-center gap-1.5 active:scale-95 transition-transform"
+              onClick={() => navigate('/cart')}
+              className="w-10 h-10 rounded-full bg-white/80 backdrop-blur-xl shadow-[0_2px_12px_rgba(0,0,0,0.08)] border border-white/50 flex items-center justify-center active:scale-95 transition-transform relative"
             >
-              <span className="text-sm">{currentFlag}</span>
-              <span className="text-xs font-semibold text-gray-800">{currentCountryName}</span>
-              <svg className="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" /></svg>
+              <svg className="w-[18px] h-[18px] text-gray-800" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+              {cartCount > 0 && <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">{cartCount > 99 ? '99+' : cartCount}</span>}
             </button>
-            {mobileCountryOpen && (
-              <div className="absolute top-12 left-1/2 -translate-x-1/2 w-48 max-h-64 overflow-y-auto bg-white/90 backdrop-blur-2xl rounded-2xl shadow-[0_12px_48px_rgba(0,0,0,0.15)] border border-white/60 py-1 z-50">
-                {COUNTRY_LIST_LOCAL.map(c => (
-                  <button key={c.code} onClick={() => handleMobileCountryChange(c.code)} className={`w-full px-4 py-2.5 flex items-center gap-2.5 text-left text-sm transition-colors ${selectedCountry === c.code ? 'bg-orange-50 text-orange-600 font-semibold' : 'text-gray-700 hover:bg-gray-50'}`}>
-                    <span>{c.flag}</span><span>{c.name}</span>
-                    {selectedCountry === c.code && <svg className="w-3.5 h-3.5 ml-auto text-orange-500" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" /></svg>}
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
-
-          {/* Right: Cart */}
-          <button
-            onClick={() => navigate('/cart')}
-            className="w-10 h-10 rounded-full bg-white/60 backdrop-blur-xl shadow-[0_2px_16px_rgba(0,0,0,0.10)] border border-white/40 flex items-center justify-center active:scale-95 transition-transform relative"
-          >
-            <svg className="w-[18px] h-[18px] text-gray-800" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-            {cartCount > 0 && <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">{cartCount > 99 ? '99+' : cartCount}</span>}
-          </button>
         </div>
       </div>
 
-      {/* Mobile slide-out menu */}
+      {/* Mobile slide-out menu — ultra premium minimalist */}
       {mobileMenuOpen && (
         <div className="fixed inset-0 z-[9999] md:hidden">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)} />
-          <div className="absolute top-0 left-0 bottom-0 w-72 bg-white shadow-2xl flex flex-col animate-[slideIn_0.25s_ease]">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-              <img src="/BuySial2.png" alt="BuySial" className="h-8 object-contain" />
-              <button onClick={() => setMobileMenuOpen(false)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center"><svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg></button>
+          <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)} />
+          <div className="absolute top-0 left-0 bottom-0 w-[78vw] max-w-[320px] bg-white shadow-2xl flex flex-col animate-[slideIn_0.3s_cubic-bezier(0.16,1,0.3,1)]">
+            {/* Big logo + close */}
+            <div className="relative px-6 pt-10 pb-6 flex flex-col items-center">
+              <button onClick={() => setMobileMenuOpen(false)} className="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors"><svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg></button>
+              <img src="/BuySial2.png" alt="BuySial" className="h-24 w-24 object-contain mb-2" />
+              <span className="text-2xl font-bold tracking-tight"><span className="text-[#0b5ed7]">buy</span><span className="text-[#f97316]">sial</span></span>
             </div>
-            <nav className="flex-1 py-3 px-3 space-y-1">
-              {[{ to: '/', label: 'Home', icon: 'M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z' }, { to: '/catalog', label: 'Products', icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4' }, { to: '/categories', label: 'Categories', icon: 'M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z' }, { to: '/about', label: 'About' }, { to: '/contact', label: 'Contact' }].map(item => (
-                <Link key={item.to} to={item.to} onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 px-3 py-3 rounded-xl text-gray-700 font-medium text-sm hover:bg-orange-50 hover:text-orange-600 transition-colors">
-                  {item.icon && <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d={item.icon} /></svg>}
+
+            {/* Nav items — spacious, minimal */}
+            <nav className="flex-1 px-5 pt-2">
+              {[
+                { to: '/', label: 'Home', icon: 'M3 9.5L12 3l9 6.5V20a2 2 0 01-2 2H5a2 2 0 01-2-2V9.5z' },
+                { to: '/catalog', label: 'Products', icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4' },
+                { to: '/categories', label: 'Categories', icon: 'M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z' },
+                { to: '/about', label: 'About', icon: null },
+                { to: '/contact', label: 'Contact', icon: null },
+              ].map(item => (
+                <Link key={item.to} to={item.to} onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-4 py-4 text-gray-800 font-medium text-[15px] tracking-wide border-b border-gray-50 last:border-0 hover:text-orange-500 transition-colors">
+                  {item.icon ? <svg className="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d={item.icon} /></svg> : <span className="w-5" />}
                   {item.label}
                 </Link>
               ))}
