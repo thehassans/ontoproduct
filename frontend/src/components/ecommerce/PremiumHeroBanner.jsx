@@ -177,6 +177,7 @@ export default function PremiumHeroBanner() {
             {!imagesLoaded[idx] && (
               <div className="slide-fallback" style={{ background: slide.fallbackGradient }}></div>
             )}
+            <div className="slide-text-overlay" />
             {slide.link ? (
               <Link
                 to={slide.link}
@@ -261,6 +262,14 @@ export default function PremiumHeroBanner() {
         .slide-fallback {
           position: absolute;
           inset: 0;
+        }
+
+        .slide-text-overlay {
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(to right, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.25) 40%, transparent 70%);
+          pointer-events: none;
+          z-index: 2;
         }
 
         /* Navigation Arrows */
