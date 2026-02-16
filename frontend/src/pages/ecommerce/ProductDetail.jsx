@@ -10,6 +10,7 @@ import { trackPageView, trackProductView, trackAddToCart } from '../../utils/ana
 import { getCurrencyConfig, convert as fxConvert, formatMoney } from '../../util/currency'
 import { resolveWarehouse } from '../../utils/warehouse'
 import { readWishlistIds, toggleWishlist } from '../../util/wishlist'
+import { getProductRating, getProductReviews, getStarArray } from '../../utils/autoReviews'
 
 const ProductDetail = () => {
   const { id } = useParams()
@@ -29,6 +30,7 @@ const ProductDetail = () => {
   const [ccyCfg, setCcyCfg] = useState(null)
   const [wishlisted, setWishlisted] = useState(false)
   const [wishBusy, setWishBusy] = useState(false)
+  const [cartCount, setCartCount] = useState(() => { try { const c = JSON.parse(localStorage.getItem('shopping_cart') || '[]'); return c.reduce((s, i) => s + (i.quantity || 1), 0) } catch { return 0 } })
   const mobileGalleryRef = useRef(null)
 
   const [selectedCountry, setSelectedCountry] = useState(() => {
@@ -41,6 +43,12 @@ const ProductDetail = () => {
       if (alive) setCcyCfg(cfg)
     }).catch(() => {})
     return () => { alive = false }
+  }, [])
+
+  useEffect(() => {
+    const updateCart = () => { try { const c = JSON.parse(localStorage.getItem('shopping_cart') || '[]'); setCartCount(c.reduce((s, i) => s + (i.quantity || 1), 0)) } catch { setCartCount(0) } }
+    window.addEventListener('cartUpdated', updateCart); window.addEventListener('storage', updateCart)
+    return () => { window.removeEventListener('cartUpdated', updateCart); window.removeEventListener('storage', updateCart) }
   }, [])
 
   const COUNTRY_TO_CURRENCY = {
@@ -364,11 +372,36 @@ const ProductDetail = () => {
     )
   }
 
+  // --- Auto-generated rating ---
+  const autoRating = product ? getProductRating(product._id || id) : { rating: 4.5, reviewCount: 30 }
+  const autoReviews = product ? getProductReviews(product._id || id) : []
+  const allReviews = [...reviews, ...autoReviews]
+  const displayRating = autoRating.rating
+  const displayReviewCount = allReviews.length
+
+  const StarRating = ({ rating, size = 'sm' }) => {
+    const stars = getStarArray(rating)
+    const sz = size === 'sm' ? 'w-3.5 h-3.5' : 'w-4 h-4'
+    return (
+      <div className="flex items-center gap-0.5">
+        {stars.map((s, i) => (
+          <svg key={i} className={`${sz} ${s === 'empty' ? 'text-gray-200' : 'text-yellow-400'}`} fill="currentColor" viewBox="0 0 20 20">
+            {s === 'half' ? (
+              <><defs><linearGradient id={`hg${i}`}><stop offset="50%" stopColor="currentColor" /><stop offset="50%" stopColor="#e5e7eb" /></linearGradient></defs><path fill={`url(#hg${i})`} d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></>
+            ) : (
+              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+            )}
+          </svg>
+        ))}
+      </div>
+    )
+  }
+
   // --- Tabs Content ---
   const TabsContent = () => (
     <div className="mt-6">
       <div className="flex gap-1 bg-gray-100 rounded-2xl p-1 mb-5">
-        {[{ id: 'description', label: 'Details' }, { id: 'reviews', label: `Reviews (${reviews.length})` }].map(tab => (
+        {[{ id: 'description', label: 'Details' }, { id: 'reviews', label: `Reviews (${displayReviewCount})` }].map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all ${activeTab === tab.id ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>{tab.label}</button>
         ))}
       </div>
@@ -383,11 +416,40 @@ const ProductDetail = () => {
       )}
       {activeTab === 'reviews' && (
         <div className="space-y-3">
-          {reviews.length > 0 ? reviews.map(r => (
+          {/* Rating summary */}
+          <div className="bg-white rounded-2xl p-4 shadow-sm flex items-center gap-4 mb-2">
+            <div className="text-center">
+              <div className="text-3xl font-bold text-gray-900">{displayRating.toFixed(1)}</div>
+              <StarRating rating={displayRating} size="md" />
+              <div className="text-xs text-gray-400 mt-1">{displayReviewCount} reviews</div>
+            </div>
+            <div className="flex-1 space-y-1">
+              {[5, 4, 3, 2, 1].map(star => {
+                const count = allReviews.filter(r => Math.floor(r.rating) === star).length
+                const pct = displayReviewCount > 0 ? Math.round((count / displayReviewCount) * 100) : 0
+                return (
+                  <div key={star} className="flex items-center gap-2 text-xs">
+                    <span className="text-gray-500 w-3">{star}</span>
+                    <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden"><div className="h-full bg-yellow-400 rounded-full" style={{ width: `${pct}%` }} /></div>
+                    <span className="text-gray-400 w-7 text-right">{pct}%</span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+          {allReviews.length > 0 ? allReviews.slice(0, 30).map(r => (
             <div key={r.id} className="bg-white rounded-2xl p-4 shadow-sm">
-              <div className="flex items-center justify-between mb-1"><div className="flex items-center gap-2"><span className="font-bold text-sm">{r.name}</span>{r.verified && <span className="bg-green-100 text-green-700 text-[9px] px-2 py-0.5 rounded-full font-bold">VERIFIED</span>}</div><span className="text-xs text-gray-400">{r.date}</span></div>
-              <div className="flex mb-1">{[...Array(5)].map((_, i) => <svg key={i} className={`w-3.5 h-3.5 ${i < r.rating ? 'text-yellow-400' : 'text-gray-200'}`} fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>)}</div>
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-sm">{r.name}</span>
+                  {r.countryFlag && <span className="text-xs">{r.countryFlag}</span>}
+                  {r.verified && <span className="bg-green-100 text-green-700 text-[9px] px-2 py-0.5 rounded-full font-bold">VERIFIED</span>}
+                </div>
+                <span className="text-xs text-gray-400">{r.date ? new Date(r.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}</span>
+              </div>
+              <div className="flex mb-1"><StarRating rating={r.rating} /></div>
               <p className="text-gray-600 text-sm">{r.comment}</p>
+              {r.country && <p className="text-[11px] text-gray-400 mt-1">Purchased from {r.country}</p>}
             </div>
           )) : <div className="text-center py-10 bg-white rounded-2xl shadow-sm text-gray-400 text-sm">No reviews yet</div>}
         </div>
@@ -456,6 +518,7 @@ const ProductDetail = () => {
             </button>
             <button onClick={() => navigate('/cart')} className="bg-white/80 backdrop-blur-md w-10 h-10 rounded-full shadow-[0_2px_12px_rgba(0,0,0,0.08)] flex items-center justify-center hover:scale-110 active:scale-95 transition-transform relative">
               <svg className="w-[17px] h-[17px] text-gray-700" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+              {cartCount > 0 && <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">{cartCount > 99 ? '99+' : cartCount}</span>}
             </button>
           </div>
 
@@ -487,8 +550,13 @@ const ProductDetail = () => {
 
         {/* Mobile Product Info */}
         <div className="px-4 pb-32">
-          {product.category && <span className="inline-block px-3 py-1 rounded-full bg-orange-50 text-orange-600 text-xs font-semibold tracking-wide uppercase mb-3">{product.category}</span>}
-          <h1 className="text-xl font-bold text-gray-900 leading-snug mb-2 line-clamp-2">{product.name}</h1>
+          {product.category && <span className="inline-block px-3 py-1 rounded-full bg-orange-50 text-orange-600 text-xs font-semibold tracking-wide uppercase mb-2">{product.category}</span>}
+          <h1 className="text-xl font-bold text-gray-900 leading-snug mb-1.5 line-clamp-2">{product.name}</h1>
+          <div className="flex items-center gap-2 mb-3">
+            <StarRating rating={displayRating} />
+            <span className="text-sm font-semibold text-gray-700">{displayRating.toFixed(1)}</span>
+            <span className="text-xs text-gray-400">({displayReviewCount})</span>
+          </div>
           {product.description && <p className="text-gray-500 text-sm leading-relaxed mb-4 line-clamp-3">{product.description}</p>}
 
           <div className="mb-5"><VariantSelector excludeColor /></div>
@@ -500,6 +568,21 @@ const ProductDetail = () => {
           </div>
 
           <TabsContent />
+
+          {/* Full-width Image Gallery */}
+          {images.length > 0 && (
+            <div className="mt-8 mb-6">
+              <h3 className="text-lg font-bold text-gray-900 mb-3">Product Images</h3>
+              <div className="space-y-2">
+                {images.map((img, idx) => (
+                  <div key={idx} className="w-full rounded-2xl overflow-hidden bg-white shadow-sm">
+                    <img src={img} alt={`${product.name} ${idx + 1}`} className="w-full object-contain" style={{ maxHeight: '80vh' }} loading="lazy" onError={e => { e.target.src = '/placeholder-product.svg' }} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <RelatedSection />
         </div>
 

@@ -1298,7 +1298,7 @@ export default function ProductCatalog() {
                             product={product}
                             selectedCountry={selectedCountry}
                             showVideo={false}
-                            showActions={true}
+                            showActions={false}
                           />
                         ))}
                       </div>
