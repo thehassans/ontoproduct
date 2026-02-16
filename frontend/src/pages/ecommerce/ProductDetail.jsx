@@ -430,8 +430,8 @@ const ProductDetail = () => {
             <div className="flex w-max">
               {images.length > 0 ? images.map((img, idx) => (
                 <div key={idx} className="w-screen flex-shrink-0 snap-center">
-                  <div className="relative bg-gradient-to-b from-[#f0f0f3] to-[#e8e8ec] flex items-center justify-center" style={{ minHeight: '60vh' }}>
-                    <img src={img} alt={`Product ${idx + 1}`} className="w-full h-full object-cover" style={{ maxHeight: '60vh' }} onError={e => { e.target.src = '/placeholder-product.svg' }} />
+                  <div className="relative bg-white w-full" style={{ height: '60vh' }}>
+                    <img src={img} alt={`Product ${idx + 1}`} className="w-full h-full object-cover object-center" onError={e => { e.target.src = '/placeholder-product.svg' }} />
                   </div>
                 </div>
               )) : !hasVideo ? (
@@ -520,7 +520,7 @@ const ProductDetail = () => {
               {origPriceDisplay && <span className="text-gray-400 text-xs line-through ml-1.5">{origPriceDisplay}</span>}
             </div>
             <div className="flex-1 flex gap-2 justify-end">
-              <button onClick={handleAddToCart} className="flex-1 max-w-[160px] bg-gray-900 text-white font-semibold py-3.5 rounded-2xl shadow-lg hover:bg-gray-800 hover:scale-[1.02] transition-all flex items-center justify-center gap-2 text-sm">
+              <button onClick={handleAddToCart} className="flex-1 max-w-[160px] bg-gradient-to-r from-orange-500 to-orange-400 text-white font-semibold py-3.5 rounded-2xl shadow-lg shadow-orange-500/25 hover:shadow-xl hover:scale-[1.02] transition-all flex items-center justify-center gap-2 text-sm">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                 Add to cart
               </button>
