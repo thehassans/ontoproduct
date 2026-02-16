@@ -10,6 +10,7 @@ import ffmpegPath from 'ffmpeg-static'
 import { auth, allowRoles } from '../middleware/auth.js'
 import Product from '../models/Product.js'
 import User from '../models/User.js'
+import Setting from '../models/Setting.js'
 import { createNotification } from './notifications.js'
 import geminiService from '../services/geminiService.js'
 import imageGenService from '../services/imageGenService.js'
@@ -40,6 +41,98 @@ const publicProductsCache = {
   data: null,
   timestamp: 0,
   TTL: 30000 // 30 seconds cache
+}
+
+async function getSubcategoriesSettingMap() {
+  try {
+    const doc = await Setting.findOne({ key: 'productSubcategoriesByCategory' }).select('value').lean()
+    const v = doc?.value
+    if (v && typeof v === 'object' && !Array.isArray(v)) return v
+    return {}
+  } catch {
+    return {}
+  }
+}
+
+function normalizeStringList(input) {
+  const arr = Array.isArray(input) ? input : []
+  const out = []
+  const seen = new Set()
+  for (const raw of arr) {
+    const s = String(raw || '').trim()
+    if (!s) continue
+    const key = s.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(s)
+  }
+  return out
+}
+
+async function buildCategoriesPayload() {
+  const categories = [
+    'Skincare',
+    'Haircare',
+    'Bodycare',
+    'Household',
+    'Kitchen',
+    'Cleaning',
+    'Home Decor',
+    'Electronics',
+    'Clothing',
+    'Books',
+    'Sports',
+    'Health',
+    'Beauty',
+    'Toys',
+    'Automotive',
+    'Garden',
+    'Pet Supplies',
+    'Personal Care',
+    'Office',
+    'Fashion',
+    'Home',
+    'Jewelry',
+    'Tools',
+    'Gift Sets',
+    'Other'
+  ]
+
+  const storedMap = await getSubcategoriesSettingMap()
+  let discovered = {}
+  try {
+    const rows = await Product.aggregate([
+      { $match: { subcategory: { $exists: true, $ne: '' } } },
+      { $group: { _id: { category: '$category', subcategory: '$subcategory' } } },
+      { $project: { _id: 0, category: '$_id.category', subcategory: '$_id.subcategory' } },
+      { $sort: { category: 1, subcategory: 1 } },
+    ])
+    for (const r of rows) {
+      const c = String(r?.category || '').trim() || 'Other'
+      const s = String(r?.subcategory || '').trim()
+      if (!s) continue
+      if (!discovered[c]) discovered[c] = []
+      discovered[c].push(s)
+    }
+    for (const c of Object.keys(discovered)) {
+      discovered[c] = Array.from(new Set(discovered[c].map((x) => String(x || '').trim()).filter(Boolean))).sort()
+    }
+  } catch {}
+
+  const out = {}
+  const keys = new Set([...Object.keys(storedMap || {}), ...Object.keys(discovered || {})])
+  for (const c of keys) {
+    const storedList = normalizeStringList(storedMap?.[c])
+    const discoveredList = normalizeStringList(discovered?.[c])
+    if (storedList.length) {
+      const seen = new Set(storedList.map((x) => x.toLowerCase()))
+      out[c] = [...storedList, ...discoveredList.filter((x) => !seen.has(String(x).toLowerCase()))]
+    } else if (discoveredList.length) {
+      out[c] = [...discoveredList]
+    }
+  }
+
+  return { categories, subcategoriesByCategory: out }
 }
 
 // Resolve an uploads directory robustly across Plesk/PM2/systemd contexts
@@ -937,43 +1030,80 @@ router.post('/backfill-skus', auth, allowRoles('admin','user','manager'), async 
 // Get available product categories
 router.get('/categories', async (req, res) => {
   try {
-    const categories = [
-      'Skincare', 'Haircare', 'Bodycare', 'Household', 'Kitchen', 'Cleaning', 'Home Decor',
-      'Electronics', 'Clothing', 'Books', 'Sports', 'Health', 'Beauty', 'Toys', 'Automotive',
-      'Garden', 'Pet Supplies', 'Personal Care', 'Office', 'Fashion', 'Home', 'Jewelry', 'Tools',
-      'Other'
-    ]
-
-    let subcategoriesByCategory = {}
-    try {
-      const rows = await Product.aggregate([
-        { $match: { subcategory: { $exists: true, $ne: '' } } },
-        { $group: { _id: { category: '$category', subcategory: '$subcategory' } } },
-        { $project: { _id: 0, category: '$_id.category', subcategory: '$_id.subcategory' } },
-        { $sort: { category: 1, subcategory: 1 } },
-      ])
-      for (const r of rows) {
-        const c = String(r?.category || '').trim() || 'Other'
-        const s = String(r?.subcategory || '').trim()
-        if (!s) continue
-        if (!subcategoriesByCategory[c]) subcategoriesByCategory[c] = []
-        subcategoriesByCategory[c].push(s)
-      }
-      for (const c of Object.keys(subcategoriesByCategory)) {
-        subcategoriesByCategory[c] = Array.from(new Set(subcategoriesByCategory[c])).sort()
-      }
-    } catch {}
-
-    res.json({
-      success: true,
-      categories,
-      subcategoriesByCategory,
-    })
+    const payload = await buildCategoriesPayload()
+    res.json({ success: true, ...payload })
   } catch (error) {
     console.error('Categories fetch error:', error)
     res.status(500).json({ success: false, message: 'Failed to fetch categories' })
   }
 })
+
+ router.post('/subcategories', auth, allowRoles('admin','user','manager'), async (req, res) => {
+  try {
+    if (req.user.role === 'manager') {
+      try {
+        const mgr = await User.findById(req.user.id).select('managerPermissions').lean()
+        if (!mgr?.managerPermissions?.canManageProducts) {
+          return res.status(403).json({ message: 'Manager not allowed to manage products' })
+        }
+      } catch {
+        return res.status(403).json({ message: 'Manager not allowed to manage products' })
+      }
+    }
+
+    const category = String(req.body?.category || '').trim() || 'Other'
+    const subcategory = String(req.body?.subcategory || '').trim()
+    if (!subcategory) return res.status(400).json({ message: 'Subcategory is required' })
+
+    const map = await getSubcategoriesSettingMap()
+    const list = normalizeStringList(map?.[category])
+    const exists = list.some((x) => String(x).toLowerCase() === subcategory.toLowerCase())
+    const next = exists ? list : [...list, subcategory]
+    const nextMap = { ...(map || {}), [category]: next }
+
+    await Setting.findOneAndUpdate(
+      { key: 'productSubcategoriesByCategory' },
+      { $set: { value: nextMap }, $setOnInsert: { key: 'productSubcategoriesByCategory' } },
+      { upsert: true, new: true }
+    )
+
+    return res.json({ success: true, category, subcategories: next, subcategoriesByCategory: nextMap })
+  } catch (err) {
+    console.error('Create subcategory error:', err)
+    return res.status(500).json({ message: err?.message || 'Failed to create subcategory' })
+  }
+ })
+
+ router.patch('/subcategories/reorder', auth, allowRoles('admin','user','manager'), async (req, res) => {
+  try {
+    if (req.user.role === 'manager') {
+      try {
+        const mgr = await User.findById(req.user.id).select('managerPermissions').lean()
+        if (!mgr?.managerPermissions?.canManageProducts) {
+          return res.status(403).json({ message: 'Manager not allowed to manage products' })
+        }
+      } catch {
+        return res.status(403).json({ message: 'Manager not allowed to manage products' })
+      }
+    }
+
+    const category = String(req.body?.category || '').trim() || 'Other'
+    const subcategories = normalizeStringList(req.body?.subcategories)
+    const map = await getSubcategoriesSettingMap()
+    const nextMap = { ...(map || {}), [category]: subcategories }
+
+    await Setting.findOneAndUpdate(
+      { key: 'productSubcategoriesByCategory' },
+      { $set: { value: nextMap }, $setOnInsert: { key: 'productSubcategoriesByCategory' } },
+      { upsert: true, new: true }
+    )
+
+    return res.json({ success: true, category, subcategories, subcategoriesByCategory: nextMap })
+  } catch (err) {
+    console.error('Reorder subcategories error:', err)
+    return res.status(500).json({ message: err?.message || 'Failed to reorder subcategories' })
+  }
+ })
 
 // Public: return subcategory usage counts for a category
 router.get('/public/subcategories-usage', async (req, res) => {
@@ -1485,49 +1615,6 @@ router.post('/generate-description', auth, allowRoles('admin','user','manager'),
     console.error('Generate description error:', error)
     res.status(500).json({ 
       message: error.message || 'Failed to generate product description' 
-    })
-  }
-})
-
-// Get available product categories
-router.get('/categories', async (req, res) => {
-  try {
-    const categories = [
-      'Skincare',
-      'Haircare',
-      'Bodycare',
-      'Household',
-      'Kitchen',
-      'Cleaning',
-      'Home Decor',
-      'Electronics',
-      'Clothing',
-      'Books',
-      'Sports',
-      'Health',
-      'Beauty',
-      'Toys',
-      'Automotive',
-      'Garden',
-      'Pet Supplies',
-      'Personal Care',
-      'Office',
-      'Fashion',
-      'Home',
-      'Jewelry',
-      'Tools',
-      'Gift Sets',
-      'Other'
-    ]
-
-    res.json({
-      success: true,
-      categories
-    })
-  } catch (error) {
-    console.error('Get categories error:', error)
-    res.status(500).json({ 
-      message: 'Failed to fetch categories' 
     })
   }
 })

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import {
   apiGet,
   apiUpload,
@@ -10,6 +10,7 @@ import {
   apiUploadPatch,
   API_BASE,
   apiPost,
+  mediaUrl,
 } from '../../api'
 import { getCurrencyConfig, convert as fxConvert } from '../../util/currency'
 
@@ -27,21 +28,8 @@ function codeToFlag(code) {
 
 // Generate product images using AI backend endpoint
 async function aiGenerateImages(productId, count, prompt) {
-  try {
-    setAiBusy(true)
-    const body = { count: Math.max(1, Number(count || 2)), prompt: String(prompt || '').trim() }
-    const res = await apiPost(`/api/products/${productId}/images/ai`, body)
-    if (res?.success) {
-      setMsg(`AI images generated: ${res.added || 0}`)
-      await load()
-    } else {
-      setMsg(res?.message || 'Failed to generate images')
-    }
-  } catch (err) {
-    setMsg(err?.message || 'Failed to generate images')
-  } finally {
-    setAiBusy(false)
-  }
+  const body = { count: Math.max(1, Number(count || 2)), prompt: String(prompt || '').trim() }
+  return apiPost(`/api/products/${productId}/images/ai`, body)
 }
 
 const CATEGORIES = [
@@ -169,6 +157,10 @@ export default function InhouseProducts() {
   // Gemini AI state
   const [categories, setCategories] = useState([])
   const [subcategoriesByCategory, setSubcategoriesByCategory] = useState({})
+  const [newSubcategory, setNewSubcategory] = useState('')
+  const [editNewSubcategory, setEditNewSubcategory] = useState('')
+  const subcatDrag = useRef({ category: '', index: null })
+  const editSubcatDrag = useRef({ category: '', index: null })
   const [generatingDescription, setGeneratingDescription] = useState(false)
   const [aiDescription, setAiDescription] = useState('')
   // AI image generation state
@@ -214,6 +206,49 @@ export default function InhouseProducts() {
       if (!list.length) delete nextVariants[typeKey]
       return { ...curr, variants: nextVariants }
     })
+  }
+
+  async function createSubcategoryForCategory(category, subcategory, { alsoSetValue = false, isEdit = false } = {}) {
+    const c = String(category || '').trim() || 'Other'
+    const s = String(subcategory || '').trim()
+    if (!s) return
+    try {
+      const res = await apiPost('/api/products/subcategories', { category: c, subcategory: s })
+      if (res?.success && res?.subcategoriesByCategory && typeof res.subcategoriesByCategory === 'object') {
+        setSubcategoriesByCategory(res.subcategoriesByCategory)
+      } else {
+        await loadCategories()
+      }
+      if (alsoSetValue) {
+        if (isEdit) setEditForm((f) => ({ ...(f || {}), subcategory: s }))
+        else setForm((f) => ({ ...(f || {}), subcategory: s }))
+      }
+    } catch (err) {
+      setMsg(err?.message || 'Failed to create subcategory')
+    }
+  }
+
+  async function persistSubcategoryOrder(category, nextList) {
+    const c = String(category || '').trim() || 'Other'
+    const list = Array.isArray(nextList) ? nextList.map((x) => String(x || '').trim()).filter(Boolean) : []
+    try {
+      const res = await apiPatch('/api/products/subcategories/reorder', { category: c, subcategories: list })
+      if (res?.success && res?.subcategoriesByCategory && typeof res.subcategoriesByCategory === 'object') {
+        setSubcategoriesByCategory(res.subcategoriesByCategory)
+      }
+    } catch (err) {
+      setMsg(err?.message || 'Failed to reorder subcategories')
+    }
+  }
+
+  function moveInArray(arr, fromIndex, toIndex) {
+    const a = Array.isArray(arr) ? [...arr] : []
+    if (fromIndex === toIndex) return a
+    if (fromIndex < 0 || toIndex < 0) return a
+    if (fromIndex >= a.length || toIndex >= a.length) return a
+    const [m] = a.splice(fromIndex, 1)
+    a.splice(toIndex, 0, m)
+    return a
   }
 
   // Generate product images using AI backend endpoint (uses API settings saved in User > API Setup)
@@ -1187,6 +1222,65 @@ export default function InhouseProducts() {
                       <option key={s} value={s} />
                     ))}
                   </datalist>
+                  <div style={{ marginTop: 10, display: 'grid', gap: 8 }}>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <input
+                        className="input"
+                        value={newSubcategory}
+                        onChange={(e) => setNewSubcategory(e.target.value)}
+                        placeholder="Create new subcategory"
+                        style={{ padding: 12, fontSize: 14 }}
+                      />
+                      <button
+                        type="button"
+                        className="btn small"
+                        onClick={async () => {
+                          const v = String(newSubcategory || '').trim()
+                          if (!v) return
+                          await createSubcategoryForCategory(form.category, v, { alsoSetValue: true, isEdit: false })
+                          setNewSubcategory('')
+                        }}
+                      >
+                        + Add
+                      </button>
+                    </div>
+                    <div style={{ display: 'grid', gap: 6 }}>
+                      {(subcategoriesByCategory?.[form.category] || []).map((s, i) => (
+                        <div
+                          key={`${form.category}-${s}-${i}`}
+                          draggable
+                          onDragStart={() => {
+                            subcatDrag.current = { category: form.category, index: i }
+                          }}
+                          onDragOver={(e) => {
+                            e.preventDefault()
+                          }}
+                          onDrop={async () => {
+                            const from = subcatDrag.current
+                            if (!from || from.category !== form.category) return
+                            const next = moveInArray(subcategoriesByCategory?.[form.category] || [], from.index, i)
+                            setSubcategoriesByCategory((prev) => ({ ...(prev || {}), [form.category]: next }))
+                            await persistSubcategoryOrder(form.category, next)
+                          }}
+                          onClick={() => setForm((f) => ({ ...(f || {}), subcategory: s }))}
+                          style={{
+                            padding: '10px 12px',
+                            border: '1px solid var(--border)',
+                            borderRadius: 10,
+                            background: 'var(--panel)',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            cursor: 'grab',
+                            userSelect: 'none',
+                          }}
+                        >
+                          <div style={{ fontSize: 13, fontWeight: 600 }}>{s}</div>
+                          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Drag</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
                 <div>
                   <div className="label" style={{ marginBottom: 8, fontWeight: 600 }}>
@@ -1453,7 +1547,7 @@ export default function InhouseProducts() {
                             key={`${t.key}-${idx}`}
                             style={{
                               display: 'grid',
-                              gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr 1fr auto',
+                              gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr 1fr 70px auto',
                               gap: 10,
                               alignItems: 'center',
                             }}
@@ -1482,6 +1576,17 @@ export default function InhouseProducts() {
                                 <option key={`img-${i}`} value={i}>{`Image ${i + 1}`}</option>
                               ))}
                             </select>
+                            <div style={{ display: 'flex', justifyContent: 'center' }}>
+                              {t.key === 'color' && Number.isFinite(Number(opt?.imageIndex)) && Number(opt.imageIndex) >= 0 && imagePreviews?.[Number(opt.imageIndex)]?.url ? (
+                                <img
+                                  src={imagePreviews[Number(opt.imageIndex)].url}
+                                  alt="preview"
+                                  style={{ width: 54, height: 54, objectFit: 'cover', borderRadius: 10, border: '1px solid var(--border)' }}
+                                />
+                              ) : (
+                                <div style={{ width: 54, height: 54, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--panel-2)' }} />
+                              )}
+                            </div>
                             <button type="button" className="btn small danger" onClick={() => removeVariantOption(setForm, t.key, idx)}>
                               Remove
                             </button>
@@ -3359,6 +3464,64 @@ export default function InhouseProducts() {
                       <option key={s} value={s} />
                     ))}
                   </datalist>
+                  <div style={{ marginTop: 10, display: 'grid', gap: 8 }}>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <input
+                        className="input"
+                        value={editNewSubcategory}
+                        onChange={(e) => setEditNewSubcategory(e.target.value)}
+                        placeholder="Create new subcategory"
+                      />
+                      <button
+                        type="button"
+                        className="btn small"
+                        onClick={async () => {
+                          const v = String(editNewSubcategory || '').trim()
+                          if (!v) return
+                          await createSubcategoryForCategory(editForm.category, v, { alsoSetValue: true, isEdit: true })
+                          setEditNewSubcategory('')
+                        }}
+                      >
+                        + Add
+                      </button>
+                    </div>
+                    <div style={{ display: 'grid', gap: 6 }}>
+                      {(subcategoriesByCategory?.[editForm.category] || []).map((s, i) => (
+                        <div
+                          key={`${editForm.category}-${s}-${i}`}
+                          draggable
+                          onDragStart={() => {
+                            editSubcatDrag.current = { category: editForm.category, index: i }
+                          }}
+                          onDragOver={(e) => {
+                            e.preventDefault()
+                          }}
+                          onDrop={async () => {
+                            const from = editSubcatDrag.current
+                            if (!from || from.category !== editForm.category) return
+                            const next = moveInArray(subcategoriesByCategory?.[editForm.category] || [], from.index, i)
+                            setSubcategoriesByCategory((prev) => ({ ...(prev || {}), [editForm.category]: next }))
+                            await persistSubcategoryOrder(editForm.category, next)
+                          }}
+                          onClick={() => setEditForm((f) => ({ ...(f || {}), subcategory: s }))}
+                          style={{
+                            padding: '10px 12px',
+                            border: '1px solid var(--border)',
+                            borderRadius: 10,
+                            background: 'var(--panel)',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            cursor: 'grab',
+                            userSelect: 'none',
+                          }}
+                        >
+                          <div style={{ fontSize: 13, fontWeight: 600 }}>{s}</div>
+                          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Drag</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
                 <div>
                   <div className="label">SKU</div>
@@ -3394,7 +3557,7 @@ export default function InhouseProducts() {
                               key={`${t.key}-${idx}`}
                               style={{
                                 display: 'grid',
-                                gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr 1fr auto',
+                                gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr 1fr 70px auto',
                                 gap: 10,
                                 alignItems: 'center',
                               }}
@@ -3423,6 +3586,17 @@ export default function InhouseProducts() {
                                   <option key={`img-${i}`} value={i}>{`Image ${i + 1}`}</option>
                                 ))}
                               </select>
+                              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                                {t.key === 'color' && Number.isFinite(Number(opt?.imageIndex)) && Number(opt.imageIndex) >= 0 && Array.isArray(editing?.images) && editing.images?.[Number(opt.imageIndex)] ? (
+                                  <img
+                                    src={mediaUrl(editing.images[Number(opt.imageIndex)])}
+                                    alt="preview"
+                                    style={{ width: 54, height: 54, objectFit: 'cover', borderRadius: 10, border: '1px solid var(--border)' }}
+                                  />
+                                ) : (
+                                  <div style={{ width: 54, height: 54, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--panel-2)' }} />
+                                )}
+                              </div>
                               <button type="button" className="btn small danger" onClick={() => removeVariantOption(setEditForm, t.key, idx)}>
                                 Remove
                               </button>
