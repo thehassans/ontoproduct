@@ -422,9 +422,7 @@ const ProductDetail = () => {
 
   return (
     <div className="min-h-screen bg-[#F8F9FC] font-sans text-gray-900">
-      <div className="hidden lg:block"><Header onCartClick={() => setIsCartOpen(true)} /></div>
-
-      {/* ===== MOBILE (lg:hidden) ===== */}
+      {/* ===== MOBILE (lg:hidden) — no Header, image starts from top ===== */}
       <div className="lg:hidden">
         {/* Hero Image */}
         <div className="relative">
@@ -449,15 +447,16 @@ const ProductDetail = () => {
               <svg className="w-5 h-5 text-gray-800" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
             </button>
           </div>
-          <div className="absolute top-6 right-5 z-20 flex gap-2.5">
-            <button onClick={handleShare} className="bg-white/90 backdrop-blur-sm w-11 h-11 rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.10)] flex items-center justify-center hover:scale-110 transition-transform">
-              <svg className="w-[18px] h-[18px] text-gray-700" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+          <div className="absolute top-6 right-5 z-20 flex gap-2">
+            <button onClick={handleShare} className="bg-white/80 backdrop-blur-md w-10 h-10 rounded-full shadow-[0_2px_12px_rgba(0,0,0,0.08)] flex items-center justify-center hover:scale-110 active:scale-95 transition-transform">
+              <svg className="w-[17px] h-[17px] text-gray-700" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
             </button>
-            {isCustomer && (
-              <button onClick={onToggleWishlist} disabled={wishBusy} className={`w-11 h-11 rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.10)] flex items-center justify-center hover:scale-110 transition-transform ${wishlisted ? 'bg-orange-500 text-white' : 'bg-white/90 backdrop-blur-sm text-gray-700'}`}>
-                <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill={wishlisted ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
-              </button>
-            )}
+            <button onClick={onToggleWishlist} disabled={wishBusy} className={`w-10 h-10 rounded-full shadow-[0_2px_12px_rgba(0,0,0,0.08)] flex items-center justify-center hover:scale-110 active:scale-95 transition-transform ${wishlisted ? 'bg-orange-500 text-white' : 'bg-white/80 backdrop-blur-md text-gray-700'}`}>
+              <svg className="w-[17px] h-[17px]" viewBox="0 0 24 24" fill={wishlisted ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+            </button>
+            <button onClick={() => setIsCartOpen(true)} className="bg-white/80 backdrop-blur-md w-10 h-10 rounded-full shadow-[0_2px_12px_rgba(0,0,0,0.08)] flex items-center justify-center hover:scale-110 active:scale-95 transition-transform relative">
+              <svg className="w-[17px] h-[17px] text-gray-700" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+            </button>
           </div>
 
           {/* Floating color swatches */}
@@ -531,8 +530,9 @@ const ProductDetail = () => {
         </div>
       </div>
 
-      {/* ===== DESKTOP (hidden lg:block) ===== */}
+      {/* ===== DESKTOP ===== */}
       <div className="hidden lg:block">
+        <Header onCartClick={() => setIsCartOpen(true)} />
         <div className="max-w-7xl mx-auto px-8 py-6">
           <div className="flex items-center gap-2 mb-6 text-sm text-gray-400">
             <Link to="/" className="hover:text-orange-500">Home</Link><span>/</span>
