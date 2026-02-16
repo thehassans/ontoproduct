@@ -416,7 +416,7 @@ const ProductDetail = () => {
     <div className="min-h-screen bg-[#F8F9FC] font-sans text-gray-900">
       <div className="hidden lg:block"><Header onCartClick={() => setIsCartOpen(true)} /></div>
 
-      {/* ===== MOBILE (lg:hidden) ===== */
+      {/* ===== MOBILE (lg:hidden) ===== */}
       <div className="lg:hidden">
         {/* Hero Image */}
         <div className="relative">
