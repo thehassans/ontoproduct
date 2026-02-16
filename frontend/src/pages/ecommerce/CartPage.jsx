@@ -528,18 +528,37 @@ export default function CartPage() {
     const arr = Array.isArray(items) ? items : []
     let changed = false
     const next = arr.map((it) => {
+      const rawId = (() => {
+        try { return String(it?.id ?? '').trim() } catch { return '' }
+      })()
+      const derivedProductId = (() => {
+        try {
+          const pid = String(it?.productId ?? '').trim()
+          if (pid) return pid.includes('::') ? pid.split('::')[0] : pid
+          if (!rawId) return ''
+          return rawId.includes('::') ? rawId.split('::')[0] : rawId
+        } catch {
+          return ''
+        }
+      })()
+      const safeVariants = (it?.variants && typeof it.variants === 'object' && !Array.isArray(it.variants)) ? it.variants : {}
+
       const wh = resolveWarehouse(it, countryCode, it?.quantity)
       const should = {
         warehouseType: wh.type,
         etaMinDays: wh.etaMinDays,
         etaMaxDays: wh.etaMaxDays,
         warehouseCountry: countryCode,
+        ...(derivedProductId ? { productId: derivedProductId } : {}),
+        variants: safeVariants,
       }
       if (
         it?.warehouseType === should.warehouseType &&
         it?.etaMinDays === should.etaMinDays &&
         it?.etaMaxDays === should.etaMaxDays &&
-        it?.warehouseCountry === should.warehouseCountry
+        it?.warehouseCountry === should.warehouseCountry &&
+        (derivedProductId ? String(it?.productId || '') === derivedProductId : true) &&
+        it?.variants === safeVariants
       ) {
         return it
       }
@@ -705,7 +724,11 @@ export default function CartPage() {
       try {
         const savedCart = localStorage.getItem('shopping_cart')
         const parsed = savedCart ? JSON.parse(savedCart) : []
-        setCartItems(parsed)
+        const norm = normalizeCartItems(parsed, form.country)
+        if (norm.changed) {
+          try { localStorage.setItem('shopping_cart', JSON.stringify(norm.items)) } catch {}
+        }
+        setCartItems(norm.items)
       } catch { setCartItems([]) }
     }
     
@@ -938,9 +961,19 @@ export default function CartPage() {
     const items = cartItems.map(it => {
       const qty = Math.max(1, Number(it.quantity||1))
       const wh = resolveWarehouse(it, form.country, qty)
+      const pid = (() => {
+        try {
+          const raw = String(it?.productId || it?.id || '').trim()
+          if (!raw) return ''
+          return raw.includes('::') ? raw.split('::')[0] : raw
+        } catch {
+          return ''
+        }
+      })()
       return {
-        productId: it.id,
+        productId: pid,
         quantity: qty,
+        variants: it?.variants && typeof it.variants === 'object' ? it.variants : {},
         warehouseType: wh.type,
         etaMinDays: wh.etaMinDays,
         etaMaxDays: wh.etaMaxDays,
@@ -1124,11 +1157,20 @@ export default function CartPage() {
       currency: orderData.currency || displayCurrency,
       paymentMethod: orderData.paymentMethod,
       items: cartItems.map(it => ({
-        productId: it.id,
+        productId: (() => {
+          try {
+            const raw = String(it?.productId || it?.id || '').trim()
+            if (!raw) return ''
+            return raw.includes('::') ? raw.split('::')[0] : raw
+          } catch {
+            return ''
+          }
+        })(),
         name: it.name,
         image: it.image || it.imagePath,
         price: convertPrice(it.price, it.currency || 'SAR', displayCurrency),
         quantity: it.quantity,
+        variants: it?.variants && typeof it.variants === 'object' ? it.variants : {},
       })),
     }
     

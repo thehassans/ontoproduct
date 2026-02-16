@@ -314,7 +314,15 @@ export default function ShoppingCart({ isOpen, onClose }) {
         }
       } catch {}
 
-      const items = cartItems.map(it => ({ productId: it.id, quantity: Math.max(1, Number(it.quantity||1)) }))
+      const items = cartItems.map(it => ({
+        productId: it.productId || it.id,
+        quantity: Math.max(1, Number(it.quantity||1)),
+        variants: it?.variants && typeof it.variants === 'object' ? it.variants : {},
+        warehouseType: String(it?.warehouseType || ''),
+        warehouseCountry: String(it?.warehouseCountry || ''),
+        etaMinDays: it?.etaMinDays ?? null,
+        etaMaxDays: it?.etaMaxDays ?? null,
+      }))
       const body = {
         customerName: form.name.trim(),
         customerPhone: form.phone.trim(),
@@ -324,7 +332,14 @@ export default function ShoppingCart({ isOpen, onClose }) {
         area: String(form.area||'').trim(),
         address: form.address.trim(),
         details: String(form.details||'').trim(),
-        items,
+        items: cartItems.map(it => ({
+          productId: it.productId || it.id,
+          name: it.name,
+          image: it.image || it.imagePath,
+          price: convertPrice(it.price, it.currency || 'SAR', displayCurrency),
+          quantity: it.quantity,
+          variants: it?.variants && typeof it.variants === 'object' ? it.variants : {},
+        })),
         currency: displayCurrency,
         customerId, // Link order to customer account if logged in
         locationLat: location.lat,
@@ -346,11 +361,12 @@ export default function ShoppingCart({ isOpen, onClose }) {
         currency: displayCurrency,
         paymentMethod: paymentMethod,
         items: cartItems.map(it => ({
-          productId: it.id,
+          productId: it.productId || it.id,
           name: it.name,
           image: it.image || it.imagePath,
           price: convertPrice(it.price, it.currency || 'SAR', displayCurrency),
           quantity: it.quantity,
+          variants: it?.variants && typeof it.variants === 'object' ? it.variants : {},
         })),
       }
       try { localStorage.setItem('last_order_success', JSON.stringify(orderForSuccess)) } catch {}

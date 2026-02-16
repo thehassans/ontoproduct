@@ -312,6 +312,11 @@ export default function ProductCatalog() {
     const sp = new URLSearchParams(window.location.search)
     return sp.get('category') || 'all'
   })
+  const [selectedSubcategory, setSelectedSubcategory] = useState(() => {
+    const sp = new URLSearchParams(window.location.search)
+    return sp.get('subcategory') || 'all'
+  })
+  const [subcategoryCounts, setSubcategoryCounts] = useState({})
   const [searchQuery, setSearchQuery] = useState(() => {
     const sp = new URLSearchParams(window.location.search)
     return sp.get('search') || ''
@@ -397,6 +402,7 @@ export default function ProductCatalog() {
       const params = new URLSearchParams()
       if (selectedCountry) params.append('country', selectedCountry)
       if (selectedCategory !== 'all') params.append('category', selectedCategory)
+      if (selectedCategory !== 'all' && selectedSubcategory !== 'all') params.append('subcategory', selectedSubcategory)
       if (searchQuery.trim()) params.append('search', searchQuery.trim())
       if (sortBy) params.append('sort', sortBy)
       const ft = String(filterType || '')
@@ -451,7 +457,7 @@ export default function ProductCatalog() {
       if (replace) setLoading(false)
       setLoadingMore(false)
     }
-  }, [filterType, mixByCategory, productsPerPage, rotateToAvoidSameCategory, searchQuery, selectedCategory, selectedCountry, sortBy, toast])
+  }, [filterType, mixByCategory, productsPerPage, rotateToAvoidSameCategory, searchQuery, selectedCategory, selectedCountry, selectedSubcategory, sortBy, toast])
 
   // Load category usage counts (public)
   useEffect(() => {
@@ -467,6 +473,27 @@ export default function ProductCatalog() {
     })()
     return ()=>{ alive = false }
   }, [selectedCountry])
+
+  // Load subcategory usage counts for the selected category (public)
+  useEffect(() => {
+    let alive = true
+    ;(async () => {
+      try {
+        if (!selectedCategory || selectedCategory === 'all') {
+          if (alive) setSubcategoryCounts({})
+          return
+        }
+        const res = await apiGet(
+          `/api/products/public/subcategories-usage?category=${encodeURIComponent(selectedCategory)}&country=${encodeURIComponent(selectedCountry)}`
+        )
+        const counts = res?.counts || {}
+        if (alive) setSubcategoryCounts(counts)
+      } catch {
+        if (alive) setSubcategoryCounts({})
+      }
+    })()
+    return () => { alive = false }
+  }, [selectedCategory, selectedCountry])
 
   // Load page content for edit mode
   useEffect(() => {
@@ -567,16 +594,18 @@ export default function ProductCatalog() {
     loadProducts(1, true)
     trackPageView('/products', 'Product Catalog')
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCategory, searchQuery, sortBy, filterType, loadProducts])
+  }, [selectedCategory, selectedSubcategory, searchQuery, sortBy, filterType, loadProducts])
 
   // Read initial category/search/filter from URL (and on URL change)
   useEffect(() => {
     const sp = new URLSearchParams(location.search)
     const cat = sp.get('category') || 'all'
+    const subcat = sp.get('subcategory') || 'all'
     const q = sp.get('search') || ''
     const filter = sp.get('filter') || ''
     const sort = sp.get('sort') || 'name'
     if (cat !== selectedCategory) setSelectedCategory(cat)
+    if (subcat !== selectedSubcategory) setSelectedSubcategory(subcat)
     if (q !== searchQuery) setSearchQuery(q)
     if (filter !== filterType) setFilterType(filter)
     if (sort !== sortBy) setSortBy(sort)
@@ -588,12 +617,20 @@ export default function ProductCatalog() {
     const sp = new URLSearchParams(location.search)
     let changed = false
     const currCat = sp.get('category') || 'all'
+    const currSubcat = sp.get('subcategory') || 'all'
     const currQ = sp.get('search') || ''
     const currSort = sp.get('sort') || ''
     const currFilter = sp.get('filter') || ''
     if ((selectedCategory || 'all') !== currCat){
       if (selectedCategory && selectedCategory !== 'all') sp.set('category', selectedCategory)
       else sp.delete('category')
+      sp.delete('subcategory')
+      changed = true
+    }
+    const safeSubcat = selectedCategory && selectedCategory !== 'all' ? (selectedSubcategory || 'all') : 'all'
+    if (safeSubcat !== currSubcat) {
+      if (safeSubcat && safeSubcat !== 'all') sp.set('subcategory', safeSubcat)
+      else sp.delete('subcategory')
       changed = true
     }
     if ((searchQuery || '') !== currQ){
@@ -623,7 +660,7 @@ export default function ProductCatalog() {
       navigate(`/catalog?${sp.toString()}`, { replace: true })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCategory, searchQuery, sortBy, filterType])
+  }, [selectedCategory, selectedSubcategory, searchQuery, sortBy, filterType])
 
   // Persist selected country for use on product detail/cart
   useEffect(() => {
@@ -711,10 +748,18 @@ export default function ProductCatalog() {
 
   const handleCategoryChange = (category) => {
     setSelectedCategory(category)
+    setSelectedSubcategory('all')
     setCurrentPage(1)
     setShowFilters(false)
     // Track filter usage
     trackFilterUsage('category', category)
+  }
+
+  const handleSubcategoryChange = (subcategory) => {
+    setSelectedSubcategory(subcategory)
+    setCurrentPage(1)
+    // Track filter usage
+    trackFilterUsage('subcategory', subcategory)
   }
 
   const handleSearch = (query) => {
@@ -1149,6 +1194,46 @@ export default function ProductCatalog() {
                   onCategoryChange={handleCategoryChange}
                   productCounts={getProductCounts()}
                 />
+
+                {selectedCategory !== 'all' && (
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mt-4">
+                    <h3 className="font-semibold text-gray-900 mb-4">Subcategories</h3>
+                    <div className="space-y-2">
+                      {(() => {
+                        const entries = Object.entries(subcategoryCounts || {})
+                          .filter(([k, v]) => String(k || '').trim() && Number(v || 0) > 0)
+                          .sort((a, b) => String(a[0]).localeCompare(String(b[0])))
+
+                        const total = entries.reduce((sum, [, v]) => sum + Number(v || 0), 0)
+                        const allCount = total
+
+                        const btn = (id, label, count) => (
+                          <button
+                            key={id}
+                            onClick={() => handleSubcategoryChange(id)}
+                            className={`w-full flex items-center justify-between p-3 rounded-md text-left transition-colors ${
+                              selectedSubcategory === id
+                                ? 'bg-orange-50 text-orange-700 border border-orange-200'
+                                : 'hover:bg-gray-50 text-gray-700'
+                            }`}
+                          >
+                            <span className="font-medium">{label}</span>
+                            <span className={`text-sm px-2 py-1 rounded-full ${
+                              selectedSubcategory === id ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-600'
+                            }`}>{count}</span>
+                          </button>
+                        )
+
+                        return (
+                          <>
+                            {btn('all', 'All Subcategories', allCount)}
+                            {entries.map(([k, v]) => btn(k, k, v))}
+                          </>
+                        )
+                      })()}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

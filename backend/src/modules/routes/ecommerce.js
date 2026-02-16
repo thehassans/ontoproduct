@@ -934,6 +934,7 @@ router.post("/orders", async (req, res) => {
           .status(400)
           .json({ message: "One or more products not available" });
       const qty = Math.max(1, Number(it.quantity || 1));
+      const variants = it?.variants && typeof it.variants === 'object' ? it.variants : {};
       const warehouseType = String(it?.warehouseType || "").trim();
       const warehouseCountry = String(it?.warehouseCountry || "").trim();
       const etaMinDaysRaw = it?.etaMinDays;
@@ -952,6 +953,7 @@ router.post("/orders", async (req, res) => {
         name: p.name || "",
         price: Number(unit.toFixed(2)),
         quantity: qty,
+        variants,
         warehouseType,
         warehouseCountry,
         etaMinDays: Number.isFinite(etaMinDays) ? etaMinDays : null,
@@ -1097,6 +1099,7 @@ router.post(
         if (!p)
           return res.status(400).json({ message: "One or more products not available" });
         const qty = Math.max(1, Number(it.quantity || 1));
+        const variants = it?.variants && typeof it.variants === 'object' ? it.variants : {};
         const warehouseType = String(it?.warehouseType || "").trim();
         const warehouseCountry = String(it?.warehouseCountry || "").trim();
         const etaMinDaysRaw = it?.etaMinDays;
@@ -1114,6 +1117,7 @@ router.post(
           name: p.name || "",
           price: Number(unit.toFixed(2)),
           quantity: qty,
+          variants,
           warehouseType,
           warehouseCountry,
           etaMinDays: Number.isFinite(etaMinDays) ? etaMinDays : null,

@@ -263,7 +263,7 @@ const upload = multer({
 // Create product (admin; user; manager with permission)
 router.post('/', auth, allowRoles('admin','user','manager'), upload.any(), async (req, res) => {
   try {
-    const { name, price, dropshippingPrice, stockQty, purchasePrice, category, madeInCountry, description, overview, specifications, descriptionBlocks, stockUAE, stockOman, stockKSA, stockBahrain, stockIndia, stockKuwait, stockQatar, stockPakistan, stockJordan, stockUSA, stockUK, stockCanada, stockAustralia, sku, whatsappNumber } = req.body || {}
+    const { name, price, dropshippingPrice, stockQty, purchasePrice, category, subcategory, madeInCountry, description, overview, specifications, descriptionBlocks, stockUAE, stockOman, stockKSA, stockBahrain, stockIndia, stockKuwait, stockQatar, stockPakistan, stockJordan, stockUSA, stockUK, stockCanada, stockAustralia, sku, whatsappNumber, variants } = req.body || {}
     if (!name || price == null) return res.status(400).json({ message: 'Name and price are required' })
     
     let ownerId = req.user.id
@@ -295,6 +295,56 @@ router.post('/', auth, allowRoles('admin','user','manager'), upload.any(), async
         mediaSequence = rawSequence
       }
     } catch (e) { console.error('Failed to parse mediaSequence', e) }
+
+    // Parse variants (supports JSON string from FormData)
+    let parsedVariants = {}
+    try {
+      let raw = variants
+      if (typeof raw === 'string') raw = JSON.parse(raw)
+      if (raw && typeof raw === 'object' && !Array.isArray(raw)) parsedVariants = raw
+    } catch (e) {
+      console.error('Failed to parse variants', e)
+    }
+
+    const normalizeVariants = (rawVariants, imageList) => {
+      const out = {}
+      const v = rawVariants && typeof rawVariants === 'object' && !Array.isArray(rawVariants) ? rawVariants : {}
+      for (const [k, opts] of Object.entries(v)) {
+        if (!Array.isArray(opts)) continue
+        const normOpts = opts
+          .map((opt) => {
+            if (opt == null) return null
+            if (typeof opt === 'string') {
+              return { value: opt, stockQty: 0 }
+            }
+            if (typeof opt !== 'object') return null
+
+            const value = String(opt.value ?? opt.name ?? opt.label ?? '').trim()
+            if (!value) return null
+            const stockQty = Number(opt.stockQty ?? opt.stock ?? 0)
+            const safeStock = Number.isFinite(stockQty) ? Math.max(0, Math.floor(stockQty)) : 0
+
+            let image = ''
+            if (typeof opt.image === 'string') image = String(opt.image).trim()
+            if (!image && opt.imageIndex != null) {
+              const idx = Number(opt.imageIndex)
+              if (Number.isFinite(idx) && idx >= 0 && idx < (imageList || []).length) {
+                image = String(imageList[idx] || '').trim()
+              }
+            }
+
+            return {
+              value,
+              stockQty: safeStock,
+              ...(image ? { image } : {}),
+            }
+          })
+          .filter(Boolean)
+
+        if (normOpts.length) out[k] = normOpts
+      }
+      return out
+    }
     
     // Helper to safely parse number (returns 0 for NaN, null, undefined, empty string)
     const safeNum = (val) => {
@@ -355,10 +405,41 @@ router.post('/', auth, allowRoles('admin','user','manager'), upload.any(), async
       safeDropshippingPrice = Number(dropshippingPrice)
     }
     
-    // Filter out invalid mediaSequence items (must have valid type and url)
-    const validMediaSequence = (mediaSequence || []).filter(m => 
-      m && m.type && typeof m.url === 'string' && m.url.trim() !== ''
+    // Filter out invalid mediaSequence items (allow index-based mapping)
+    const validMediaSequence = (mediaSequence || []).filter(m =>
+      m && m.type && (
+        (typeof m.url === 'string' && m.url.trim() !== '') ||
+        (m.index != null && Number.isFinite(Number(m.index)))
+      )
     )
+
+    // If mediaSequence items don't have URLs, map indexes to the newly uploaded images/video
+    const normalizedMediaSequence = (() => {
+      const seq = Array.isArray(validMediaSequence) ? validMediaSequence : []
+      const hasAnyUrl = seq.some(m => typeof m?.url === 'string' && String(m.url).trim() !== '')
+      if (hasAnyUrl) {
+        return seq
+          .map((m, idx) => ({
+            type: m.type,
+            url: String(m.url || '').trim(),
+            position: Number.isFinite(Number(m.position)) ? Number(m.position) : idx,
+          }))
+          .filter(m => m.url)
+      }
+
+      return seq
+        .map((m, idx) => {
+          const t = String(m.type || 'image')
+          const pos = Number.isFinite(Number(m.position)) ? Number(m.position) : idx
+          const index = Number(m.index)
+          if (t === 'video') {
+            return { type: 'video', url: videoPath || '', position: pos }
+          }
+          const url = imagePaths[index] || ''
+          return { type: 'image', url, position: pos }
+        })
+        .filter(m => m.url)
+    })()
     
     // Validate baseCurrency
     const validCurrencies = ['SAR', 'AED', 'OMR', 'BHD', 'KWD', 'QAR', 'USD', 'EUR', 'GBP', 'INR', 'CNY', 'PKR', 'CAD', 'AUD', 'JOD']
@@ -378,10 +459,12 @@ router.post('/', auth, allowRoles('admin','user','manager'), upload.any(), async
       imagePath: imagePaths[0] || '',
       images: imagePaths,
       video: videoPath,
-      mediaSequence: validMediaSequence,
+      mediaSequence: normalizedMediaSequence,
       purchasePrice: (purchasePrice != null && purchasePrice !== '' && !isNaN(Number(purchasePrice))) ? Number(purchasePrice) : 0,
       baseCurrency: baseCurrency,
       category: ['Skincare', 'Haircare', 'Bodycare', 'Household', 'Kitchen', 'Cleaning', 'Home Decor', 'Electronics', 'Clothing', 'Books', 'Sports', 'Health', 'Beauty', 'Toys', 'Automotive', 'Garden', 'Pet Supplies', 'Personal Care', 'Office', 'Fashion', 'Home', 'Jewelry', 'Tools', 'Other'].includes(category) ? category : 'Other',
+      subcategory: String(subcategory || '').trim(),
+      variants: normalizeVariants(parsedVariants, imagePaths),
       madeInCountry: madeInCountry || '',
       description: description || '',
       overview: overview || '',
@@ -542,7 +625,7 @@ router.get('/public/:id', async (req, res) => {
 })
 router.get('/public', async (req, res) => {
   try {
-    const { category, search, sort, limit = 50, page = 1, filter } = req.query
+    const { category, subcategory, search, sort, limit = 50, page = 1, filter } = req.query
 
     const normalizePublicCountry = (input) => {
       const raw = String(input || '').trim()
@@ -597,6 +680,11 @@ router.get('/public', async (req, res) => {
     // Category filter
     if (category && category !== 'all') {
       query.category = category
+    }
+
+    // Subcategory filter
+    if (subcategory && String(subcategory).trim()) {
+      query.subcategory = String(subcategory).trim()
     }
     
     // Search filter
@@ -856,15 +944,87 @@ router.get('/categories', async (req, res) => {
       'Other'
     ]
 
+    let subcategoriesByCategory = {}
+    try {
+      const rows = await Product.aggregate([
+        { $match: { subcategory: { $exists: true, $ne: '' } } },
+        { $group: { _id: { category: '$category', subcategory: '$subcategory' } } },
+        { $project: { _id: 0, category: '$_id.category', subcategory: '$_id.subcategory' } },
+        { $sort: { category: 1, subcategory: 1 } },
+      ])
+      for (const r of rows) {
+        const c = String(r?.category || '').trim() || 'Other'
+        const s = String(r?.subcategory || '').trim()
+        if (!s) continue
+        if (!subcategoriesByCategory[c]) subcategoriesByCategory[c] = []
+        subcategoriesByCategory[c].push(s)
+      }
+      for (const c of Object.keys(subcategoriesByCategory)) {
+        subcategoriesByCategory[c] = Array.from(new Set(subcategoriesByCategory[c])).sort()
+      }
+    } catch {}
+
     res.json({
       success: true,
-      categories
+      categories,
+      subcategoriesByCategory,
     })
   } catch (error) {
-    console.error('Get categories error:', error)
-    res.status(500).json({ 
-      message: 'Failed to fetch categories' 
-    })
+    console.error('Categories fetch error:', error)
+    res.status(500).json({ success: false, message: 'Failed to fetch categories' })
+  }
+})
+
+// Public: return subcategory usage counts for a category
+router.get('/public/subcategories-usage', async (req, res) => {
+  try {
+    const category = String(req.query?.category || '').trim()
+    if (!category) return res.json({ counts: {}, total: 0 })
+
+    const normalizePublicCountry = (input) => {
+      const raw = String(input || '').trim()
+      if (!raw) return null
+      const upper = raw.toUpperCase()
+      if (upper === 'UAE' || upper === 'UNITED ARAB EMIRATES' || upper === 'AE' || upper === 'ARE') return 'UAE'
+      if (upper === 'GB' || upper === 'UK' || upper === 'UNITED KINGDOM') return 'UK'
+      if (upper === 'PK' || upper === 'PAKISTAN') return 'Pakistan'
+      return null
+    }
+
+    const countryRaw = req.query?.country || req.headers['x-country'] || ''
+    const stockCountry = normalizePublicCountry(countryRaw)
+
+    const and = [
+      { category },
+      { $or: [{ displayOnWebsite: true }, { displayOnWebsite: { $exists: false } }] },
+      { subcategory: { $exists: true, $ne: '' } },
+    ]
+
+    if (stockCountry) {
+      and.push({ [`stockByCountry.${stockCountry}`]: { $gt: 0 } })
+    } else {
+      and.push({
+        $or: [
+          { stockQty: { $gt: 0 } },
+          { stockQty: { $exists: false } },
+          { stockQty: null },
+        ]
+      })
+    }
+
+    const rows = await Product.aggregate([
+      { $match: { $and: and } },
+      { $group: { _id: '$subcategory', count: { $sum: 1 } } },
+      { $project: { _id: 0, subcategory: '$_id', count: 1 } },
+      { $sort: { subcategory: 1 } },
+    ])
+
+    const counts = Object.fromEntries(rows.map(r => [String(r.subcategory || ''), Number(r.count || 0)]).filter(([k]) => k))
+    const total = Object.values(counts).reduce((a, b) => a + b, 0)
+    return res.json({ counts, total })
+  } catch (err) {
+    console.error('subcategories-usage error:', err)
+    return res.status(500).json({ message: 'Failed to fetch subcategory usage' })
   }
 })
 
@@ -983,8 +1143,49 @@ router.patch('/:id', auth, allowRoles('admin','user','manager'), upload.any(), a
       changes.push({ field, oldValue: oldVal, newValue: newVal })
     }
   }
+
+  const normalizeVariants = (rawVariants, imageList) => {
+    const out = {}
+    const v = rawVariants && typeof rawVariants === 'object' && !Array.isArray(rawVariants) ? rawVariants : {}
+    for (const [k, opts] of Object.entries(v)) {
+      if (!Array.isArray(opts)) continue
+      const normOpts = opts
+        .map((opt) => {
+          if (opt == null) return null
+          if (typeof opt === 'string') {
+            return { value: opt, stockQty: 0 }
+          }
+          if (typeof opt !== 'object') return null
+
+          const value = String(opt.value ?? opt.name ?? opt.label ?? '').trim()
+          if (!value) return null
+          const stockQty = Number(opt.stockQty ?? opt.stock ?? 0)
+          const safeStock = Number.isFinite(stockQty) ? Math.max(0, Math.floor(stockQty)) : 0
+
+          let image = ''
+          if (typeof opt.image === 'string') image = String(opt.image).trim()
+          if (!image && opt.imageIndex != null) {
+            const idx = Number(opt.imageIndex)
+            if (Number.isFinite(idx) && idx >= 0 && idx < (imageList || []).length) {
+              image = String(imageList[idx] || '').trim()
+            }
+          }
+
+          return {
+            value,
+            stockQty: safeStock,
+            ...(image ? { image } : {}),
+          }
+        })
+        .filter(Boolean)
+
+      if (normOpts.length) out[k] = normOpts
+    }
+    return out
+  }
   
-  const { name, price, dropshippingPrice, stockQty, purchasePrice, category, madeInCountry, description, inStock, stockUAE, stockOman, stockKSA, stockBahrain, stockIndia, stockKuwait, stockQatar, stockPakistan, stockJordan, stockUSA, stockUK, stockCanada, stockAustralia, sku, whatsappNumber } = req.body || {}
+  const { name, price, dropshippingPrice, stockQty, purchasePrice, category, subcategory, madeInCountry, description, inStock, stockUAE, stockOman, stockKSA, stockBahrain, stockIndia, stockKuwait, stockQatar, stockPakistan, stockJordan, stockUSA, stockUK, stockCanada, stockAustralia, sku, whatsappNumber, variants } = req.body || {}
+  let variantsRawForLater = null
   if (name != null) { trackChange('name', prod.name, String(name).trim()); prod.name = String(name).trim() }
   if (sku != null) {
     const nextSku = String(sku || '').trim()
@@ -1002,9 +1203,21 @@ router.patch('/:id', auth, allowRoles('admin','user','manager'), upload.any(), a
   if (stockQty != null) { trackChange('stockQty', prod.stockQty, Math.max(0, Number(stockQty))); prod.stockQty = Math.max(0, Number(stockQty)) }
   if (purchasePrice != null) { trackChange('purchasePrice', prod.purchasePrice, Number(purchasePrice)); prod.purchasePrice = Number(purchasePrice) }
   if (category != null) prod.category = ['Skincare', 'Haircare', 'Bodycare', 'Household', 'Kitchen', 'Cleaning', 'Home Decor', 'Electronics', 'Clothing', 'Books', 'Sports', 'Health', 'Beauty', 'Toys', 'Automotive', 'Garden', 'Pet Supplies', 'Personal Care', 'Office', 'Fashion', 'Home', 'Jewelry', 'Tools', 'Other'].includes(category) ? category : 'Other'
+  if (subcategory != null) prod.subcategory = String(subcategory || '').trim()
   if (inStock != null) prod.inStock = Boolean(inStock)
   if (madeInCountry != null) prod.madeInCountry = String(madeInCountry)
   if (description != null) prod.description = String(description)
+  if (variants != null) {
+    try {
+      let raw = variants
+      if (typeof raw === 'string') raw = JSON.parse(raw)
+      if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+        variantsRawForLater = raw
+      }
+    } catch (e) {
+      console.error('Failed to parse variants', e)
+    }
+  }
   // Overview, Specifications, Description Blocks
   if (req.body?.overview != null) prod.overview = String(req.body.overview)
   if (req.body?.specifications != null) prod.specifications = String(req.body.specifications)
@@ -1127,6 +1340,31 @@ router.patch('/:id', auth, allowRoles('admin','user','manager'), upload.any(), a
         prod.mediaSequence = rawSequence
       }
     } catch (e) { console.error('Failed to parse mediaSequence', e) }
+  }
+
+  // Normalize mediaSequence: allow index mapping into current prod.images/prod.video
+  try {
+    const seq = Array.isArray(prod.mediaSequence) ? prod.mediaSequence : []
+    const hasAnyUrl = seq.some(m => typeof m?.url === 'string' && String(m.url).trim() !== '')
+    if (!hasAnyUrl) {
+      prod.mediaSequence = seq
+        .map((m, idx) => {
+          const t = String(m?.type || 'image')
+          const pos = Number.isFinite(Number(m?.position)) ? Number(m.position) : idx
+          const index = Number(m?.index)
+          if (t === 'video') return { type: 'video', url: String(prod.video || '').trim(), position: pos }
+          const url = (Array.isArray(prod.images) ? prod.images[index] : '') || ''
+          return { type: 'image', url: String(url).trim(), position: pos }
+        })
+        .filter(m => m.url)
+    }
+  } catch {}
+
+  // Normalize variants after image updates so imageIndex resolves correctly
+  if (variantsRawForLater != null) {
+    try {
+      prod.variants = normalizeVariants(variantsRawForLater, Array.isArray(prod.images) ? prod.images : [])
+    } catch {}
   }
   
   // Add edit history entry if there are changes

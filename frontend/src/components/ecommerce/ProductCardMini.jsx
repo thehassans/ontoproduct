@@ -79,9 +79,42 @@ const ProductCardMini = memo(function ProductCardMini({ product, selectedCountry
     const out = mediaUrl(u)
     return out || null
   }
-  
+
+  const orderedMedia = useMemo(() => {
+    const seq = Array.isArray(product?.mediaSequence) ? product.mediaSequence : []
+    const cleaned = seq
+      .filter((m) => m && typeof m === 'object' && typeof m.url === 'string' && String(m.url).trim())
+      .map((m) => ({
+        type: String(m.type || 'image'),
+        url: String(m.url || '').trim(),
+        position: Number.isFinite(Number(m.position)) ? Number(m.position) : 0,
+      }))
+      .sort((a, b) => (a.position - b.position))
+
+    if (cleaned.length) return cleaned
+
+    const imgs = Array.isArray(product?.images) && product.images.length
+      ? product.images
+      : (product?.imagePath ? [product.imagePath] : [])
+
+    const out = imgs
+      .filter(Boolean)
+      .map((u, idx) => ({ type: 'image', url: String(u), position: idx }))
+
+    const v = product?.video || product?.videoUrl || (Array.isArray(product?.videos) ? product.videos[0] : '')
+    if (v) out.push({ type: 'video', url: String(v), position: out.length })
+    return out
+  }, [product])
+
+  const primaryImagePath = useMemo(() => {
+    const firstImage = orderedMedia.find((m) => String(m.type) === 'image')
+    if (firstImage?.url) return firstImage.url
+    const firstAny = orderedMedia[0]
+    return firstAny?.url || (product?.images?.[0] || product?.imagePath || '')
+  }, [orderedMedia, product])
+
   // Get the image URL, fallback to imagePath, then to null
-  const imageUrl = getImageUrl(product.images?.[0] || product.imagePath)
+  const imageUrl = getImageUrl(primaryImagePath)
 
   const basePrice = Number(product?.price) || 0
   // Apply sale price when salePrice exists and is less than regular price
@@ -92,8 +125,13 @@ const ProductCardMini = memo(function ProductCardMini({ product, selectedCountry
   const convertedPrice = convertPrice(finalPrice, product.baseCurrency || 'SAR', displayCurrency)
   const showDiscount = hasActiveSale && basePrice > finalPrice
 
-  const hasVideo = product?.video || product?.videoUrl || product?.videos?.length > 0
-  const videoUrl = hasVideo ? getImageUrl(product.video || product.videoUrl || product.videos?.[0]) : null
+  const primaryVideoPath = useMemo(() => {
+    const firstVideo = orderedMedia.find((m) => String(m.type) === 'video')
+    return firstVideo?.url || (product?.video || product?.videoUrl || (Array.isArray(product?.videos) ? product.videos[0] : ''))
+  }, [orderedMedia, product])
+
+  const hasVideo = !!primaryVideoPath
+  const videoUrl = hasVideo ? getImageUrl(primaryVideoPath) : null
   const hasNoImages = !imageUrl
 
   // Handle video play/pause
@@ -195,9 +233,11 @@ const ProductCardMini = memo(function ProductCardMini({ product, selectedCountry
         cartItems[existingItemIndex].etaMinDays = wh2.etaMinDays
         cartItems[existingItemIndex].etaMaxDays = wh2.etaMaxDays
         cartItems[existingItemIndex].warehouseCountry = selectedCountry
+        cartItems[existingItemIndex].productId = product._id
       } else {
         cartItems.push({
           id: product._id,
+          productId: product._id,
           name: product.name,
           price: unitPrice,
           currency: product.baseCurrency || 'SAR',

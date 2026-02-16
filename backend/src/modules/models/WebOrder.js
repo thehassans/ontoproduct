@@ -10,6 +10,7 @@ const WebOrderItemSchema = new mongoose.Schema(
     name: { type: String, default: "" },
     price: { type: Number, default: 0 },
     quantity: { type: Number, default: 1, min: 1 },
+    variants: { type: mongoose.Schema.Types.Mixed, default: {} },
     warehouseType: { type: String, default: "" },
     warehouseCountry: { type: String, default: "" },
     etaMinDays: { type: Number, default: null },

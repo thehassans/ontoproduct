@@ -93,6 +93,7 @@ export default function InhouseProducts() {
     purchasePrice: '',
     baseCurrency: 'AED',
     category: 'Other',
+    subcategory: '',
     sku: '',
     madeInCountry: '',
     description: '',
@@ -125,6 +126,7 @@ export default function InhouseProducts() {
     isFeatured: false,
     isTrending: false,
     isLimitedStock: false,
+    variants: {},
     images: [],
     video: null,
   })
@@ -166,6 +168,7 @@ export default function InhouseProducts() {
   })
   // Gemini AI state
   const [categories, setCategories] = useState([])
+  const [subcategoriesByCategory, setSubcategoriesByCategory] = useState({})
   const [generatingDescription, setGeneratingDescription] = useState(false)
   const [aiDescription, setAiDescription] = useState('')
   // AI image generation state
@@ -174,6 +177,44 @@ export default function InhouseProducts() {
   const [aiPrompt, setAiPrompt] = useState('')
   const [aiBusy, setAiBusy] = useState(false)
   const [ccyCfg, setCcyCfg] = useState(null)
+
+  const VARIANT_TYPES = [
+    { key: 'color', label: 'Color' },
+    { key: 'size', label: 'Size' },
+  ]
+
+  const updateVariantOption = (setter, typeKey, index, patch) => {
+    setter((prev) => {
+      const curr = prev && typeof prev === 'object' ? prev : {}
+      const variants = curr.variants && typeof curr.variants === 'object' ? curr.variants : {}
+      const list = Array.isArray(variants[typeKey]) ? [...variants[typeKey]] : []
+      if (!list[index]) return curr
+      list[index] = { ...(list[index] || {}), ...patch }
+      return { ...curr, variants: { ...variants, [typeKey]: list } }
+    })
+  }
+
+  const addVariantOption = (setter, typeKey) => {
+    setter((prev) => {
+      const curr = prev && typeof prev === 'object' ? prev : {}
+      const variants = curr.variants && typeof curr.variants === 'object' ? curr.variants : {}
+      const list = Array.isArray(variants[typeKey]) ? [...variants[typeKey]] : []
+      list.push({ value: '', stockQty: 0, imageIndex: -1 })
+      return { ...curr, variants: { ...variants, [typeKey]: list } }
+    })
+  }
+
+  const removeVariantOption = (setter, typeKey, index) => {
+    setter((prev) => {
+      const curr = prev && typeof prev === 'object' ? prev : {}
+      const variants = curr.variants && typeof curr.variants === 'object' ? curr.variants : {}
+      const list = Array.isArray(variants[typeKey]) ? [...variants[typeKey]] : []
+      list.splice(index, 1)
+      const nextVariants = { ...variants, [typeKey]: list }
+      if (!list.length) delete nextVariants[typeKey]
+      return { ...curr, variants: nextVariants }
+    })
+  }
 
   // Generate product images using AI backend endpoint (uses API settings saved in User > API Setup)
   async function aiGenerateImages(productId, count, customPrompt) {
@@ -523,6 +564,11 @@ export default function InhouseProducts() {
       const data = await apiGet('/api/products/categories')
       if (data.success && data.categories) {
         setCategories(data.categories)
+        setSubcategoriesByCategory(
+          data.subcategoriesByCategory && typeof data.subcategoriesByCategory === 'object'
+            ? data.subcategoriesByCategory
+            : {}
+        )
       }
     } catch (err) {
       console.error('Failed to load categories:', err)
@@ -540,6 +586,7 @@ export default function InhouseProducts() {
         'Gift Sets',
         'Other',
       ])
+      setSubcategoriesByCategory({})
     }
   }
 
@@ -757,6 +804,7 @@ export default function InhouseProducts() {
     fd.append('availableCountries', form.availableCountries.join(','))
     fd.append('baseCurrency', form.baseCurrency)
     fd.append('category', form.category)
+    fd.append('subcategory', String(form.subcategory || '').trim())
     fd.append('madeInCountry', form.madeInCountry)
     fd.append('description', form.description.trim())
     fd.append('overview', (form.overview || '').trim())
@@ -788,9 +836,17 @@ export default function InhouseProducts() {
     fd.append('isLimitedStock', String(!!form.isLimitedStock))
     for (const f of form.images || []) fd.append('images', f)
     if (form.video) fd.append('video', form.video)
-    if (mediaItems.length > 0) {
-      fd.append('mediaSequence', JSON.stringify(mediaItems.map(m => ({ type: m.type, position: m.position }))))
-    }
+    try {
+      const v = form.variants && typeof form.variants === 'object' ? form.variants : {}
+      fd.append('variants', JSON.stringify(v))
+    } catch {}
+    try {
+      const seq = []
+      const imgs = Array.isArray(form.images) ? form.images : []
+      for (let i = 0; i < imgs.length; i += 1) seq.push({ type: 'image', position: seq.length, index: i })
+      if (form.video) seq.push({ type: 'video', position: seq.length })
+      if (seq.length) fd.append('mediaSequence', JSON.stringify(seq))
+    } catch {}
 
     // Calculate total file size
     let totalSize = 0
@@ -822,6 +878,7 @@ export default function InhouseProducts() {
       purchasePrice: '',
       baseCurrency: 'AED',
       category: 'Other',
+      subcategory: '',
       sku: '',
       madeInCountry: '',
       description: '',
@@ -847,6 +904,7 @@ export default function InhouseProducts() {
       isFeatured: false,
       isTrending: false,
       isLimitedStock: false,
+      variants: {},
       images: [],
       video: null,
     })
@@ -911,6 +969,27 @@ export default function InhouseProducts() {
 
   function openEdit(p) {
     setEditing(p)
+    const imgs = Array.isArray(p?.images) ? p.images : []
+    const v = p?.variants && typeof p.variants === 'object' ? p.variants : {}
+    const variantsForEdit = {}
+    for (const [k, opts] of Object.entries(v)) {
+      if (!Array.isArray(opts)) continue
+      variantsForEdit[k] = opts
+        .map((opt) => {
+          if (opt == null) return null
+          if (typeof opt === 'string') return { value: opt, stockQty: 0, imageIndex: -1 }
+          if (typeof opt !== 'object') return null
+          const value = String(opt.value ?? opt.name ?? opt.label ?? '').trim()
+          if (!value) return null
+          const stockQty = Number(opt.stockQty ?? opt.stock ?? 0)
+          const safeStock = Number.isFinite(stockQty) ? Math.max(0, Math.floor(stockQty)) : 0
+          let imageIndex = -1
+          if (opt.imageIndex != null && Number.isFinite(Number(opt.imageIndex))) imageIndex = Number(opt.imageIndex)
+          else if (typeof opt.image === 'string' && opt.image) imageIndex = imgs.indexOf(opt.image)
+          return { value, stockQty: safeStock, imageIndex }
+        })
+        .filter(Boolean)
+    }
     setEditForm({
       name: p.name || '',
       price: p.price || '',
@@ -919,6 +998,7 @@ export default function InhouseProducts() {
       salePrice: p.salePrice || '',
       baseCurrency: p.baseCurrency || 'SAR',
       category: p.category || 'Other',
+      subcategory: p.subcategory || '',
       sku: p.sku || '',
       madeInCountry: p.madeInCountry || '',
       description: p.description || '',
@@ -926,6 +1006,7 @@ export default function InhouseProducts() {
       specifications: p.specifications || '',
       descriptionBlocks: p.descriptionBlocks || [],
       availableCountries: p.availableCountries || [],
+      variants: variantsForEdit,
       inStock: !!p.inStock,
       displayOnWebsite: !!p.displayOnWebsite,
       isForMobile: !!p.isForMobile,
@@ -967,8 +1048,13 @@ export default function InhouseProducts() {
       fd.append('availableCountries', (editForm.availableCountries || []).join(','))
       fd.append('baseCurrency', editForm.baseCurrency)
       fd.append('category', editForm.category)
+      fd.append('subcategory', String(editForm.subcategory || '').trim())
       fd.append('madeInCountry', editForm.madeInCountry)
       fd.append('description', editForm.description)
+      try {
+        const v = editForm.variants && typeof editForm.variants === 'object' ? editForm.variants : {}
+        fd.append('variants', JSON.stringify(v))
+      } catch {}
       fd.append('inStock', String(editForm.inStock))
       fd.append('displayOnWebsite', String(!!editForm.displayOnWebsite))
       fd.append('isForMobile', String(!!editForm.isForMobile))
@@ -987,6 +1073,13 @@ export default function InhouseProducts() {
       fd.append('stockCanada', String(editForm.stockCanada))
       fd.append('stockAustralia', String(editForm.stockAustralia))
       for (const f of editForm.images || []) fd.append('images', f)
+      try {
+        const imgs = Array.isArray(editForm.images) ? editForm.images : []
+        if (imgs.length) {
+          const seq = imgs.map((_, i) => ({ type: 'image', position: i, index: i }))
+          fd.append('mediaSequence', JSON.stringify(seq))
+        }
+      } catch {}
       await apiUploadPatch(`/api/products/${editing._id}`, fd)
       setEditing(null)
       setEditForm(null)
@@ -1040,7 +1133,7 @@ export default function InhouseProducts() {
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr 1fr',
+                  gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr 1fr 1fr',
                   gap: 20,
                 }}
               >
@@ -1069,12 +1162,31 @@ export default function InhouseProducts() {
                     onChange={onChange}
                     style={{ padding: 12 }}
                   >
-                    {CATEGORIES.map((cat) => (
+                    {(categories && categories.length ? categories : CATEGORIES).map((cat) => (
                       <option key={cat} value={cat}>
                         {cat}
                       </option>
                     ))}
                   </select>
+                </div>
+                <div>
+                  <div className="label" style={{ marginBottom: 8, fontWeight: 600 }}>
+                    Subcategory
+                  </div>
+                  <input
+                    className="input"
+                    name="subcategory"
+                    value={form.subcategory}
+                    onChange={onChange}
+                    list="subcategories-create"
+                    placeholder="e.g. Creams"
+                    style={{ padding: 12, fontSize: 15 }}
+                  />
+                  <datalist id="subcategories-create">
+                    {(subcategoriesByCategory?.[form.category] || []).map((s) => (
+                      <option key={s} value={s} />
+                    ))}
+                  </datalist>
                 </div>
                 <div>
                   <div className="label" style={{ marginBottom: 8, fontWeight: 600 }}>
@@ -1299,6 +1411,87 @@ export default function InhouseProducts() {
                   style={{ padding: 12, lineHeight: 1.6 }}
                 />
               </div>
+            </div>
+          </div>
+
+          <div
+            className="card"
+            style={{
+              padding: 0,
+              overflow: 'hidden',
+              border: '1px solid var(--border)',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.04)',
+            }}
+          >
+            <div
+              style={{
+                padding: '20px 24px',
+                borderBottom: '1px solid var(--border)',
+                background: 'var(--panel-2)',
+              }}
+            >
+              <div style={{ fontWeight: 700, fontSize: 16 }}>Variations</div>
+            </div>
+            <div style={{ padding: 24, display: 'grid', gap: 16 }}>
+              {VARIANT_TYPES.map((t) => {
+                const list = Array.isArray(form?.variants?.[t.key]) ? form.variants[t.key] : []
+                return (
+                  <div key={t.key} style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 16 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                      <div style={{ fontWeight: 700 }}>{t.label}</div>
+                      <button type="button" className="btn small" onClick={() => addVariantOption(setForm, t.key)}>
+                        + Add Option
+                      </button>
+                    </div>
+
+                    {list.length === 0 ? (
+                      <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>No options</div>
+                    ) : (
+                      <div style={{ display: 'grid', gap: 10 }}>
+                        {list.map((opt, idx) => (
+                          <div
+                            key={`${t.key}-${idx}`}
+                            style={{
+                              display: 'grid',
+                              gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr 1fr auto',
+                              gap: 10,
+                              alignItems: 'center',
+                            }}
+                          >
+                            <input
+                              className="input"
+                              placeholder={`${t.label} (e.g. Red)`}
+                              value={String(opt?.value || '')}
+                              onChange={(e) => updateVariantOption(setForm, t.key, idx, { value: e.target.value })}
+                            />
+                            <input
+                              className="input"
+                              type="number"
+                              min="0"
+                              placeholder="Stock"
+                              value={Number.isFinite(Number(opt?.stockQty)) ? Number(opt.stockQty) : 0}
+                              onChange={(e) => updateVariantOption(setForm, t.key, idx, { stockQty: Math.max(0, Math.floor(Number(e.target.value || 0))) })}
+                            />
+                            <select
+                              className="input"
+                              value={Number.isFinite(Number(opt?.imageIndex)) ? Number(opt.imageIndex) : -1}
+                              onChange={(e) => updateVariantOption(setForm, t.key, idx, { imageIndex: Number(e.target.value) })}
+                            >
+                              <option value={-1}>No Image</option>
+                              {imagePreviews.map((_, i) => (
+                                <option key={`img-${i}`} value={i}>{`Image ${i + 1}`}</option>
+                              ))}
+                            </select>
+                            <button type="button" className="btn small danger" onClick={() => removeVariantOption(setForm, t.key, idx)}>
+                              Remove
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           </div>
 
@@ -3144,12 +3337,28 @@ export default function InhouseProducts() {
                     value={editForm.category}
                     onChange={onEditChange}
                   >
-                    {CATEGORIES.map((c) => (
+                    {(categories && categories.length ? categories : CATEGORIES).map((c) => (
                       <option key={c} value={c}>
                         {c}
                       </option>
                     ))}
                   </select>
+                </div>
+                <div>
+                  <div className="label">Subcategory</div>
+                  <input
+                    className="input"
+                    name="subcategory"
+                    value={editForm.subcategory || ''}
+                    onChange={onEditChange}
+                    list="subcategories-edit"
+                    placeholder="e.g. Creams"
+                  />
+                  <datalist id="subcategories-edit">
+                    {(subcategoriesByCategory?.[editForm.category] || []).map((s) => (
+                      <option key={s} value={s} />
+                    ))}
+                  </datalist>
                 </div>
                 <div>
                   <div className="label">SKU</div>
@@ -3161,6 +3370,69 @@ export default function InhouseProducts() {
                     style={{ background: '#f9fafb', color: '#6b7280', cursor: 'not-allowed' }}
                   />
                 </div>
+              </div>
+
+              <div style={{ display: 'grid', gap: 12 }}>
+                <div style={{ fontWeight: 700 }}>Variations</div>
+                {VARIANT_TYPES.map((t) => {
+                  const list = Array.isArray(editForm?.variants?.[t.key]) ? editForm.variants[t.key] : []
+                  return (
+                    <div key={t.key} style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 12 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                        <div style={{ fontWeight: 700 }}>{t.label}</div>
+                        <button type="button" className="btn small" onClick={() => addVariantOption(setEditForm, t.key)}>
+                          + Add Option
+                        </button>
+                      </div>
+
+                      {list.length === 0 ? (
+                        <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>No options</div>
+                      ) : (
+                        <div style={{ display: 'grid', gap: 10 }}>
+                          {list.map((opt, idx) => (
+                            <div
+                              key={`${t.key}-${idx}`}
+                              style={{
+                                display: 'grid',
+                                gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr 1fr auto',
+                                gap: 10,
+                                alignItems: 'center',
+                              }}
+                            >
+                              <input
+                                className="input"
+                                placeholder={`${t.label} (e.g. Red)`}
+                                value={String(opt?.value || '')}
+                                onChange={(e) => updateVariantOption(setEditForm, t.key, idx, { value: e.target.value })}
+                              />
+                              <input
+                                className="input"
+                                type="number"
+                                min="0"
+                                placeholder="Stock"
+                                value={Number.isFinite(Number(opt?.stockQty)) ? Number(opt.stockQty) : 0}
+                                onChange={(e) => updateVariantOption(setEditForm, t.key, idx, { stockQty: Math.max(0, Math.floor(Number(e.target.value || 0))) })}
+                              />
+                              <select
+                                className="input"
+                                value={Number.isFinite(Number(opt?.imageIndex)) ? Number(opt.imageIndex) : -1}
+                                onChange={(e) => updateVariantOption(setEditForm, t.key, idx, { imageIndex: Number(e.target.value) })}
+                              >
+                                <option value={-1}>No Image</option>
+                                {(Array.isArray(editing?.images) ? editing.images : []).map((_, i) => (
+                                  <option key={`img-${i}`} value={i}>{`Image ${i + 1}`}</option>
+                                ))}
+                              </select>
+                              <button type="button" className="btn small danger" onClick={() => removeVariantOption(setEditForm, t.key, idx)}>
+                                Remove
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
               <div
                 style={{

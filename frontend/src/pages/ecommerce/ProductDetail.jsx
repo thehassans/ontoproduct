@@ -30,9 +30,49 @@ const ProductDetail = () => {
   const [wishlisted, setWishlisted] = useState(false)
   const [wishBusy, setWishBusy] = useState(false)
   const mobileGalleryRef = useRef(null)
+
   const [selectedCountry, setSelectedCountry] = useState(() => {
     try { return localStorage.getItem('selected_country') || 'GB' } catch { return 'GB' }
   })
+
+  const normalizeVariants = (rawVariants) => {
+    const out = {}
+    const v = rawVariants && typeof rawVariants === 'object' && !Array.isArray(rawVariants) ? rawVariants : {}
+    for (const [k, opts] of Object.entries(v)) {
+      if (!Array.isArray(opts)) continue
+      const norm = opts
+        .map((opt) => {
+          if (opt == null) return null
+          if (typeof opt === 'string') return { value: opt, stockQty: 0 }
+          if (typeof opt !== 'object') return null
+          const value = String(opt.value ?? opt.name ?? opt.label ?? '').trim()
+          if (!value) return null
+          const stockQtyRaw = Number(opt.stockQty ?? opt.stock ?? 0)
+          const stockQty = Number.isFinite(stockQtyRaw) ? Math.max(0, Math.floor(stockQtyRaw)) : 0
+          const image = typeof opt.image === 'string' && opt.image.trim() ? opt.image.trim() : ''
+          return { value, stockQty, ...(image ? { image } : {}) }
+        })
+        .filter(Boolean)
+      if (norm.length) out[k] = norm
+    }
+    return out
+  }
+
+  const buildVariantSignature = (selected) => {
+    try {
+      const s = selected && typeof selected === 'object' ? selected : {}
+      const keys = Object.keys(s).sort()
+      const parts = []
+      for (const k of keys) {
+        const v = String(s[k] ?? '').trim()
+        if (!v) continue
+        parts.push(`${k}=${encodeURIComponent(v)}`)
+      }
+      return parts.join(';')
+    } catch {
+      return ''
+    }
+  }
 
   const [isCustomer, setIsCustomer] = useState(() => {
     try {
@@ -44,34 +84,6 @@ const ProductDetail = () => {
       return false
     }
   })
-
-  const COUNTRY_TO_CURRENCY = { AE: 'AED', OM: 'OMR', SA: 'SAR', BH: 'BHD', IN: 'INR', KW: 'KWD', QA: 'QAR', PK: 'PKR', JO: 'JOD', US: 'USD', GB: 'GBP', CA: 'CAD', AU: 'AUD' }
-  const getDisplayCurrency = () => COUNTRY_TO_CURRENCY[selectedCountry] || 'SAR'
-  const convertPrice = (value, fromCurrency, toCurrency) => fxConvert(value, fromCurrency||'SAR', toCurrency||getDisplayCurrency(), ccyCfg)
-  const formatPrice = (price, currency = 'SAR') => formatMoney(Number(price||0), currency)
-
-  useEffect(() => {
-    if (id) {
-      loadProduct()
-      loadReviews()
-    }
-  }, [id])
-
-  useEffect(() => {
-    try {
-      const el = mobileGalleryRef.current
-      if (!el) return
-      const width = el.offsetWidth || 0
-      if (!width) return
-      el.scrollTo({ left: width * selectedImage, behavior: 'smooth' })
-    } catch {}
-  }, [selectedImage, id])
-
-  useEffect(() => {
-    try {
-      window.scrollTo(0, 0)
-    } catch {}
-  }, [id])
 
   useEffect(() => {
     if (product) {
@@ -95,10 +107,13 @@ const ProductDetail = () => {
       trackProductView(product._id, product.name, product.category, product.price)
 
       if (product.variants && typeof product.variants === 'object') {
+        const normalized = normalizeVariants(product.variants)
         const initialVariants = {}
-        Object.keys(product.variants).forEach(variantType => {
-          if (Array.isArray(product.variants[variantType]) && product.variants[variantType].length > 0) {
-            initialVariants[variantType] = product.variants[variantType][0]
+        Object.keys(normalized).forEach((variantType) => {
+          const list = normalized[variantType]
+          if (Array.isArray(list) && list.length > 0) {
+            const firstInStock = list.find((o) => Number(o?.stockQty) > 0)
+            initialVariants[variantType] = String((firstInStock || list[0])?.value || '')
           }
         })
         setSelectedVariants(initialVariants)
@@ -181,8 +196,22 @@ const ProductDetail = () => {
         cartItems = JSON.parse(savedCart)
       }
 
-      const existingItemIndex = cartItems.findIndex(item => item.id === product._id)
-      const max = Number(product?.stockQty || 0)
+      const normalizedVariants = normalizeVariants(product.variants)
+      let variantMax = Number.POSITIVE_INFINITY
+      for (const [k, opts] of Object.entries(normalizedVariants)) {
+        const selectedVal = String(selectedVariants?.[k] || '').trim()
+        if (!selectedVal) continue
+        const hit = Array.isArray(opts) ? opts.find((o) => String(o?.value) === selectedVal) : null
+        if (hit && Number.isFinite(Number(hit.stockQty))) {
+          variantMax = Math.min(variantMax, Math.max(0, Number(hit.stockQty)))
+        }
+      }
+      const fallbackMax = Number(product?.stockQty || 0)
+      const max = variantMax !== Number.POSITIVE_INFINITY ? variantMax : fallbackMax
+      if (Number.isFinite(Number(max)) && Number(max) <= 0) {
+        toast.error('Selected option is out of stock')
+        return
+      }
       const basePriceVal = Number(product?.price) || 0
       const salePriceVal = Number(product?.salePrice) || 0
       const hasSale = salePriceVal > 0 && salePriceVal < basePriceVal
@@ -190,14 +219,19 @@ const ProductDetail = () => {
       const addQty = Math.max(1, Math.floor(Number(quantity) || 1))
       const wh = resolveWarehouse(product, selectedCountry, addQty)
 
+      const variantSignature = buildVariantSignature(selectedVariants)
+      const cartItemId = variantSignature ? `${product._id}::${variantSignature}` : String(product._id)
+      const existingItemIndex = cartItems.findIndex(item => String(item.id) === String(cartItemId))
+
       const cartItem = {
-        id: product._id,
+        id: cartItemId,
+        productId: product._id,
         name: product.name,
         price: unitPrice,
         currency: product.baseCurrency || 'SAR',
         image: (Array.isArray(product.images) && product.images.length > 0 ? product.images[0] : (product.imagePath || '')),
         quantity: addQty,
-        maxStock: product.stockQty,
+        maxStock: max,
         variants: selectedVariants,
         stockByCountry: product.stockByCountry || {},
         warehouseType: wh.type,
@@ -215,12 +249,15 @@ const ProductDetail = () => {
           cartItems[existingItemIndex].quantity = candidate
         }
         cartItems[existingItemIndex].variants = selectedVariants
+        cartItems[existingItemIndex].productId = product._id
+        cartItems[existingItemIndex].maxStock = max
         const wh2 = resolveWarehouse(product, selectedCountry, cartItems[existingItemIndex].quantity)
         cartItems[existingItemIndex].stockByCountry = product.stockByCountry || cartItems[existingItemIndex].stockByCountry || {}
         cartItems[existingItemIndex].warehouseType = wh2.type
         cartItems[existingItemIndex].etaMinDays = wh2.etaMinDays
         cartItems[existingItemIndex].etaMaxDays = wh2.etaMaxDays
         cartItems[existingItemIndex].warehouseCountry = selectedCountry
+
       } else {
         cartItems.push(cartItem)
       }
@@ -333,34 +370,36 @@ const ProductDetail = () => {
     return mediaUrl(u) || '/placeholder-product.svg'
   }
 
-  const sanitizeWhatsAppNumber = (n) => {
-    const raw = String(n || '')
-    return raw.replace(/[^0-9]/g, '')
-  }
+  const orderedMedia = (() => {
+    const seq = Array.isArray(product?.mediaSequence) ? product.mediaSequence : []
+    const cleaned = seq
+      .filter((m) => m && typeof m === 'object' && typeof m.url === 'string' && String(m.url).trim())
+      .map((m) => ({
+        type: String(m.type || 'image'),
+        url: String(m.url || '').trim(),
+        position: Number.isFinite(Number(m.position)) ? Number(m.position) : 0,
+      }))
+      .sort((a, b) => (a.position - b.position))
+    if (cleaned.length) return cleaned
+    const imgs = Array.isArray(product?.images) && product.images.length
+      ? product.images
+      : (product?.imagePath ? [product.imagePath] : [])
+    const out = imgs.filter(Boolean).map((u, idx) => ({ type: 'image', url: String(u), position: idx }))
+    const v = product?.video || ''
+    if (v) out.push({ type: 'video', url: String(v), position: out.length })
+    return out
+  })()
 
-  const toAbsoluteUrl = (u) => {
-    const s = String(u || '')
-    if (!s) return ''
-    if (s.startsWith('http://') || s.startsWith('https://')) return s
-    if (!s.startsWith('/')) return s
-    try {
-      return `${window.location.origin}${s}`
-    } catch {
-      return s
-    }
-  }
-
-  // Get raw images first
-  const rawImages = product.images && product.images.length > 0
-    ? product.images
-    : (product.imagePath ? [product.imagePath] : [])
+  const imageMedia = orderedMedia.filter((m) => String(m.type) === 'image')
+  const rawImages = imageMedia.map((m) => m.url)
 
   // If no images but has video, we'll handle it specially
   const hasNoImages = rawImages.length === 0
   const images = hasNoImages ? [] : rawImages.map(resolveImageUrl)
 
   // Video URL
-  const videoUrl = product.video ? resolveImageUrl(product.video) : null
+  const firstVideo = orderedMedia.find((m) => String(m.type) === 'video')
+  const videoUrl = firstVideo?.url ? resolveImageUrl(firstVideo.url) : (product.video ? resolveImageUrl(product.video) : null)
 
   // Combined media (images + video for gallery)
   const hasVideo = !!videoUrl
@@ -727,26 +766,44 @@ const ProductDetail = () => {
 
               {product.variants && Object.keys(product.variants).length > 0 && (
                 <div className="mb-6 space-y-4">
-                  {Object.entries(product.variants).map(([name, options]) => (
+                  {Object.entries(normalizeVariants(product.variants)).map(([name, options]) => (
                     <div key={name}>
                       <div className="flex justify-between items-center mb-2">
                         <span className="font-semibold text-gray-900 capitalize">{name}:</span>
                         <span className="text-sm text-gray-500">{selectedVariants[name] || 'Select'}</span>
                       </div>
                       <div className="flex flex-wrap gap-2">
-                        {Array.isArray(options) && options.map((opt, idx) => (
-                          <button
-                            key={idx}
-                            onClick={() => setSelectedVariants(prev => ({ ...prev, [name]: opt }))}
-                            className={`px-4 py-2 rounded-lg text-sm border transition-all ${
-                              selectedVariants[name] === opt
-                                ? 'border-orange-500 bg-orange-50 text-orange-700 font-medium'
-                                : 'border-gray-200 hover:border-gray-300 text-gray-700'
-                            }`}
-                          >
-                            {opt}
-                          </button>
-                        ))}
+                        {Array.isArray(options) && options.map((opt, idx) => {
+                          const value = String(opt?.value || '')
+                          const stockQty = Number(opt?.stockQty)
+                          const disabled = Number.isFinite(stockQty) ? stockQty <= 0 : false
+                          return (
+                            <button
+                              key={idx}
+                              onClick={() => {
+                                if (disabled) return
+                                setSelectedVariants(prev => ({ ...prev, [name]: value }))
+                                try {
+                                  if (opt?.image) {
+                                    const abs = resolveImageUrl(opt.image)
+                                    const imgIdx = images.findIndex((u) => u === abs)
+                                    if (imgIdx >= 0) setSelectedImage(imgIdx)
+                                  }
+                                } catch {}
+                              }}
+                              disabled={disabled}
+                              className={`px-4 py-2 rounded-lg text-sm border transition-all ${
+                                selectedVariants[name] === value
+                                  ? 'border-orange-500 bg-orange-50 text-orange-700 font-medium'
+                                  : disabled
+                                    ? 'border-gray-200 text-gray-300 bg-gray-50 cursor-not-allowed'
+                                    : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                              }`}
+                            >
+                              {value}
+                            </button>
+                          )
+                        })}
                       </div>
                     </div>
                   ))}

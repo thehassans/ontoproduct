@@ -76,6 +76,7 @@ const ProductSchema = new mongoose.Schema(
       default: "Other",
     },
     subcategory: { type: String, default: "" },
+    variants: { type: mongoose.Schema.Types.Mixed, default: {} },
     brand: { type: String, default: "" },
     weight: { type: Number, default: 0 },
     dimensions: {

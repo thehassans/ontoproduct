@@ -399,7 +399,8 @@ export default function Checkout() {
         details: '',
         items: cartItems.map(item => ({
           productId: item.productId || item.id,
-          quantity: item.quantity
+          quantity: item.quantity,
+          variants: item?.variants && typeof item.variants === 'object' ? item.variants : {}
         })),
         currency: getOrderCurrency(),
         paymentMethod: paymentInfo.method,
@@ -791,7 +792,8 @@ export default function Checkout() {
         details: '',
         items: cartItems.map(item => ({
           productId: item.productId || item.id,
-          quantity: item.quantity
+          quantity: item.quantity,
+          variants: item?.variants && typeof item.variants === 'object' ? item.variants : {}
         })),
         currency: getOrderCurrency(),
         paymentMethod: 'paypal',
@@ -859,7 +861,8 @@ export default function Checkout() {
         details: '',
         items: cartItems.map(item => ({
           productId: item.productId || item.id,
-          quantity: item.quantity
+          quantity: item.quantity,
+          variants: item?.variants && typeof item.variants === 'object' ? item.variants : {}
         })),
         currency: getOrderCurrency(),
         paymentMethod: walletOnly ? 'wallet' : paymentInfo.method,
