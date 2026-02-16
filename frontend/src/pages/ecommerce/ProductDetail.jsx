@@ -430,8 +430,8 @@ const ProductDetail = () => {
             <div className="flex w-max">
               {images.length > 0 ? images.map((img, idx) => (
                 <div key={idx} className="w-screen flex-shrink-0 snap-center">
-                  <div className="relative bg-[#f5f5f7] w-full" style={{ height: '56vh' }}>
-                    <img src={img} alt={`Product ${idx + 1}`} className="w-full h-full object-contain" onError={e => { e.target.src = '/placeholder-product.svg' }} />
+                  <div className="relative bg-[#f0f0f2] w-full" style={{ height: '60vh' }}>
+                    <img src={img} alt={`Product ${idx + 1}`} className="w-full h-full object-cover" onError={e => { e.target.src = '/placeholder-product.svg' }} />
                   </div>
                 </div>
               )) : !hasVideo ? (
@@ -454,7 +454,7 @@ const ProductDetail = () => {
             <button onClick={onToggleWishlist} disabled={wishBusy} className={`w-10 h-10 rounded-full shadow-[0_2px_12px_rgba(0,0,0,0.08)] flex items-center justify-center hover:scale-110 active:scale-95 transition-transform ${wishlisted ? 'bg-orange-500 text-white' : 'bg-white/80 backdrop-blur-md text-gray-700'}`}>
               <svg className="w-[17px] h-[17px]" viewBox="0 0 24 24" fill={wishlisted ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
             </button>
-            <button onClick={() => setIsCartOpen(true)} className="bg-white/80 backdrop-blur-md w-10 h-10 rounded-full shadow-[0_2px_12px_rgba(0,0,0,0.08)] flex items-center justify-center hover:scale-110 active:scale-95 transition-transform relative">
+            <button onClick={() => navigate('/cart')} className="bg-white/80 backdrop-blur-md w-10 h-10 rounded-full shadow-[0_2px_12px_rgba(0,0,0,0.08)] flex items-center justify-center hover:scale-110 active:scale-95 transition-transform relative">
               <svg className="w-[17px] h-[17px] text-gray-700" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
             </button>
           </div>
@@ -488,20 +488,11 @@ const ProductDetail = () => {
         {/* Mobile Product Info */}
         <div className="px-4 pb-32">
           {product.category && <span className="inline-block px-3 py-1 rounded-full bg-orange-50 text-orange-600 text-xs font-semibold tracking-wide uppercase mb-3">{product.category}</span>}
-          <h1 className="text-2xl font-bold text-gray-900 leading-tight mb-2">{product.name}</h1>
+          <h1 className="text-xl font-bold text-gray-900 leading-snug mb-2 line-clamp-2">{product.name}</h1>
           {product.description && <p className="text-gray-500 text-sm leading-relaxed mb-4 line-clamp-3">{product.description}</p>}
 
           <div className="mb-5"><VariantSelector excludeColor /></div>
 
-          <div className="flex items-center gap-4 mb-5">
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Qty</label>
-            <div className="flex items-center bg-gray-100 rounded-2xl">
-              <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 grid place-items-center text-gray-600 hover:bg-gray-200 rounded-l-2xl"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" /></svg></button>
-              <span className="w-10 h-10 grid place-items-center font-bold">{quantity}</span>
-              <button onClick={() => setQuantity(quantity + 1)} className="w-10 h-10 grid place-items-center text-gray-600 hover:bg-gray-200 rounded-r-2xl"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg></button>
-            </div>
-            {product.stockQty > 0 && <span className="text-xs text-gray-400">{product.stockQty} in stock</span>}
-          </div>
 
           <div className="rounded-2xl p-4 flex items-start gap-3 bg-white shadow-sm mb-5">
             <svg className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg>
@@ -514,17 +505,25 @@ const ProductDetail = () => {
 
         {/* Mobile Bottom Bar - Glassmorphism */}
         <div className="fixed bottom-0 left-0 right-0 z-50" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0)' }}>
-          <div className="bg-white/70 backdrop-blur-xl mx-3 mb-3 rounded-[22px] shadow-[0_8px_40px_rgba(0,0,0,0.10)] border border-white/60 px-4 py-3 flex items-center gap-3">
-            <div className="flex-shrink-0">
-              <span className="text-gray-900 font-bold text-xl tabular-nums">{priceDisplay}</span>
-              {origPriceDisplay && <span className="text-gray-400 text-xs line-through ml-1.5">{origPriceDisplay}</span>}
+          <div className="bg-white/70 backdrop-blur-xl mx-3 mb-3 rounded-[22px] shadow-[0_8px_40px_rgba(0,0,0,0.10)] border border-white/60 px-3 py-2.5 flex items-center gap-2">
+            {/* Qty selector */}
+            <div className="flex items-center bg-gray-100/80 rounded-xl flex-shrink-0">
+              <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-8 h-9 grid place-items-center text-gray-600 active:bg-gray-200 rounded-l-xl"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M20 12H4" /></svg></button>
+              <span className="w-7 h-9 grid place-items-center font-bold text-sm text-gray-900">{quantity}</span>
+              <button onClick={() => setQuantity(quantity + 1)} className="w-8 h-9 grid place-items-center text-gray-600 active:bg-gray-200 rounded-r-xl"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg></button>
             </div>
-            <div className="flex-1 flex gap-2 justify-end">
-              <button onClick={handleAddToCart} className="flex-1 max-w-[160px] bg-gradient-to-r from-orange-500 to-orange-400 text-white font-semibold py-3.5 rounded-2xl shadow-lg shadow-orange-500/25 hover:shadow-xl hover:scale-[1.02] transition-all flex items-center justify-center gap-2 text-sm">
+            {/* Price */}
+            <div className="flex-shrink-0 min-w-0">
+              <span className="text-gray-900 font-bold text-base tabular-nums">{priceDisplay}</span>
+              {origPriceDisplay && <span className="text-gray-400 text-[10px] line-through ml-1">{origPriceDisplay}</span>}
+            </div>
+            {/* Add to cart + WhatsApp */}
+            <div className="flex-1 flex gap-1.5 justify-end">
+              <button onClick={handleAddToCart} className="flex-1 max-w-[140px] bg-gradient-to-r from-orange-500 to-orange-400 text-white font-semibold py-3 rounded-xl shadow-lg shadow-orange-500/25 hover:shadow-xl active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 text-sm">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                 Add to cart
               </button>
-              {waUrl && <a href={waUrl} target="_blank" rel="noopener noreferrer" className="w-12 h-12 bg-green-500 text-white rounded-2xl grid place-items-center shadow-lg flex-shrink-0"><svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d={waPath} /></svg></a>}
+              {waUrl && <a href={waUrl} target="_blank" rel="noopener noreferrer" className="w-11 h-11 bg-green-500 text-white rounded-xl grid place-items-center shadow-lg flex-shrink-0"><svg className="w-4.5 h-4.5" viewBox="0 0 24 24" fill="currentColor"><path d={waPath} /></svg></a>}
             </div>
           </div>
         </div>
