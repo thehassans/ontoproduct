@@ -490,6 +490,10 @@ const ProductDetail = () => {
     ? Math.round(((originalPrice - displayPrice) / originalPrice) * 100)
     : 0
 
+  const normalizedVariants = product?.variants ? normalizeVariants(product.variants) : {}
+  const colorVariantKey = Object.keys(normalizedVariants).find((k) => String(k || '').toLowerCase() === 'color')
+  const colorOptions = colorVariantKey && Array.isArray(normalizedVariants[colorVariantKey]) ? normalizedVariants[colorVariantKey] : []
+
   return (
     <div className="min-h-screen font-sans text-gray-900" style={{ backgroundColor: '#f4f4f4' }}>
       <Header onCartClick={() => setIsCartOpen(true)} />
@@ -514,7 +518,7 @@ const ProductDetail = () => {
       ) : null}
 
       {/* Breadcrumb - Single Line */}
-      <div className="px-4 py-2 flex items-center gap-3">
+      <div className="hidden lg:flex px-4 py-2 items-center gap-3">
         <button
           type="button"
           onClick={() => {
@@ -553,6 +557,92 @@ const ProductDetail = () => {
           <div className="lg:col-span-7">
             {/* Mobile Swipable Gallery */}
             <div className="lg:hidden relative">
+              <div className="absolute top-4 left-4 z-30">
+                <button
+                  type="button"
+                  onClick={() => {
+                    try {
+                      if (window.history.length > 1) navigate(-1)
+                      else navigate('/catalog')
+                    } catch {
+                      navigate('/catalog')
+                    }
+                  }}
+                  className="bg-white/80 backdrop-blur-md w-11 h-11 rounded-full shadow-2xl grid place-items-center text-gray-800 hover:scale-[1.03] active:scale-[0.99] transition"
+                  aria-label="Back"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+              </div>
+
+              {isCustomer ? (
+                <div className="absolute top-4 right-4 z-30">
+                  <button
+                    onClick={onToggleWishlist}
+                    disabled={wishBusy}
+                    className={`bg-white/80 backdrop-blur-md w-11 h-11 rounded-full shadow-2xl grid place-items-center transition hover:scale-[1.03] active:scale-[0.99] ${
+                      wishlisted ? 'text-orange-600' : 'text-gray-700'
+                    } ${wishBusy ? 'opacity-70 cursor-not-allowed' : ''}`}
+                    aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+                    title={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+                  >
+                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill={wishlisted ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              ) : null}
+
+              {colorOptions.length > 0 && colorVariantKey ? (
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 z-30">
+                  <div className="flex flex-col gap-3 bg-white/55 backdrop-blur-xl p-3 rounded-full shadow-2xl">
+                    {colorOptions.slice(0, 6).map((opt, idx) => {
+                      const value = String(opt?.value || '')
+                      const selected = String(selectedVariants?.[colorVariantKey] || '') === value
+                      const disabled = Number.isFinite(Number(opt?.stockQty)) ? Number(opt.stockQty) <= 0 : false
+                      return (
+                        <button
+                          key={`${value}-${idx}`}
+                          type="button"
+                          onClick={() => {
+                            if (disabled) return
+                            setSelectedVariants((prev) => ({ ...prev, [colorVariantKey]: value }))
+                            try {
+                              if (opt?.image) {
+                                const abs = resolveImageUrl(opt.image)
+                                const imgIdx = images.findIndex((u) => u === abs)
+                                if (imgIdx >= 0) setSelectedImage(imgIdx)
+                              }
+                            } catch {}
+                          }}
+                          disabled={disabled}
+                          title={value}
+                          className={`relative w-9 h-9 rounded-full overflow-hidden transition-all ${
+                            selected
+                              ? 'ring-2 ring-orange-500 scale-110'
+                              : disabled
+                                ? 'opacity-40 cursor-not-allowed'
+                                : 'hover:scale-105'
+                          }`}
+                        >
+                          {opt?.image ? (
+                            <img src={resolveImageUrl(opt.image)} alt={value} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full" style={{ backgroundColor: (typeof opt?.swatch === 'string' && opt.swatch) ? opt.swatch : '#e5e7eb' }} />
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              ) : null}
+
               <div
                 className="overflow-x-auto snap-x snap-mandatory scrollbar-hide"
                 ref={mobileGalleryRef}
@@ -570,7 +660,7 @@ const ProductDetail = () => {
                 <div className="flex w-max">
                   {images.length > 0 ? images.map((img, idx) => (
                     <div key={idx} className="w-screen flex-shrink-0 snap-center">
-                      <div className="aspect-square bg-white mx-4 rounded-2xl overflow-hidden border border-gray-100">
+                      <div className="aspect-square mx-4 rounded-3xl overflow-hidden bg-white/55 backdrop-blur-xl shadow-2xl">
                         <img
                           src={img}
                           alt={`Product ${idx + 1}`}
@@ -581,7 +671,7 @@ const ProductDetail = () => {
                     </div>
                   )) : !hasVideo && (
                     <div className="w-screen flex-shrink-0 snap-center">
-                      <div className="aspect-square bg-gray-100 mx-4 rounded-2xl overflow-hidden border border-gray-100 flex items-center justify-center">
+                      <div className="aspect-square mx-4 rounded-3xl overflow-hidden bg-white/35 backdrop-blur-xl shadow-2xl flex items-center justify-center">
                         <div className="text-center">
                           <div className="text-6xl mb-2">📦</div>
                           <p className="text-gray-400">No image</p>
@@ -592,7 +682,7 @@ const ProductDetail = () => {
                   {/* Video slide for mobile */}
                   {hasVideo && (
                     <div className="w-screen flex-shrink-0 snap-center">
-                      <div className="aspect-square bg-black mx-4 rounded-2xl overflow-hidden border border-gray-100 flex items-center justify-center">
+                      <div className="aspect-square bg-black mx-4 rounded-3xl overflow-hidden shadow-2xl flex items-center justify-center">
                         <video
                           src={videoUrl}
                           controls
@@ -630,8 +720,8 @@ const ProductDetail = () => {
                     key={idx}
                     type="button"
                     onClick={() => setSelectedImage(idx)}
-                    className={`w-16 h-16 rounded-xl overflow-hidden border bg-white flex-shrink-0 transition-all ${
-                      selectedImage === idx && !isVideoSelected ? 'border-orange-500 ring-1 ring-orange-500' : 'border-gray-200 hover:border-gray-300'
+                    className={`w-16 h-16 rounded-2xl overflow-hidden bg-white/60 backdrop-blur-md shadow-lg flex-shrink-0 transition-all ${
+                      selectedImage === idx && !isVideoSelected ? 'ring-2 ring-orange-500' : 'hover:shadow-xl'
                     }`}
                   >
                     <img
@@ -646,8 +736,8 @@ const ProductDetail = () => {
                   <button
                     type="button"
                     onClick={() => setSelectedImage(images.length)}
-                    className={`w-16 h-16 rounded-xl overflow-hidden border bg-gray-900 flex-shrink-0 transition-all ${
-                      isVideoSelected ? 'border-orange-500 ring-1 ring-orange-500' : 'border-gray-200 hover:border-gray-300'
+                    className={`w-16 h-16 rounded-2xl overflow-hidden bg-gray-900 shadow-lg flex-shrink-0 transition-all ${
+                      isVideoSelected ? 'ring-2 ring-orange-500' : 'hover:shadow-xl'
                     }`}
                     aria-label="Product video"
                     title="Product video"
@@ -671,8 +761,8 @@ const ProductDetail = () => {
                     <button
                       key={idx}
                       onClick={() => setSelectedImage(idx)}
-                      className={`relative w-20 h-24 rounded-lg overflow-hidden border transition-all duration-200 ${
-                        selectedImage === idx && !isVideoSelected ? 'border-orange-500 ring-1 ring-orange-500' : 'border-gray-200 hover:border-gray-300'
+                      className={`relative w-20 h-24 rounded-2xl overflow-hidden bg-white/60 backdrop-blur-md shadow-lg transition-all duration-200 ${
+                        selectedImage === idx && !isVideoSelected ? 'ring-2 ring-orange-500' : 'hover:shadow-xl'
                       }`}
                     >
                       <img
@@ -687,8 +777,8 @@ const ProductDetail = () => {
                   {hasVideo && (
                     <button
                       onClick={() => setSelectedImage(images.length)}
-                      className={`relative w-20 h-24 rounded-lg overflow-hidden border transition-all duration-200 bg-gray-900 ${
-                        isVideoSelected ? 'border-orange-500 ring-1 ring-orange-500' : 'border-gray-200 hover:border-gray-300'
+                      className={`relative w-20 h-24 rounded-2xl overflow-hidden bg-gray-900 shadow-lg transition-all duration-200 ${
+                        isVideoSelected ? 'ring-2 ring-orange-500' : 'hover:shadow-xl'
                       }`}
                     >
                       <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-10">
@@ -714,7 +804,7 @@ const ProductDetail = () => {
               )}
 
               {/* Main Image or Video */}
-              <div className="flex-1 relative bg-white rounded-2xl overflow-hidden border border-gray-100 h-full group">
+              <div className="flex-1 relative rounded-3xl overflow-hidden bg-white/55 backdrop-blur-xl shadow-2xl h-full group">
                 {isVideoSelected || (hasNoImages && hasVideo) ? (
                   <video
                     src={videoUrl}
@@ -760,7 +850,7 @@ const ProductDetail = () => {
                   </svg>
                   Product Video
                 </h3>
-                <div className="rounded-2xl overflow-hidden border border-gray-100 bg-black">
+                <div className="rounded-3xl overflow-hidden bg-black shadow-2xl">
                   <video
                     src={videoUrl}
                     controls
@@ -775,7 +865,10 @@ const ProductDetail = () => {
             )}
           </div>
 
-          <div className="lg:col-span-5 flex flex-col gap-4">
+          <div className="lg:col-span-5 relative z-10 -mt-10 sm:-mt-14 lg:mt-0 lg:sticky lg:top-24 flex flex-col gap-4 bg-white/70 backdrop-blur-xl rounded-3xl shadow-2xl p-5 sm:p-6 lg:p-8 border border-white/50">
+            <div className="lg:hidden flex justify-center -mt-1 pb-2">
+              <div className="w-12 h-1.5 rounded-full bg-gray-300/70" />
+            </div>
             <div>
               {/* Ultra Minimalist Product Title */}
               <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 leading-snug mb-4">
@@ -807,7 +900,7 @@ const ProductDetail = () => {
                   <button
                     onClick={onToggleWishlist}
                     disabled={wishBusy}
-                    className={`ml-auto w-10 h-10 rounded-full border flex items-center justify-center transition-all ${
+                    className={`ml-auto hidden lg:flex w-10 h-10 rounded-full border items-center justify-center transition-all ${
                       wishlisted ? 'bg-orange-50 border-orange-200 text-orange-600' : 'bg-white border-gray-200 text-gray-500 hover:text-orange-600'
                     } ${wishBusy ? 'opacity-70 cursor-not-allowed' : ''}`}
                     aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
@@ -826,7 +919,7 @@ const ProductDetail = () => {
 
               {product.variants && Object.keys(product.variants).length > 0 && (
                 <div className="mb-6 space-y-4">
-                  {Object.entries(normalizeVariants(product.variants)).map(([name, options]) => (
+                  {Object.entries(normalizedVariants).map(([name, options]) => (
                     <div key={name}>
                       <div className="flex justify-between items-center mb-2">
                         <span className="font-semibold text-gray-900 capitalize">{name}:</span>
@@ -846,6 +939,7 @@ const ProductDetail = () => {
                                 onClick={() => {
                                   if (disabled) return
                                   setSelectedVariants((prev) => ({ ...prev, [name]: value }))
+
                                   try {
                                     if (opt?.image) {
                                       const abs = resolveImageUrl(opt.image)
@@ -856,18 +950,19 @@ const ProductDetail = () => {
                                 }}
                                 disabled={disabled}
                                 title={value}
-                                className={`relative w-11 h-11 rounded-lg border transition-all overflow-hidden ${
+                                className={`relative w-11 h-11 rounded-2xl transition-all overflow-hidden bg-white/60 backdrop-blur-md shadow-lg ${
                                   selectedVariants[name] === value
-                                    ? 'border-orange-500 ring-2 ring-orange-500'
+                                    ? 'ring-2 ring-orange-500 scale-[1.03]'
                                     : disabled
-                                      ? 'border-gray-200 opacity-40 cursor-not-allowed'
-                                      : 'border-gray-200 hover:border-gray-300'
+                                      ? 'opacity-35 cursor-not-allowed'
+                                      : 'hover:shadow-xl hover:scale-[1.01]'
                                 }`}
                               >
                                 {opt?.image ? (
                                   <img
                                     src={resolveImageUrl(opt.image)}
                                     alt={value}
+
                                     className="w-full h-full object-cover"
                                   />
                                 ) : (
@@ -884,6 +979,7 @@ const ProductDetail = () => {
                                   if (disabled) return
                                   setSelectedVariants(prev => ({ ...prev, [name]: value }))
                                   try {
+
                                     if (opt?.image) {
                                       const abs = resolveImageUrl(opt.image)
                                       const imgIdx = images.findIndex((u) => u === abs)
@@ -892,12 +988,12 @@ const ProductDetail = () => {
                                   } catch {}
                                 }}
                                 disabled={disabled}
-                                className={`px-4 py-2 rounded-lg text-sm border transition-all ${
+                                className={`px-4 py-2 rounded-2xl text-sm transition-all shadow-sm ${
                                   selectedVariants[name] === value
-                                    ? 'border-orange-500 bg-orange-50 text-orange-700 font-medium'
+                                    ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
                                     : disabled
-                                      ? 'border-gray-200 text-gray-300 bg-gray-50 cursor-not-allowed'
-                                      : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                                      ? 'bg-gray-100/70 text-gray-300 cursor-not-allowed'
+                                      : 'bg-white/60 backdrop-blur-md text-gray-800 hover:bg-white/80 hover:shadow-md'
                                 }`}
                               >
                                 {value}
@@ -947,7 +1043,7 @@ const ProductDetail = () => {
                 {/* Add to Cart Button */}
                 <button
                   onClick={handleAddToCart}
-                  className="w-full py-3.5 px-6 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-orange-500/20 hover:shadow-orange-500/30"
+                  className="w-full py-4 px-6 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-500 hover:to-amber-500 text-white font-semibold rounded-3xl transition-all duration-200 flex items-center justify-center gap-2 shadow-2xl shadow-orange-500/20 hover:shadow-orange-500/30"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
@@ -960,7 +1056,7 @@ const ProductDetail = () => {
                     href={waUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-full py-3.5 px-6 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-green-500/20 hover:shadow-green-500/30"
+                    className="w-full py-4 px-6 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-semibold rounded-3xl transition-all duration-200 flex items-center justify-center gap-2 shadow-2xl shadow-green-500/20 hover:shadow-green-500/30"
                     aria-label="Chat on WhatsApp"
                   >
                     <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
