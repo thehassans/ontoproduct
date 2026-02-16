@@ -1611,7 +1611,7 @@ export default function InhouseProducts() {
                             style={{
                               display: 'grid',
                               gridTemplateColumns:
-                                isMobile ? '1fr' : (t.key === 'color' ? '2fr 1fr 70px 1fr 70px auto' : '2fr 1fr 1fr 70px auto'),
+                                isMobile ? '1fr' : (t.key === 'color' ? '2fr 1fr 60px 1fr auto' : '2fr 1fr 1fr 70px auto'),
                               gap: 10,
                               alignItems: 'center',
                             }}
@@ -1646,13 +1646,12 @@ export default function InhouseProducts() {
                                 <div
                                   style={{
                                     position: 'relative',
-                                    width: 54,
-                                    height: 54,
-                                    borderRadius: 10,
+                                    width: 44,
+                                    height: 44,
+                                    borderRadius: 12,
                                     border: opt?.swatch ? '1px solid rgba(17,24,39,0.12)' : '1px solid var(--border)',
                                     background: (opt?.swatch || guessSwatch(opt?.value)) ? String(opt?.swatch || guessSwatch(opt?.value)) : 'linear-gradient(135deg, #f3f4f6 0%, #ffffff 50%, #f3f4f6 100%)',
                                     overflow: 'hidden',
-                                    boxShadow: opt?.swatch ? '0 10px 22px rgba(0,0,0,0.10)' : '0 8px 18px rgba(0,0,0,0.06)',
                                   }}
                                   title={opt?.swatch ? String(opt.swatch) : 'Select color'}
                                 >
@@ -1660,8 +1659,15 @@ export default function InhouseProducts() {
                                     type="color"
                                     value={typeof opt?.swatch === 'string' && opt.swatch ? opt.swatch : (guessSwatch(opt?.value) || '#ffffff')}
                                     onChange={(e) => updateVariantOption(setForm, t.key, idx, { swatch: e.target.value })}
-                                    style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
+                                    style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', zIndex: 2 }}
                                   />
+                                  {Number.isFinite(Number(opt?.imageIndex)) && Number(opt.imageIndex) >= 0 && imagePreviews?.[Number(opt.imageIndex)]?.url ? (
+                                    <img
+                                      src={imagePreviews[Number(opt.imageIndex)].url}
+                                      alt="preview"
+                                      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 1, pointerEvents: 'none' }}
+                                    />
+                                  ) : null}
                                 </div>
                               </div>
                             ) : null}
@@ -1675,17 +1681,6 @@ export default function InhouseProducts() {
                                 <option key={`img-${i}`} value={i}>{`Image ${i + 1}`}</option>
                               ))}
                             </select>
-                            <div style={{ display: 'flex', justifyContent: 'center' }}>
-                              {t.key === 'color' && Number.isFinite(Number(opt?.imageIndex)) && Number(opt.imageIndex) >= 0 && imagePreviews?.[Number(opt.imageIndex)]?.url ? (
-                                <img
-                                  src={imagePreviews[Number(opt.imageIndex)].url}
-                                  alt="preview"
-                                  style={{ width: 54, height: 54, objectFit: 'cover', borderRadius: 10, border: '1px solid var(--border)' }}
-                                />
-                              ) : (
-                                <div style={{ width: 54, height: 54, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--panel-2)' }} />
-                              )}
-                            </div>
                             <button type="button" className="btn small danger" onClick={() => removeVariantOption(setForm, t.key, idx)}>
                               Remove
                             </button>
@@ -3669,7 +3664,7 @@ export default function InhouseProducts() {
                               style={{
                                 display: 'grid',
                                 gridTemplateColumns:
-                                  isMobile ? '1fr' : (t.key === 'color' ? '2fr 1fr 70px 1fr 70px auto' : '2fr 1fr 1fr 70px auto'),
+                                  isMobile ? '1fr' : (t.key === 'color' ? '2fr 1fr 60px 1fr auto' : '2fr 1fr 1fr 70px auto'),
                                 gap: 10,
                                 alignItems: 'center',
                               }}
@@ -3704,13 +3699,12 @@ export default function InhouseProducts() {
                                   <div
                                     style={{
                                       position: 'relative',
-                                      width: 54,
-                                      height: 54,
-                                      borderRadius: 10,
+                                      width: 44,
+                                      height: 44,
+                                      borderRadius: 12,
                                       border: opt?.swatch ? '1px solid rgba(17,24,39,0.12)' : '1px solid var(--border)',
                                       background: (opt?.swatch || guessSwatch(opt?.value)) ? String(opt?.swatch || guessSwatch(opt?.value)) : 'linear-gradient(135deg, #f3f4f6 0%, #ffffff 50%, #f3f4f6 100%)',
                                       overflow: 'hidden',
-                                      boxShadow: opt?.swatch ? '0 10px 22px rgba(0,0,0,0.10)' : '0 8px 18px rgba(0,0,0,0.06)',
                                     }}
                                     title={opt?.swatch ? String(opt.swatch) : 'Select color'}
                                   >
@@ -3718,8 +3712,15 @@ export default function InhouseProducts() {
                                       type="color"
                                       value={typeof opt?.swatch === 'string' && opt.swatch ? opt.swatch : (guessSwatch(opt?.value) || '#ffffff')}
                                       onChange={(e) => updateVariantOption(setEditForm, t.key, idx, { swatch: e.target.value })}
-                                      style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
+                                      style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', zIndex: 2 }}
                                     />
+                                    {t.key === 'color' && Number.isFinite(Number(opt?.imageIndex)) && Number(opt.imageIndex) >= 0 && Array.isArray(editing?.images) && editing.images?.[Number(opt.imageIndex)] ? (
+                                      <img
+                                        src={mediaUrl(editing.images[Number(opt.imageIndex)])}
+                                        alt="preview"
+                                        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 1, pointerEvents: 'none' }}
+                                      />
+                                    ) : null}
                                   </div>
                                 </div>
                               ) : null}
@@ -3733,17 +3734,6 @@ export default function InhouseProducts() {
                                   <option key={`img-${i}`} value={i}>{`Image ${i + 1}`}</option>
                                 ))}
                               </select>
-                              <div style={{ display: 'flex', justifyContent: 'center' }}>
-                                {t.key === 'color' && Number.isFinite(Number(opt?.imageIndex)) && Number(opt.imageIndex) >= 0 && Array.isArray(editing?.images) && editing.images?.[Number(opt.imageIndex)] ? (
-                                  <img
-                                    src={mediaUrl(editing.images[Number(opt.imageIndex)])}
-                                    alt="preview"
-                                    style={{ width: 54, height: 54, objectFit: 'cover', borderRadius: 10, border: '1px solid var(--border)' }}
-                                  />
-                                ) : (
-                                  <div style={{ width: 54, height: 54, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--panel-2)' }} />
-                                )}
-                              </div>
                               <button type="button" className="btn small danger" onClick={() => removeVariantOption(setEditForm, t.key, idx)}>
                                 Remove
                               </button>

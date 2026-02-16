@@ -35,6 +35,34 @@ const ProductDetail = () => {
     try { return localStorage.getItem('selected_country') || 'GB' } catch { return 'GB' }
   })
 
+  useEffect(() => {
+    let alive = true
+    getCurrencyConfig().then((cfg) => {
+      if (alive) setCcyCfg(cfg)
+    }).catch(() => {})
+    return () => { alive = false }
+  }, [])
+
+  const COUNTRY_TO_CURRENCY = {
+    AE: 'AED',
+    OM: 'OMR',
+    SA: 'SAR',
+    BH: 'BHD',
+    IN: 'INR',
+    KW: 'KWD',
+    QA: 'QAR',
+    PK: 'PKR',
+    JO: 'JOD',
+    US: 'USD',
+    GB: 'GBP',
+    CA: 'CAD',
+    AU: 'AUD',
+  }
+
+  const getDisplayCurrency = () => COUNTRY_TO_CURRENCY[selectedCountry] || 'SAR'
+  const convertPrice = (value, fromCurrency, toCurrency) => fxConvert(value, fromCurrency || 'SAR', toCurrency || getDisplayCurrency(), ccyCfg)
+  const formatPrice = (price, currency) => formatMoney(Number(price || 0), currency || getDisplayCurrency())
+
   const normalizeVariants = (rawVariants) => {
     const out = {}
     const v = rawVariants && typeof rawVariants === 'object' && !Array.isArray(rawVariants) ? rawVariants : {}
@@ -375,6 +403,23 @@ const ProductDetail = () => {
     if (u.startsWith('http')) return u
     if (u.startsWith('/') && !u.startsWith('/uploads/') && !u.startsWith('/api/uploads/')) return u
     return mediaUrl(u) || '/placeholder-product.svg'
+  }
+
+  const sanitizeWhatsAppNumber = (n) => {
+    const raw = String(n || '')
+    return raw.replace(/[^0-9]/g, '')
+  }
+
+  const toAbsoluteUrl = (u) => {
+    const s = String(u || '')
+    if (!s) return ''
+    if (s.startsWith('http://') || s.startsWith('https://')) return s
+    if (!s.startsWith('/')) return s
+    try {
+      return `${window.location.origin}${s}`
+    } catch {
+      return s
+    }
   }
 
   const orderedMedia = (() => {
