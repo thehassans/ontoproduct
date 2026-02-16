@@ -302,6 +302,14 @@ const ProductDetail = () => {
 
   const goBack = () => { try { if (window.history.length > 1) navigate(-1); else navigate('/catalog') } catch { navigate('/catalog') } }
 
+  const scrollToImage = (idx) => {
+    setSelectedImage(idx)
+    if (mobileGalleryRef.current) {
+      const w = mobileGalleryRef.current.offsetWidth
+      mobileGalleryRef.current.scrollTo({ left: w * idx, behavior: 'smooth' })
+    }
+  }
+
   const onVariantClick = (name, value, opt) => {
     setSelectedVariants(prev => ({ ...prev, [name]: value }))
     try { if (opt?.image) { const abs = resolveImageUrl(opt.image); const imgIdx = images.findIndex(u => u === abs); if (imgIdx >= 0) setSelectedImage(imgIdx) } } catch {}
@@ -406,9 +414,9 @@ const ProductDetail = () => {
 
   return (
     <div className="min-h-screen bg-[#F8F9FC] font-sans text-gray-900">
-      <Header onCartClick={() => setIsCartOpen(true)} />
+      <div className="hidden lg:block"><Header onCartClick={() => setIsCartOpen(true)} /></div>
 
-      {/* ===== MOBILE (lg:hidden) ===== */}
+      {/* ===== MOBILE (lg:hidden) ===== */
       <div className="lg:hidden">
         {/* Hero Image */}
         <div className="relative">
@@ -427,10 +435,18 @@ const ProductDetail = () => {
             </div>
           </div>
 
-          {/* Floating Controls */}
-          <div className="absolute top-4 left-4 z-20"><button onClick={goBack} className="bg-white/90 backdrop-blur-md p-3 rounded-full shadow-lg"><svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg></button></div>
-          <div className="absolute top-4 right-4 z-20 flex gap-3">
-            {isCustomer && <button onClick={onToggleWishlist} disabled={wishBusy} className={`backdrop-blur-md p-3 rounded-full shadow-lg transition-transform hover:scale-105 ${wishlisted ? 'bg-orange-500 text-white' : 'bg-white/90 text-gray-700'}`}><svg className="w-5 h-5" viewBox="0 0 24 24" fill={wishlisted ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg></button>}
+          {/* Floating Controls - large white circles like Blue Velvet */}
+          <div className="absolute top-6 left-5 z-20">
+            <button onClick={goBack} className="bg-white w-12 h-12 rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.12)] flex items-center justify-center hover:scale-110 transition-transform">
+              <svg className="w-5 h-5 text-gray-800" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
+            </button>
+          </div>
+          <div className="absolute top-6 right-5 z-20 flex gap-3">
+            {isCustomer && (
+              <button onClick={onToggleWishlist} disabled={wishBusy} className={`w-12 h-12 rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.12)] flex items-center justify-center hover:scale-110 transition-transform ${wishlisted ? 'bg-orange-500 text-white' : 'bg-white text-gray-800'}`}>
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill={wishlisted ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+              </button>
+            )}
           </div>
 
           {/* Floating color swatches */}
@@ -440,24 +456,24 @@ const ProductDetail = () => {
             </div>
           )}
 
-          {hasActiveSale && !isVideoSelected && <div className="absolute top-4 left-20 z-20 bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">-{discountPercentage}%</div>}
+          {hasActiveSale && !isVideoSelected && <div className="absolute top-8 left-20 z-20 bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">-{discountPercentage}%</div>}
 
-          {/* Dots */}
+          {/* Glassmorphism Thumbnails - INSIDE the hero image */}
           {(images.length > 1 || hasVideo) && (
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex gap-1.5">
-              {images.map((_, idx) => <div key={idx} className={`h-1.5 rounded-full transition-all ${selectedImage === idx ? 'w-6 bg-orange-500' : 'w-1.5 bg-gray-400/50'}`} />)}
-              {hasVideo && <div className={`h-1.5 rounded-full transition-all ${isVideoSelected ? 'w-6 bg-orange-500' : 'w-1.5 bg-gray-400/50'}`} />}
+            <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-20 flex gap-2 bg-white/40 backdrop-blur-xl px-3 py-2 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] border border-white/50">
+              {images.map((img, idx) => (
+                <button key={idx} onClick={() => scrollToImage(idx)} className={`w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 transition-all bg-white/70 ${selectedImage === idx && !isVideoSelected ? 'ring-2 ring-orange-500 scale-110 shadow-md bg-white' : 'opacity-70 hover:opacity-100 hover:scale-105'}`}>
+                  <img src={img} alt="" className="w-full h-full object-contain p-1" onError={e => { e.target.src = '/placeholder-product.svg' }} />
+                </button>
+              ))}
+              {hasVideo && (
+                <button onClick={() => scrollToImage(images.length)} className={`w-14 h-14 rounded-xl bg-gray-900/80 grid place-items-center flex-shrink-0 transition-all ${isVideoSelected ? 'ring-2 ring-orange-500 scale-110 shadow-md' : 'opacity-70 hover:opacity-100 hover:scale-105'}`}>
+                  <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                </button>
+              )}
             </div>
           )}
         </div>
-
-        {/* Thumbnails */}
-        {(images.length > 1 || hasVideo) && (
-          <div className="flex gap-2.5 overflow-x-auto px-4 py-3 scrollbar-hide">
-            {images.map((img, idx) => <button key={idx} onClick={() => setSelectedImage(idx)} className={`w-14 h-14 rounded-2xl overflow-hidden flex-shrink-0 bg-white shadow-sm transition-all ${selectedImage === idx && !isVideoSelected ? 'ring-2 ring-orange-500 scale-105' : 'opacity-60 hover:opacity-100'}`}><img src={img} alt="" className="w-full h-full object-contain p-1" onError={e => { e.target.src = '/placeholder-product.svg' }} /></button>)}
-            {hasVideo && <button onClick={() => setSelectedImage(images.length)} className={`w-14 h-14 rounded-2xl bg-gray-900 grid place-items-center flex-shrink-0 transition-all ${isVideoSelected ? 'ring-2 ring-orange-500 scale-105' : 'opacity-60 hover:opacity-100'}`}><svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg></button>}
-          </div>
-        )}
 
         {/* Mobile Product Info */}
         <div className="px-4 pb-32">
