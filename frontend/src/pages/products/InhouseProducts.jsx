@@ -175,6 +175,51 @@ export default function InhouseProducts() {
     { key: 'size', label: 'Size' },
   ]
 
+  const COLOR_NAME_TO_HEX = {
+    black: '#111827',
+    white: '#ffffff',
+    red: '#ef4444',
+    blue: '#3b82f6',
+    green: '#22c55e',
+    yellow: '#f59e0b',
+    orange: '#f97316',
+    purple: '#a855f7',
+    pink: '#ec4899',
+    gray: '#6b7280',
+    grey: '#6b7280',
+    brown: '#92400e',
+    beige: '#d6c7a1',
+    gold: '#d4af37',
+    silver: '#94a3b8',
+    navy: '#1e3a8a',
+    maroon: '#7f1d1d',
+    teal: '#14b8a6',
+    cyan: '#06b6d4',
+  }
+
+  const normalizeHex = (input) => {
+    const raw = String(input || '').trim()
+    if (!raw) return ''
+    const v = raw.startsWith('#') ? raw : `#${raw}`
+    const m3 = /^#([0-9a-fA-F]{3})$/.exec(v)
+    if (m3) {
+      const h = m3[1]
+      return `#${h[0]}${h[0]}${h[1]}${h[1]}${h[2]}${h[2]}`.toLowerCase()
+    }
+    const m6 = /^#([0-9a-fA-F]{6})$/.exec(v)
+    if (m6) return `#${m6[1]}`.toLowerCase()
+    return ''
+  }
+
+  const guessSwatch = (value) => {
+    const s = String(value || '').trim()
+    if (!s) return ''
+    const asHex = normalizeHex(s)
+    if (asHex) return asHex
+    const key = s.toLowerCase()
+    return COLOR_NAME_TO_HEX[key] || ''
+  }
+
   const updateVariantOption = (setter, typeKey, index, patch) => {
     setter((prev) => {
       const curr = prev && typeof prev === 'object' ? prev : {}
@@ -1229,14 +1274,14 @@ export default function InhouseProducts() {
                       <option key={s} value={s} />
                     ))}
                   </datalist>
-                  <div style={{ marginTop: 10, display: 'grid', gap: 8 }}>
-                    <div style={{ display: 'flex', gap: 8 }}>
+                  <div style={{ marginTop: 10, display: 'grid', gap: 10 }}>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                       <input
                         className="input"
                         value={newSubcategory}
                         onChange={(e) => setNewSubcategory(e.target.value)}
-                        placeholder="Create new subcategory"
-                        style={{ padding: 12, fontSize: 14 }}
+                        placeholder="New subcategory"
+                        style={{ padding: 12, fontSize: 14, flex: 1 }}
                       />
                       <button
                         type="button"
@@ -1247,45 +1292,56 @@ export default function InhouseProducts() {
                           await createSubcategoryForCategory(form.category, v, { alsoSetValue: true, isEdit: false })
                           setNewSubcategory('')
                         }}
+                        style={{
+                          padding: '10px 12px',
+                          borderRadius: 12,
+                          fontWeight: 700,
+                        }}
                       >
-                        + Add
+                        Add
                       </button>
                     </div>
-                    <div style={{ display: 'grid', gap: 6 }}>
-                      {(subcategoriesByCategory?.[form.category] || []).map((s, i) => (
-                        <div
-                          key={`${form.category}-${s}-${i}`}
-                          draggable
-                          onDragStart={() => {
-                            subcatDrag.current = { category: form.category, index: i }
-                          }}
-                          onDragOver={(e) => {
-                            e.preventDefault()
-                          }}
-                          onDrop={async () => {
-                            const from = subcatDrag.current
-                            if (!from || from.category !== form.category) return
-                            const next = moveInArray(subcategoriesByCategory?.[form.category] || [], from.index, i)
-                            setSubcategoriesByCategory((prev) => ({ ...(prev || {}), [form.category]: next }))
-                            await persistSubcategoryOrder(form.category, next)
-                          }}
-                          onClick={() => setForm((f) => ({ ...(f || {}), subcategory: s }))}
-                          style={{
-                            padding: '10px 12px',
-                            border: '1px solid var(--border)',
-                            borderRadius: 10,
-                            background: 'var(--panel)',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            cursor: 'grab',
-                            userSelect: 'none',
-                          }}
-                        >
-                          <div style={{ fontSize: 13, fontWeight: 600 }}>{s}</div>
-                          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Drag</div>
-                        </div>
-                      ))}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                      {(subcategoriesByCategory?.[form.category] || []).map((s, i) => {
+                        const active = String(form.subcategory || '') === String(s)
+                        return (
+                          <div
+                            key={`${form.category}-${s}-${i}`}
+                            draggable
+                            onDragStart={() => {
+                              subcatDrag.current = { category: form.category, index: i }
+                            }}
+                            onDragOver={(e) => {
+                              e.preventDefault()
+                            }}
+                            onDrop={async () => {
+                              const from = subcatDrag.current
+                              if (!from || from.category !== form.category) return
+                              const next = moveInArray(subcategoriesByCategory?.[form.category] || [], from.index, i)
+                              setSubcategoriesByCategory((prev) => ({ ...(prev || {}), [form.category]: next }))
+                              await persistSubcategoryOrder(form.category, next)
+                            }}
+                            onClick={() => setForm((f) => ({ ...(f || {}), subcategory: s }))}
+                            style={{
+                              padding: '8px 12px',
+                              border: active ? '1px solid rgba(249,115,22,0.45)' : '1px solid var(--border)',
+                              borderRadius: 999,
+                              background: active ? 'rgba(249,115,22,0.08)' : 'var(--panel)',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 10,
+                              cursor: 'grab',
+                              userSelect: 'none',
+                              boxShadow: active ? '0 8px 18px rgba(249,115,22,0.08)' : '0 6px 16px rgba(0,0,0,0.04)',
+                            }}
+                          >
+                            <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: 0.1 }}>{s}</div>
+                            <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1 }} title="Drag to reorder">
+                              ⋮⋮
+                            </div>
+                          </div>
+                        )
+                      })}
                     </div>
                   </div>
                 </div>
@@ -1564,7 +1620,18 @@ export default function InhouseProducts() {
                               className="input"
                               placeholder={`${t.label} (e.g. Red)`}
                               value={String(opt?.value || '')}
-                              onChange={(e) => updateVariantOption(setForm, t.key, idx, { value: e.target.value })}
+                              onChange={(e) => {
+                                const nextVal = e.target.value
+                                const prevGuess = guessSwatch(opt?.value)
+                                updateVariantOption(setForm, t.key, idx, { value: nextVal })
+                                if (t.key === 'color') {
+                                  const derived = guessSwatch(nextVal)
+                                  const allowAuto = !opt?.swatch || (prevGuess && String(opt.swatch).toLowerCase() === String(prevGuess).toLowerCase())
+                                  if (derived && (allowAuto || normalizeHex(nextVal))) {
+                                    updateVariantOption(setForm, t.key, idx, { swatch: derived })
+                                  }
+                                }
+                              }}
                             />
                             <input
                               className="input"
@@ -1582,34 +1649,19 @@ export default function InhouseProducts() {
                                     width: 54,
                                     height: 54,
                                     borderRadius: 10,
-                                    border: '1px solid var(--border)',
-                                    background: opt?.swatch ? String(opt.swatch) : 'var(--panel-2)',
+                                    border: opt?.swatch ? '1px solid rgba(17,24,39,0.12)' : '1px solid var(--border)',
+                                    background: (opt?.swatch || guessSwatch(opt?.value)) ? String(opt?.swatch || guessSwatch(opt?.value)) : 'linear-gradient(135deg, #f3f4f6 0%, #ffffff 50%, #f3f4f6 100%)',
                                     overflow: 'hidden',
+                                    boxShadow: opt?.swatch ? '0 10px 22px rgba(0,0,0,0.10)' : '0 8px 18px rgba(0,0,0,0.06)',
                                   }}
-                                  title={opt?.swatch ? String(opt.swatch) : 'Pick color'}
+                                  title={opt?.swatch ? String(opt.swatch) : 'Select color'}
                                 >
                                   <input
                                     type="color"
-                                    value={typeof opt?.swatch === 'string' && opt.swatch ? opt.swatch : '#ffffff'}
+                                    value={typeof opt?.swatch === 'string' && opt.swatch ? opt.swatch : (guessSwatch(opt?.value) || '#ffffff')}
                                     onChange={(e) => updateVariantOption(setForm, t.key, idx, { swatch: e.target.value })}
                                     style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
                                   />
-                                  {!opt?.swatch && (
-                                    <div
-                                      style={{
-                                        position: 'absolute',
-                                        inset: 0,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        fontSize: 10,
-                                        fontWeight: 700,
-                                        color: 'var(--text-muted)',
-                                      }}
-                                    >
-                                      Pick
-                                    </div>
-                                  )}
                                 </div>
                               </div>
                             ) : null}
@@ -3511,13 +3563,14 @@ export default function InhouseProducts() {
                       <option key={s} value={s} />
                     ))}
                   </datalist>
-                  <div style={{ marginTop: 10, display: 'grid', gap: 8 }}>
-                    <div style={{ display: 'flex', gap: 8 }}>
+                  <div style={{ marginTop: 10, display: 'grid', gap: 10 }}>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                       <input
                         className="input"
                         value={editNewSubcategory}
                         onChange={(e) => setEditNewSubcategory(e.target.value)}
-                        placeholder="Create new subcategory"
+                        placeholder="New subcategory"
+                        style={{ padding: 12, fontSize: 14, flex: 1 }}
                       />
                       <button
                         type="button"
@@ -3528,45 +3581,56 @@ export default function InhouseProducts() {
                           await createSubcategoryForCategory(editForm.category, v, { alsoSetValue: true, isEdit: true })
                           setEditNewSubcategory('')
                         }}
+                        style={{
+                          padding: '10px 12px',
+                          borderRadius: 12,
+                          fontWeight: 700,
+                        }}
                       >
-                        + Add
+                        Add
                       </button>
                     </div>
-                    <div style={{ display: 'grid', gap: 6 }}>
-                      {(subcategoriesByCategory?.[editForm.category] || []).map((s, i) => (
-                        <div
-                          key={`${editForm.category}-${s}-${i}`}
-                          draggable
-                          onDragStart={() => {
-                            editSubcatDrag.current = { category: editForm.category, index: i }
-                          }}
-                          onDragOver={(e) => {
-                            e.preventDefault()
-                          }}
-                          onDrop={async () => {
-                            const from = editSubcatDrag.current
-                            if (!from || from.category !== editForm.category) return
-                            const next = moveInArray(subcategoriesByCategory?.[editForm.category] || [], from.index, i)
-                            setSubcategoriesByCategory((prev) => ({ ...(prev || {}), [editForm.category]: next }))
-                            await persistSubcategoryOrder(editForm.category, next)
-                          }}
-                          onClick={() => setEditForm((f) => ({ ...(f || {}), subcategory: s }))}
-                          style={{
-                            padding: '10px 12px',
-                            border: '1px solid var(--border)',
-                            borderRadius: 10,
-                            background: 'var(--panel)',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            cursor: 'grab',
-                            userSelect: 'none',
-                          }}
-                        >
-                          <div style={{ fontSize: 13, fontWeight: 600 }}>{s}</div>
-                          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Drag</div>
-                        </div>
-                      ))}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                      {(subcategoriesByCategory?.[editForm.category] || []).map((s, i) => {
+                        const active = String(editForm.subcategory || '') === String(s)
+                        return (
+                          <div
+                            key={`${editForm.category}-${s}-${i}`}
+                            draggable
+                            onDragStart={() => {
+                              editSubcatDrag.current = { category: editForm.category, index: i }
+                            }}
+                            onDragOver={(e) => {
+                              e.preventDefault()
+                            }}
+                            onDrop={async () => {
+                              const from = editSubcatDrag.current
+                              if (!from || from.category !== editForm.category) return
+                              const next = moveInArray(subcategoriesByCategory?.[editForm.category] || [], from.index, i)
+                              setSubcategoriesByCategory((prev) => ({ ...(prev || {}), [editForm.category]: next }))
+                              await persistSubcategoryOrder(editForm.category, next)
+                            }}
+                            onClick={() => setEditForm((f) => ({ ...(f || {}), subcategory: s }))}
+                            style={{
+                              padding: '8px 12px',
+                              border: active ? '1px solid rgba(249,115,22,0.45)' : '1px solid var(--border)',
+                              borderRadius: 999,
+                              background: active ? 'rgba(249,115,22,0.08)' : 'var(--panel)',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 10,
+                              cursor: 'grab',
+                              userSelect: 'none',
+                              boxShadow: active ? '0 8px 18px rgba(249,115,22,0.08)' : '0 6px 16px rgba(0,0,0,0.04)',
+                            }}
+                          >
+                            <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: 0.1 }}>{s}</div>
+                            <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1 }} title="Drag to reorder">
+                              ⋮⋮
+                            </div>
+                          </div>
+                        )
+                      })}
                     </div>
                   </div>
                 </div>
@@ -3614,7 +3678,18 @@ export default function InhouseProducts() {
                                 className="input"
                                 placeholder={`${t.label} (e.g. Red)`}
                                 value={String(opt?.value || '')}
-                                onChange={(e) => updateVariantOption(setEditForm, t.key, idx, { value: e.target.value })}
+                                onChange={(e) => {
+                                  const nextVal = e.target.value
+                                  const prevGuess = guessSwatch(opt?.value)
+                                  updateVariantOption(setEditForm, t.key, idx, { value: nextVal })
+                                  if (t.key === 'color') {
+                                    const derived = guessSwatch(nextVal)
+                                    const allowAuto = !opt?.swatch || (prevGuess && String(opt.swatch).toLowerCase() === String(prevGuess).toLowerCase())
+                                    if (derived && (allowAuto || normalizeHex(nextVal))) {
+                                      updateVariantOption(setEditForm, t.key, idx, { swatch: derived })
+                                    }
+                                  }
+                                }}
                               />
                               <input
                                 className="input"
@@ -3632,34 +3707,19 @@ export default function InhouseProducts() {
                                       width: 54,
                                       height: 54,
                                       borderRadius: 10,
-                                      border: '1px solid var(--border)',
-                                      background: opt?.swatch ? String(opt.swatch) : 'var(--panel-2)',
+                                      border: opt?.swatch ? '1px solid rgba(17,24,39,0.12)' : '1px solid var(--border)',
+                                      background: (opt?.swatch || guessSwatch(opt?.value)) ? String(opt?.swatch || guessSwatch(opt?.value)) : 'linear-gradient(135deg, #f3f4f6 0%, #ffffff 50%, #f3f4f6 100%)',
                                       overflow: 'hidden',
+                                      boxShadow: opt?.swatch ? '0 10px 22px rgba(0,0,0,0.10)' : '0 8px 18px rgba(0,0,0,0.06)',
                                     }}
-                                    title={opt?.swatch ? String(opt.swatch) : 'Pick color'}
+                                    title={opt?.swatch ? String(opt.swatch) : 'Select color'}
                                   >
                                     <input
                                       type="color"
-                                      value={typeof opt?.swatch === 'string' && opt.swatch ? opt.swatch : '#ffffff'}
+                                      value={typeof opt?.swatch === 'string' && opt.swatch ? opt.swatch : (guessSwatch(opt?.value) || '#ffffff')}
                                       onChange={(e) => updateVariantOption(setEditForm, t.key, idx, { swatch: e.target.value })}
                                       style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
                                     />
-                                    {!opt?.swatch && (
-                                      <div
-                                        style={{
-                                          position: 'absolute',
-                                          inset: 0,
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          justifyContent: 'center',
-                                          fontSize: 10,
-                                          fontWeight: 700,
-                                          color: 'var(--text-muted)',
-                                        }}
-                                      >
-                                        Pick
-                                      </div>
-                                    )}
                                   </div>
                                 </div>
                               ) : null}
