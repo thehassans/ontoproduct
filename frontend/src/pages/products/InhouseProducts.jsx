@@ -1021,7 +1021,14 @@ export default function InhouseProducts() {
           let imageIndex = -1
           if (opt.imageIndex != null && Number.isFinite(Number(opt.imageIndex))) imageIndex = Number(opt.imageIndex)
           else if (typeof opt.image === 'string' && opt.image) imageIndex = imgs.indexOf(opt.image)
-          return { value, stockQty: safeStock, imageIndex }
+          let swatch = ''
+          try {
+            if (typeof opt.swatch === 'string' && opt.swatch.trim()) {
+              const raw = opt.swatch.trim()
+              if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(raw)) swatch = raw
+            }
+          } catch {}
+          return { value, stockQty: safeStock, imageIndex, ...(swatch ? { swatch } : {}) }
         })
         .filter(Boolean)
     }
@@ -1547,7 +1554,8 @@ export default function InhouseProducts() {
                             key={`${t.key}-${idx}`}
                             style={{
                               display: 'grid',
-                              gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr 1fr 70px auto',
+                              gridTemplateColumns:
+                                isMobile ? '1fr' : (t.key === 'color' ? '2fr 1fr 70px 1fr 70px auto' : '2fr 1fr 1fr 70px auto'),
                               gap: 10,
                               alignItems: 'center',
                             }}
@@ -1566,6 +1574,45 @@ export default function InhouseProducts() {
                               value={Number.isFinite(Number(opt?.stockQty)) ? Number(opt.stockQty) : 0}
                               onChange={(e) => updateVariantOption(setForm, t.key, idx, { stockQty: Math.max(0, Math.floor(Number(e.target.value || 0))) })}
                             />
+                            {t.key === 'color' ? (
+                              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                                <div
+                                  style={{
+                                    position: 'relative',
+                                    width: 54,
+                                    height: 54,
+                                    borderRadius: 10,
+                                    border: '1px solid var(--border)',
+                                    background: opt?.swatch ? String(opt.swatch) : 'var(--panel-2)',
+                                    overflow: 'hidden',
+                                  }}
+                                  title={opt?.swatch ? String(opt.swatch) : 'Pick color'}
+                                >
+                                  <input
+                                    type="color"
+                                    value={typeof opt?.swatch === 'string' && opt.swatch ? opt.swatch : '#ffffff'}
+                                    onChange={(e) => updateVariantOption(setForm, t.key, idx, { swatch: e.target.value })}
+                                    style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
+                                  />
+                                  {!opt?.swatch && (
+                                    <div
+                                      style={{
+                                        position: 'absolute',
+                                        inset: 0,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontSize: 10,
+                                        fontWeight: 700,
+                                        color: 'var(--text-muted)',
+                                      }}
+                                    >
+                                      Pick
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ) : null}
                             <select
                               className="input"
                               value={Number.isFinite(Number(opt?.imageIndex)) ? Number(opt.imageIndex) : -1}
@@ -3557,7 +3604,8 @@ export default function InhouseProducts() {
                               key={`${t.key}-${idx}`}
                               style={{
                                 display: 'grid',
-                                gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr 1fr 70px auto',
+                                gridTemplateColumns:
+                                  isMobile ? '1fr' : (t.key === 'color' ? '2fr 1fr 70px 1fr 70px auto' : '2fr 1fr 1fr 70px auto'),
                                 gap: 10,
                                 alignItems: 'center',
                               }}
@@ -3576,6 +3624,45 @@ export default function InhouseProducts() {
                                 value={Number.isFinite(Number(opt?.stockQty)) ? Number(opt.stockQty) : 0}
                                 onChange={(e) => updateVariantOption(setEditForm, t.key, idx, { stockQty: Math.max(0, Math.floor(Number(e.target.value || 0))) })}
                               />
+                              {t.key === 'color' ? (
+                                <div style={{ display: 'flex', justifyContent: 'center' }}>
+                                  <div
+                                    style={{
+                                      position: 'relative',
+                                      width: 54,
+                                      height: 54,
+                                      borderRadius: 10,
+                                      border: '1px solid var(--border)',
+                                      background: opt?.swatch ? String(opt.swatch) : 'var(--panel-2)',
+                                      overflow: 'hidden',
+                                    }}
+                                    title={opt?.swatch ? String(opt.swatch) : 'Pick color'}
+                                  >
+                                    <input
+                                      type="color"
+                                      value={typeof opt?.swatch === 'string' && opt.swatch ? opt.swatch : '#ffffff'}
+                                      onChange={(e) => updateVariantOption(setEditForm, t.key, idx, { swatch: e.target.value })}
+                                      style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
+                                    />
+                                    {!opt?.swatch && (
+                                      <div
+                                        style={{
+                                          position: 'absolute',
+                                          inset: 0,
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          fontSize: 10,
+                                          fontWeight: 700,
+                                          color: 'var(--text-muted)',
+                                        }}
+                                      >
+                                        Pick
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              ) : null}
                               <select
                                 className="input"
                                 value={Number.isFinite(Number(opt?.imageIndex)) ? Number(opt.imageIndex) : -1}

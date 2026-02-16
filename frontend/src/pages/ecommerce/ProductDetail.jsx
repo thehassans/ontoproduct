@@ -50,7 +50,14 @@ const ProductDetail = () => {
           const stockQtyRaw = Number(opt.stockQty ?? opt.stock ?? 0)
           const stockQty = Number.isFinite(stockQtyRaw) ? Math.max(0, Math.floor(stockQtyRaw)) : 0
           const image = typeof opt.image === 'string' && opt.image.trim() ? opt.image.trim() : ''
-          return { value, stockQty, ...(image ? { image } : {}) }
+          let swatch = ''
+          try {
+            if (typeof opt.swatch === 'string' && opt.swatch.trim()) {
+              const raw = opt.swatch.trim()
+              if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(raw)) swatch = raw
+            }
+          } catch {}
+          return { value, stockQty, ...(image ? { image } : {}), ...(swatch ? { swatch } : {}) }
         })
         .filter(Boolean)
       if (norm.length) out[k] = norm
@@ -777,31 +784,72 @@ const ProductDetail = () => {
                           const value = String(opt?.value || '')
                           const stockQty = Number(opt?.stockQty)
                           const disabled = Number.isFinite(stockQty) ? stockQty <= 0 : false
+                          const isColor = String(name || '').toLowerCase() === 'color'
                           return (
-                            <button
-                              key={idx}
-                              onClick={() => {
-                                if (disabled) return
-                                setSelectedVariants(prev => ({ ...prev, [name]: value }))
-                                try {
-                                  if (opt?.image) {
-                                    const abs = resolveImageUrl(opt.image)
-                                    const imgIdx = images.findIndex((u) => u === abs)
-                                    if (imgIdx >= 0) setSelectedImage(imgIdx)
-                                  }
-                                } catch {}
-                              }}
-                              disabled={disabled}
-                              className={`px-4 py-2 rounded-lg text-sm border transition-all ${
-                                selectedVariants[name] === value
-                                  ? 'border-orange-500 bg-orange-50 text-orange-700 font-medium'
-                                  : disabled
-                                    ? 'border-gray-200 text-gray-300 bg-gray-50 cursor-not-allowed'
-                                    : 'border-gray-200 hover:border-gray-300 text-gray-700'
-                              }`}
-                            >
-                              {value}
-                            </button>
+                            isColor ? (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => {
+                                  if (disabled) return
+                                  setSelectedVariants((prev) => ({ ...prev, [name]: value }))
+                                  try {
+                                    if (opt?.image) {
+                                      const abs = resolveImageUrl(opt.image)
+                                      const imgIdx = images.findIndex((u) => u === abs)
+                                      if (imgIdx >= 0) setSelectedImage(imgIdx)
+                                    }
+                                  } catch {}
+                                }}
+                                disabled={disabled}
+                                title={value}
+                                className={`relative w-11 h-11 rounded-lg border transition-all overflow-hidden ${
+                                  selectedVariants[name] === value
+                                    ? 'border-orange-500 ring-2 ring-orange-500'
+                                    : disabled
+                                      ? 'border-gray-200 opacity-40 cursor-not-allowed'
+                                      : 'border-gray-200 hover:border-gray-300'
+                                }`}
+                              >
+                                {opt?.image ? (
+                                  <img
+                                    src={resolveImageUrl(opt.image)}
+                                    alt={value}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <div
+                                    className="w-full h-full"
+                                    style={{ backgroundColor: (typeof opt?.swatch === 'string' && opt.swatch) ? opt.swatch : '#f3f4f6' }}
+                                  />
+                                )}
+                              </button>
+                            ) : (
+                              <button
+                                key={idx}
+                                onClick={() => {
+                                  if (disabled) return
+                                  setSelectedVariants(prev => ({ ...prev, [name]: value }))
+                                  try {
+                                    if (opt?.image) {
+                                      const abs = resolveImageUrl(opt.image)
+                                      const imgIdx = images.findIndex((u) => u === abs)
+                                      if (imgIdx >= 0) setSelectedImage(imgIdx)
+                                    }
+                                  } catch {}
+                                }}
+                                disabled={disabled}
+                                className={`px-4 py-2 rounded-lg text-sm border transition-all ${
+                                  selectedVariants[name] === value
+                                    ? 'border-orange-500 bg-orange-50 text-orange-700 font-medium'
+                                    : disabled
+                                      ? 'border-gray-200 text-gray-300 bg-gray-50 cursor-not-allowed'
+                                      : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                                }`}
+                              >
+                                {value}
+                              </button>
+                            )
                           )
                         })}
                       </div>

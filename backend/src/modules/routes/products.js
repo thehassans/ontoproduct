@@ -417,6 +417,14 @@ router.post('/', auth, allowRoles('admin','user','manager'), upload.any(), async
             const stockQty = Number(opt.stockQty ?? opt.stock ?? 0)
             const safeStock = Number.isFinite(stockQty) ? Math.max(0, Math.floor(stockQty)) : 0
 
+            let swatch = ''
+            try {
+              if (typeof opt.swatch === 'string' && opt.swatch.trim()) {
+                const raw = opt.swatch.trim()
+                if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(raw)) swatch = raw
+              }
+            } catch {}
+
             let image = ''
             if (typeof opt.image === 'string') image = String(opt.image).trim()
             if (!image && opt.imageIndex != null) {
@@ -430,6 +438,7 @@ router.post('/', auth, allowRoles('admin','user','manager'), upload.any(), async
               value,
               stockQty: safeStock,
               ...(image ? { image } : {}),
+              ...(swatch ? { swatch } : {}),
             }
           })
           .filter(Boolean)
@@ -1292,6 +1301,14 @@ router.patch('/:id', auth, allowRoles('admin','user','manager'), upload.any(), a
           const stockQty = Number(opt.stockQty ?? opt.stock ?? 0)
           const safeStock = Number.isFinite(stockQty) ? Math.max(0, Math.floor(stockQty)) : 0
 
+          let swatch = ''
+          try {
+            if (typeof opt.swatch === 'string' && opt.swatch.trim()) {
+              const raw = opt.swatch.trim()
+              if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(raw)) swatch = raw
+            }
+          } catch {}
+
           let image = ''
           if (typeof opt.image === 'string') image = String(opt.image).trim()
           if (!image && opt.imageIndex != null) {
@@ -1305,6 +1322,7 @@ router.patch('/:id', auth, allowRoles('admin','user','manager'), upload.any(), a
             value,
             stockQty: safeStock,
             ...(image ? { image } : {}),
+            ...(swatch ? { swatch } : {}),
           }
         })
         .filter(Boolean)
