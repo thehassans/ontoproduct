@@ -34,6 +34,32 @@ export const API_BASE = (() => {
   return base
 })()
 
+export const MEDIA_BASE_EXPLICIT = (() => {
+  const raw = import.meta.env.VITE_MEDIA_BASE ?? ''
+  const explicit = String(raw).trim()
+  if (!explicit) return ''
+  try {
+    if (/^https?:\/\//i.test(explicit)) return explicit.replace(/\/$/, '')
+    return explicit.startsWith('/') ? explicit.replace(/\/$/, '') : '/' + explicit.replace(/\/$/, '')
+  } catch {
+    return explicit
+  }
+})()
+
+export const UPLOADS_BASE = (() => {
+  const raw = import.meta.env.VITE_UPLOADS_BASE ?? ''
+  const explicit = String(raw).trim()
+  if (!explicit) return ''
+  try {
+    let v = explicit.replace(/\/$/, '')
+    if (v.toLowerCase().endsWith('/uploads')) v = v.slice(0, -8)
+    if (/^https?:\/\//i.test(v)) return v
+    return v.startsWith('/') ? v : '/' + v
+  } catch {
+    return explicit
+  }
+})()
+
 export const MEDIA_BASE = (() => {
   const raw = import.meta.env.VITE_MEDIA_BASE ?? ''
   const explicit = String(raw).trim()
@@ -69,13 +95,15 @@ export function mediaUrl(input) {
   // because many deployments only proxy '/api' to Node.
   const apiBase = String(API_BASE || '').trim()
   const mediaBase = String(MEDIA_BASE || '').trim()
-  const uploadsBase = apiBase || mediaBase
+  const uploadsBase = String(UPLOADS_BASE || MEDIA_BASE_EXPLICIT || '').trim() || apiBase || mediaBase
 
   if (u.startsWith('/api/uploads/')) {
+    if (UPLOADS_BASE || MEDIA_BASE_EXPLICIT) return `${uploadsBase}/uploads/${u.slice(13)}`
     if (!apiBase) return `${mediaBase}${u}`
     return `${apiBase}${u.slice(4)}`
   }
   if (u.startsWith('api/uploads/')) {
+    if (UPLOADS_BASE || MEDIA_BASE_EXPLICIT) return `${uploadsBase}/uploads/${u.slice(12)}`
     if (!apiBase) return `${mediaBase}/${u}`
     return `${apiBase}/${u.slice(4)}`
   }
