@@ -36,6 +36,7 @@ export default function CategoryBrowser({ selectedCountry = 'GB' }) {
   const [activeIdx, setActiveIdx] = useState(0)
   const [loading, setLoading] = useState(true)
   const [catProducts, setCatProducts] = useState({})
+  const [subProducts, setSubProducts] = useState({})
   const scrollRef = useRef(null)
 
   useEffect(() => {
@@ -50,6 +51,7 @@ export default function CategoryBrowser({ selectedCountry = 'GB' }) {
           setCategories(cats)
           setActiveIdx(0)
           setCatProducts({})
+          setSubProducts({})
         }
       } catch {
         if (alive) setCategories([])
@@ -73,7 +75,7 @@ export default function CategoryBrowser({ selectedCountry = 'GB' }) {
       try {
         const qs = new URLSearchParams()
         qs.set('page', '1')
-        qs.set('limit', '3')
+        qs.set('limit', '20')
         qs.set('sort', 'newest')
         qs.set('category', active.name)
         const countryName = COUNTRY_MAP[selectedCountry] || selectedCountry || ''
@@ -87,6 +89,31 @@ export default function CategoryBrowser({ selectedCountry = 'GB' }) {
     })()
     return () => { alive = false }
   }, [active, hasSubs, catKey, selectedCountry])
+
+  useEffect(() => {
+    if (!active || !hasSubs) return
+    const countryName = COUNTRY_MAP[selectedCountry] || selectedCountry || ''
+    subs.forEach(sub => {
+      const subKey = `${catKey}__${sub.name}`
+      if (subProducts[subKey]) return
+      ;(async () => {
+        try {
+          const qs = new URLSearchParams()
+          qs.set('page', '1')
+          qs.set('limit', '6')
+          qs.set('sort', 'newest')
+          qs.set('category', active.name)
+          qs.set('subcategory', sub.name)
+          if (countryName) qs.set('country', countryName)
+          const res = await apiGet(`/api/products/public?${qs.toString()}`)
+          const products = Array.isArray(res?.products) ? res.products : []
+          setSubProducts(prev => ({ ...prev, [subKey]: products }))
+        } catch {
+          setSubProducts(prev => ({ ...prev, [subKey]: [] }))
+        }
+      })()
+    })
+  }, [active, hasSubs, catKey, selectedCountry, subs])
 
   if (loading || categories.length === 0) return null
 
@@ -273,18 +300,41 @@ export default function CategoryBrowser({ selectedCountry = 'GB' }) {
             }}
           >
             {hasSubs ? (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-                {subs.map((sub) => (
-                  <CardItem
-                    key={sub._id}
-                    to={`/catalog?category=${encodeURIComponent(active.name)}&subcategory=${encodeURIComponent(sub.name)}`}
-                    imgSrc={sub.image ? mediaUrl(sub.image) : null}
-                    label={sub.name}
-                  />
-                ))}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {subs.map((sub) => {
+                  const subKey = `${catKey}__${sub.name}`
+                  const prods = subProducts[subKey] || []
+                  return (
+                    <div key={sub._id || sub.name}>
+                      <Link
+                        to={`/catalog?category=${encodeURIComponent(active.name)}&subcategory=${encodeURIComponent(sub.name)}`}
+                        style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, textDecoration: 'none' }}
+                      >
+                        {sub.image && (
+                          <img src={mediaUrl(sub.image)} alt="" style={{ width: 28, height: 28, borderRadius: 6, objectFit: 'cover' }} onError={e => { e.target.style.display = 'none' }} />
+                        )}
+                        <span style={{ fontSize: 13, fontWeight: 800, color: '#3d3529', textTransform: 'uppercase', letterSpacing: 0.5 }}>{sub.name}</span>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a3896b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+                      </Link>
+                      {prods.length > 0 ? (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                          {prods.slice(0, 6).map((p) => (
+                            <CardItem
+                              key={p._id}
+                              to={`/product/${p._id}`}
+                              imgSrc={mediaUrl(p?.images?.[0] || p?.imagePath || '') || null}
+                              label={p.name}
+                              isProduct
+                            />
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  )
+                })}
               </div>
             ) : fallbackProducts.length > 0 ? (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
                 {fallbackProducts.map((p) => (
                   <CardItem
                     key={p._id}

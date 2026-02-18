@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import ProductCardMini from '../../components/ecommerce/ProductCardMini'
 import Header from '../../components/layout/Header'
 import ShoppingCart from '../../components/ecommerce/ShoppingCart'
@@ -350,6 +350,23 @@ export default function ProductCatalog() {
   const [hasMore, setHasMore] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const loaderRef = useRef(null)
+  const [mobileCountryOpen, setMobileCountryOpen] = useState(false)
+  const [cartCount, setCartCount] = useState(() => { try { const c = JSON.parse(localStorage.getItem('shopping_cart') || '[]'); return c.reduce((s, i) => s + (i.quantity || 1), 0) } catch { return 0 } })
+  const COUNTRY_LIST_LOCAL = [
+    { code: 'GB', name: 'UK', flag: '🇬🇧' }, { code: 'US', name: 'USA', flag: '🇺🇸' },
+    { code: 'AE', name: 'UAE', flag: '🇦🇪' }, { code: 'SA', name: 'KSA', flag: '🇸🇦' },
+    { code: 'OM', name: 'Oman', flag: '🇴🇲' }, { code: 'BH', name: 'Bahrain', flag: '🇧🇭' },
+    { code: 'IN', name: 'India', flag: '🇮🇳' }, { code: 'PK', name: 'Pakistan', flag: '🇵🇰' },
+    { code: 'KW', name: 'Kuwait', flag: '🇰🇼' }, { code: 'QA', name: 'Qatar', flag: '🇶🇦' },
+    { code: 'CA', name: 'Canada', flag: '🇨🇦' }, { code: 'AU', name: 'Australia', flag: '🇦🇺' },
+  ]
+  const currentFlag = COUNTRY_LIST_LOCAL.find(c => c.code === selectedCountry)?.flag || '🇬🇧'
+  const currentCountryName = COUNTRY_LIST_LOCAL.find(c => c.code === selectedCountry)?.name || 'UK'
+  useEffect(() => {
+    const update = () => { try { const c = JSON.parse(localStorage.getItem('shopping_cart') || '[]'); setCartCount(c.reduce((s, i) => s + (i.quantity || 1), 0)) } catch { setCartCount(0) } }
+    window.addEventListener('cartUpdated', update); window.addEventListener('storage', update)
+    return () => { window.removeEventListener('cartUpdated', update); window.removeEventListener('storage', update) }
+  }, [])
 
   const mixByCategory = useCallback((list) => {
     const rows = Array.isArray(list) ? list : []
@@ -978,6 +995,43 @@ export default function ProductCatalog() {
         onSave={setEditState}
       />
       
+      {/* Mobile+Tablet Header — deliver-to + search + cart */}
+      <div className="lg:hidden bg-white sticky top-0 z-40 shadow-sm">
+        <div className="flex items-center justify-between px-3 pt-3 pb-1">
+          <Link to="/" className="flex items-center">
+            <img src="/BuySial2.png" alt="BuySial" className="h-10 w-auto" />
+          </Link>
+          <button onClick={() => navigate('/cart')} className="w-9 h-9 rounded-lg flex items-center justify-center active:bg-gray-100 transition-colors relative">
+            <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+            {cartCount > 0 && <span className="absolute -top-0.5 -right-0.5 bg-orange-500 text-white text-[9px] font-bold rounded-full min-w-[16px] h-[16px] flex items-center justify-center px-0.5">{cartCount > 99 ? '99+' : cartCount}</span>}
+          </button>
+        </div>
+        <div className="px-3 pb-1.5">
+          <form onSubmit={e => { e.preventDefault(); if (searchQuery.trim()) handleSearch(searchQuery) }} className="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2 border border-gray-100">
+            <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+            <input type="text" value={searchQuery} onChange={e => handleSearch(e.target.value)} placeholder="Search products..." className="flex-1 bg-transparent border-none outline-none text-sm text-gray-900 placeholder-gray-400" />
+          </form>
+        </div>
+        <div className="px-3 pb-2 relative">
+          <button onClick={() => setMobileCountryOpen(!mobileCountryOpen)} className="flex items-center gap-1.5 text-xs text-gray-500">
+            <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" /></svg>
+            <span className="font-medium">Deliver to</span>
+            <span className="font-bold text-gray-900">{currentFlag} {currentCountryName}</span>
+            <svg className={`w-3 h-3 text-gray-400 transition-transform ${mobileCountryOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" /></svg>
+          </button>
+          {mobileCountryOpen && (
+            <div className="absolute left-2 right-2 top-full mt-1 max-h-64 overflow-y-auto bg-white rounded-2xl shadow-[0_12px_48px_rgba(0,0,0,0.15)] border border-gray-100 py-1 z-50">
+              {COUNTRY_LIST_LOCAL.map(c => (
+                <button key={c.code} onClick={() => { setSelectedCountry(c.code); setMobileCountryOpen(false); try { localStorage.setItem('selected_country', c.code) } catch {}; window.dispatchEvent(new CustomEvent('countryChanged', { detail: { code: c.code } })) }} className={`w-full px-4 py-2.5 flex items-center gap-2.5 text-left text-sm transition-colors ${selectedCountry === c.code ? 'bg-orange-50 text-orange-600 font-semibold' : 'text-gray-700 hover:bg-gray-50'}`}>
+                  <span>{c.flag}</span><span>{c.name}</span>
+                  {selectedCountry === c.code && <svg className="w-3.5 h-3.5 ml-auto text-orange-500" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" /></svg>}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
       <div className="hidden lg:block">
         <Header 
           onCartClick={() => setIsCartOpen(true)} 
@@ -1003,20 +1057,21 @@ export default function ProductCatalog() {
               </div>
             )}
 
-            <div className="mb-6">
-              <SearchBar
-                searchQuery={searchQuery}
-                onSearchChange={handleSearch}
-                sortBy={sortBy}
-                onSortChange={(value) => {
-                  setSortBy(value)
-                  setCurrentPage(1)
-                  trackSortUsage(value)
-                }}
-                showFilters={showFilters}
-                onToggleFilters={() => setShowFilters(!showFilters)}
-                hideFiltersButtonOnDesktop={true}
-              />
+            {/* Minimal search bar — desktop only (mobile has it in header) */}
+            <div className="mb-6 hidden lg:block">
+              <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+                <form onSubmit={e => { e.preventDefault(); if (searchQuery.trim()) handleSearch(searchQuery) }} className="flex items-center gap-3">
+                  <svg className="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+                  <input type="text" value={searchQuery} onChange={e => handleSearch(e.target.value)} placeholder="Search products..." className="flex-1 bg-transparent border-none outline-none text-base text-gray-900 placeholder-gray-400" />
+                  <select value={sortBy} onChange={e => { setSortBy(e.target.value); setCurrentPage(1) }} className="bg-gray-50 border border-gray-100 rounded-lg px-3 py-2 text-sm text-gray-600 focus:outline-none cursor-pointer">
+                    <option value="newest">Newest</option>
+                    <option value="price">Price: Low to High</option>
+                    <option value="price-desc">Price: High to Low</option>
+                    <option value="rating">Top Rated</option>
+                    <option value="featured">Featured</option>
+                  </select>
+                </form>
+              </div>
             </div>
 
             {catalogHeadline?.enabled && Array.isArray(catalogHeadline?.slides) && catalogHeadline.slides.length ? (
@@ -1177,7 +1232,7 @@ export default function ProductCatalog() {
               })()
             ) : null}
 
-            {/* 🎬 Video Products - Ultra Premium */}
+            {/* Discover Products */}
             <div className="mb-2">
               <HorizontalProductSection
                 title="Discover Products"
@@ -1187,6 +1242,21 @@ export default function ProductCatalog() {
                 showVideo={true}
                 autoScroll={true}
                 autoScrollSpeed={0.5}
+                headerVariant="pill"
+              />
+            </div>
+
+            {/* BuySial Recommendations */}
+            <div className="mb-2">
+              <HorizontalProductSection
+                title="BuySial Recommendations"
+                filter="recommended"
+                bgGradient="from-blue-600 to-indigo-600"
+                selectedCountry={selectedCountry}
+                limit={20}
+                showVideo={false}
+                autoScroll={true}
+                autoScrollSpeed={0.4}
                 headerVariant="pill"
               />
             </div>

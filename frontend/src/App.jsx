@@ -204,7 +204,7 @@ const CartPage = lazy(() => import('./pages/ecommerce/CartPage.jsx'))
 const Checkout = lazy(() => import('./pages/store/Checkout.jsx'))
 const PaymentResult = lazy(() => import('./pages/ecommerce/PaymentResult.jsx'))
 const OrderSuccess = lazy(() => import('./pages/ecommerce/OrderSuccess.jsx'))
-import FloatingWhatsApp from './components/ecommerce/FloatingWhatsApp.jsx'
+// import FloatingWhatsApp from './components/ecommerce/FloatingWhatsApp.jsx'
 const PaymentSuccess = lazy(() => import('./pages/payment/PaymentSuccess.jsx'))
 const PaymentCancelled = lazy(() => import('./pages/payment/PaymentCancelled.jsx'))
 
@@ -540,7 +540,7 @@ export default function App() {
         <CustomDomainRouter>
           <Suspense fallback={<AppFallback />}>
           <DynamicPixels />
-          <FloatingWhatsApp />
+          {/* <FloatingWhatsApp /> */}
           <Routes>
             {/* Public site pages */}
             <Route path="/" element={<SiteHome />} />
