@@ -157,26 +157,28 @@ export default function Home(){
 
       <h1 className="sr-only">BuySial Commerce</h1>
 
-      {/* Mobile+Tablet Header — tall, with search + deliver-to + cart */}
-      <div className="lg:hidden bg-white sticky top-0 z-40 shadow-sm">
-        {/* Row 1: hamburger + logo + cart */}
-        <div className="flex items-center justify-between px-3 pt-3 pb-1">
-          <div className="flex items-center gap-2">
-            <button onClick={() => setMobileMenuOpen(true)} className="w-9 h-9 rounded-lg flex items-center justify-center active:bg-gray-100 transition-colors">
-              <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><line x1="4" y1="7" x2="20" y2="7" /><line x1="4" y1="12" x2="20" y2="12" /><line x1="4" y1="17" x2="20" y2="17" /></svg>
-            </button>
-            <Link to="/" className="flex items-center">
-              <img src="/BuySial2.png" alt="BuySial" className="h-10 w-auto" />
-            </Link>
-          </div>
-          <button onClick={() => navigate('/cart')} className="w-9 h-9 rounded-lg flex items-center justify-center active:bg-gray-100 transition-colors relative">
-            <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-            {cartCount > 0 && <span className="absolute -top-0.5 -right-0.5 bg-orange-500 text-white text-[9px] font-bold rounded-full min-w-[16px] h-[16px] flex items-center justify-center px-0.5">{cartCount > 99 ? '99+' : cartCount}</span>}
+      {/* Hero Banner with floating controls inside */}
+      <div className="relative lg:hidden">
+        <PremiumHeroBanner />
+        {/* Floating hamburger + cart on banner */}
+        <div className="absolute top-3 left-3 right-3 z-30 flex items-center justify-between pointer-events-none">
+          <button
+            onClick={() => setMobileMenuOpen(true)}
+            className="pointer-events-auto w-10 h-10 rounded-full bg-white/80 backdrop-blur-md shadow-sm flex items-center justify-center active:scale-95 transition-transform"
+          >
+            <svg className="w-5 h-5 text-gray-800" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><line x1="4" y1="7" x2="20" y2="7" /><line x1="4" y1="12" x2="20" y2="12" /><line x1="4" y1="17" x2="20" y2="17" /></svg>
+          </button>
+          <button
+            onClick={() => navigate('/cart')}
+            className="pointer-events-auto w-10 h-10 rounded-full bg-white/80 backdrop-blur-md shadow-sm flex items-center justify-center active:scale-95 transition-transform relative"
+          >
+            <svg className="w-5 h-5 text-gray-800" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+            {cartCount > 0 && <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">{cartCount > 99 ? '99+' : cartCount}</span>}
           </button>
         </div>
-        {/* Row 2: Search bar integrated */}
-        <div className="px-3 pb-1.5">
-          <form onSubmit={e => { e.preventDefault(); if (searchQuery.trim()) { navigate(`/catalog?search=${encodeURIComponent(searchQuery.trim())}`); setSearchQuery('') } }} className="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2 border border-gray-100">
+        {/* Search bar floating at bottom of banner */}
+        <div className="absolute bottom-3 left-3 right-3 z-30">
+          <form onSubmit={e => { e.preventDefault(); if (searchQuery.trim()) { navigate(`/catalog?search=${encodeURIComponent(searchQuery.trim())}`); setSearchQuery('') } }} className="flex items-center gap-2.5 bg-white/90 backdrop-blur-xl rounded-full px-4 py-2.5 shadow-lg border border-white/60">
             <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
             <input
               ref={searchInputRef}
@@ -184,34 +186,36 @@ export default function Home(){
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder="Search products..."
-              className="flex-1 bg-transparent border-none outline-none text-sm text-gray-900 placeholder-gray-400"
+              className="flex-1 bg-transparent border-none outline-none text-sm text-gray-800 placeholder-gray-400"
             />
           </form>
         </div>
-        {/* Row 3: Deliver to */}
-        <div className="px-3 pb-2 relative">
-          <button onClick={() => setMobileCountryOpen(!mobileCountryOpen)} className="flex items-center gap-1.5 text-xs text-gray-500">
-            <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" /></svg>
-            <span className="font-medium">Deliver to</span>
-            <span className="font-bold text-gray-900">{currentFlag} {currentCountryName}</span>
-            <svg className={`w-3 h-3 text-gray-400 transition-transform ${mobileCountryOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" /></svg>
-          </button>
-          {mobileCountryOpen && (
-            <div className="absolute left-2 right-2 top-full mt-1 max-h-64 overflow-y-auto bg-white rounded-2xl shadow-[0_12px_48px_rgba(0,0,0,0.15)] border border-gray-100 py-1 z-50">
-              {COUNTRY_LIST_LOCAL.map(c => (
-                <button key={c.code} onClick={() => handleMobileCountryChange(c.code)} className={`w-full px-4 py-2.5 flex items-center gap-2.5 text-left text-sm transition-colors ${selectedCountry === c.code ? 'bg-orange-50 text-orange-600 font-semibold' : 'text-gray-700 hover:bg-gray-50'}`}>
-                  <span>{c.flag}</span><span>{c.name}</span>
-                  {selectedCountry === c.code && <svg className="w-3.5 h-3.5 ml-auto text-orange-500" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" /></svg>}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+      </div>
+      {/* Desktop banner */}
+      <div className="hidden lg:block relative">
+        <PremiumHeroBanner />
       </div>
 
-      {/* Hero Banner */}
-      <div className="relative">
-        <PremiumHeroBanner />
+      {/* Deliver to — below banner, ultra premium minimalist */}
+      <div className="lg:hidden relative">
+        <div className="bg-white/95 backdrop-blur-sm px-4 py-2.5 flex items-center gap-2 border-b border-gray-100/80">
+          <svg className="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" /></svg>
+          <button onClick={() => setMobileCountryOpen(!mobileCountryOpen)} className="flex items-center gap-1.5 text-[13px] text-gray-600">
+            <span className="font-medium">Deliver to</span>
+            <span className="font-bold text-gray-900">{currentFlag} {currentCountryName}</span>
+            <svg className={`w-3.5 h-3.5 text-gray-400 transition-transform ${mobileCountryOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" /></svg>
+          </button>
+        </div>
+        {mobileCountryOpen && (
+          <div className="absolute left-2 right-2 top-full -mt-1 max-h-64 overflow-y-auto bg-white rounded-2xl shadow-[0_12px_48px_rgba(0,0,0,0.15)] border border-gray-100 py-1 z-50">
+            {COUNTRY_LIST_LOCAL.map(c => (
+              <button key={c.code} onClick={() => handleMobileCountryChange(c.code)} className={`w-full px-4 py-2.5 flex items-center gap-2.5 text-left text-sm transition-colors ${selectedCountry === c.code ? 'bg-orange-50 text-orange-600 font-semibold' : 'text-gray-700 hover:bg-gray-50'}`}>
+                <span>{c.flag}</span><span>{c.name}</span>
+                {selectedCountry === c.code && <svg className="w-3.5 h-3.5 ml-auto text-orange-500" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" /></svg>}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Mobile slide-out menu — ultra premium minimalist */}

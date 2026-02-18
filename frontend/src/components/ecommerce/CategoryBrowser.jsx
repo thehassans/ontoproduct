@@ -277,17 +277,22 @@ export default function CategoryBrowser({ selectedCountry = 'GB' }) {
                         src={mediaUrl(cat.icon)}
                         alt=""
                         style={{ width: 24, height: 24, objectFit: 'contain' }}
-                        onError={(e) => { e.target.style.display = 'none' }}
+                        onError={(e) => { e.target.onerror = null; e.target.src = getDefaultCategoryImage(cat.name) }}
                       />
                     ) : cat.image ? (
                       <img
                         src={mediaUrl(cat.image)}
                         alt=""
-                        style={{ width: 28, height: 28, objectFit: 'cover', borderRadius: 6 }}
-                        onError={(e) => { e.target.style.display = 'none' }}
+                        style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 8 }}
+                        onError={(e) => { e.target.onerror = null; e.target.src = getDefaultCategoryImage(cat.name) }}
                       />
                     ) : (
-                      getCategoryIcon(cat.name)
+                      <img
+                        src={getDefaultCategoryImage(cat.name)}
+                        alt=""
+                        style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 8 }}
+                        loading="lazy"
+                      />
                     )}
                   </div>
                   <span
