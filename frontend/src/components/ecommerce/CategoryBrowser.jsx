@@ -25,6 +25,26 @@ function getCategoryIcon(name) {
   return DEFAULT_ICON
 }
 
+function getDefaultCategoryImage(name) {
+  const n = String(name || '').toLowerCase()
+  if (n.includes('beauty') || n.includes('cosmetic') || n.includes('skin')) return 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=400&h=400&fit=crop'
+  if (n.includes('electr') || n.includes('tech') || n.includes('phone') || n.includes('mobile') || n.includes('computer')) return 'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=400&h=400&fit=crop'
+  if (n.includes('fashion') || n.includes('cloth') || n.includes('wear') || n.includes('dress')) return 'https://images.unsplash.com/photo-1445205170230-053b83016050?w=400&h=400&fit=crop'
+  if (n.includes('hair')) return 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=400&h=400&fit=crop'
+  if (n.includes('health') || n.includes('wellness')) return 'https://images.unsplash.com/photo-1505576399279-0d06b2000de0?w=400&h=400&fit=crop'
+  if (n.includes('home') || n.includes('house') || n.includes('furniture') || n.includes('decor')) return 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400&h=400&fit=crop'
+  if (n.includes('jewel') || n.includes('watch') || n.includes('accessor')) return 'https://images.unsplash.com/photo-1515562141589-67f0d0e6f52e?w=400&h=400&fit=crop'
+  if (n.includes('kitchen') || n.includes('food') || n.includes('grocery')) return 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400&h=400&fit=crop'
+  if (n.includes('sport') || n.includes('fitness') || n.includes('gym')) return 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=400&h=400&fit=crop'
+  if (n.includes('toy') || n.includes('kid') || n.includes('baby') || n.includes('child')) return 'https://images.unsplash.com/photo-1566576912321-d58ddd7a6088?w=400&h=400&fit=crop'
+  if (n.includes('auto') || n.includes('car') || n.includes('vehicle')) return 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=400&h=400&fit=crop'
+  if (n.includes('clean')) return 'https://images.unsplash.com/photo-1563453392212-326f5e854473?w=400&h=400&fit=crop'
+  if (n.includes('pet') || n.includes('animal')) return 'https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=400&h=400&fit=crop'
+  if (n.includes('garden') || n.includes('plant') || n.includes('outdoor')) return 'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=400&h=400&fit=crop'
+  if (n.includes('book') || n.includes('stationery') || n.includes('office')) return 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=400&h=400&fit=crop'
+  return 'https://images.unsplash.com/photo-1472851294608-062f824d29cc?w=400&h=400&fit=crop'
+}
+
 const COUNTRY_MAP = {
   SA: 'Saudi Arabia', AE: 'UAE', OM: 'Oman', BH: 'Bahrain',
   IN: 'India', KW: 'Kuwait', QA: 'Qatar', JO: 'Jordan',
@@ -152,9 +172,9 @@ export default function CategoryBrowser({ selectedCountry = 'GB' }) {
           overflow: 'hidden',
         }}
       >
-        {imgSrc ? (
+        {(imgSrc || (!isProduct && getDefaultCategoryImage(label))) ? (
           <img
-            src={imgSrc}
+            src={imgSrc || getDefaultCategoryImage(label)}
             alt={label}
             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
             loading="lazy"
