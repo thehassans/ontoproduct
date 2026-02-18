@@ -235,15 +235,37 @@ export default function DynamicPixels() {
         const key = resolveCountryKey(countrySeo, raw)
         if (!key) return
         const countryPixels = countrySeo[key] || {}
-        const ids = pickIds(countryPixels.tiktokPixel, seo.tiktokPixel)
-        const prev = Array.isArray(window._tiktokPixelIds) ? window._tiktokPixelIds : []
-        const same = JSON.stringify(ids) === JSON.stringify(prev)
-        if (same) return
 
-        window._tiktokPixelIds = ids
-        window._tiktokPixelId = ids[0]
-        window._tiktokEvents = seo.tiktokEvents || {}
-        initTikTokPixels(ids)
+        // Reinitialize ALL pixel platforms for the new country
+        const newPixels = {
+          tiktokPixel: pickIds(countryPixels.tiktokPixel, seo.tiktokPixel),
+          facebookPixel: pickIds(countryPixels.facebookPixel, seo.facebookPixel),
+          snapchatPixel: pickIds(countryPixels.snapchatPixel, seo.snapchatPixel),
+          pinterestTag: pickIds(countryPixels.pinterestTag, seo.pinterestTag),
+          twitterPixel: pickIds(countryPixels.twitterPixel, seo.twitterPixel),
+          linkedinTag: pickIds(countryPixels.linkedinTag, seo.linkedinTag),
+          googleAnalytics: pickIds(countryPixels.googleAnalytics, seo.googleAnalytics),
+        }
+
+        // TikTok
+        if (newPixels.tiktokPixel.length) {
+          window._tiktokPixelIds = newPixels.tiktokPixel
+          window._tiktokPixelId = newPixels.tiktokPixel[0]
+          window._tiktokEvents = seo.tiktokEvents || {}
+          initTikTokPixels(newPixels.tiktokPixel)
+        }
+        // Facebook
+        if (newPixels.facebookPixel.length) initFacebookPixels(newPixels.facebookPixel)
+        // Snapchat
+        if (newPixels.snapchatPixel.length) initSnapchatPixels(newPixels.snapchatPixel)
+        // Twitter
+        if (newPixels.twitterPixel.length) initTwitterPixels(newPixels.twitterPixel)
+        // Pinterest
+        if (newPixels.pinterestTag.length) initPinterestTags(newPixels.pinterestTag)
+        // LinkedIn
+        if (newPixels.linkedinTag.length) initLinkedInTags(newPixels.linkedinTag)
+        // Google Analytics
+        if (newPixels.googleAnalytics.length) initGoogleAnalyticsIds(newPixels.googleAnalytics)
       } catch {}
     }
     window.addEventListener('countryChanged', handler)

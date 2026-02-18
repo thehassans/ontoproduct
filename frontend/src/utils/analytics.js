@@ -1,4 +1,64 @@
-// Analytics utility for tracking user behavior and product interactions
+// Analytics utility - fires events across ALL pixel platforms with prices
+// Platforms: Facebook/Meta, TikTok, Snapchat, Pinterest, Twitter/X, LinkedIn, Google Analytics
+
+function getCurrency() {
+  try {
+    const country = localStorage.getItem('selected_country') || 'GB'
+    const map = { SA: 'SAR', AE: 'AED', OM: 'OMR', BH: 'BHD', KW: 'KWD', QA: 'QAR', IN: 'INR', PK: 'PKR', GB: 'GBP', UK: 'GBP', US: 'USD', CA: 'CAD', AU: 'AUD' }
+    return map[country] || 'GBP'
+  } catch { return 'GBP' }
+}
+
+// ─── Platform-specific safe callers ─────────────────────────────────────────
+
+function fbTrack(eventName, params = {}) {
+  if (typeof window === 'undefined' || !window.fbq) return
+  try { window.fbq('track', eventName, params) } catch (e) { console.warn('FB pixel error:', e) }
+}
+
+function ttqTrack(eventName, params = {}) {
+  if (typeof window === 'undefined' || !window.ttq) return
+  try {
+    const events = window._tiktokEvents || {}
+    const key = eventName ? eventName.charAt(0).toLowerCase() + eventName.slice(1) : ''
+    if (events[eventName] === false || (key && events[key] === false)) return
+
+    const ids = Array.isArray(window._tiktokPixelIds) ? window._tiktokPixelIds : []
+    if (ids.length && typeof window.ttq.instance === 'function') {
+      ids.forEach((id) => { try { window.ttq.instance(id).track(eventName, params) } catch {} })
+      return
+    }
+    window.ttq.track(eventName, params)
+  } catch (e) { console.warn('TikTok pixel error:', e) }
+}
+
+function snapTrack(eventName, params = {}) {
+  if (typeof window === 'undefined' || !window.snaptr) return
+  try { window.snaptr('track', eventName, params) } catch (e) { console.warn('Snap pixel error:', e) }
+}
+
+function pinTrack(eventName, params = {}) {
+  if (typeof window === 'undefined' || !window.pintrk) return
+  try { window.pintrk('track', eventName, params) } catch (e) { console.warn('Pinterest pixel error:', e) }
+}
+
+function twTrack(eventName, params = {}) {
+  if (typeof window === 'undefined' || !window.twq) return
+  try { window.twq('track', eventName, params) } catch (e) { console.warn('Twitter pixel error:', e) }
+}
+
+function liTrack(conversionId) {
+  if (typeof window === 'undefined' || !window.lintrk) return
+  try { window.lintrk('track', { conversion_id: conversionId }) } catch (e) { console.warn('LinkedIn pixel error:', e) }
+}
+
+function gaTrack(eventName, params = {}) {
+  if (typeof window === 'undefined' || !window.gtag) return
+  try { window.gtag('event', eventName, params) } catch (e) { console.warn('GA error:', e) }
+}
+
+// ─── Analytics class ────────────────────────────────────────────────────────
+
 class Analytics {
   constructor() {
     this.events = []
@@ -6,35 +66,7 @@ class Analytics {
     this.userId = this.getUserId()
     this.startTime = Date.now()
     this.lastPageView = null
-    this.pageViewDebounceMs = 500 // Debounce page views
-  }
-
-  // TikTok Pixel helper - safely call ttq methods
-  ttqTrack(eventName, params = {}) {
-    if (typeof window === 'undefined' || !window.ttq) return
-    try {
-      const events = window._tiktokEvents || {}
-      const key = eventName ? eventName.charAt(0).toLowerCase() + eventName.slice(1) : ''
-      if ((events && typeof events === 'object') && (events[eventName] === false || (key && events[key] === false))) {
-        return
-      }
-
-      const ids = Array.isArray(window._tiktokPixelIds) ? window._tiktokPixelIds : []
-      if (ids.length && typeof window.ttq.instance === 'function') {
-        ids.forEach((id) => {
-          try {
-            window.ttq.instance(id).track(eventName, params)
-          } catch (e) {
-            console.warn('TikTok Pixel tracking error:', e)
-          }
-        })
-        return
-      }
-
-      window.ttq.track(eventName, params)
-    } catch (e) {
-      console.warn('TikTok Pixel tracking error:', e)
-    }
+    this.pageViewDebounceMs = 500
   }
 
   generateSessionId() {
@@ -54,135 +86,293 @@ class Analytics {
   trackPageView(page, title = '') {
     const now = Date.now()
     const key = `${page}|${title}`
-    
-    // Skip if same page view within debounce period
-    if (this.lastPageView && this.lastPageView.key === key && 
-        now - this.lastPageView.time < this.pageViewDebounceMs) {
-      return
-    }
-    
+    if (this.lastPageView && this.lastPageView.key === key && now - this.lastPageView.time < this.pageViewDebounceMs) return
     this.lastPageView = { key, time: now }
-    
-    this.trackEvent('page_view', {
-      page,
-      title,
-      timestamp: now,
-      url: window.location.href
-    })
+    this.trackEvent('page_view', { page, title, timestamp: now, url: window.location.href })
   }
 
-  // Track product views
+  // Track product views → ViewContent across all platforms
   trackProductView(productId, productName, category, price) {
-    this.trackEvent('product_view', {
-      product_id: productId,
-      product_name: productName,
-      category,
-      price,
-      timestamp: Date.now()
+    const currency = getCurrency()
+    const value = Number(price) || 0
+
+    this.trackEvent('product_view', { product_id: productId, product_name: productName, category, price: value, timestamp: Date.now() })
+
+    // Facebook/Meta - ViewContent
+    fbTrack('ViewContent', {
+      content_ids: [String(productId)],
+      content_name: productName,
+      content_category: category,
+      content_type: 'product',
+      value: value,
+      currency: currency
     })
-    
-    // TikTok Pixel - ViewContent event
-    this.ttqTrack('ViewContent', {
-      content_id: productId,
+
+    // TikTok - ViewContent
+    ttqTrack('ViewContent', {
+      content_id: String(productId),
       content_type: 'product',
       content_name: productName,
       content_category: category,
-      price: price,
-      currency: 'SAR'
+      price: value,
+      value: value,
+      currency: currency
+    })
+
+    // Snapchat - VIEW_CONTENT
+    snapTrack('VIEW_CONTENT', {
+      item_ids: [String(productId)],
+      item_category: category,
+      price: value,
+      currency: currency
+    })
+
+    // Pinterest - ViewCategory / PageVisit with product data
+    pinTrack('pagevisit', {
+      product_id: String(productId),
+      product_name: productName,
+      product_category: category,
+      value: value,
+      currency: currency
+    })
+
+    // Twitter/X - ViewContent
+    twTrack('ViewContent', {
+      content_ids: [String(productId)],
+      content_name: productName,
+      content_type: 'product',
+      value: String(value),
+      currency: currency
+    })
+
+    // Google Analytics - view_item
+    gaTrack('view_item', {
+      currency: currency,
+      value: value,
+      items: [{ item_id: String(productId), item_name: productName, item_category: category, price: value, quantity: 1 }]
     })
   }
 
-  // Track add to cart events
+  // Track add to cart → AddToCart across all platforms
   trackAddToCart(productId, productName, price, quantity = 1) {
-    this.trackEvent('add_to_cart', {
-      product_id: productId,
-      product_name: productName,
-      price,
-      quantity,
-      timestamp: Date.now()
+    const currency = getCurrency()
+    const unitPrice = Number(price) || 0
+    const qty = Number(quantity) || 1
+    const totalValue = unitPrice * qty
+
+    this.trackEvent('add_to_cart', { product_id: productId, product_name: productName, price: unitPrice, quantity: qty, timestamp: Date.now() })
+
+    // Facebook/Meta - AddToCart
+    fbTrack('AddToCart', {
+      content_ids: [String(productId)],
+      content_name: productName,
+      content_type: 'product',
+      value: totalValue,
+      currency: currency,
+      num_items: qty
     })
-    
-    // TikTok Pixel - AddToCart event
-    this.ttqTrack('AddToCart', {
-      content_id: productId,
+
+    // TikTok - AddToCart
+    ttqTrack('AddToCart', {
+      content_id: String(productId),
       content_type: 'product',
       content_name: productName,
-      quantity: quantity,
-      price: price,
-      value: price * quantity,
-      currency: 'SAR'
+      quantity: qty,
+      price: unitPrice,
+      value: totalValue,
+      currency: currency
+    })
+
+    // Snapchat - ADD_CART
+    snapTrack('ADD_CART', {
+      item_ids: [String(productId)],
+      price: totalValue,
+      currency: currency,
+      number_items: qty
+    })
+
+    // Pinterest - AddToCart
+    pinTrack('addtocart', {
+      product_id: String(productId),
+      product_name: productName,
+      value: totalValue,
+      order_quantity: qty,
+      currency: currency
+    })
+
+    // Twitter/X - AddToCart
+    twTrack('AddToCart', {
+      content_ids: [String(productId)],
+      content_name: productName,
+      content_type: 'product',
+      value: String(totalValue),
+      currency: currency,
+      num_items: String(qty)
+    })
+
+    // Google Analytics - add_to_cart
+    gaTrack('add_to_cart', {
+      currency: currency,
+      value: totalValue,
+      items: [{ item_id: String(productId), item_name: productName, price: unitPrice, quantity: qty }]
     })
   }
 
-  // Track remove from cart events
+  // Track remove from cart
   trackRemoveFromCart(productId, productName, quantity = 1) {
-    this.trackEvent('remove_from_cart', {
-      product_id: productId,
-      product_name: productName,
-      quantity,
-      timestamp: Date.now()
+    this.trackEvent('remove_from_cart', { product_id: productId, product_name: productName, quantity, timestamp: Date.now() })
+
+    gaTrack('remove_from_cart', {
+      currency: getCurrency(),
+      items: [{ item_id: String(productId), item_name: productName, quantity: Number(quantity) || 1 }]
     })
   }
 
   // Track search events
   trackSearch(query, resultsCount = 0) {
-    this.trackEvent('search', {
-      query,
-      results_count: resultsCount,
-      timestamp: Date.now()
-    })
+    this.trackEvent('search', { query, results_count: resultsCount, timestamp: Date.now() })
+
+    // Facebook - Search
+    fbTrack('Search', { search_string: query, content_type: 'product' })
+
+    // TikTok - Search
+    ttqTrack('Search', { query: query })
+
+    // Snapchat - SEARCH
+    snapTrack('SEARCH', { search_string: query })
+
+    // Pinterest - Search
+    pinTrack('search', { search_query: query })
+
+    // Google Analytics - search
+    gaTrack('search', { search_term: query })
   }
 
-  // Track checkout events
+  // Track checkout start → InitiateCheckout across all platforms
   trackCheckoutStart(cartValue, itemCount) {
-    this.trackEvent('checkout_start', {
-      cart_value: cartValue,
-      item_count: itemCount,
-      timestamp: Date.now()
+    const currency = getCurrency()
+    const value = Number(cartValue) || 0
+    const count = Number(itemCount) || 0
+
+    this.trackEvent('checkout_start', { cart_value: value, item_count: count, timestamp: Date.now() })
+
+    // Facebook/Meta - InitiateCheckout
+    fbTrack('InitiateCheckout', {
+      value: value,
+      currency: currency,
+      num_items: count,
+      content_type: 'product'
     })
-    
-    // TikTok Pixel - InitiateCheckout event
-    this.ttqTrack('InitiateCheckout', {
+
+    // TikTok - InitiateCheckout
+    ttqTrack('InitiateCheckout', {
       content_type: 'product',
-      quantity: itemCount,
-      value: cartValue,
-      currency: 'SAR'
+      quantity: count,
+      value: value,
+      currency: currency
+    })
+
+    // Snapchat - START_CHECKOUT
+    snapTrack('START_CHECKOUT', {
+      price: value,
+      currency: currency,
+      number_items: count
+    })
+
+    // Pinterest - Checkout
+    pinTrack('checkout', {
+      value: value,
+      order_quantity: count,
+      currency: currency
+    })
+
+    // Twitter/X - InitiateCheckout
+    twTrack('InitiateCheckout', {
+      value: String(value),
+      currency: currency,
+      num_items: String(count)
+    })
+
+    // Google Analytics - begin_checkout
+    gaTrack('begin_checkout', {
+      currency: currency,
+      value: value
     })
   }
 
+  // Track checkout complete / purchase → Purchase across all platforms
   trackCheckoutComplete(orderId, cartValue, itemCount, paymentMethod) {
-    this.trackEvent('checkout_complete', {
-      order_id: orderId,
-      cart_value: cartValue,
-      item_count: itemCount,
-      payment_method: paymentMethod,
-      timestamp: Date.now()
+    const currency = getCurrency()
+    const value = Number(cartValue) || 0
+    const count = Number(itemCount) || 0
+
+    this.trackEvent('checkout_complete', { order_id: orderId, cart_value: value, item_count: count, payment_method: paymentMethod, timestamp: Date.now() })
+
+    // Facebook/Meta - Purchase
+    fbTrack('Purchase', {
+      value: value,
+      currency: currency,
+      num_items: count,
+      content_type: 'product'
     })
-    
-    // TikTok Pixel - CompletePayment event (Purchase)
-    this.ttqTrack('CompletePayment', {
+
+    // TikTok - CompletePayment
+    ttqTrack('CompletePayment', {
       content_type: 'product',
-      quantity: itemCount,
-      value: cartValue,
-      currency: 'SAR'
+      quantity: count,
+      value: value,
+      currency: currency
+    })
+
+    // Snapchat - PURCHASE
+    snapTrack('PURCHASE', {
+      price: value,
+      currency: currency,
+      number_items: count,
+      transaction_id: String(orderId || '')
+    })
+
+    // Pinterest - Checkout (purchase)
+    pinTrack('checkout', {
+      value: value,
+      order_quantity: count,
+      currency: currency,
+      order_id: String(orderId || '')
+    })
+
+    // Twitter/X - Purchase
+    twTrack('Purchase', {
+      value: String(value),
+      currency: currency,
+      num_items: String(count),
+      order_id: String(orderId || '')
+    })
+
+    // LinkedIn - conversion (uses conversion ID from settings if available)
+    try {
+      const seo = window._seoSettings || {}
+      if (seo.linkedinConversionId) {
+        liTrack(seo.linkedinConversionId)
+      }
+    } catch {}
+
+    // Google Analytics - purchase
+    gaTrack('purchase', {
+      transaction_id: String(orderId || ''),
+      value: value,
+      currency: currency,
+      items: [{ item_id: 'order', quantity: count }]
     })
   }
 
   // Track filter usage
   trackFilterUsage(filterType, filterValue) {
-    this.trackEvent('filter_usage', {
-      filter_type: filterType,
-      filter_value: filterValue,
-      timestamp: Date.now()
-    })
+    this.trackEvent('filter_usage', { filter_type: filterType, filter_value: filterValue, timestamp: Date.now() })
   }
 
   // Track sort usage
   trackSortUsage(sortBy) {
-    this.trackEvent('sort_usage', {
-      sort_by: sortBy,
-      timestamp: Date.now()
-    })
+    this.trackEvent('sort_usage', { sort_by: sortBy, timestamp: Date.now() })
   }
 
   // Generic event tracking
@@ -201,16 +391,8 @@ class Analytics {
         language: navigator.language
       }
     }
-
     this.events.push(event)
-    
-    // Store events in localStorage for persistence
     this.saveEventsToStorage()
-    
-    // Send to analytics service (if configured)
-    this.sendToAnalyticsService(event)
-    
-    // console.log('Analytics Event:', event) // Disabled to reduce console spam
   }
 
   // Save events to localStorage
@@ -218,46 +400,17 @@ class Analytics {
     try {
       const existingEvents = JSON.parse(localStorage.getItem('analytics_events') || '[]')
       const allEvents = [...existingEvents, ...this.events]
-      
-      // Keep only last 1000 events to prevent storage overflow
       const recentEvents = allEvents.slice(-1000)
-      
       localStorage.setItem('analytics_events', JSON.stringify(recentEvents))
-      this.events = [] // Clear current events after saving
+      this.events = []
     } catch (error) {
       console.error('Error saving analytics events:', error)
     }
   }
 
-  // Send events to analytics service (placeholder for future integration)
-  sendToAnalyticsService(event) {
-    // This is where you would send events to your analytics service
-    // Examples: Google Analytics, Mixpanel, Amplitude, etc.
-    
-    // For now, we'll just log to console
-    // In production, you might want to batch events and send them periodically
-    
-    if (window.gtag) {
-      // Google Analytics 4 example
-      window.gtag('event', event.event_name, event.properties)
-    }
-    
-    // You could also send to your own analytics endpoint
-    // fetch('/api/analytics', {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify(event)
-    // }).catch(console.error)
-  }
-
   // Get all stored events
   getAllEvents() {
-    try {
-      return JSON.parse(localStorage.getItem('analytics_events') || '[]')
-    } catch (error) {
-      console.error('Error retrieving analytics events:', error)
-      return []
-    }
+    try { return JSON.parse(localStorage.getItem('analytics_events') || '[]') } catch { return [] }
   }
 
   // Clear all stored events
@@ -270,7 +423,6 @@ class Analytics {
   getSessionSummary() {
     const events = this.getAllEvents()
     const sessionEvents = events.filter(event => event.session_id === this.sessionId)
-    
     return {
       session_id: this.sessionId,
       user_id: this.userId,
