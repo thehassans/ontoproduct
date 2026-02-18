@@ -10,6 +10,7 @@ import MobileBottomNav from '../../components/ecommerce/MobileBottomNav'
 import QuickCategories from '../../components/ecommerce/QuickCategories'
 import HorizontalProductSection from '../../components/ecommerce/HorizontalProductSection'
 import PremiumFooter from '../../components/layout/PremiumFooter'
+import CategoryBrowser from '../../components/ecommerce/CategoryBrowser'
 
 export default function Home(){
   const navigate = useNavigate()
@@ -505,98 +506,8 @@ export default function Home(){
       {/* Quick Categories - Mobile Style */}
       <QuickCategories />
 
-      {hotSellingCategories.length ? (
-        <section className="px-1 sm:px-2 lg:px-4 max-w-7xl mx-auto">
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden" style={{ margin: '4px 0' }}>
-            <div
-              className="px-4 py-3"
-              style={{
-                background: 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 12,
-              }}
-            >
-              <div style={{ width: 34 }} />
-              <div
-                style={{
-                  padding: '8px 14px',
-                  borderRadius: 999,
-                  background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
-                  color: '#ffffff',
-                  fontWeight: 900,
-                  fontSize: 13,
-                  letterSpacing: 0.2,
-                  textAlign: 'center',
-                  boxShadow: '0 10px 24px rgba(249,115,22,0.25)'
-                }}
-              >
-                Hot Selling Categories
-              </div>
-              <Link
-                to="/catalog"
-                style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: 999,
-                  border: '1px solid rgba(249,115,22,0.25)',
-                  background: 'rgba(255,255,255,0.8)',
-                  display: 'grid',
-                  placeItems: 'center',
-                  textDecoration: 'none',
-                  color: '#ea580c'
-                }}
-                aria-label="View all categories"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M9 18l6-6-6-6" />
-                </svg>
-              </Link>
-            </div>
-            <div className="grid grid-cols-2 gap-2 p-2">
-              {hotSellingCategories.map((cat) => (
-                <Link
-                  key={cat.name}
-                  to={`/catalog?category=${encodeURIComponent(cat.name)}`}
-                  className="rounded-2xl border transition-colors"
-                  style={{ textDecoration: 'none', background: '#fff7ed', borderColor: '#fed7aa' }}
-                >
-                  <div className="p-3" style={{ display: 'grid', gap: 10 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                        <div className="text-sm font-bold text-orange-500" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'center', width: '100%' }}>
-                          {cat.name}
-                        </div>
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      {cat.products.slice(0, 3).map((p) => (
-                        <div key={p._id} style={{ width: 44, height: 44, borderRadius: 12, overflow: 'hidden', border: '1px solid #e5e7eb', background: '#ffffff' }}>
-                          <img
-                            src={mediaUrl(p?.images?.[0] || p?.imagePath || '') || '/placeholder-product.svg'}
-                            alt={p?.name || cat.name}
-                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                            loading="lazy"
-                            decoding="async"
-                            onError={(e) => {
-                              e.target.onerror = null
-                              e.target.src = '/placeholder-product.svg'
-                            }}
-                          />
-                        </div>
-                      ))}
-                      {cat.products.length === 0 ? (
-                        <div className="text-xs text-gray-500">No products yet</div>
-                      ) : null}
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </section>
-      ) : null}
+      {/* Category Browser — Left tabs + Right subcategory cards */}
+      <CategoryBrowser selectedCountry={selectedCountry} />
 
       <div className="px-1 sm:px-2 lg:px-4 max-w-7xl mx-auto">
         <HorizontalProductSection

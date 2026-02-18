@@ -1,9 +1,43 @@
 import express from 'express'
+import multer from 'multer'
+import path from 'path'
+import fs from 'fs'
+import sharp from 'sharp'
+import { fileURLToPath } from 'url'
 import Category from '../models/Category.js'
 import Product from '../models/Product.js'
 import { auth, allowRoles } from '../middleware/auth.js'
 
 const router = express.Router()
+const __filename_cat = fileURLToPath(import.meta.url)
+const __dirname_cat = path.dirname(__filename_cat)
+
+function resolveCatUploadsDir() {
+  const candidates = [
+    path.resolve('/httpdocs/uploads'),
+    path.resolve(process.cwd(), 'uploads'),
+    path.resolve(process.cwd(), 'backend/uploads'),
+    path.resolve(__dirname_cat, '../../uploads'),
+  ]
+  for (const c of candidates) {
+    try { if (fs.existsSync(c) && fs.statSync(c).isDirectory()) return c } catch {}
+  }
+  try { fs.mkdirSync('uploads', { recursive: true }) } catch {}
+  return path.resolve('uploads')
+}
+const CAT_UPLOADS = resolveCatUploadsDir()
+
+const catStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const dir = path.resolve(CAT_UPLOADS, 'categories')
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
+    cb(null, dir)
+  },
+  filename: (req, file, cb) => {
+    cb(null, `cat-${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(file.originalname)}`)
+  },
+})
+const catUpload = multer({ storage: catStorage, limits: { fileSize: 10 * 1024 * 1024 } })
 
 // GET /api/categories - Get all categories (tree structure)
 router.get('/', auth, allowRoles('admin', 'user', 'manager'), async (req, res) => {
@@ -284,6 +318,39 @@ router.post('/sync-from-products', auth, allowRoles('admin', 'user'), async (req
     return res.json({ message: `Synced ${created} categories from products`, created })
   } catch (err) {
     return res.status(500).json({ message: err?.message || 'Failed to sync categories' })
+  }
+})
+
+// POST /api/categories/:id/image - Upload category image
+router.post('/:id/image', auth, allowRoles('admin', 'user', 'manager'), catUpload.single('image'), async (req, res) => {
+  try {
+    const { id } = req.params
+    const cat = await Category.findById(id)
+    if (!cat) return res.status(404).json({ message: 'Category not found' })
+    if (!req.file) return res.status(400).json({ message: 'No image file provided' })
+
+    const absPath = path.resolve(req.file.destination, req.file.filename)
+    let finalPath = absPath
+    try {
+      const ext = path.extname(absPath).toLowerCase()
+      if (ext !== '.webp') {
+        const dir = path.dirname(absPath)
+        const base = path.basename(absPath, ext)
+        const webpPath = path.join(dir, `${base}.webp`)
+        await sharp(absPath).webp({ quality: 85 }).toFile(webpPath)
+        try { fs.unlinkSync(absPath) } catch {}
+        finalPath = webpPath
+      }
+    } catch {}
+
+    const relToUploads = path.relative(CAT_UPLOADS, finalPath).replace(/\\/g, '/')
+    const imageUrl = `/uploads/${relToUploads}`
+
+    cat.image = imageUrl
+    await cat.save()
+    return res.json({ ok: true, message: 'Image uploaded', image: imageUrl, category: cat })
+  } catch (err) {
+    return res.status(500).json({ message: err?.message || 'Failed to upload image' })
   }
 })
 

@@ -8,6 +8,7 @@ import Header from '../../components/layout/Header'
 import ShoppingCart from '../../components/ecommerce/ShoppingCart'
 import { trackPageView, trackProductView, trackAddToCart } from '../../utils/analytics'
 import { getCurrencyConfig, convert as fxConvert, formatMoney } from '../../util/currency'
+import FormattedPrice from '../../components/ui/FormattedPrice'
 import { resolveWarehouse } from '../../utils/warehouse'
 import { readWishlistIds, toggleWishlist } from '../../util/wishlist'
 import { getProductRating, getProductReviews, getStarArray } from '../../utils/autoReviews'
@@ -331,9 +332,13 @@ const ProductDetail = () => {
     try { if (opt?.image) { const abs = resolveImageUrl(opt.image); const imgIdx = images.findIndex(u => u === abs); if (imgIdx >= 0) setSelectedImage(imgIdx) } } catch {}
   }
 
-  // Shared price display
-  const priceDisplay = formatPrice(convertPrice(displayPrice, product.baseCurrency || 'SAR', getDisplayCurrency()), getDisplayCurrency())
-  const origPriceDisplay = originalPrice ? formatPrice(convertPrice(originalPrice, product.baseCurrency || 'SAR', getDisplayCurrency()), getDisplayCurrency()) : null
+  // Shared price display (numeric values for FormattedPrice)
+  const priceConverted = convertPrice(displayPrice, product.baseCurrency || 'SAR', getDisplayCurrency())
+  const origPriceConverted = originalPrice ? convertPrice(originalPrice, product.baseCurrency || 'SAR', getDisplayCurrency()) : null
+  const dispCcy = getDisplayCurrency()
+  // Legacy string fallbacks for places that still use text
+  const priceDisplay = formatPrice(priceConverted, dispCcy)
+  const origPriceDisplay = origPriceConverted ? formatPrice(origPriceConverted, dispCcy) : null
 
   // --- Variant Selector Component ---
   const VariantSelector = ({ excludeColor }) => {
@@ -586,8 +591,8 @@ const ProductDetail = () => {
             </div>
             {/* Price */}
             <div className="flex-shrink-0 min-w-0 truncate">
-              <span className="text-gray-900 font-bold text-sm tabular-nums">{priceDisplay}</span>
-              {origPriceDisplay && <span className="text-gray-400 text-[9px] line-through ml-0.5">{origPriceDisplay}</span>}
+              <FormattedPrice amount={priceConverted} currency={dispCcy} size={12} className="text-gray-900 font-bold text-sm tabular-nums" />
+              {origPriceConverted && <span className="text-gray-400 text-[9px] line-through ml-0.5"><FormattedPrice amount={origPriceConverted} currency={dispCcy} size={8} /></span>}
             </div>
             {/* Add to cart + WhatsApp */}
             <div className="flex-1 flex gap-1 justify-end min-w-0">
@@ -646,8 +651,8 @@ const ProductDetail = () => {
               {product.category && <span className="inline-block px-4 py-1.5 rounded-full bg-orange-50 text-orange-600 text-sm font-semibold uppercase mb-4 self-start">{product.category}</span>}
               <h1 className="text-4xl font-bold text-gray-900 mb-4 leading-tight">{product.name}</h1>
               <div className="flex items-end gap-4 mb-8">
-                <span className="text-4xl font-bold text-gray-900">{priceDisplay}</span>
-                {origPriceDisplay && <span className="text-lg text-gray-400 line-through mb-1">{origPriceDisplay}</span>}
+                <FormattedPrice amount={priceConverted} currency={dispCcy} size={28} className="text-4xl font-bold text-gray-900" />
+                {origPriceConverted && <span className="text-lg text-gray-400 line-through mb-1"><FormattedPrice amount={origPriceConverted} currency={dispCcy} size={14} /></span>}
                 {hasActiveSale && <span className="text-sm font-bold text-red-500 mb-1">-{discountPercentage}%</span>}
               </div>
               {product.description && <p className="text-gray-500 leading-relaxed mb-8 text-base line-clamp-4">{product.description}</p>}

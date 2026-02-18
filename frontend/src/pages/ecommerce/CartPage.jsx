@@ -3,6 +3,7 @@ import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { useToast } from '../../ui/Toast'
 import { apiPost, apiGet, API_BASE } from '../../api.js'
 import { getCurrencyConfig, convert as fxConvert, formatMoney } from '../../util/currency'
+import FormattedPrice from '../../components/ui/FormattedPrice'
 import { trackRemoveFromCart, trackCheckoutStart } from '../../utils/analytics'
 import Header from '../../components/layout/Header'
 import MobileBottomNav from '../../components/ecommerce/MobileBottomNav'
@@ -523,6 +524,7 @@ export default function CartPage() {
   }, [isCodAvailable, paymentMethod])
   const convertPrice = (value, fromCurrency, toCurrency) => fxConvert(value, fromCurrency || 'SAR', toCurrency || displayCurrency, ccyCfg)
   const formatPrice = (value, currency) => formatMoney(Number(value||0), currency || displayCurrency)
+  const renderPrice = (value, currency, size) => <FormattedPrice amount={Number(value||0)} currency={currency || displayCurrency} size={size || 14} />
 
   const normalizeCartItems = (items, countryCode) => {
     const arr = Array.isArray(items) ? items : []
@@ -1240,7 +1242,7 @@ export default function CartPage() {
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <h3 style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', marginBottom: 4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: '1.3' }}>{item.name}</h3>
                       <p style={{ fontSize: 15, fontWeight: 700, color: '#f97316', margin: 0 }}>
-                        {formatPrice(convertPrice(item.price, item.currency || 'SAR', displayCurrency), displayCurrency)}
+                        {renderPrice(convertPrice(item.price, item.currency || 'SAR', displayCurrency), displayCurrency, 13)}
                       </p>
                     </div>
                   </div>
@@ -1264,7 +1266,7 @@ export default function CartPage() {
                     
                     <div style={{ textAlign: 'right' }}>
                       <div style={{ fontWeight: 700, fontSize: 15, color: '#0f172a' }}>
-                        {formatPrice(convertPrice(item.price, item.currency || 'SAR', displayCurrency) * item.quantity, displayCurrency)}
+                        {renderPrice(convertPrice(item.price, item.currency || 'SAR', displayCurrency) * item.quantity, displayCurrency, 13)}
                       </div>
                     </div>
                     
@@ -1649,30 +1651,30 @@ export default function CartPage() {
               <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #e2e8f0' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                   <span style={{ fontSize: 14, color: '#64748b' }}>Subtotal ({getTotalItems()} items)</span>
-                  <span style={{ fontSize: 16, color: '#64748b' }}>{formatPrice(getSubtotal(), displayCurrency)}</span>
+                  <span style={{ fontSize: 16, color: '#64748b' }}>{renderPrice(getSubtotal(), displayCurrency)}</span>
                 </div>
 
                 {couponDiscount > 0 && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                     <span style={{ fontSize: 14, color: '#10b981' }}>Coupon Discount</span>
-                    <span style={{ fontSize: 16, color: '#10b981', fontWeight: 600 }}>-{formatPrice(couponDiscount, displayCurrency)}</span>
+                    <span style={{ fontSize: 16, color: '#10b981', fontWeight: 600 }}>-{renderPrice(couponDiscount, displayCurrency)}</span>
                   </div>
                 )}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, paddingTop: 8, borderTop: couponDiscount > 0 ? '1px dashed #e2e8f0' : 'none' }}>
                   <span style={{ fontSize: 15, fontWeight: 600, color: '#0f172a' }}>Total</span>
-                  <span style={{ fontSize: 20, fontWeight: 700, color: '#0f172a' }}>{formatPrice(getTotalPrice(), displayCurrency)}</span>
+                  <span style={{ fontSize: 20, fontWeight: 700, color: '#0f172a' }}>{renderPrice(getTotalPrice(), displayCurrency, 16)}</span>
                 </div>
 
                 {getWalletApply() > 0 && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                     <span style={{ fontSize: 14, color: '#ea580c', fontWeight: 800 }}>Wallet Applied</span>
-                    <span style={{ fontSize: 16, color: '#ea580c', fontWeight: 900 }}>-{formatPrice(getWalletApply(), displayCurrency)}</span>
+                    <span style={{ fontSize: 16, color: '#ea580c', fontWeight: 900 }}>-{renderPrice(getWalletApply(), displayCurrency)}</span>
                   </div>
                 )}
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, paddingTop: 8, borderTop: '1px dashed #e2e8f0' }}>
                   <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>Amount to pay</span>
-                  <span style={{ fontSize: 18, fontWeight: 800, color: '#0f172a' }}>{formatPrice(getRemainingToPay(), displayCurrency)}</span>
+                  <span style={{ fontSize: 18, fontWeight: 800, color: '#0f172a' }}>{renderPrice(getRemainingToPay(), displayCurrency, 15)}</span>
                 </div>
                 
                 {/* Terms & Conditions Agreement */}

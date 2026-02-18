@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, memo, useCallback, useMemo } from '
 import { useNavigate } from 'react-router-dom'
 import { mediaUrl } from '../../api.js'
 import { getCurrencyConfig, convert as fxConvert, currencySymbol, formatMoney } from '../../util/currency'
+import SarIcon from '../ui/SarIcon'
 import { readWishlistIds, toggleWishlist } from '../../util/wishlist'
 import { useToast } from '../../ui/Toast'
 import { resolveWarehouse } from '../../utils/warehouse'
@@ -425,7 +426,7 @@ const ProductCardMini = memo(function ProductCardMini({ product, selectedCountry
 
         <div className="price-section">
           <div className="price-row">
-            <span className="currency-symbol">{currencySymbol(displayCurrency)}</span>
+            <span className="currency-symbol">{displayCurrency === 'SAR' ? <SarIcon size={13} /> : currencySymbol(displayCurrency)}</span>
             <span className="price-main">{convertedPrice.toFixed(2).split('.')[0]}</span>
             <span className="price-decimal">.{convertedPrice.toFixed(2).split('.')[1]}</span>
             {showDiscount && (

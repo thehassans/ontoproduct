@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react'
-import { apiGet, apiPost, apiPut, apiDelete } from '../../api'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
+import { apiGet, apiPost, apiPut, apiDelete, apiUpload, mediaUrl } from '../../api'
 
 const COUNTRIES = [
   { code: 'UAE', name: 'UAE' }, { code: 'Saudi Arabia', name: 'KSA' },
@@ -126,7 +126,23 @@ export default function Categories() {
     const [showAddSub, setShowAddSub] = useState(false)
     const [subName, setSubName] = useState('')
     const [subSaving, setSubSaving] = useState(false)
+    const [imgUploading, setImgUploading] = useState(false)
+    const imgInputRef = useRef(null)
     const unpub = cat.unpublishedCountries || []
+
+    const handleImageUpload = async (e) => {
+      const file = e.target.files?.[0]
+      if (!file) return
+      setImgUploading(true)
+      try {
+        const fd = new FormData()
+        fd.append('image', file)
+        await apiUpload(`/api/categories/${cat._id}/image`, fd)
+        showToast('Image uploaded')
+        await load()
+      } catch (err) { showToast(err?.message || 'Upload failed', 'error') }
+      finally { setImgUploading(false); if (imgInputRef.current) imgInputRef.current.value = '' }
+    }
 
     const handleAddSub = async () => {
       if (!subName.trim()) return showToast('Subcategory name required', 'error')
@@ -145,6 +161,9 @@ export default function Categories() {
       <div style={{ ...S.card, marginLeft: depth * 24, borderLeft: depth ? '3px solid #f97316' : undefined }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {cat.image ? (
+              <img src={mediaUrl(cat.image)} alt="" style={{ width: 32, height: 32, borderRadius: 6, objectFit: 'cover', border: '1px solid #e5e7eb', cursor: 'pointer' }} onClick={() => imgInputRef.current?.click()} title="Click to change image" />
+            ) : null}
             <span style={{ fontWeight: 700, fontSize: 15 }}>{cat.name}</span>
             {cat.parent && <span style={{ ...S.badge, background: '#f3f4f6', color: '#6b7280' }}>Sub</span>}
             <span style={{ ...S.badge, background: cat.isPublished ? '#f0fdf4' : '#fef2f2', color: cat.isPublished ? '#16a34a' : '#dc2626' }}>
@@ -157,6 +176,10 @@ export default function Categories() {
             )}
           </div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <input ref={imgInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload} />
+            <button style={{ ...S.btn, background: '#f0f9ff', color: '#0284c7', border: '1px solid #bae6fd', fontSize: 11 }} onClick={() => imgInputRef.current?.click()} disabled={imgUploading}>
+              {imgUploading ? 'Uploading...' : (cat.image ? 'Change Img' : 'Add Image')}
+            </button>
             {depth === 0 && (
               <button style={{ ...S.btn, background: '#fff7ed', color: '#c2410c', border: '1px solid #fed7aa', fontSize: 11 }} onClick={() => setShowAddSub(!showAddSub)}>
                 {showAddSub ? 'Cancel' : '+ Sub'}
