@@ -1206,10 +1206,24 @@ export default function CartPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#f8fafc' }}>
-      <Header />
+      {/* Desktop Header */}
+      <div className="hidden lg:block">
+        <Header />
+      </div>
+      
+      {/* Mobile: ultra minimal header */}
+      <div className="lg:hidden" style={{ background: '#fff', borderBottom: '1px solid #f1f5f9', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+        <button onClick={() => navigate(-1)} style={{ width: 36, height: 36, borderRadius: '50%', background: '#f8fafc', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        </button>
+        <div style={{ flex: 1 }}>
+          <h1 style={{ fontSize: 16, fontWeight: 600, color: '#0f172a', margin: 0, letterSpacing: '-0.01em' }}>Cart</h1>
+        </div>
+        <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 500 }}>{getTotalItems()} items</span>
+      </div>
       
       <div style={{ maxWidth: 600, margin: '0 auto', padding: '16px 12px', paddingBottom: 100 }}>
-        <div style={{ marginBottom: 16 }}>
+        <div className="hidden lg:block" style={{ marginBottom: 16 }}>
           <h1 style={{ fontSize: 22, fontWeight: 700, color: '#0f172a', margin: 0 }}>Shopping Cart</h1>
           <p style={{ color: '#64748b', marginTop: 2, fontSize: 14 }}>{getTotalItems()} items</p>
         </div>

@@ -1026,39 +1026,28 @@ export default function ProductCatalog() {
       
       {/* Mobile: clean light header */}
       <div className="lg:hidden bg-white border-b border-gray-100">
-        {/* Row: home + title + search + cart */}
-        <div className="flex items-center justify-between px-4 pt-3 pb-2">
-          <Link to="/" className="w-9 h-9 rounded-full bg-gray-50 flex items-center justify-center">
+        {/* Row: home + search + cart */}
+        <div className="flex items-center gap-2 px-3 pt-3 pb-2">
+          <Link to="/" className="w-9 h-9 rounded-full bg-gray-50 flex items-center justify-center flex-shrink-0">
             <svg className="w-[18px] h-[18px] text-gray-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0h4" /></svg>
           </Link>
-          <span className="text-gray-900 font-semibold text-[15px] tracking-wide">Discover</span>
-          <div className="flex items-center gap-1.5">
-            <button onClick={() => setMobileSearchOpen(!mobileSearchOpen)} className="w-9 h-9 rounded-full bg-gray-50 flex items-center justify-center">
-              <svg className="w-[18px] h-[18px] text-gray-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
-            </button>
-            <button onClick={() => navigate('/cart')} className="w-9 h-9 rounded-full bg-gray-50 flex items-center justify-center relative">
-              <svg className="w-[18px] h-[18px] text-gray-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-              {cartCount > 0 && <span className="absolute -top-0.5 -right-0.5 bg-orange-500 text-white text-[9px] font-bold rounded-full min-w-[16px] h-[16px] flex items-center justify-center px-0.5">{cartCount > 99 ? '99+' : cartCount}</span>}
-            </button>
-          </div>
+          <form onSubmit={e => { e.preventDefault(); if (searchQuery.trim()) handleSearch(searchQuery) }} className="flex-1 flex items-center gap-2 bg-gray-50 rounded-full px-3 py-2">
+            <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+            <div className="flex-1 relative h-5">
+              <input type="text" value={searchQuery} onChange={e => handleSearch(e.target.value)} className="w-full h-full bg-transparent border-none outline-none text-sm text-gray-800" />
+              {!searchQuery && (
+                <div className="absolute inset-0 flex items-center pointer-events-none overflow-hidden">
+                  <span className="text-sm text-gray-400">Search </span>
+                  <span className="text-sm text-gray-400 ml-1 inline-block transition-all duration-300 ease-out" style={{transform: placeholderAnim ? 'translateY(-120%)' : 'translateY(0)', opacity: placeholderAnim ? 0 : 1}}>{discoverCategories[placeholderIdx] || 'products'}...</span>
+                </div>
+              )}
+            </div>
+          </form>
+          <button onClick={() => navigate('/cart')} className="w-9 h-9 rounded-full bg-gray-50 flex items-center justify-center relative flex-shrink-0">
+            <svg className="w-[18px] h-[18px] text-gray-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+            {cartCount > 0 && <span className="absolute -top-0.5 -right-0.5 bg-orange-500 text-white text-[9px] font-bold rounded-full min-w-[16px] h-[16px] flex items-center justify-center px-0.5">{cartCount > 99 ? '99+' : cartCount}</span>}
+          </button>
         </div>
-        {/* Expandable search bar */}
-        {mobileSearchOpen && (
-          <div className="px-4 pb-2">
-            <form onSubmit={e => { e.preventDefault(); if (searchQuery.trim()) handleSearch(searchQuery) }} className="flex items-center gap-2 bg-gray-50 rounded-full px-3.5 py-2 border border-gray-100">
-              <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
-              <div className="flex-1 relative">
-                <input autoFocus type="text" value={searchQuery} onChange={e => handleSearch(e.target.value)} className="w-full bg-transparent border-none outline-none text-sm text-gray-800" />
-                {!searchQuery && (
-                  <div className="absolute inset-0 flex items-center pointer-events-none overflow-hidden">
-                    <span className="text-sm text-gray-400 transition-all duration-300 ease-out" style={{transform: placeholderAnim ? 'translateY(-100%)' : 'translateY(0)', opacity: placeholderAnim ? 0 : 1}}>Search {discoverCategories[placeholderIdx] || 'products'}...</span>
-                  </div>
-                )}
-              </div>
-              <button type="button" onClick={() => setMobileSearchOpen(false)} className="text-gray-400"><svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg></button>
-            </form>
-          </div>
-        )}
         {/* Deliver to */}
         <div className="px-4 pb-2 relative">
           <button onClick={() => setMobileCountryOpen(!mobileCountryOpen)} className="flex items-center gap-1.5 text-[12px] text-gray-500">

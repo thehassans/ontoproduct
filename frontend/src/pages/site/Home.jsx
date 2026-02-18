@@ -216,17 +216,19 @@ export default function Home(){
         <div className={`absolute bottom-3 left-3 right-3 z-30 transition-all duration-300 ${mobileSearchOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
           <form onSubmit={e => { e.preventDefault(); if (searchQuery.trim()) { navigate(`/catalog?search=${encodeURIComponent(searchQuery.trim())}`); setSearchQuery(''); setMobileSearchOpen(false) } }} className="flex items-center gap-2.5 bg-black/30 backdrop-blur-xl rounded-full px-4 py-2.5 shadow-lg border border-white/20">
             <svg className="w-4 h-4 text-white/70 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
-            <div className="flex-1 relative">
+            <div className="flex-1 relative h-5">
               <input
                 ref={searchInputRef}
                 type="text"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="w-full bg-transparent border-none outline-none text-sm text-white"
+                className="w-full h-full bg-transparent border-none outline-none text-sm text-white focus:ring-0"
+                style={{WebkitAppearance:'none'}}
               />
               {!searchQuery && (
                 <div className="absolute inset-0 flex items-center pointer-events-none overflow-hidden">
-                  <span className="text-sm text-white/60 transition-all duration-300 ease-out" style={{transform: placeholderAnim ? 'translateY(-100%)' : 'translateY(0)', opacity: placeholderAnim ? 0 : 1}}>Search {categoryNames[placeholderIdx] || 'products'}...</span>
+                  <span className="text-sm text-white/60">Search </span>
+                  <span className="text-sm text-white/60 ml-1 inline-block transition-all duration-300 ease-out" style={{transform: placeholderAnim ? 'translateY(-120%)' : 'translateY(0)', opacity: placeholderAnim ? 0 : 1}}>{categoryNames[placeholderIdx] || 'products'}...</span>
                 </div>
               )}
             </div>
