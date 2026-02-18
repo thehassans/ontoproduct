@@ -48,6 +48,16 @@ const UserSchema = new mongoose.Schema(
       canCreateDrivers: { type: Boolean, default: false },
       canAccessProductDetail: { type: Boolean, default: false }, // Full product detail access like user
       canManageBanners: { type: Boolean, default: false },
+      canManageCategories: { type: Boolean, default: false },
+    },
+    // SEO manager: which countries this seo_manager can manage pixels/SEO for
+    seoCountries: {
+      type: [String],
+      enum: [
+        "UAE", "Saudi Arabia", "Oman", "Bahrain", "India", "Kuwait",
+        "Qatar", "Jordan", "Pakistan", "USA", "UK", "Canada", "Australia",
+      ],
+      default: [],
     },
     assignedCountry: {
       type: String,

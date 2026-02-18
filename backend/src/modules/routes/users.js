@@ -1415,7 +1415,7 @@ router.post(
   allowRoles("admin", "user"),
   async (req, res) => {
     try {
-      const { firstName, lastName, email, password, phone } = req.body || {};
+      const { firstName, lastName, email, password, phone, seoCountries } = req.body || {};
       
       if (!firstName || !lastName || !email || !password) {
         return res.status(400).json({ message: "Missing required fields" });
@@ -1434,6 +1434,7 @@ router.post(
         phone: phone || "",
         role: "seo_manager",
         createdBy: req.user.id,
+        seoCountries: Array.isArray(seoCountries) ? seoCountries : [],
       });
       
       await seoManager.save();

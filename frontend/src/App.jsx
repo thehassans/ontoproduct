@@ -109,6 +109,7 @@ const Customers = lazy(() => import('./pages/user/Customers.jsx'))
 const CashbackOffers = lazy(() => import('./pages/user/CashbackOffers.jsx'))
 const SEOManagers = lazy(() => import('./pages/user/SEOManagers.jsx'))
 const GoogleOAuthSettings = lazy(() => import('./pages/user/GoogleOAuthSettings.jsx'))
+const UserCategories = lazy(() => import('./pages/user/Categories.jsx'))
 
 // Agent pages
 const AgentDashboard = lazy(() => import('./pages/agent/Dashboard.jsx'))
@@ -774,6 +775,7 @@ export default function App() {
               <Route path="online-orders" element={<OnlineOrders />} />
               <Route path="coupons" element={<Coupons />} />
               <Route path="cashback-offers" element={<CashbackOffers />} />
+              <Route path="categories" element={<UserCategories />} />
               <Route path="inhouse-products" element={<InhouseProducts />} />
               <Route path="products" element={<UserProducts />} />
               <Route path="products/:id" element={<UserProductDetail />} />

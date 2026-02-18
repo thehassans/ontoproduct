@@ -139,6 +139,8 @@ router.post(
           firstName: user.firstName,
           lastName: user.lastName,
           email: user.email,
+          ...(user.role === 'seo_manager' && Array.isArray(user.seoCountries) ? { seoCountries: user.seoCountries } : {}),
+          ...(user.role === 'manager' && user.managerPermissions ? { managerPermissions: user.managerPermissions } : {}),
         },
       });
     } catch (err) {

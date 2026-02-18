@@ -126,7 +126,7 @@ export default function DynamicPixels() {
         window._countrySeoSettings = countrySeo
 
         const storedCountry = localStorage.getItem('selected_country') || localStorage.getItem('selectedCountry') || ''
-        const userCountryKey = resolveCountryKey(countrySeo, storedCountry) || resolveCountryKey(countrySeo, 'Saudi Arabia')
+        const userCountryKey = resolveCountryKey(countrySeo, storedCountry)
         const countryPixels = (userCountryKey && countrySeo[userCountryKey]) ? countrySeo[userCountryKey] : {}
         
         // Merge global and country-specific settings (country takes priority)

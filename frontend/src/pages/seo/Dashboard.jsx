@@ -96,12 +96,22 @@ export default function SEODashboard() {
       const prods = productsRes.products || []
       setProducts(prods)
       
-      const ctrs = countriesRes.countries || [
+      let ctrs = countriesRes.countries || [
         'UAE', 'Saudi Arabia', 'Kuwait', 'Qatar', 'Bahrain', 'Oman', 
         'Egypt', 'Jordan', 'Lebanon', 'Iraq', 'India', 'Pakistan',
         'USA', 'UK', 'Canada', 'Australia', 'KSA'
       ]
-      setCountries(Array.isArray(ctrs) ? ctrs : Object.keys(ctrs))
+      ctrs = Array.isArray(ctrs) ? ctrs : Object.keys(ctrs)
+
+      // Filter countries for seo_manager role based on assigned seoCountries
+      try {
+        const me = JSON.parse(localStorage.getItem('me') || '{}')
+        if (me.role === 'seo_manager' && Array.isArray(me.seoCountries) && me.seoCountries.length > 0) {
+          ctrs = ctrs.filter(c => me.seoCountries.includes(c))
+        }
+      } catch {}
+
+      setCountries(ctrs)
       
       if (countrySeoRes.countrySeo) {
         setCountrySeo(countrySeoRes.countrySeo)

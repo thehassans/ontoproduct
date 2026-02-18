@@ -61,10 +61,22 @@ function safeParseSlides(raw, fallback) {
   return fallback
 }
 
+const COUNTRIES = [
+  { code: '', name: 'All Countries (Default)' },
+  { code: 'UAE', name: 'UAE' }, { code: 'Saudi Arabia', name: 'KSA' },
+  { code: 'Oman', name: 'Oman' }, { code: 'Bahrain', name: 'Bahrain' },
+  { code: 'India', name: 'India' }, { code: 'Kuwait', name: 'Kuwait' },
+  { code: 'Qatar', name: 'Qatar' }, { code: 'Jordan', name: 'Jordan' },
+  { code: 'Pakistan', name: 'Pakistan' }, { code: 'USA', name: 'USA' },
+  { code: 'UK', name: 'UK' }, { code: 'Canada', name: 'Canada' },
+  { code: 'Australia', name: 'Australia' },
+]
+
 export default function ProductHeadline() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [notice, setNotice] = useState('')
+  const [selectedCountry, setSelectedCountry] = useState('')
 
   const [form, setForm] = useState({
     enabled: true,
@@ -78,7 +90,8 @@ export default function ProductHeadline() {
     ;(async () => {
       try {
         setLoading(true)
-        const res = await apiGet('/api/settings/website/content?page=catalog', { skipCache: true })
+        const pageKey = selectedCountry ? `catalog_${selectedCountry.replace(/\s+/g, '_')}` : 'catalog'
+        const res = await apiGet(`/api/settings/website/content?page=${pageKey}`, { skipCache: true })
         const elements = Array.isArray(res?.content?.elements) ? res.content.elements : []
         const getText = (id, fallback = '') => {
           const el = elements.find((e) => e?.id === id)
@@ -111,7 +124,7 @@ export default function ProductHeadline() {
     return () => {
       alive = false
     }
-  }, [])
+  }, [selectedCountry])
 
   function updateSlide(idx, patch) {
     setForm((p) => {
@@ -171,7 +184,8 @@ export default function ProductHeadline() {
         { id: 'catalogHeadline_slides', type: 'text', text: JSON.stringify(normalizedSlides) }
       ]
 
-      const existing = await apiGet('/api/settings/website/content?page=catalog').catch(() => null)
+      const pageKey = selectedCountry ? `catalog_${selectedCountry.replace(/\s+/g, '_')}` : 'catalog'
+      const existing = await apiGet(`/api/settings/website/content?page=${pageKey}`).catch(() => null)
       const existingElements = Array.isArray(existing?.content?.elements) ? existing.content.elements : []
       const byId = new Map(
         existingElements
@@ -183,7 +197,7 @@ export default function ProductHeadline() {
       }
       const mergedElements = Array.from(byId.values())
 
-      await apiPost('/api/settings/website/content', { page: 'catalog', elements: mergedElements })
+      await apiPost('/api/settings/website/content', { page: pageKey, elements: mergedElements })
       clearApiCache('/api/settings/website/content')
       setNotice('Saved')
     } catch (err) {
@@ -201,6 +215,28 @@ export default function ProductHeadline() {
         <p style={{ color: 'var(--muted)', fontSize: 14 }}>
           Configure the premium offer headline strip shown on the catalog page.
         </p>
+      </div>
+
+      <div className="card" style={{ padding: 20, maxWidth: 980, marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--muted)' }}>Country:</div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {COUNTRIES.map(c => (
+              <button
+                key={c.code}
+                onClick={() => setSelectedCountry(c.code)}
+                style={{
+                  padding: '5px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                  border: selectedCountry === c.code ? '2px solid #f97316' : '1px solid #e5e7eb',
+                  background: selectedCountry === c.code ? '#fff7ed' : '#fff',
+                  color: selectedCountry === c.code ? '#c2410c' : '#374151',
+                }}
+              >
+                {c.name}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       <div className="card" style={{ padding: 20, maxWidth: 980 }}>

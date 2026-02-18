@@ -2,6 +2,11 @@ import React, { useState, useEffect } from 'react'
 import { apiGet, apiPost, apiDelete } from '../../api'
 import { useToast } from '../../ui/Toast'
 
+const ALL_COUNTRIES = [
+  'UAE','Saudi Arabia','Oman','Bahrain','India','Kuwait',
+  'Qatar','Jordan','Pakistan','USA','UK','Canada','Australia',
+]
+
 export default function SEOManagers() {
   const toast = useToast()
   const [seoManagers, setSeoManagers] = useState([])
@@ -13,6 +18,7 @@ export default function SEOManagers() {
     email: '',
     phone: '',
     password: '',
+    seoCountries: [],
   })
   const [submitting, setSubmitting] = useState(false)
 
@@ -43,7 +49,7 @@ export default function SEOManagers() {
       await apiPost('/api/users/seo-managers', form)
       toast.success('SEO Manager created successfully')
       setShowModal(false)
-      setForm({ firstName: '', lastName: '', email: '', phone: '', password: '' })
+      setForm({ firstName: '', lastName: '', email: '', phone: '', password: '', seoCountries: [] })
       loadSEOManagers()
     } catch (err) {
       toast.error(err?.message || 'Failed to create SEO Manager')
@@ -145,6 +151,16 @@ export default function SEOManagers() {
                   <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 14 }}>{manager.email}</p>
                   {manager.phone && (
                     <p style={{ margin: '2px 0 0', color: '#94a3b8', fontSize: 13 }}>{manager.phone}</p>
+                  )}
+                  {Array.isArray(manager.seoCountries) && manager.seoCountries.length > 0 && (
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 6 }}>
+                      {manager.seoCountries.map(c => (
+                        <span key={c} style={{ background: '#eff6ff', color: '#2563eb', padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600 }}>{c}</span>
+                      ))}
+                    </div>
+                  )}
+                  {(!manager.seoCountries || manager.seoCountries.length === 0) && (
+                    <p style={{ margin: '4px 0 0', color: '#f59e0b', fontSize: 12, fontWeight: 500 }}>No countries assigned</p>
                   )}
                 </div>
               </div>
@@ -311,6 +327,42 @@ export default function SEOManagers() {
                     }}
                     placeholder="••••••••"
                   />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: 6, fontWeight: 500, color: '#374151', fontSize: 14 }}>
+                    Assigned Countries (SEO permissions)
+                  </label>
+                  <p style={{ fontSize: 12, color: '#64748b', marginBottom: 8 }}>
+                    Select which countries this SEO manager can manage pixels and SEO for.
+                  </p>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {ALL_COUNTRIES.map(c => {
+                      const sel = (form.seoCountries || []).includes(c)
+                      return (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => {
+                            setForm(prev => ({
+                              ...prev,
+                              seoCountries: sel
+                                ? prev.seoCountries.filter(x => x !== c)
+                                : [...(prev.seoCountries || []), c]
+                            }))
+                          }}
+                          style={{
+                            padding: '5px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                            border: sel ? '2px solid #2563eb' : '1px solid #d1d5db',
+                            background: sel ? '#eff6ff' : '#fff',
+                            color: sel ? '#2563eb' : '#374151',
+                          }}
+                        >
+                          {c} {sel ? '✓' : ''}
+                        </button>
+                      )
+                    })}
+                  </div>
                 </div>
               </div>
 

@@ -205,6 +205,15 @@ router.get('/banners', async (req, res) => {
       banners = banners.filter((b) => String(b?.page || '').trim().toLowerCase() === pageNorm)
     }
 
+    // Filter by country if specified
+    const countryFilter = String(req.query?.country || '').trim()
+    if (countryFilter) {
+      banners = banners.filter((b) => {
+        const bc = String(b?.country || '').trim()
+        return !bc || bc === countryFilter // show banners with no country (global) + matching country
+      })
+    }
+
     banners = banners.map((b) => {
       const _id = String(b?._id || b?.id || b?.bannerId || '').trim()
       return {
@@ -262,7 +271,7 @@ router.post(
       return res.status(400).json({ message: 'No desktop banner uploaded' })
     }
 
-    const { title, link, linkType, linkCategory, active, page } = req.body
+    const { title, link, linkType, linkCategory, active, page, country } = req.body
 
     const desktopAbs = path.resolve(desktopFile.destination, desktopFile.filename)
     const desktopConverted = await convertToWebP(desktopAbs)
@@ -296,6 +305,7 @@ router.post(
       linkType: finalLinkType,
       linkCategory: finalLinkCategory,
       page: String(page || 'catalog').trim().toLowerCase(),
+      country: String(country || '').trim() || '', // empty = all countries
       active: asBool(active),
       createdAt: new Date(),
       uploadedBy: req.user.id

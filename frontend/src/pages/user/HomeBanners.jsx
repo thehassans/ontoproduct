@@ -13,9 +13,15 @@ export default function HomeBanners() {
     title: '',
     active: true,
     linkCategory: '',
+    country: '',
     bannerDesktop: null,
     bannerMobile: null,
   })
+
+  const COUNTRIES = [
+    'UAE','Saudi Arabia','Oman','Bahrain','India','Kuwait',
+    'Qatar','Jordan','Pakistan','USA','UK','Canada','Australia',
+  ]
 
   useEffect(() => {
     let alive = true
@@ -103,6 +109,7 @@ export default function HomeBanners() {
       fd.append('page', 'home')
       fd.append('active', String(Boolean(form.active)))
       fd.append('title', String(form.title || '').trim())
+      if (form.country) fd.append('country', form.country)
       if (form.linkCategory) {
         fd.append('linkType', 'category')
         fd.append('linkCategory', String(form.linkCategory))
@@ -209,6 +216,20 @@ export default function HomeBanners() {
               </select>
             </div>
 
+            <div style={{ display: 'grid', gap: 8 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)' }}>Country (optional)</div>
+              <select
+                className="input"
+                value={form.country}
+                onChange={(e) => setForm((p) => ({ ...p, country: e.target.value }))}
+              >
+                <option value="">All Countries</option>
+                {COUNTRIES.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+
             <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, marginTop: 26 }}>
               <input
                 type="checkbox"
@@ -290,6 +311,7 @@ export default function HomeBanners() {
                   <div style={{ fontWeight: 700, fontSize: 14 }}>{b.title || 'Home Banner'}</div>
                   <div style={{ fontSize: 12, color: 'var(--muted)' }}>
                     Page: {b.page || 'home'}
+                    {b.country ? ` • ${b.country}` : ' • All Countries'}
                     {b.mobileImageUrl ? ' • Has mobile banner' : ''}
                   </div>
                   {b.linkCategory ? (

@@ -966,7 +966,27 @@ router.post(
       let doc = await Setting.findOne({ key: "country_seo" });
       if (!doc) doc = new Setting({ key: "country_seo", value: {} });
 
-      doc.value = countrySeo || {};
+      // If seo_manager, only allow editing their assigned countries
+      if (req.user.role === 'seo_manager') {
+        const mgr = await User.findById(req.user.id).select('seoCountries').lean();
+        const allowed = Array.isArray(mgr?.seoCountries) ? mgr.seoCountries : [];
+        if (!allowed.length) {
+          return res.status(403).json({ error: "No countries assigned to your SEO manager account" });
+        }
+        // Merge: keep existing countries the manager can't edit, update only allowed ones
+        const existing = (doc.value && typeof doc.value === 'object') ? doc.value : {};
+        const incoming = countrySeo || {};
+        const merged = { ...existing };
+        for (const country of allowed) {
+          if (incoming[country] !== undefined) {
+            merged[country] = incoming[country];
+          }
+        }
+        doc.value = merged;
+      } else {
+        doc.value = countrySeo || {};
+      }
+
       doc.markModified('value');
       await doc.save();
 

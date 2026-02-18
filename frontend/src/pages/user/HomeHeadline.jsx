@@ -1,10 +1,22 @@
 import React, { useEffect, useState } from 'react'
 import { apiGet, apiPost } from '../../api'
 
+const COUNTRIES = [
+  { code: '', name: 'All Countries (Default)' },
+  { code: 'UAE', name: 'UAE' }, { code: 'Saudi Arabia', name: 'KSA' },
+  { code: 'Oman', name: 'Oman' }, { code: 'Bahrain', name: 'Bahrain' },
+  { code: 'India', name: 'India' }, { code: 'Kuwait', name: 'Kuwait' },
+  { code: 'Qatar', name: 'Qatar' }, { code: 'Jordan', name: 'Jordan' },
+  { code: 'Pakistan', name: 'Pakistan' }, { code: 'USA', name: 'USA' },
+  { code: 'UK', name: 'UK' }, { code: 'Canada', name: 'Canada' },
+  { code: 'Australia', name: 'Australia' },
+]
+
 export default function HomeHeadline() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [notice, setNotice] = useState('')
+  const [selectedCountry, setSelectedCountry] = useState('')
 
   const [form, setForm] = useState({
     enabled: true,
@@ -26,7 +38,8 @@ export default function HomeHeadline() {
     ;(async () => {
       try {
         setLoading(true)
-        const res = await apiGet('/api/settings/website/content?page=home')
+        const pageKey = selectedCountry ? `home_${selectedCountry.replace(/\s+/g, '_')}` : 'home'
+        const res = await apiGet(`/api/settings/website/content?page=${pageKey}`)
         const elements = Array.isArray(res?.content?.elements) ? res.content.elements : []
         const getText = (id, fallback = '') => {
           const el = elements.find((e) => e?.id === id)
@@ -59,12 +72,13 @@ export default function HomeHeadline() {
     return () => {
       alive = false
     }
-  }, [])
+  }, [selectedCountry])
 
   async function save() {
     setNotice('')
     setSaving(true)
     try {
+      const pageKey = selectedCountry ? `home_${selectedCountry.replace(/\s+/g, '_')}` : 'home'
       const elements = [
         { id: 'homeHeadline_enabled', type: 'text', text: form.enabled ? 'true' : 'false' },
         { id: 'homeHeadline_badge', type: 'text', text: form.badge || '' },
@@ -80,7 +94,7 @@ export default function HomeHeadline() {
         { id: 'homeHeadline_textColor', type: 'text', text: String(form.textColor || '').trim() }
       ]
 
-      await apiPost('/api/settings/website/content', { page: 'home', elements })
+      await apiPost('/api/settings/website/content', { page: pageKey, elements })
       setNotice('Saved')
     } catch (err) {
       console.error(err)
@@ -97,6 +111,28 @@ export default function HomeHeadline() {
         <p style={{ color: 'var(--muted)', fontSize: 14 }}>
           Configure the premium headline strip shown on the homepage below the banner.
         </p>
+      </div>
+
+      <div className="card" style={{ padding: 20, maxWidth: 900, marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--muted)' }}>Country:</div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {COUNTRIES.map(c => (
+              <button
+                key={c.code}
+                onClick={() => setSelectedCountry(c.code)}
+                style={{
+                  padding: '5px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                  border: selectedCountry === c.code ? '2px solid #f97316' : '1px solid #e5e7eb',
+                  background: selectedCountry === c.code ? '#fff7ed' : '#fff',
+                  color: selectedCountry === c.code ? '#c2410c' : '#374151',
+                }}
+              >
+                {c.name}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       <div className="card" style={{ padding: 20, maxWidth: 900 }}>
