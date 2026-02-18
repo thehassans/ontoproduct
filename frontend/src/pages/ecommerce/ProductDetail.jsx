@@ -531,25 +531,27 @@ const ProductDetail = () => {
 
           {hasActiveSale && !isVideoSelected && <div className="absolute top-8 left-20 z-20 bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">-{discountPercentage}%</div>}
 
-          {/* Glassmorphism Thumbnails - INSIDE the hero image */}
+          {/* Glassmorphism Thumbnails - INSIDE the hero image, scrollable */}
           {(images.length > 1 || hasVideo) && (
-            <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-20 flex gap-2 bg-white/40 backdrop-blur-xl px-3 py-2 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] border border-white/50">
-              {images.map((img, idx) => (
-                <button key={idx} onClick={() => scrollToImage(idx)} className={`w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 transition-all bg-white/70 ${selectedImage === idx && !isVideoSelected ? 'ring-2 ring-orange-500 scale-110 shadow-md bg-white' : 'opacity-70 hover:opacity-100 hover:scale-105'}`}>
-                  <img src={img} alt="" className="w-full h-full object-contain p-1" onError={e => { e.target.src = '/placeholder-product.svg' }} />
-                </button>
-              ))}
-              {hasVideo && (
-                <button onClick={() => scrollToImage(images.length)} className={`w-14 h-14 rounded-xl bg-gray-900/80 grid place-items-center flex-shrink-0 transition-all ${isVideoSelected ? 'ring-2 ring-orange-500 scale-110 shadow-md' : 'opacity-70 hover:opacity-100 hover:scale-105'}`}>
-                  <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
-                </button>
-              )}
+            <div className="absolute bottom-5 left-3 right-3 z-20 flex justify-center">
+              <div className="flex gap-2 bg-white/40 backdrop-blur-xl px-3 py-2 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] border border-white/50 overflow-x-auto scrollbar-hide max-w-full">
+                {images.map((img, idx) => (
+                  <button key={idx} onClick={() => scrollToImage(idx)} className={`w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 transition-all bg-white/70 ${selectedImage === idx && !isVideoSelected ? 'ring-2 ring-orange-500 scale-110 shadow-md bg-white' : 'opacity-70 hover:opacity-100 hover:scale-105'}`}>
+                    <img src={img} alt="" className="w-full h-full object-contain p-0.5" onError={e => { e.target.src = '/placeholder-product.svg' }} />
+                  </button>
+                ))}
+                {hasVideo && (
+                  <button onClick={() => scrollToImage(images.length)} className={`w-12 h-12 rounded-xl bg-gray-900/80 grid place-items-center flex-shrink-0 transition-all ${isVideoSelected ? 'ring-2 ring-orange-500 scale-110 shadow-md' : 'opacity-70 hover:opacity-100 hover:scale-105'}`}>
+                    <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                  </button>
+                )}
+              </div>
             </div>
           )}
         </div>
 
         {/* Mobile Product Info */}
-        <div className="px-4 pb-32">
+        <div className="px-4 pb-28">
           {product.category && <span className="inline-block px-3 py-1 rounded-full bg-orange-50 text-orange-600 text-xs font-semibold tracking-wide uppercase mb-2">{product.category}</span>}
           <h1 className="text-xl font-bold text-gray-900 leading-snug mb-1.5 line-clamp-2">{product.name}</h1>
           <div className="flex items-center gap-2 mb-3">
@@ -569,44 +571,31 @@ const ProductDetail = () => {
 
           <TabsContent />
 
-          {/* Full-width Image Gallery */}
-          {images.length > 0 && (
-            <div className="mt-8 mb-6">
-              <h3 className="text-lg font-bold text-gray-900 mb-3">Product Images</h3>
-              <div className="space-y-2">
-                {images.map((img, idx) => (
-                  <div key={idx} className="w-full rounded-2xl overflow-hidden bg-white shadow-sm">
-                    <img src={img} alt={`${product.name} ${idx + 1}`} className="w-full object-contain" style={{ maxHeight: '80vh' }} loading="lazy" onError={e => { e.target.src = '/placeholder-product.svg' }} />
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
 
           <RelatedSection />
         </div>
 
         {/* Mobile Bottom Bar - Glassmorphism */}
         <div className="fixed bottom-0 left-0 right-0 z-50" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0)' }}>
-          <div className="bg-white/70 backdrop-blur-xl mx-3 mb-3 rounded-[22px] shadow-[0_8px_40px_rgba(0,0,0,0.10)] border border-white/60 px-3 py-2.5 flex items-center gap-2">
+          <div className="bg-white/80 backdrop-blur-xl mx-2 mb-2 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.12)] border border-white/60 px-2.5 py-2 flex items-center gap-1.5">
             {/* Qty selector */}
-            <div className="flex items-center bg-gray-100/80 rounded-xl flex-shrink-0">
-              <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-8 h-9 grid place-items-center text-gray-600 active:bg-gray-200 rounded-l-xl"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M20 12H4" /></svg></button>
-              <span className="w-7 h-9 grid place-items-center font-bold text-sm text-gray-900">{quantity}</span>
-              <button onClick={() => setQuantity(quantity + 1)} className="w-8 h-9 grid place-items-center text-gray-600 active:bg-gray-200 rounded-r-xl"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg></button>
+            <div className="flex items-center bg-gray-100/80 rounded-lg flex-shrink-0">
+              <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-7 h-8 grid place-items-center text-gray-600 active:bg-gray-200 rounded-l-lg"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M20 12H4" /></svg></button>
+              <span className="w-6 h-8 grid place-items-center font-bold text-xs text-gray-900">{quantity}</span>
+              <button onClick={() => setQuantity(quantity + 1)} className="w-7 h-8 grid place-items-center text-gray-600 active:bg-gray-200 rounded-r-lg"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg></button>
             </div>
             {/* Price */}
-            <div className="flex-shrink-0 min-w-0">
-              <span className="text-gray-900 font-bold text-base tabular-nums">{priceDisplay}</span>
-              {origPriceDisplay && <span className="text-gray-400 text-[10px] line-through ml-1">{origPriceDisplay}</span>}
+            <div className="flex-shrink-0 min-w-0 truncate">
+              <span className="text-gray-900 font-bold text-sm tabular-nums">{priceDisplay}</span>
+              {origPriceDisplay && <span className="text-gray-400 text-[9px] line-through ml-0.5">{origPriceDisplay}</span>}
             </div>
             {/* Add to cart + WhatsApp */}
-            <div className="flex-1 flex gap-1.5 justify-end">
-              <button onClick={handleAddToCart} className="flex-1 max-w-[140px] bg-gradient-to-r from-orange-500 to-orange-400 text-white font-semibold py-3 rounded-xl shadow-lg shadow-orange-500/25 hover:shadow-xl active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 text-sm">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-                Add to cart
+            <div className="flex-1 flex gap-1 justify-end min-w-0">
+              <button onClick={handleAddToCart} className="flex-1 min-w-0 max-w-[130px] bg-gradient-to-r from-orange-500 to-orange-400 text-white font-semibold py-2.5 rounded-xl shadow-lg shadow-orange-500/25 active:scale-[0.98] transition-all flex items-center justify-center gap-1 text-xs">
+                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                <span className="truncate">Add to cart</span>
               </button>
-              {waUrl && <a href={waUrl} target="_blank" rel="noopener noreferrer" className="w-11 h-11 bg-green-500 text-white rounded-xl grid place-items-center shadow-lg flex-shrink-0"><svg className="w-4.5 h-4.5" viewBox="0 0 24 24" fill="currentColor"><path d={waPath} /></svg></a>}
+              {waUrl && <a href={waUrl} target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-green-500 text-white rounded-xl grid place-items-center shadow-lg flex-shrink-0"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d={waPath} /></svg></a>}
             </div>
           </div>
         </div>

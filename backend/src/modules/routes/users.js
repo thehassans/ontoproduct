@@ -1468,7 +1468,7 @@ router.get(
         role: "seo_manager",
         createdBy: req.user.role === "admin" ? { $exists: true } : req.user.id 
       })
-        .select("firstName lastName email phone createdAt")
+        .select("firstName lastName email phone seoCountries createdAt")
         .sort({ createdAt: -1 })
         .lean();
       
@@ -1501,6 +1501,32 @@ router.delete(
       res.json({ message: "SEO Manager deleted" });
     } catch (err) {
       res.status(500).json({ message: "Failed to delete SEO Manager", error: err?.message });
+    }
+  }
+);
+
+// Update SEO Manager (admin, user)
+router.put(
+  "/seo-managers/:id",
+  auth,
+  allowRoles("admin", "user"),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const seoManager = await User.findOne({ _id: id, role: "seo_manager" });
+      if (!seoManager) return res.status(404).json({ message: "SEO Manager not found" });
+      if (req.user.role !== "admin" && String(seoManager.createdBy) !== String(req.user.id)) {
+        return res.status(403).json({ message: "Not allowed" });
+      }
+      const { firstName, lastName, phone, seoCountries } = req.body || {};
+      if (firstName) seoManager.firstName = firstName.trim();
+      if (lastName) seoManager.lastName = lastName.trim();
+      if (typeof phone === "string") seoManager.phone = phone.trim();
+      if (Array.isArray(seoCountries)) seoManager.seoCountries = seoCountries;
+      await seoManager.save();
+      res.json({ message: "SEO Manager updated", user: { id: seoManager._id, firstName: seoManager.firstName, lastName: seoManager.lastName, email: seoManager.email, phone: seoManager.phone, seoCountries: seoManager.seoCountries } });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to update SEO Manager", error: err?.message });
     }
   }
 );

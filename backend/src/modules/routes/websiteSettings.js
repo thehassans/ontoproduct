@@ -336,6 +336,41 @@ router.post(
   }
 })
 
+// Edit banner metadata (title, country, linkCategory, active)
+router.post('/banners/:id/edit', auth, allowRoles('admin', 'user', 'manager'), allowBannerManagers, async (req, res) => {
+  try {
+    const { id } = req.params
+    const { title, country, linkCategory, active } = req.body || {}
+    const bannersSetting = await Setting.findOne({ key: 'websiteBanners' })
+    if (!bannersSetting) return res.status(404).json({ message: 'No banners found' })
+    const banners = normalizeBannersValue(bannersSetting?.value)
+    const banner = banners.find(b => String(b?._id || b?.id || b?.bannerId || '') === String(id))
+    if (!banner) return res.status(404).json({ message: 'Banner not found' })
+
+    if (typeof title === 'string') banner.title = title.trim()
+    if (typeof country === 'string') banner.country = country.trim()
+    if (typeof linkCategory === 'string') {
+      banner.linkCategory = linkCategory.trim()
+      if (linkCategory.trim()) {
+        banner.linkType = 'category'
+        banner.link = `/catalog?category=${encodeURIComponent(linkCategory.trim())}`
+      } else {
+        banner.linkType = ''
+        banner.link = ''
+      }
+    }
+    if (typeof active === 'boolean') banner.active = active
+
+    bannersSetting.value = banners
+    bannersSetting.markModified('value')
+    await bannersSetting.save()
+    return res.json({ ok: true, message: 'Banner updated', banner })
+  } catch (err) {
+    console.error('Banner edit error:', err)
+    return res.status(500).json({ message: err?.message || 'Failed to edit banner' })
+  }
+})
+
 async function deleteBanner(req, res) {
   try {
     const { id } = req.params

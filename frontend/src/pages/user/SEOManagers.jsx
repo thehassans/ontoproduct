@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { apiGet, apiPost, apiDelete } from '../../api'
+import { apiGet, apiPost, apiPut, apiDelete } from '../../api'
 import { useToast } from '../../ui/Toast'
 
 const ALL_COUNTRIES = [
@@ -21,6 +21,7 @@ export default function SEOManagers() {
     seoCountries: [],
   })
   const [submitting, setSubmitting] = useState(false)
+  const [editingId, setEditingId] = useState(null)
 
   useEffect(() => {
     loadSEOManagers()
@@ -40,6 +41,26 @@ export default function SEOManagers() {
 
   async function handleSubmit(e) {
     e.preventDefault()
+    if (editingId) {
+      if (!form.firstName || !form.lastName) {
+        toast.error('First name and last name are required')
+        return
+      }
+      try {
+        setSubmitting(true)
+        await apiPut(`/api/users/seo-managers/${editingId}`, { firstName: form.firstName, lastName: form.lastName, phone: form.phone, seoCountries: form.seoCountries })
+        toast.success('SEO Manager updated')
+        setShowModal(false)
+        setEditingId(null)
+        setForm({ firstName: '', lastName: '', email: '', phone: '', password: '', seoCountries: [] })
+        loadSEOManagers()
+      } catch (err) {
+        toast.error(err?.message || 'Failed to update SEO Manager')
+      } finally {
+        setSubmitting(false)
+      }
+      return
+    }
     if (!form.firstName || !form.lastName || !form.email || !form.password) {
       toast.error('Please fill all required fields')
       return
@@ -56,6 +77,19 @@ export default function SEOManagers() {
     } finally {
       setSubmitting(false)
     }
+  }
+
+  function openEdit(manager) {
+    setEditingId(manager._id)
+    setForm({
+      firstName: manager.firstName || '',
+      lastName: manager.lastName || '',
+      email: manager.email || '',
+      phone: manager.phone || '',
+      password: '',
+      seoCountries: Array.isArray(manager.seoCountries) ? [...manager.seoCountries] : [],
+    })
+    setShowModal(true)
   }
 
   async function handleDelete(id) {
@@ -77,7 +111,7 @@ export default function SEOManagers() {
           <p style={{ color: '#64748b', marginTop: 4 }}>Manage SEO managers who can configure pixels and meta tags</p>
         </div>
         <button
-          onClick={() => setShowModal(true)}
+          onClick={() => { setEditingId(null); setForm({ firstName: '', lastName: '', email: '', phone: '', password: '', seoCountries: [] }); setShowModal(true) }}
           style={{
             background: 'linear-gradient(135deg, #f97316, #ea580c)',
             color: 'white',
@@ -176,6 +210,21 @@ export default function SEOManagers() {
                   SEO Manager
                 </span>
                 <button
+                  onClick={() => openEdit(manager)}
+                  style={{
+                    background: '#eff6ff',
+                    color: '#2563eb',
+                    border: 'none',
+                    padding: '6px 12px',
+                    borderRadius: 6,
+                    cursor: 'pointer',
+                    fontSize: 13,
+                    fontWeight: 500,
+                  }}
+                >
+                  Edit
+                </button>
+                <button
                   onClick={() => handleDelete(manager._id)}
                   style={{
                     background: '#fef2f2',
@@ -220,9 +269,9 @@ export default function SEOManagers() {
             overflow: 'auto',
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#1e293b' }}>Add SEO Manager</h2>
+              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#1e293b' }}>{editingId ? 'Edit SEO Manager' : 'Add SEO Manager'}</h2>
               <button
-                onClick={() => setShowModal(false)}
+                onClick={() => { setShowModal(false); setEditingId(null) }}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
               >
                 <svg width="24" height="24" fill="none" stroke="#64748b" viewBox="0 0 24 24">
@@ -274,11 +323,12 @@ export default function SEOManagers() {
 
                 <div>
                   <label style={{ display: 'block', marginBottom: 6, fontWeight: 500, color: '#374151', fontSize: 14 }}>
-                    Email *
+                    Email {editingId ? '' : '*'}
                   </label>
                   <input
                     type="email"
                     value={form.email}
+                    disabled={!!editingId}
                     onChange={e => setForm({ ...form, email: e.target.value })}
                     style={{
                       width: '100%',
@@ -312,7 +362,7 @@ export default function SEOManagers() {
 
                 <div>
                   <label style={{ display: 'block', marginBottom: 6, fontWeight: 500, color: '#374151', fontSize: 14 }}>
-                    Password *
+                    Password {editingId ? '(leave blank)' : '*'}
                   </label>
                   <input
                     type="password"
@@ -369,7 +419,7 @@ export default function SEOManagers() {
               <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
                 <button
                   type="button"
-                  onClick={() => setShowModal(false)}
+                  onClick={() => { setShowModal(false); setEditingId(null) }}
                   style={{
                     flex: 1,
                     padding: '12px 16px',
@@ -398,7 +448,7 @@ export default function SEOManagers() {
                     opacity: submitting ? 0.7 : 1,
                   }}
                 >
-                  {submitting ? 'Creating...' : 'Create SEO Manager'}
+                  {submitting ? (editingId ? 'Saving...' : 'Creating...') : (editingId ? 'Save Changes' : 'Create SEO Manager')}
                 </button>
               </div>
             </form>

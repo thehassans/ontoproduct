@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { apiGet, apiPost, apiUpload, mediaUrl } from '../../api'
+
 import { categories as STATIC_CATEGORY_LIST } from '../../components/ecommerce/CategoryFilter'
 
 export default function HomeBanners() {
@@ -17,6 +18,9 @@ export default function HomeBanners() {
     bannerDesktop: null,
     bannerMobile: null,
   })
+  const [editBanner, setEditBanner] = useState(null)
+  const [editForm, setEditForm] = useState({ title: '', country: '', linkCategory: '', active: true })
+  const [editSaving, setEditSaving] = useState(false)
 
   const COUNTRIES = [
     'UAE','Saudi Arabia','Oman','Bahrain','India','Kuwait',
@@ -152,6 +156,32 @@ export default function HomeBanners() {
     } catch (err) {
       console.error(err)
       setNotice(err?.message || 'Toggle failed')
+    }
+  }
+
+  function startEdit(b) {
+    setEditBanner(b._id)
+    setEditForm({
+      title: b.title || '',
+      country: b.country || '',
+      linkCategory: b.linkCategory || '',
+      active: !!b.active,
+    })
+  }
+
+  async function saveEdit() {
+    if (!editBanner) return
+    setEditSaving(true)
+    try {
+      await apiPost(`/api/settings/website/banners/${editBanner}/edit`, editForm)
+      setEditBanner(null)
+      await load()
+      setNotice('Updated')
+    } catch (err) {
+      console.error(err)
+      setNotice(err?.message || 'Edit failed')
+    } finally {
+      setEditSaving(false)
     }
   }
 
@@ -325,6 +355,9 @@ export default function HomeBanners() {
                 </div>
 
                 <div style={{ display: 'flex', gap: 10 }}>
+                  <button className="btn secondary" onClick={() => startEdit(b)}>
+                    Edit
+                  </button>
                   <button className="btn secondary" onClick={() => toggleBanner(b._id)}>
                     Toggle
                   </button>
@@ -332,6 +365,39 @@ export default function HomeBanners() {
                     Delete
                   </button>
                 </div>
+
+                {editBanner === b._id && (
+                  <div style={{ gridColumn: '1 / -1', background: '#f9fafb', borderRadius: 10, padding: 14, display: 'grid', gap: 10, border: '1px solid #e5e7eb' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
+                      <div>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', marginBottom: 4 }}>Title</div>
+                        <input className="input" value={editForm.title} onChange={e => setEditForm(p => ({ ...p, title: e.target.value }))} />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', marginBottom: 4 }}>Country</div>
+                        <select className="input" value={editForm.country} onChange={e => setEditForm(p => ({ ...p, country: e.target.value }))}>
+                          <option value="">All Countries</option>
+                          {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', marginBottom: 4 }}>Category Link</div>
+                        <select className="input" value={editForm.linkCategory} onChange={e => setEditForm(p => ({ ...p, linkCategory: e.target.value }))}>
+                          <option value="">No link</option>
+                          {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                      </div>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, marginTop: 18 }}>
+                        <input type="checkbox" checked={editForm.active} onChange={e => setEditForm(p => ({ ...p, active: e.target.checked }))} />
+                        Active
+                      </label>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button className="btn" disabled={editSaving} onClick={saveEdit}>{editSaving ? 'Saving...' : 'Save'}</button>
+                      <button className="btn secondary" onClick={() => setEditBanner(null)}>Cancel</button>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>

@@ -123,7 +123,23 @@ export default function Categories() {
   const CategoryRow = ({ cat, depth = 0 }) => {
     const [showCountries, setShowCountries] = useState(false)
     const [showManagers, setShowManagers] = useState(false)
+    const [showAddSub, setShowAddSub] = useState(false)
+    const [subName, setSubName] = useState('')
+    const [subSaving, setSubSaving] = useState(false)
     const unpub = cat.unpublishedCountries || []
+
+    const handleAddSub = async () => {
+      if (!subName.trim()) return showToast('Subcategory name required', 'error')
+      setSubSaving(true)
+      try {
+        await apiPost('/api/categories', { name: subName.trim(), parent: cat._id, isPublished: true })
+        showToast(`Subcategory "${subName.trim()}" added`)
+        setSubName('')
+        setShowAddSub(false)
+        await load()
+      } catch (e) { showToast(e?.message || 'Failed', 'error') }
+      finally { setSubSaving(false) }
+    }
 
     return (
       <div style={{ ...S.card, marginLeft: depth * 24, borderLeft: depth ? '3px solid #f97316' : undefined }}>
@@ -141,6 +157,11 @@ export default function Categories() {
             )}
           </div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {depth === 0 && (
+              <button style={{ ...S.btn, background: '#fff7ed', color: '#c2410c', border: '1px solid #fed7aa', fontSize: 11 }} onClick={() => setShowAddSub(!showAddSub)}>
+                {showAddSub ? 'Cancel' : '+ Sub'}
+              </button>
+            )}
             <button style={{ ...S.btn, ...S.btnSec, fontSize: 11 }} onClick={() => setShowCountries(!showCountries)}>
               {showCountries ? 'Hide' : 'Countries'}
             </button>
@@ -158,6 +179,13 @@ export default function Categories() {
             </button>
           </div>
         </div>
+
+        {showAddSub && (
+          <div style={{ marginTop: 12, padding: 12, background: '#fffbeb', borderRadius: 8, border: '1px solid #fde68a', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <input style={{ ...S.input, flex: 1, minWidth: 180 }} value={subName} onChange={e => setSubName(e.target.value)} placeholder={`New subcategory under ${cat.name}`} onKeyDown={e => e.key === 'Enter' && handleAddSub()} />
+            <button style={{ ...S.btn, ...S.btnPrimary, fontSize: 12 }} onClick={handleAddSub} disabled={subSaving}>{subSaving ? 'Adding...' : 'Add Subcategory'}</button>
+          </div>
+        )}
 
         {showCountries && (
           <div style={{ marginTop: 12, padding: 12, background: '#f9fafb', borderRadius: 8 }}>
@@ -215,9 +243,13 @@ export default function Categories() {
           </div>
         )}
 
-        {cat.subcategories?.map(sub => (
-          <CategoryRow key={sub._id} cat={sub} depth={depth + 1} />
-        ))}
+        {cat.subcategories?.length > 0 && (
+          <div style={{ marginTop: 8 }}>
+            {cat.subcategories.map(sub => (
+              <CategoryRow key={sub._id} cat={sub} depth={depth + 1} />
+            ))}
+          </div>
+        )}
       </div>
     )
   }

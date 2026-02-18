@@ -891,7 +891,9 @@ export default function ProductCatalog() {
   if (loading && displayedProducts.length === 0) {
     return (
       <div className="min-h-screen" style={{ backgroundColor: '#f4f4f4' }}>
-        <Header onCartClick={() => setIsCartOpen(true)} />
+        <div className="hidden lg:block">
+          <Header onCartClick={() => setIsCartOpen(true)} />
+        </div>
         
         <div className="max-w-7xl mx-auto px-1 sm:px-2 lg:px-4 py-4">
           {/* Stats Section Skeleton */}
@@ -976,12 +978,14 @@ export default function ProductCatalog() {
         onSave={setEditState}
       />
       
-      <Header 
-        onCartClick={() => setIsCartOpen(true)} 
-        editMode={editMode}
-        editState={editState}
-        onExitEdit={() => setEditMode(false)}
-      />
+      <div className="hidden lg:block">
+        <Header 
+          onCartClick={() => setIsCartOpen(true)} 
+          editMode={editMode}
+          editState={editState}
+          onExitEdit={() => setEditMode(false)}
+        />
+      </div>
       
       <div className="editable-area">
         <div className="max-w-7xl mx-auto px-1 sm:px-2 lg:px-4 py-4">

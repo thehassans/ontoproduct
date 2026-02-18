@@ -330,8 +330,8 @@ export default function Home(){
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#f4f4f4' }}>
-      {/* Desktop Header only */}
-      <div className="hidden md:block">
+      {/* Desktop Header only (hidden on tablet & mobile) */}
+      <div className="hidden lg:block">
         <Header onCartClick={() => setIsCartOpen(true)} />
       </div>
 
@@ -341,8 +341,8 @@ export default function Home(){
       <div className="relative">
         <PremiumHeroBanner />
 
-        {/* Mobile-only floating glassmorphism controls INSIDE banner */}
-        <div className="md:hidden absolute top-3 left-3 right-3 z-30 flex items-center justify-between">
+        {/* Mobile+Tablet floating glassmorphism controls INSIDE banner */}
+        <div className="lg:hidden absolute top-3 left-3 right-3 z-30 flex items-center justify-between">
           {/* Left: Ultra-minimal transparent hamburger */}
           <button
             onClick={() => setMobileMenuOpen(true)}
@@ -389,7 +389,7 @@ export default function Home(){
 
       {/* Mobile slide-out menu — ultra premium minimalist */}
       {mobileMenuOpen && (
-        <div className="fixed inset-0 z-[9999] md:hidden">
+        <div className="fixed inset-0 z-[9999] lg:hidden">
           <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)} />
           <div className="absolute top-0 left-0 bottom-0 w-[78vw] max-w-[320px] bg-white shadow-2xl flex flex-col animate-[slideIn_0.3s_cubic-bezier(0.16,1,0.3,1)]">
             {/* Big logo + close */}
@@ -630,7 +630,7 @@ export default function Home(){
       </div>
 
       {/* Stats Section - Hidden on mobile */}
-      <section className="hidden md:block max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <section className="hidden lg:block max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
           {[
             { number: '10,000+', label: 'Products', icon: '📦', color: 'from-orange-500 to-orange-600' },
