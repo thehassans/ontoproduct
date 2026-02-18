@@ -19,6 +19,7 @@ export default function Home(){
   const searchInputRef = useRef(null)
   const [categoryNames, setCategoryNames] = useState(['products', 'deals', 'trending'])
   const [placeholderIdx, setPlaceholderIdx] = useState(0)
+  const [placeholderAnim, setPlaceholderAnim] = useState(false)
   const [cartCount, setCartCount] = useState(() => { try { const c = JSON.parse(localStorage.getItem('shopping_cart') || '[]'); return c.reduce((s, i) => s + (i.quantity || 1), 0) } catch { return 0 } })
   const [homeHeadline, setHomeHeadline] = useState({
     enabled: true,
@@ -148,11 +149,15 @@ export default function Home(){
     })()
   }, [selectedCountry])
 
-  // Cycle through category names for placeholder
+  // Cycle through category names for placeholder with slide-up
   useEffect(() => {
     if (categoryNames.length <= 1) return
     const timer = setInterval(() => {
-      setPlaceholderIdx(prev => (prev + 1) % categoryNames.length)
+      setPlaceholderAnim(true)
+      setTimeout(() => {
+        setPlaceholderIdx(prev => (prev + 1) % categoryNames.length)
+        setPlaceholderAnim(false)
+      }, 300)
     }, 2500)
     return () => clearInterval(timer)
   }, [categoryNames])
@@ -211,15 +216,20 @@ export default function Home(){
         <div className={`absolute bottom-3 left-3 right-3 z-30 transition-all duration-300 ${mobileSearchOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
           <form onSubmit={e => { e.preventDefault(); if (searchQuery.trim()) { navigate(`/catalog?search=${encodeURIComponent(searchQuery.trim())}`); setSearchQuery(''); setMobileSearchOpen(false) } }} className="flex items-center gap-2.5 bg-black/30 backdrop-blur-xl rounded-full px-4 py-2.5 shadow-lg border border-white/20">
             <svg className="w-4 h-4 text-white/70 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
-            <input
-              ref={searchInputRef}
-              type="text"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder={`Search ${categoryNames[placeholderIdx] || 'products'}...`}
-              className="flex-1 bg-transparent border-none outline-none text-sm text-white placeholder-white/60"
-              style={{transition:'all 0.3s ease'}}
-            />
+            <div className="flex-1 relative">
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="w-full bg-transparent border-none outline-none text-sm text-white"
+              />
+              {!searchQuery && (
+                <div className="absolute inset-0 flex items-center pointer-events-none overflow-hidden">
+                  <span className="text-sm text-white/60 transition-all duration-300 ease-out" style={{transform: placeholderAnim ? 'translateY(-100%)' : 'translateY(0)', opacity: placeholderAnim ? 0 : 1}}>Search {categoryNames[placeholderIdx] || 'products'}...</span>
+                </div>
+              )}
+            </div>
             <button type="button" onClick={() => setMobileSearchOpen(false)} className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
               <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
             </button>
@@ -231,28 +241,6 @@ export default function Home(){
         <PremiumHeroBanner />
       </div>
 
-      {/* Deliver to — below banner, ultra premium minimalist */}
-      <div className="lg:hidden relative">
-        <div className="bg-white/95 backdrop-blur-sm px-4 py-2.5 flex items-center gap-2 border-b border-gray-100/80">
-          <svg className="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" /></svg>
-          <button onClick={() => setMobileCountryOpen(!mobileCountryOpen)} className="flex items-center gap-1.5 text-[13px] text-gray-600">
-            <span className="font-medium">Deliver to</span>
-            <span className="font-bold text-gray-900">{currentFlag} {currentCountryName}</span>
-            <svg className={`w-3.5 h-3.5 text-gray-400 transition-transform ${mobileCountryOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" /></svg>
-          </button>
-        </div>
-        {mobileCountryOpen && (
-          <div className="absolute left-2 right-2 top-full -mt-1 max-h-64 overflow-y-auto bg-white rounded-2xl shadow-[0_12px_48px_rgba(0,0,0,0.15)] border border-gray-100 py-1 z-50">
-            {COUNTRY_LIST_LOCAL.map(c => (
-              <button key={c.code} onClick={() => handleMobileCountryChange(c.code)} className={`w-full px-4 py-2.5 flex items-center gap-2.5 text-left text-sm transition-colors ${selectedCountry === c.code ? 'bg-orange-50 text-orange-600 font-semibold' : 'text-gray-700 hover:bg-gray-50'}`}>
-                <span>{c.flag}</span><span>{c.name}</span>
-                {selectedCountry === c.code && <svg className="w-3.5 h-3.5 ml-auto text-orange-500" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" /></svg>}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
       {/* Mobile slide-out menu — ultra premium glass */}
       {mobileMenuOpen && (
         <div className="fixed inset-0 z-[9999] lg:hidden">
@@ -261,7 +249,6 @@ export default function Home(){
             {/* Logo + close */}
             <div className="relative px-6 pt-8 pb-5 flex items-center gap-3">
               <img src="/BuySial2.png" alt="BuySial" className="h-10 w-10 object-contain" />
-              <span className="text-xl font-bold tracking-tight"><span className="text-[#0b5ed7]">buy</span><span className="text-[#f97316]">sial</span></span>
               <button onClick={() => setMobileMenuOpen(false)} className="ml-auto w-8 h-8 rounded-full bg-gray-100/80 flex items-center justify-center hover:bg-gray-200 transition-colors"><svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg></button>
             </div>
             <div className="h-px bg-gray-100 mx-5" />
@@ -292,6 +279,7 @@ export default function Home(){
         </div>
       )}
 
+      {/* Home headline ticker — above deliver-to */}
       {homeHeadline?.enabled ? (
         <section className="max-w-7xl mx-auto px-1 sm:px-2 lg:px-4">
           <div
@@ -374,6 +362,28 @@ export default function Home(){
           </div>
         </section>
       ) : null}
+
+      {/* Deliver to — below headline, ultra premium minimalist */}
+      <div className="lg:hidden relative">
+        <div className="bg-white/95 backdrop-blur-sm px-4 py-2.5 flex items-center gap-2 border-b border-gray-100/80">
+          <svg className="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" /></svg>
+          <button onClick={() => setMobileCountryOpen(!mobileCountryOpen)} className="flex items-center gap-1.5 text-[13px] text-gray-600">
+            <span className="font-medium">Deliver to</span>
+            <span className="font-bold text-gray-900">{currentFlag} {currentCountryName}</span>
+            <svg className={`w-3.5 h-3.5 text-gray-400 transition-transform ${mobileCountryOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" /></svg>
+          </button>
+        </div>
+        {mobileCountryOpen && (
+          <div className="absolute left-2 right-2 top-full -mt-1 max-h-64 overflow-y-auto bg-white rounded-2xl shadow-[0_12px_48px_rgba(0,0,0,0.15)] border border-gray-100 py-1 z-50">
+            {COUNTRY_LIST_LOCAL.map(c => (
+              <button key={c.code} onClick={() => handleMobileCountryChange(c.code)} className={`w-full px-4 py-2.5 flex items-center gap-2.5 text-left text-sm transition-colors ${selectedCountry === c.code ? 'bg-orange-50 text-orange-600 font-semibold' : 'text-gray-700 hover:bg-gray-50'}`}>
+                <span>{c.flag}</span><span>{c.name}</span>
+                {selectedCountry === c.code && <svg className="w-3.5 h-3.5 ml-auto text-orange-500" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" /></svg>}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Category Browser — Left tabs + Right subcategory cards */}
       <CategoryBrowser selectedCountry={selectedCountry} />

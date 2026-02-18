@@ -353,6 +353,8 @@ export default function ProductCatalog() {
   const [mobileCountryOpen, setMobileCountryOpen] = useState(false)
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
   const [discoverCategories, setDiscoverCategories] = useState([])
+  const [placeholderIdx, setPlaceholderIdx] = useState(0)
+  const [placeholderAnim, setPlaceholderAnim] = useState(false)
   const [cartCount, setCartCount] = useState(() => { try { const c = JSON.parse(localStorage.getItem('shopping_cart') || '[]'); return c.reduce((s, i) => s + (i.quantity || 1), 0) } catch { return 0 } })
   const COUNTRY_LIST_LOCAL = [
     { code: 'GB', name: 'UK', flag: '🇬🇧' }, { code: 'US', name: 'USA', flag: '🇺🇸' },
@@ -381,6 +383,19 @@ export default function ProductCatalog() {
       } catch {}
     })()
   }, [selectedCountry])
+
+  // Cycle through category names for search placeholder with slide-up
+  useEffect(() => {
+    if (discoverCategories.length <= 1) return
+    const timer = setInterval(() => {
+      setPlaceholderAnim(true)
+      setTimeout(() => {
+        setPlaceholderIdx(prev => (prev + 1) % discoverCategories.length)
+        setPlaceholderAnim(false)
+      }, 300)
+    }, 2500)
+    return () => clearInterval(timer)
+  }, [discoverCategories])
 
   const mixByCategory = useCallback((list) => {
     const rows = Array.isArray(list) ? list : []
@@ -1032,7 +1047,14 @@ export default function ProductCatalog() {
           <div className="px-4 pb-2">
             <form onSubmit={e => { e.preventDefault(); if (searchQuery.trim()) handleSearch(searchQuery) }} className="flex items-center gap-2 bg-gray-50 rounded-full px-3.5 py-2 border border-gray-100">
               <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
-              <input autoFocus type="text" value={searchQuery} onChange={e => handleSearch(e.target.value)} placeholder="Search products..." className="flex-1 bg-transparent border-none outline-none text-sm text-gray-800 placeholder-gray-400" />
+              <div className="flex-1 relative">
+                <input autoFocus type="text" value={searchQuery} onChange={e => handleSearch(e.target.value)} className="w-full bg-transparent border-none outline-none text-sm text-gray-800" />
+                {!searchQuery && (
+                  <div className="absolute inset-0 flex items-center pointer-events-none overflow-hidden">
+                    <span className="text-sm text-gray-400 transition-all duration-300 ease-out" style={{transform: placeholderAnim ? 'translateY(-100%)' : 'translateY(0)', opacity: placeholderAnim ? 0 : 1}}>Search {discoverCategories[placeholderIdx] || 'products'}...</span>
+                  </div>
+                )}
+              </div>
               <button type="button" onClick={() => setMobileSearchOpen(false)} className="text-gray-400"><svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg></button>
             </form>
           </div>
