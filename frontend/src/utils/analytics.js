@@ -437,6 +437,59 @@ class Analytics {
   }
 }
 
+// ─── Platform page view tracking (used by DynamicPixels on route change) ─────
+
+function isPageViewEnabled(platformKey) {
+  if (typeof window === 'undefined') return true
+  const et = window._seoSettings?.eventTracking
+  if (!et || typeof et !== 'object') return true
+  const platform = et?.[platformKey]
+  if (!platform || typeof platform !== 'object') return true
+  return platform?.pageView !== false
+}
+
+export function trackAllPlatformPageView(pathname) {
+  // TikTok Pixel page view
+  if (typeof window !== 'undefined' && window.ttq) {
+    try {
+      const ids = Array.isArray(window._tiktokPixelIds) ? window._tiktokPixelIds : []
+      const enabled = (window._tiktokEvents || {}).pageView !== false
+      if (enabled) {
+        if (ids.length && typeof window.ttq.instance === 'function') {
+          ids.forEach((id) => { try { window.ttq.instance(id).page() } catch {} })
+        } else {
+          window.ttq.page()
+        }
+      }
+    } catch {}
+  }
+
+  // Facebook/Meta Pixel page view
+  if (typeof window !== 'undefined' && window.fbq && isPageViewEnabled('facebook')) {
+    try { window.fbq('track', 'PageView') } catch {}
+  }
+
+  // Snapchat Pixel page view
+  if (typeof window !== 'undefined' && window.snaptr && isPageViewEnabled('snapchat')) {
+    try { window.snaptr('track', 'PAGE_VIEW') } catch {}
+  }
+
+  // Pinterest page view
+  if (typeof window !== 'undefined' && window.pintrk && isPageViewEnabled('pinterest')) {
+    try { window.pintrk('page') } catch {}
+  }
+
+  // Twitter/X page view
+  if (typeof window !== 'undefined' && window.twq) {
+    try { window.twq('track', 'PageView') } catch {}
+  }
+
+  // Google Analytics page view
+  if (typeof window !== 'undefined' && window.gtag && isPageViewEnabled('google')) {
+    try { window.gtag('event', 'page_view', { page_path: pathname }) } catch {}
+  }
+}
+
 // Create and export a singleton instance
 const analytics = new Analytics()
 

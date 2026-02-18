@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import { apiGet } from '../api.js'
+import { trackAllPlatformPageView } from '../utils/analytics.js'
 
 function normalizeIds(value) {
   const sanitizeOne = (v) => {
@@ -81,6 +82,7 @@ function resolveCountryKey(countrySeo, rawValue) {
   }
 }
 
+
 function isPageViewEnabled(platformKey) {
   if (typeof window === 'undefined') return true
   const et = window._seoSettings?.eventTracking
@@ -91,9 +93,8 @@ function isPageViewEnabled(platformKey) {
 }
 
 /**
- * DynamicPixels - Injects tracking pixels dynamically based on SEO settings
- * This component loads pixel IDs from the backend and injects the appropriate scripts
- * Also handles route change tracking for SPAs
+ * DynamicPixels - ONLY handles pixel INITIALIZATION (loading scripts into <head>)
+ * All event tracking (ViewContent, AddToCart, Purchase, PageView) is in analytics.js
  */
 export default function DynamicPixels() {
   const [loaded, setLoaded] = useState(false)
@@ -220,8 +221,8 @@ export default function DynamicPixels() {
     // Only track if pixels are ready
     if (!pixelsReady) return
 
-    // Track page view on route change
-    trackAllPixelsPageView(location.pathname)
+    // Track page view on route change (single source: analytics.js)
+    trackAllPlatformPageView(location.pathname)
   }, [location.pathname, pixelsReady, isStaffRoute])
 
   useEffect(() => {
@@ -275,76 +276,6 @@ export default function DynamicPixels() {
   return null // This component doesn't render anything
 }
 
-// Track page view across all pixels on route change
-function trackAllPixelsPageView(pathname) {
-  // TikTok Pixel page view
-  if (window.ttq) {
-    try {
-      const ids = Array.isArray(window._tiktokPixelIds) ? window._tiktokPixelIds : []
-      const enabled = (window._tiktokEvents || {}).pageView !== false
-
-      if (!enabled) {
-        // no-op
-      } else if (ids.length && typeof window.ttq.instance === 'function') {
-        ids.forEach((id) => {
-          try {
-            window.ttq.instance(id).page()
-          } catch (e) {
-            console.warn('TikTok page tracking error:', e)
-          }
-        })
-      } else {
-        window.ttq.page()
-      }
-    } catch (e) {
-      console.warn('TikTok page tracking error:', e)
-    }
-  }
-
-  // Facebook Pixel page view
-  if (window.fbq) {
-    if (isPageViewEnabled('facebook')) {
-      try {
-        window.fbq('track', 'PageView')
-      } catch (e) {
-        console.warn('Facebook page tracking error:', e)
-      }
-    }
-  }
-
-  // Snapchat Pixel page view
-  if (window.snaptr) {
-    if (isPageViewEnabled('snapchat')) {
-      try {
-        window.snaptr('track', 'PAGE_VIEW')
-      } catch (e) {
-        console.warn('Snapchat page tracking error:', e)
-      }
-    }
-  }
-
-  // Pinterest page view
-  if (window.pintrk) {
-    if (isPageViewEnabled('pinterest')) {
-      try {
-        window.pintrk('page')
-      } catch (e) {
-        console.warn('Pinterest page tracking error:', e)
-      }
-    }
-  }
-
-  // Google Analytics page view (handled automatically by react-router usually)
-  if (window.gtag) {
-    if (isPageViewEnabled('google')) {
-      try {
-        window.gtag('event', 'page_view', { page_path: pathname })
-      } catch (e) {
-        console.warn('Google Analytics page tracking error:', e)
-      }
-    }
-  }
-}
 
 // TikTok Pixel initialization
 function ensureTikTokBaseLoaded() {
