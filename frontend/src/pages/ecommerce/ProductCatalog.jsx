@@ -351,6 +351,8 @@ export default function ProductCatalog() {
   const [loadingMore, setLoadingMore] = useState(false)
   const loaderRef = useRef(null)
   const [mobileCountryOpen, setMobileCountryOpen] = useState(false)
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
+  const [discoverCategories, setDiscoverCategories] = useState([])
   const [cartCount, setCartCount] = useState(() => { try { const c = JSON.parse(localStorage.getItem('shopping_cart') || '[]'); return c.reduce((s, i) => s + (i.quantity || 1), 0) } catch { return 0 } })
   const COUNTRY_LIST_LOCAL = [
     { code: 'GB', name: 'UK', flag: '🇬🇧' }, { code: 'US', name: 'USA', flag: '🇺🇸' },
@@ -367,6 +369,18 @@ export default function ProductCatalog() {
     window.addEventListener('cartUpdated', update); window.addEventListener('storage', update)
     return () => { window.removeEventListener('cartUpdated', update); window.removeEventListener('storage', update) }
   }, [])
+
+  // Fetch categories by country for category pills
+  useEffect(() => {
+    (async () => {
+      try {
+        const countryName = COUNTRY_LIST_LOCAL.find(c => c.code === selectedCountry)?.name || selectedCountry
+        const res = await apiGet(`/api/categories/public?country=${encodeURIComponent(countryName)}`)
+        const cats = Array.isArray(res?.categories) ? res.categories : []
+        if (cats.length) setDiscoverCategories(cats.map(c => c.name))
+      } catch {}
+    })()
+  }, [selectedCountry])
 
   const mixByCategory = useCallback((list) => {
     const rows = Array.isArray(list) ? list : []
@@ -995,45 +1009,63 @@ export default function ProductCatalog() {
         onSave={setEditState}
       />
       
-      {/* Mobile: floating glass search + controls over gradient header area */}
-      <div className="lg:hidden relative bg-gradient-to-r from-orange-500 to-orange-600" style={{padding:'14px 12px 48px'}}>
-        {/* Row: back/home + logo + cart */}
-        <div className="flex items-center justify-between mb-3">
-          <Link to="/" className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center">
-            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0h4" /></svg>
+      {/* Mobile: clean light header */}
+      <div className="lg:hidden bg-white border-b border-gray-100">
+        {/* Row: home + title + search + cart */}
+        <div className="flex items-center justify-between px-4 pt-3 pb-2">
+          <Link to="/" className="w-9 h-9 rounded-full bg-gray-50 flex items-center justify-center">
+            <svg className="w-[18px] h-[18px] text-gray-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0h4" /></svg>
           </Link>
-          <span className="text-white font-bold text-base tracking-wide">Discover</span>
-          <button onClick={() => navigate('/cart')} className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center relative">
-            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-            {cartCount > 0 && <span className="absolute -top-1 -right-1 bg-white text-orange-600 text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">{cartCount > 99 ? '99+' : cartCount}</span>}
-          </button>
+          <span className="text-gray-900 font-semibold text-[15px] tracking-wide">Discover</span>
+          <div className="flex items-center gap-1.5">
+            <button onClick={() => setMobileSearchOpen(!mobileSearchOpen)} className="w-9 h-9 rounded-full bg-gray-50 flex items-center justify-center">
+              <svg className="w-[18px] h-[18px] text-gray-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+            </button>
+            <button onClick={() => navigate('/cart')} className="w-9 h-9 rounded-full bg-gray-50 flex items-center justify-center relative">
+              <svg className="w-[18px] h-[18px] text-gray-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+              {cartCount > 0 && <span className="absolute -top-0.5 -right-0.5 bg-orange-500 text-white text-[9px] font-bold rounded-full min-w-[16px] h-[16px] flex items-center justify-center px-0.5">{cartCount > 99 ? '99+' : cartCount}</span>}
+            </button>
+          </div>
         </div>
-        {/* Glass search bar */}
-        <form onSubmit={e => { e.preventDefault(); if (searchQuery.trim()) handleSearch(searchQuery) }} className="flex items-center gap-2.5 bg-white/20 backdrop-blur-md rounded-full px-4 py-2.5 border border-white/30">
-          <svg className="w-4 h-4 text-white/70 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
-          <input type="text" value={searchQuery} onChange={e => handleSearch(e.target.value)} placeholder="Search products here..." className="flex-1 bg-transparent border-none outline-none text-sm text-white placeholder-white/60" />
-        </form>
-      </div>
-      {/* Deliver to — below, minimalist */}
-      <div className="lg:hidden relative">
-        <div className="bg-white/95 backdrop-blur-sm px-4 py-2.5 flex items-center gap-2 border-b border-gray-100/80">
-          <svg className="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" /></svg>
-          <button onClick={() => setMobileCountryOpen(!mobileCountryOpen)} className="flex items-center gap-1.5 text-[13px] text-gray-600">
-            <span className="font-medium">Deliver to</span>
-            <span className="font-bold text-gray-900">{currentFlag} {currentCountryName}</span>
-            <svg className={`w-3.5 h-3.5 text-gray-400 transition-transform ${mobileCountryOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" /></svg>
-          </button>
-        </div>
-        {mobileCountryOpen && (
-          <div className="absolute left-2 right-2 top-full -mt-1 max-h-64 overflow-y-auto bg-white rounded-2xl shadow-[0_12px_48px_rgba(0,0,0,0.15)] border border-gray-100 py-1 z-50">
-            {COUNTRY_LIST_LOCAL.map(c => (
-              <button key={c.code} onClick={() => { setSelectedCountry(c.code); setMobileCountryOpen(false); try { localStorage.setItem('selected_country', c.code) } catch {}; window.dispatchEvent(new CustomEvent('countryChanged', { detail: { code: c.code } })) }} className={`w-full px-4 py-2.5 flex items-center gap-2.5 text-left text-sm transition-colors ${selectedCountry === c.code ? 'bg-orange-50 text-orange-600 font-semibold' : 'text-gray-700 hover:bg-gray-50'}`}>
-                <span>{c.flag}</span><span>{c.name}</span>
-                {selectedCountry === c.code && <svg className="w-3.5 h-3.5 ml-auto text-orange-500" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" /></svg>}
-              </button>
-            ))}
+        {/* Expandable search bar */}
+        {mobileSearchOpen && (
+          <div className="px-4 pb-2">
+            <form onSubmit={e => { e.preventDefault(); if (searchQuery.trim()) handleSearch(searchQuery) }} className="flex items-center gap-2 bg-gray-50 rounded-full px-3.5 py-2 border border-gray-100">
+              <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+              <input autoFocus type="text" value={searchQuery} onChange={e => handleSearch(e.target.value)} placeholder="Search products..." className="flex-1 bg-transparent border-none outline-none text-sm text-gray-800 placeholder-gray-400" />
+              <button type="button" onClick={() => setMobileSearchOpen(false)} className="text-gray-400"><svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg></button>
+            </form>
           </div>
         )}
+        {/* Deliver to */}
+        <div className="px-4 pb-2 relative">
+          <button onClick={() => setMobileCountryOpen(!mobileCountryOpen)} className="flex items-center gap-1.5 text-[12px] text-gray-500">
+            <svg className="w-3.5 h-3.5 text-orange-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" /></svg>
+            <span>Deliver to</span>
+            <span className="font-semibold text-gray-800">{currentFlag} {currentCountryName}</span>
+            <svg className={`w-3 h-3 text-gray-400 transition-transform ${mobileCountryOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" /></svg>
+          </button>
+          {mobileCountryOpen && (
+            <div className="absolute left-2 right-2 top-full mt-1 max-h-64 overflow-y-auto bg-white rounded-2xl shadow-[0_12px_48px_rgba(0,0,0,0.15)] border border-gray-100 py-1 z-50">
+              {COUNTRY_LIST_LOCAL.map(c => (
+                <button key={c.code} onClick={() => { setSelectedCountry(c.code); setMobileCountryOpen(false); try { localStorage.setItem('selected_country', c.code) } catch {}; window.dispatchEvent(new CustomEvent('countryChanged', { detail: { code: c.code } })) }} className={`w-full px-4 py-2.5 flex items-center gap-2.5 text-left text-sm transition-colors ${selectedCountry === c.code ? 'bg-orange-50 text-orange-600 font-semibold' : 'text-gray-700 hover:bg-gray-50'}`}>
+                  <span>{c.flag}</span><span>{c.name}</span>
+                  {selectedCountry === c.code && <svg className="w-3.5 h-3.5 ml-auto text-orange-500" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" /></svg>}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        {/* Category pills — horizontal scroll, ultra minimal */}
+        <div className="overflow-x-auto no-scrollbar">
+          <div className="flex gap-2 px-4 pb-2.5 min-w-max">
+            <button onClick={() => { setSelectedCategory('all'); setCurrentPage(1) }} className={`px-3.5 py-1.5 rounded-full text-[12px] font-medium whitespace-nowrap transition-all ${selectedCategory === 'all' ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}>All</button>
+            {discoverCategories.map(cat => (
+              <button key={cat} onClick={() => { setSelectedCategory(cat); setCurrentPage(1) }} className={`px-3.5 py-1.5 rounded-full text-[12px] font-medium whitespace-nowrap transition-all ${selectedCategory === cat ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}>{cat}</button>
+            ))}
+          </div>
+        </div>
+        <style>{`.no-scrollbar::-webkit-scrollbar{display:none} .no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}`}</style>
       </div>
 
       <div className="hidden lg:block">

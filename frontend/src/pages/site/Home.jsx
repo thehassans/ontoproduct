@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState, useRef, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import Header from '../../components/layout/Header'
 import { apiGet } from '../../api'
@@ -17,6 +17,8 @@ export default function Home(){
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const searchInputRef = useRef(null)
+  const [categoryNames, setCategoryNames] = useState(['products', 'deals', 'trending'])
+  const [placeholderIdx, setPlaceholderIdx] = useState(0)
   const [cartCount, setCartCount] = useState(() => { try { const c = JSON.parse(localStorage.getItem('shopping_cart') || '[]'); return c.reduce((s, i) => s + (i.quantity || 1), 0) } catch { return 0 } })
   const [homeHeadline, setHomeHeadline] = useState({
     enabled: true,
@@ -134,6 +136,27 @@ export default function Home(){
     }
   }, [])
 
+  // Fetch category names for cycling search placeholder
+  useEffect(() => {
+    (async () => {
+      try {
+        const countryName = COUNTRY_LIST_LOCAL.find(c => c.code === selectedCountry)?.name || selectedCountry
+        const res = await apiGet(`/api/categories/public?country=${encodeURIComponent(countryName)}`)
+        const cats = Array.isArray(res?.categories) ? res.categories : []
+        if (cats.length) setCategoryNames(cats.map(c => c.name))
+      } catch {}
+    })()
+  }, [selectedCountry])
+
+  // Cycle through category names for placeholder
+  useEffect(() => {
+    if (categoryNames.length <= 1) return
+    const timer = setInterval(() => {
+      setPlaceholderIdx(prev => (prev + 1) % categoryNames.length)
+    }, 2500)
+    return () => clearInterval(timer)
+  }, [categoryNames])
+
   // Track cart count updates
   useEffect(() => {
     const update = () => { try { const c = JSON.parse(localStorage.getItem('shopping_cart') || '[]'); setCartCount(c.reduce((s, i) => s + (i.quantity || 1), 0)) } catch { setCartCount(0) } }
@@ -160,7 +183,7 @@ export default function Home(){
       {/* Hero Banner with floating controls inside */}
       <div className="relative lg:hidden">
         <PremiumHeroBanner />
-        {/* Floating hamburger + cart on banner */}
+        {/* Floating hamburger + search + cart on banner */}
         <div className="absolute top-3 left-3 right-3 z-30 flex items-center justify-between pointer-events-none">
           <button
             onClick={() => setMobileMenuOpen(true)}
@@ -168,26 +191,38 @@ export default function Home(){
           >
             <svg className="w-5 h-5 text-gray-800" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><line x1="4" y1="7" x2="20" y2="7" /><line x1="4" y1="12" x2="20" y2="12" /><line x1="4" y1="17" x2="20" y2="17" /></svg>
           </button>
-          <button
-            onClick={() => navigate('/cart')}
-            className="pointer-events-auto w-10 h-10 rounded-full bg-white/80 backdrop-blur-md shadow-sm flex items-center justify-center active:scale-95 transition-transform relative"
-          >
-            <svg className="w-5 h-5 text-gray-800" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-            {cartCount > 0 && <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">{cartCount > 99 ? '99+' : cartCount}</span>}
-          </button>
+          <div className="flex items-center gap-2 pointer-events-auto">
+            <button
+              onClick={() => { setMobileSearchOpen(prev => !prev); setTimeout(() => searchInputRef.current?.focus(), 100) }}
+              className="w-10 h-10 rounded-full bg-white/80 backdrop-blur-md shadow-sm flex items-center justify-center active:scale-95 transition-transform"
+            >
+              <svg className="w-5 h-5 text-gray-800" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+            </button>
+            <button
+              onClick={() => navigate('/cart')}
+              className="w-10 h-10 rounded-full bg-white/80 backdrop-blur-md shadow-sm flex items-center justify-center active:scale-95 transition-transform relative"
+            >
+              <svg className="w-5 h-5 text-gray-800" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+              {cartCount > 0 && <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">{cartCount > 99 ? '99+' : cartCount}</span>}
+            </button>
+          </div>
         </div>
-        {/* Search bar floating at bottom of banner */}
-        <div className="absolute bottom-3 left-3 right-3 z-30">
-          <form onSubmit={e => { e.preventDefault(); if (searchQuery.trim()) { navigate(`/catalog?search=${encodeURIComponent(searchQuery.trim())}`); setSearchQuery('') } }} className="flex items-center gap-2.5 bg-white/20 backdrop-blur-md rounded-full px-4 py-2.5 shadow-lg border border-white/30">
+        {/* Search bar — slides in from top when search icon clicked */}
+        <div className={`absolute bottom-3 left-3 right-3 z-30 transition-all duration-300 ${mobileSearchOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
+          <form onSubmit={e => { e.preventDefault(); if (searchQuery.trim()) { navigate(`/catalog?search=${encodeURIComponent(searchQuery.trim())}`); setSearchQuery(''); setMobileSearchOpen(false) } }} className="flex items-center gap-2.5 bg-black/30 backdrop-blur-xl rounded-full px-4 py-2.5 shadow-lg border border-white/20">
             <svg className="w-4 h-4 text-white/70 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
             <input
               ref={searchInputRef}
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Search products here..."
+              placeholder={`Search ${categoryNames[placeholderIdx] || 'products'}...`}
               className="flex-1 bg-transparent border-none outline-none text-sm text-white placeholder-white/60"
+              style={{transition:'all 0.3s ease'}}
             />
+            <button type="button" onClick={() => setMobileSearchOpen(false)} className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
+              <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+            </button>
           </form>
         </div>
       </div>
@@ -218,33 +253,40 @@ export default function Home(){
         )}
       </div>
 
-      {/* Mobile slide-out menu — ultra premium minimalist */}
+      {/* Mobile slide-out menu — ultra premium glass */}
       {mobileMenuOpen && (
         <div className="fixed inset-0 z-[9999] lg:hidden">
-          <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)} />
-          <div className="absolute top-0 left-0 bottom-0 w-[78vw] max-w-[320px] bg-white shadow-2xl flex flex-col animate-[slideIn_0.3s_cubic-bezier(0.16,1,0.3,1)]">
-            {/* Big logo + close */}
-            <div className="relative px-6 pt-10 pb-6 flex flex-col items-center">
-              <button onClick={() => setMobileMenuOpen(false)} className="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors"><svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg></button>
-              <img src="/BuySial2.png" alt="BuySial" className="h-24 w-24 object-contain mb-2" />
-              <span className="text-2xl font-bold tracking-tight"><span className="text-[#0b5ed7]">buy</span><span className="text-[#f97316]">sial</span></span>
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-md" onClick={() => setMobileMenuOpen(false)} />
+          <div className="absolute top-0 left-0 bottom-0 w-[75vw] max-w-[300px] bg-white/95 backdrop-blur-2xl shadow-2xl flex flex-col animate-[slideIn_0.3s_cubic-bezier(0.16,1,0.3,1)]">
+            {/* Logo + close */}
+            <div className="relative px-6 pt-8 pb-5 flex items-center gap-3">
+              <img src="/BuySial2.png" alt="BuySial" className="h-10 w-10 object-contain" />
+              <span className="text-xl font-bold tracking-tight"><span className="text-[#0b5ed7]">buy</span><span className="text-[#f97316]">sial</span></span>
+              <button onClick={() => setMobileMenuOpen(false)} className="ml-auto w-8 h-8 rounded-full bg-gray-100/80 flex items-center justify-center hover:bg-gray-200 transition-colors"><svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg></button>
             </div>
-
-            {/* Nav items — spacious, minimal */}
-            <nav className="flex-1 px-5 pt-2">
+            <div className="h-px bg-gray-100 mx-5" />
+            {/* Nav items */}
+            <nav className="flex-1 px-5 pt-4">
               {[
                 { to: '/', label: 'Home', icon: 'M3 9.5L12 3l9 6.5V20a2 2 0 01-2 2H5a2 2 0 01-2-2V9.5z' },
-                { to: '/catalog', label: 'Products', icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4' },
+                { to: '/catalog', label: 'Discover', icon: 'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z' },
                 { to: '/categories', label: 'Categories', icon: 'M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z' },
-                { to: '/about', label: 'About', icon: null },
-                { to: '/contact', label: 'Contact', icon: null },
+                { to: '/about', label: 'About', icon: 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
+                { to: '/contact', label: 'Contact', icon: 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
               ].map(item => (
-                <Link key={item.to} to={item.to} onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-4 py-4 text-gray-800 font-medium text-[15px] tracking-wide border-b border-gray-50 last:border-0 hover:text-orange-500 transition-colors">
-                  {item.icon ? <svg className="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d={item.icon} /></svg> : <span className="w-5" />}
+                <Link key={item.to} to={item.to} onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3.5 py-3.5 text-gray-700 font-medium text-[15px] border-b border-gray-50/80 last:border-0 hover:text-orange-500 transition-colors">
+                  <svg className="w-[18px] h-[18px] text-gray-400" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d={item.icon} /></svg>
                   {item.label}
                 </Link>
               ))}
             </nav>
+            {/* Bottom: country */}
+            <div className="px-5 pb-6 pt-3">
+              <div className="flex items-center gap-2 text-xs text-gray-400">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" /></svg>
+                <span>{currentFlag} {currentCountryName}</span>
+              </div>
+            </div>
           </div>
           <style>{`@keyframes slideIn { from { transform: translateX(-100%); } to { transform: translateX(0); } }`}</style>
         </div>
