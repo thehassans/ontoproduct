@@ -178,15 +178,15 @@ export default function Home(){
         </div>
         {/* Search bar floating at bottom of banner */}
         <div className="absolute bottom-3 left-3 right-3 z-30">
-          <form onSubmit={e => { e.preventDefault(); if (searchQuery.trim()) { navigate(`/catalog?search=${encodeURIComponent(searchQuery.trim())}`); setSearchQuery('') } }} className="flex items-center gap-2.5 bg-white/90 backdrop-blur-xl rounded-full px-4 py-2.5 shadow-lg border border-white/60">
-            <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+          <form onSubmit={e => { e.preventDefault(); if (searchQuery.trim()) { navigate(`/catalog?search=${encodeURIComponent(searchQuery.trim())}`); setSearchQuery('') } }} className="flex items-center gap-2.5 bg-white/20 backdrop-blur-md rounded-full px-4 py-2.5 shadow-lg border border-white/30">
+            <svg className="w-4 h-4 text-white/70 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
             <input
               ref={searchInputRef}
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Search products..."
-              className="flex-1 bg-transparent border-none outline-none text-sm text-gray-800 placeholder-gray-400"
+              placeholder="Search products here..."
+              className="flex-1 bg-transparent border-none outline-none text-sm text-white placeholder-white/60"
             />
           </form>
         </div>
