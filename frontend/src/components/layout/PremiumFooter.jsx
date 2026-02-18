@@ -66,8 +66,8 @@ export default function PremiumFooter() {
       <style>{`
         .pf-root {
           background: #faf9f7;
-          margin-top: 48px;
-          padding: 36px 20px 28px;
+          margin-top: 24px;
+          padding: 16px 16px 12px;
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
           border-top: 1px solid #ebe6de;
         }
@@ -82,12 +82,12 @@ export default function PremiumFooter() {
           justify-content: center;
           align-items: center;
           flex-wrap: wrap;
-          gap: 8px 32px;
+          gap: 4px 20px;
         }
         .pf-nav a {
           color: #8c8377;
           text-decoration: none;
-          font-size: 13px;
+          font-size: 11px;
           font-weight: 500;
           letter-spacing: 0.6px;
           text-transform: uppercase;
@@ -101,7 +101,7 @@ export default function PremiumFooter() {
         .pf-divider {
           height: 1px;
           background: #ebe6de;
-          margin: 24px 0;
+          margin: 10px 0;
         }
 
         /* Marquee */
@@ -131,9 +131,9 @@ export default function PremiumFooter() {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          height: 36px;
-          padding: 6px 14px;
-          border-radius: 10px;
+          height: 28px;
+          padding: 4px 10px;
+          border-radius: 8px;
           background: #ffffff;
           border: 1px solid #ebe6de;
           flex-shrink: 0;
@@ -152,7 +152,7 @@ export default function PremiumFooter() {
         }
         .pf-copy {
           color: #b5ada3;
-          font-size: 12px;
+          font-size: 10px;
           margin: 0;
           letter-spacing: 0.3px;
           font-weight: 400;
@@ -160,7 +160,7 @@ export default function PremiumFooter() {
         .pf-email {
           color: #a3896b;
           text-decoration: none;
-          font-size: 12px;
+          font-size: 10px;
           font-weight: 500;
           transition: color 0.2s;
         }
@@ -171,8 +171,8 @@ export default function PremiumFooter() {
         /* Mobile */
         @media (max-width: 640px) {
           .pf-root {
-            margin-top: 32px;
-            padding: 28px 16px 24px;
+            margin-top: 16px;
+            padding: 14px 12px 10px;
           }
           .pf-nav {
             gap: 6px 20px;
@@ -186,7 +186,7 @@ export default function PremiumFooter() {
         }
         @media (max-width: 768px) {
           .pf-root {
-            padding-bottom: 96px;
+            padding-bottom: 80px;
           }
         }
       `}</style>

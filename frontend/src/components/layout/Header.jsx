@@ -208,6 +208,10 @@ export default function Header({ onCartClick, editMode = false, editState = {}, 
 
         <div className="header-right">
           <div className="header-actions">
+            {/* Search button */}
+            <button className="search-btn" onClick={toggleSearch} aria-label="Search">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+            </button>
             {/* Edit Mode Controls */}
             {editMode ? (
               <>
@@ -262,12 +266,14 @@ export default function Header({ onCartClick, editMode = false, editState = {}, 
               </>
             ) : (
               <>
-                {/* Country Flag Selector */}
+                {/* Deliver to Country Selector */}
                 <div className="country-selector" ref={countryRef}>
                   <button 
                     className="country-btn"
                     onClick={() => setIsCountryOpen(!isCountryOpen)}
                   >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{color:'#9ca3af',flexShrink:0}}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" /></svg>
+                    <span className="deliver-label">Deliver to</span>
                     <span className="country-flag">{currentCountry.flag}</span>
                     <span className="country-name">{currentCountry.name}</span>
                     <svg className={`country-arrow ${isCountryOpen ? 'open' : ''}`} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -351,18 +357,20 @@ export default function Header({ onCartClick, editMode = false, editState = {}, 
         </div>
       </div>
 
-      {/* Mobile Search Bar */}
+      {/* Glass Search Overlay */}
       {isSearchOpen && (
-        <div className="mobile-search">
-          <div className="search-container">
+        <div className="glass-search-overlay" onClick={toggleSearch}>
+          <div className="glass-search-bar" onClick={e => e.stopPropagation()}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{color:'#9ca3af',flexShrink:0}}><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
             <input 
               type="text" 
               placeholder="Search products..." 
-              className="search-input"
+              className="glass-search-input"
               autoFocus
+              onKeyDown={e => { if (e.key === 'Enter' && e.target.value.trim()) { window.location.href = `/catalog?search=${encodeURIComponent(e.target.value.trim())}`; } }}
             />
-            <button className="search-close-btn" onClick={toggleSearch}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <button className="glass-search-close" onClick={toggleSearch}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <line x1="18" y1="6" x2="6" y2="18"></line>
                 <line x1="6" y1="6" x2="18" y2="18"></line>
               </svg>
@@ -469,7 +477,7 @@ export default function Header({ onCartClick, editMode = false, editState = {}, 
           display: flex;
           align-items: center;
           justify-content: space-between;
-          height: 70px;
+          height: 90px;
         }
 
         .header-left {
@@ -502,7 +510,7 @@ export default function Header({ onCartClick, editMode = false, editState = {}, 
         }
 
         .logo-img {
-          height: 64px;
+          height: 72px;
           width: auto;
         }
 
@@ -560,13 +568,19 @@ export default function Header({ onCartClick, editMode = false, editState = {}, 
           display: flex;
           align-items: center;
           gap: 6px;
-          padding: 8px 12px;
-          background: #f9fafb;
+          padding: 8px 14px;
+          background: transparent;
           border: 1px solid #e5e7eb;
-          border-radius: 8px;
+          border-radius: 10px;
           cursor: pointer;
           transition: all 0.2s;
-          font-size: 14px;
+          font-size: 13px;
+        }
+
+        .deliver-label {
+          color: #9ca3af;
+          font-size: 11px;
+          font-weight: 500;
         }
 
         .country-btn:hover {
@@ -808,48 +822,64 @@ export default function Header({ onCartClick, editMode = false, editState = {}, 
           box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
         }
 
-        /* Mobile Search */
-        .mobile-search {
-          background: white;
-          border-bottom: 1px solid #e5e7eb;
-          padding: 16px 20px;
+        /* Glass Search Overlay */
+        .glass-search-overlay {
+          position: fixed;
+          inset: 0;
+          z-index: 999;
+          background: rgba(0,0,0,0.35);
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+          display: flex;
+          justify-content: center;
+          padding-top: 100px;
+          animation: fadeIn 0.2s ease;
         }
-
-        .search-container {
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .glass-search-bar {
           display: flex;
           align-items: center;
           gap: 12px;
-          max-width: 1200px;
-          margin: 0 auto;
+          width: 90%;
+          max-width: 600px;
+          height: 56px;
+          padding: 0 20px;
+          background: rgba(255,255,255,0.92);
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
+          border-radius: 16px;
+          border: 1px solid rgba(255,255,255,0.6);
+          box-shadow: 0 16px 48px rgba(0,0,0,0.18);
+          animation: slideDown 0.25s cubic-bezier(0.16,1,0.3,1);
         }
-
-        .search-input {
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+        .glass-search-input {
           flex: 1;
-          padding: 12px 16px;
-          border: 1px solid #d1d5db;
-          border-radius: 8px;
-          font-size: 16px;
-          outline: none;
-          transition: border-color 0.2s;
-        }
-
-        .search-input:focus {
-          border-color: #007bff;
-          box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
-        }
-
-        .search-close-btn {
-          background: none;
           border: none;
-          padding: 8px;
-          cursor: pointer;
-          border-radius: 6px;
-          color: #6b7280;
-          transition: all 0.2s;
+          outline: none;
+          background: transparent;
+          font-size: 16px;
+          color: #1f2937;
         }
-
-        .search-close-btn:hover {
+        .glass-search-input::placeholder {
+          color: #9ca3af;
+        }
+        .glass-search-close {
           background: #f3f4f6;
+          border: none;
+          width: 32px;
+          height: 32px;
+          border-radius: 8px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          color: #6b7280;
+          transition: all 0.15s;
+          flex-shrink: 0;
+        }
+        .glass-search-close:hover {
+          background: #e5e7eb;
           color: #374151;
         }
 
