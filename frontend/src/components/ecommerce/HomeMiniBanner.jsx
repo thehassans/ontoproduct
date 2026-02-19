@@ -145,34 +145,6 @@ export default function HomeMiniBanner({ selectedCountry = 'GB' }) {
           })}
         </div>
 
-        {/* Left / Right arrows */}
-        <button
-          onClick={(e) => { e.preventDefault(); goPrev() }}
-          aria-label="Previous"
-          style={{
-            position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)',
-            width: 32, height: 32, borderRadius: '50%', border: 'none',
-            background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(4px)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.12)', zIndex: 2,
-          }}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-        </button>
-        <button
-          onClick={(e) => { e.preventDefault(); goNext() }}
-          aria-label="Next"
-          style={{
-            position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
-            width: 32, height: 32, borderRadius: '50%', border: 'none',
-            background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(4px)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.12)', zIndex: 2,
-          }}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
-        </button>
-
         {/* Dot indicators */}
         <div style={{
           position: 'absolute', bottom: 10, left: '50%', transform: 'translateX(-50%)',

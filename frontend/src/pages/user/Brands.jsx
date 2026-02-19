@@ -8,8 +8,22 @@ export default function Brands() {
   const [showAdd, setShowAdd] = useState(false)
   const [editBrand, setEditBrand] = useState(null)
   const [form, setForm] = useState({ name: '', sortOrder: 0 })
+  const [logoFile, setLogoFile] = useState(null)
+  const [logoPreview, setLogoPreview] = useState(null)
+  const logoInputRef = useRef(null)
 
   const showToast = (msg, type = 'success') => { setToast({ msg, type }); setTimeout(() => setToast(null), 3000) }
+
+  const handleLogoSelect = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setLogoFile(file)
+    const reader = new FileReader()
+    reader.onload = (ev) => setLogoPreview(ev.target.result)
+    reader.readAsDataURL(file)
+  }
+
+  const clearLogo = () => { setLogoFile(null); setLogoPreview(null); if (logoInputRef.current) logoInputRef.current.value = '' }
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -25,9 +39,16 @@ export default function Brands() {
   const handleAdd = async () => {
     if (!form.name.trim()) return showToast('Name required', 'error')
     try {
-      await apiPost('/api/brands', { ...form, isPublished: true })
+      const res = await apiPost('/api/brands', { ...form, isPublished: true })
+      const newBrand = res?.brand
+      if (logoFile && newBrand?._id) {
+        const fd = new FormData()
+        fd.append('logo', logoFile)
+        await apiUpload(`/api/brands/${newBrand._id}/logo`, fd)
+      }
       showToast('Brand created')
       setForm({ name: '', sortOrder: 0 })
+      clearLogo()
       setShowAdd(false)
       await load()
     } catch (e) { showToast(e?.message || 'Failed', 'error') }
@@ -37,8 +58,14 @@ export default function Brands() {
     if (!editBrand) return
     try {
       await apiPut(`/api/brands/${editBrand._id}`, form)
+      if (logoFile) {
+        const fd = new FormData()
+        fd.append('logo', logoFile)
+        await apiUpload(`/api/brands/${editBrand._id}/logo`, fd)
+      }
       showToast('Updated')
       setEditBrand(null)
+      clearLogo()
       await load()
     } catch (e) { showToast(e?.message || 'Failed', 'error') }
   }
@@ -155,7 +182,7 @@ export default function Brands() {
           <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>Brands</h1>
           <p style={{ color: '#6b7280', fontSize: 13, margin: '4px 0 0' }}>Manage brands with logos for your storefront</p>
         </div>
-        <button style={{ ...S.btn, ...S.btnPrimary }} onClick={() => { setShowAdd(true); setEditBrand(null); setForm({ name: '', sortOrder: 0 }) }}>
+        <button style={{ ...S.btn, ...S.btnPrimary }} onClick={() => { setShowAdd(true); setEditBrand(null); setForm({ name: '', sortOrder: 0 }); clearLogo() }}>
           + Add Brand
         </button>
       </div>
@@ -163,21 +190,54 @@ export default function Brands() {
       {(showAdd || editBrand) && (
         <div style={{ ...S.card, border: '2px solid #f97316' }}>
           <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>{editBrand ? 'Edit Brand' : 'New Brand'}</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <div>
-              <label style={S.label}>Brand Name *</label>
-              <input style={S.input} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="e.g. Samsung, Apple, Nike" />
+          <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+            {/* Logo upload area */}
+            <div style={{ flex: '0 0 auto' }}>
+              <label style={S.label}>Brand Logo</label>
+              <input ref={logoInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleLogoSelect} />
+              {logoPreview || (editBrand?.logo) ? (
+                <div style={{ position: 'relative', width: 80, height: 80 }}>
+                  <img
+                    src={logoPreview || mediaUrl(editBrand?.logo)}
+                    alt="Logo"
+                    style={{ width: 80, height: 80, borderRadius: 12, objectFit: 'contain', border: '1.5px solid #e5e7eb', background: '#f9fafb', cursor: 'pointer', padding: 4 }}
+                    onClick={() => logoInputRef.current?.click()}
+                    title="Click to change logo"
+                  />
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); clearLogo() }}
+                    style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', background: '#ef4444', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}
+                  >×</button>
+                </div>
+              ) : (
+                <div
+                  onClick={() => logoInputRef.current?.click()}
+                  style={{ width: 80, height: 80, borderRadius: 12, border: '2px dashed #d1d5db', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', background: '#f9fafb', gap: 2 }}
+                  title="Click to add logo"
+                >
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+                  <span style={{ fontSize: 10, color: '#9ca3af', fontWeight: 600 }}>Add Logo</span>
+                </div>
+              )}
             </div>
-            <div>
-              <label style={S.label}>Sort Order</label>
-              <input style={S.input} type="number" value={form.sortOrder} onChange={e => setForm({ ...form, sortOrder: Number(e.target.value) })} />
+            {/* Name + Sort fields */}
+            <div style={{ flex: 1, minWidth: 200, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div>
+                <label style={S.label}>Brand Name *</label>
+                <input style={S.input} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="e.g. Samsung, Apple, Nike" />
+              </div>
+              <div>
+                <label style={S.label}>Sort Order</label>
+                <input style={S.input} type="number" value={form.sortOrder} onChange={e => setForm({ ...form, sortOrder: Number(e.target.value) })} />
+              </div>
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
             <button style={{ ...S.btn, ...S.btnPrimary }} onClick={editBrand ? handleUpdate : handleAdd}>
               {editBrand ? 'Save Changes' : 'Create'}
             </button>
-            <button style={{ ...S.btn, ...S.btnSec }} onClick={() => { setShowAdd(false); setEditBrand(null) }}>Cancel</button>
+            <button style={{ ...S.btn, ...S.btnSec }} onClick={() => { setShowAdd(false); setEditBrand(null); clearLogo() }}>Cancel</button>
           </div>
         </div>
       )}
