@@ -1067,15 +1067,6 @@ export default function ProductCatalog() {
             </div>
           )}
         </div>
-        {/* Category pills — horizontal scroll, ultra minimal */}
-        <div className="overflow-x-auto no-scrollbar">
-          <div className="flex gap-2 px-4 pb-2.5 min-w-max">
-            <button onClick={() => { setSelectedCategory('all'); setCurrentPage(1) }} className={`px-3.5 py-1.5 rounded-full text-[12px] font-medium whitespace-nowrap transition-all ${selectedCategory === 'all' ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}>All</button>
-            {discoverCategories.map(cat => (
-              <button key={cat} onClick={() => { setSelectedCategory(cat); setCurrentPage(1) }} className={`px-3.5 py-1.5 rounded-full text-[12px] font-medium whitespace-nowrap transition-all ${selectedCategory === cat ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}>{cat}</button>
-            ))}
-          </div>
-        </div>
         <style>{`.no-scrollbar::-webkit-scrollbar{display:none} .no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}`}</style>
       </div>
 
@@ -1153,7 +1144,7 @@ export default function ProductCatalog() {
                           navigate(link)
                         }
                       }}
-                      style={{ height: 80 }}
+                      style={{ height: 44 }}
                       aria-label={String(slide?.title || slide?.subtitle || 'Offer')}
                     >
                       <div
@@ -1201,11 +1192,11 @@ export default function ProductCatalog() {
                           <div style={{ minWidth: 0 }}>
                             <div
                               style={{
-                                fontWeight: 900,
-                                fontSize: 20,
-                                lineHeight: 1.05,
-                                letterSpacing: -0.3,
-                                textShadow: '0 10px 30px rgba(0,0,0,0.18)',
+                                fontWeight: 800,
+                                fontSize: 13,
+                                lineHeight: 1.1,
+                                letterSpacing: -0.1,
+                                textShadow: '0 4px 12px rgba(0,0,0,0.12)',
                                 overflow: 'hidden',
                                 textOverflow: 'ellipsis',
                                 whiteSpace: 'nowrap'
@@ -1359,16 +1350,23 @@ export default function ProductCatalog() {
             )}
 
             {/* Premium Results Summary */}
-            <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
-              <div>
-                <p className="text-sm text-gray-500 mb-1">All Products</p>
-                {(selectedCategory !== 'all' || searchQuery) && (
-                  <p className="text-lg font-semibold text-gray-900">
-                    {selectedCategory !== 'all' && <span className="text-orange-600">{selectedCategory}</span>}
-                    {selectedCategory !== 'all' && searchQuery && <span className="text-gray-400 mx-2">•</span>}
-                    {searchQuery && <span className="text-gray-600">"{searchQuery}"</span>}
-                  </p>
-                )}
+            <div className="mb-4">
+              <p className="text-[13px] font-medium text-gray-400 tracking-wide uppercase mb-2" style={{ letterSpacing: '0.08em' }}>All Products</p>
+              {(selectedCategory !== 'all' || searchQuery) && (
+                <p className="text-sm font-medium text-gray-700 mb-2">
+                  {selectedCategory !== 'all' && <span className="text-orange-600">{selectedCategory}</span>}
+                  {selectedCategory !== 'all' && searchQuery && <span className="text-gray-300 mx-1.5">•</span>}
+                  {searchQuery && <span className="text-gray-500">"{searchQuery}"</span>}
+                </p>
+              )}
+              {/* Category pills — below All Products */}
+              <div className="overflow-x-auto no-scrollbar">
+                <div className="flex gap-2 pb-2 min-w-max">
+                  <button onClick={() => { setSelectedCategory('all'); setCurrentPage(1) }} className={`px-3.5 py-1.5 rounded-full text-[12px] font-medium whitespace-nowrap transition-all ${selectedCategory === 'all' ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}>All</button>
+                  {discoverCategories.map(cat => (
+                    <button key={cat} onClick={() => { setSelectedCategory(cat); setCurrentPage(1) }} className={`px-3.5 py-1.5 rounded-full text-[12px] font-medium whitespace-nowrap transition-all ${selectedCategory === cat ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}>{cat}</button>
+                  ))}
+                </div>
               </div>
             </div>
 

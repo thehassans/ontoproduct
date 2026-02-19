@@ -360,7 +360,7 @@ export default function Home(){
               .homeHeadlineMarqueeViewport {
                 overflow: hidden;
                 white-space: nowrap;
-                padding: 4px 14px;
+                padding: 10px 14px;
               }
               .homeHeadlineMarqueeTrack {
                 display: inline-flex;

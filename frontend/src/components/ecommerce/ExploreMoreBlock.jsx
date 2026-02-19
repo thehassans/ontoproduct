@@ -7,21 +7,24 @@ export default function ExploreMoreBlock() {
 
   useEffect(() => {
     let alive = true
-    apiGet('/api/explore-more/public')
-      .then(res => { if (alive) setItems(Array.isArray(res?.items) ? res.items : []) })
-      .catch(() => {})
+    ;(async () => {
+      try {
+        const res = await apiGet('/api/explore-more/public')
+        if (alive && Array.isArray(res?.items)) setItems(res.items)
+      } catch {}
+    })()
     return () => { alive = false }
   }, [])
 
   if (!items.length) return null
 
   return (
-    <section className="em-section">
-      <div className="em-header">
-        <h2 className="em-title">Explore More</h2>
-      </div>
-      <div className="em-scroll">
-        {items.map((item) => {
+    <section className="max-w-7xl mx-auto px-2 sm:px-3 lg:px-4" style={{ marginTop: 18, marginBottom: 8 }}>
+      <h2 style={{ fontSize: 20, fontWeight: 800, color: '#1a1a1a', marginBottom: 14, letterSpacing: -0.3 }}>
+        Explore More
+      </h2>
+      <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4 }} className="no-scrollbar">
+        {items.map(item => {
           const img = item.image ? mediaUrl(item.image) : null
           const link = item.link || '/catalog'
           const isExternal = link.startsWith('http')
@@ -29,92 +32,68 @@ export default function ExploreMoreBlock() {
           const wrapperProps = isExternal
             ? { href: link, target: '_blank', rel: 'noopener noreferrer' }
             : { to: link }
+
           return (
-            <Wrapper key={item._id} {...wrapperProps} className="em-card">
+            <Wrapper
+              key={item._id}
+              {...wrapperProps}
+              style={{
+                flex: '0 0 auto',
+                width: 150,
+                height: 180,
+                borderRadius: 16,
+                overflow: 'hidden',
+                position: 'relative',
+                display: 'block',
+                textDecoration: 'none',
+                background: '#f3f4f6',
+                boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+                transition: 'transform 0.2s ease',
+              }}
+              className="explore-card"
+            >
               {img ? (
-                <img src={img} alt={item.title} className="em-card-img" loading="lazy" />
+                <img
+                  src={img}
+                  alt={item.name}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                  loading="lazy"
+                />
               ) : (
-                <div className="em-card-placeholder">
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+                <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, #fbbf24, #f97316)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span style={{ fontSize: 32 }}>🎁</span>
                 </div>
               )}
-              <div className="em-card-label">{item.title}</div>
+              <div style={{
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                padding: '24px 10px 10px',
+                background: 'linear-gradient(transparent, rgba(0,0,0,0.7))',
+              }}>
+                <span style={{
+                  color: '#fff',
+                  fontWeight: 800,
+                  fontSize: 14,
+                  letterSpacing: 0.3,
+                  textTransform: 'uppercase',
+                  textShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                  lineHeight: 1.2,
+                  display: 'block',
+                }}>
+                  {item.name}
+                </span>
+              </div>
             </Wrapper>
           )
         })}
       </div>
-
       <style>{`
-        .em-section {
-          max-width: 1280px;
-          margin: 6px auto 10px;
-          padding: 0 6px;
-        }
-        .em-header {
-          padding: 12px 4px 6px;
-        }
-        .em-title {
-          margin: 0;
-          font-size: 17px;
-          font-weight: 800;
-          letter-spacing: -0.02em;
-          color: #111;
-        }
-        .em-scroll {
-          display: flex;
-          gap: 10px;
-          overflow-x: auto;
-          scrollbar-width: none;
-          -ms-overflow-style: none;
-          padding: 6px 4px 14px;
-          -webkit-overflow-scrolling: touch;
-        }
-        .em-scroll::-webkit-scrollbar { display: none; }
-        .em-card {
-          display: flex;
-          flex-direction: column;
-          width: 140px;
-          min-width: 140px;
-          flex-shrink: 0;
-          text-decoration: none;
-          border-radius: 16px;
-          overflow: hidden;
-          background: #fff;
-          border: 1px solid #f0f0f0;
-          transition: transform 0.2s, box-shadow 0.2s;
-        }
-        .em-card:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 6px 20px rgba(0,0,0,0.08);
-        }
-        .em-card-img {
-          width: 100%;
-          aspect-ratio: 1;
-          object-fit: cover;
-          display: block;
-        }
-        .em-card-placeholder {
-          width: 100%;
-          aspect-ratio: 1;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: #f9fafb;
-        }
-        .em-card-label {
-          padding: 8px 10px;
-          font-size: 12.5px;
-          font-weight: 700;
-          color: #111;
-          text-align: center;
-          line-height: 1.3;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-        @media (min-width: 768px) {
-          .em-card { width: 160px; min-width: 160px; }
-        }
+        .explore-card:hover { transform: scale(1.03); }
+        .explore-card:active { transform: scale(0.98); }
+        .no-scrollbar::-webkit-scrollbar{display:none}
+        .no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}
       `}</style>
     </section>
   )

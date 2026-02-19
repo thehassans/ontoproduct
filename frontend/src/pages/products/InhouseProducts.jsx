@@ -157,6 +157,7 @@ export default function InhouseProducts() {
   // Gemini AI state
   const [categories, setCategories] = useState([])
   const [brandsList, setBrandsList] = useState([])
+  const [exploreMoreItems, setExploreMoreItems] = useState([])
   const [subcategoriesByCategory, setSubcategoriesByCategory] = useState({})
   const [newSubcategory, setNewSubcategory] = useState('')
   const [editNewSubcategory, setEditNewSubcategory] = useState('')
@@ -676,6 +677,8 @@ export default function InhouseProducts() {
     loadCategories()
     // Load brands for brand dropdown
     apiGet('/api/brands').then(r => setBrandsList(Array.isArray(r?.brands) ? r.brands : [])).catch(() => {})
+    // Load explore more items for dropdown
+    apiGet('/api/explore-more').then(r => setExploreMoreItems(Array.isArray(r?.items) ? r.items : [])).catch(() => {})
   }, [])
 
   // Load currency config once
@@ -889,7 +892,7 @@ export default function InhouseProducts() {
     fd.append('category', form.category)
     fd.append('subcategory', String(form.subcategory || '').trim())
     fd.append('brand', String(form.brand || '').trim())
-    fd.append('exploreMoreOffer', String(form.exploreMoreOffer || '').trim())
+    if (form.exploreMoreId) fd.append('exploreMoreId', form.exploreMoreId)
     fd.append('exploreMoreEnabled', String(!!form.exploreMoreEnabled))
     fd.append('madeInCountry', form.madeInCountry)
     fd.append('description', form.description.trim())
@@ -1093,7 +1096,7 @@ export default function InhouseProducts() {
       category: p.category || 'Other',
       subcategory: p.subcategory || '',
       brand: p.brand || '',
-      exploreMoreOffer: p.exploreMoreOffer || '',
+      exploreMoreId: p.exploreMoreId || '',
       exploreMoreEnabled: !!p.exploreMoreEnabled,
       sku: p.sku || '',
       madeInCountry: p.madeInCountry || '',
@@ -1146,7 +1149,7 @@ export default function InhouseProducts() {
       fd.append('category', editForm.category)
       fd.append('subcategory', String(editForm.subcategory || '').trim())
       fd.append('brand', String(editForm.brand || '').trim())
-      fd.append('exploreMoreOffer', String(editForm.exploreMoreOffer || '').trim())
+      if (editForm.exploreMoreId) fd.append('exploreMoreId', editForm.exploreMoreId)
       fd.append('exploreMoreEnabled', String(!!editForm.exploreMoreEnabled))
       fd.append('madeInCountry', editForm.madeInCountry)
       fd.append('description', editForm.description)
@@ -1376,27 +1379,27 @@ export default function InhouseProducts() {
                 </div>
                 <div>
                   <div className="label" style={{ marginBottom: 8, fontWeight: 600 }}>
-                    Explore More Offer <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: 12 }}>(Optional)</span>
+                    Explore More <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: 12 }}>(Optional)</span>
                   </div>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <input
-                      className="input"
-                      name="exploreMoreOffer"
-                      value={form.exploreMoreOffer || ''}
-                      onChange={onChange}
-                      placeholder="e.g. Deals, Bundle Savings"
-                      style={{ padding: 12, flex: 1 }}
-                    />
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', whiteSpace: 'nowrap', fontSize: 13, fontWeight: 600 }}>
-                      <input
-                        type="checkbox"
-                        checked={!!form.exploreMoreEnabled}
-                        onChange={(e) => setForm((f) => ({ ...f, exploreMoreEnabled: e.target.checked }))}
-                        style={{ width: 18, height: 18, accentColor: '#f97316' }}
-                      />
-                      Show in Explore
+                  <select
+                    className="input"
+                    value={form.exploreMoreId || ''}
+                    onChange={e => setForm(f => ({ ...f, exploreMoreId: e.target.value }))}
+                    style={{ padding: 12 }}
+                  >
+                    <option value="">None</option>
+                    {exploreMoreItems.map((em) => (
+                      <option key={em._id} value={em._id}>{em.name}</option>
+                    ))}
+                  </select>
+                  {form.exploreMoreId && (
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, cursor: 'pointer' }}>
+                      <div onClick={() => setForm(f => ({ ...f, exploreMoreEnabled: !f.exploreMoreEnabled }))} style={{ width: 40, height: 22, borderRadius: 11, background: form.exploreMoreEnabled ? '#f97316' : '#d1d5db', position: 'relative', transition: 'background 0.2s', cursor: 'pointer' }}>
+                        <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#fff', position: 'absolute', top: 2, left: form.exploreMoreEnabled ? 20 : 2, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+                      </div>
+                      <span style={{ fontSize: 13, fontWeight: 500 }}>Show in Explore More</span>
                     </label>
-                  </div>
+                  )}
                 </div>
                 <div>
                   <div className="label" style={{ marginBottom: 8, fontWeight: 600 }}>
@@ -3681,6 +3684,27 @@ export default function InhouseProducts() {
                       })}
                     </div>
                   </div>
+                </div>
+                <div>
+                  <div className="label">Explore More</div>
+                  <select
+                    className="input"
+                    value={editForm.exploreMoreId || ''}
+                    onChange={e => setEditForm(f => ({ ...f, exploreMoreId: e.target.value }))}
+                  >
+                    <option value="">None</option>
+                    {exploreMoreItems.map((em) => (
+                      <option key={em._id} value={em._id}>{em.name}</option>
+                    ))}
+                  </select>
+                  {editForm.exploreMoreId && (
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, cursor: 'pointer' }}>
+                      <div onClick={() => setEditForm(f => ({ ...f, exploreMoreEnabled: !f.exploreMoreEnabled }))} style={{ width: 40, height: 22, borderRadius: 11, background: editForm.exploreMoreEnabled ? '#f97316' : '#d1d5db', position: 'relative', transition: 'background 0.2s', cursor: 'pointer' }}>
+                        <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#fff', position: 'absolute', top: 2, left: editForm.exploreMoreEnabled ? 20 : 2, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+                      </div>
+                      <span style={{ fontSize: 13, fontWeight: 500 }}>Show in Explore More</span>
+                    </label>
+                  )}
                 </div>
                 <div>
                   <div className="label">SKU</div>

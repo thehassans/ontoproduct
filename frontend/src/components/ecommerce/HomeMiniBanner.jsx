@@ -145,7 +145,6 @@ export default function HomeMiniBanner({ selectedCountry = 'GB' }) {
           })}
         </div>
 
-        
       </div>
     </section>
   )

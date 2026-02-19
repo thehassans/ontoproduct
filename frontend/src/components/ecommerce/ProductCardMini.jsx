@@ -8,6 +8,43 @@ import { useToast } from '../../ui/Toast'
 import { resolveWarehouse } from '../../utils/warehouse'
 import { getProductRating, getStarArray } from '../../utils/autoReviews'
 
+// Rotating info ticker — cycles rating / sold / free delivery with slide-up
+const RotatingInfo = memo(function RotatingInfo({ productId, salesCount }) {
+  const [idx, setIdx] = useState(0)
+  const { rating, reviewCount } = getProductRating(productId)
+  const stars = getStarArray(rating)
+
+  useEffect(() => {
+    const t = setInterval(() => setIdx(p => (p + 1) % 3), 2000)
+    return () => clearInterval(t)
+  }, [])
+
+  const items = [
+    <span key="r" style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+      {stars.map((s, i) => (
+        <svg key={i} width="10" height="10" viewBox="0 0 20 20" fill={s === 'empty' ? '#e5e7eb' : '#facc15'}>
+          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+        </svg>
+      ))}
+      <span style={{ fontSize: 10, fontWeight: 700, color: '#333', marginLeft: 2 }}>{rating.toFixed(1)}</span>
+      <span style={{ fontSize: 9, color: '#999' }}>({reviewCount})</span>
+    </span>,
+    <span key="s" style={{ fontSize: 11, color: '#999' }}>{salesCount} sold</span>,
+    <span key="d" style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11, color: '#16a34a', fontWeight: 600 }}>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 18h14M5 18l1-6h12l1 6M7 12V8a5 5 0 0110 0v4"/></svg>
+      Free Delivery
+    </span>
+  ]
+
+  return (
+    <div className="rotating-info-wrap">
+      <div className="rotating-info-track" style={{ transform: `translateY(-${idx * 100}%)` }}>
+        {items.map((it, i) => <div key={i} className="rotating-info-item">{it}</div>)}
+      </div>
+    </div>
+  )
+})
+
 // Taobao-style product card - compact with red prices and sales count
 // Wrapped with memo for performance - prevents unnecessary re-renders
 const ProductCardMini = memo(function ProductCardMini({ product, selectedCountry = 'SA', showVideo = false, showActions = false }) {
@@ -405,25 +442,6 @@ const ProductCardMini = memo(function ProductCardMini({ product, selectedCountry
       <div className="product-info">
         <h3 className="product-name">{product.name}</h3>
         
-        {/* Auto-generated rating */}
-        {(() => {
-          const { rating, reviewCount } = getProductRating(product._id)
-          const stars = getStarArray(rating)
-          return (
-            <div className="rating-row">
-              <div className="rating-stars">
-                {stars.map((s, i) => (
-                  <svg key={i} width="12" height="12" viewBox="0 0 20 20" fill={s === 'empty' ? '#e5e7eb' : '#facc15'}>
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                  </svg>
-                ))}
-              </div>
-              <span className="rating-text">{rating.toFixed(1)}</span>
-              <span className="rating-count">({reviewCount})</span>
-            </div>
-          )
-        })()}
-
         <div className="price-section">
           <div className="price-row">
             <span className="currency-symbol">{displayCurrency === 'SAR' ? <SarIcon size={13} /> : currencySymbol(displayCurrency)}</span>
@@ -435,9 +453,7 @@ const ProductCardMini = memo(function ProductCardMini({ product, selectedCountry
               </span>
             )}
           </div>
-          <div className="sales-count">
-            <span>{salesCount} sold</span>
-          </div>
+          <RotatingInfo productId={product._id} salesCount={salesCount} />
         </div>
 
         {showActions ? (
@@ -683,28 +699,21 @@ const ProductCardMini = memo(function ProductCardMini({ product, selectedCountry
           line-height: 1.4;
         }
 
-        .rating-row {
+        .rotating-info-wrap {
+          height: 18px;
+          overflow: hidden;
+          position: relative;
+        }
+
+        .rotating-info-track {
+          transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+          will-change: transform;
+        }
+
+        .rotating-info-item {
+          height: 18px;
           display: flex;
           align-items: center;
-          gap: 4px;
-          margin-bottom: 6px;
-        }
-
-        .rating-stars {
-          display: flex;
-          align-items: center;
-          gap: 1px;
-        }
-
-        .rating-text {
-          font-size: 11px;
-          font-weight: 700;
-          color: #333;
-        }
-
-        .rating-count {
-          font-size: 10px;
-          color: #999;
         }
 
         .price-section {
@@ -747,16 +756,6 @@ const ProductCardMini = memo(function ProductCardMini({ product, selectedCountry
           color: #999;
           text-decoration: line-through;
           margin-left: 6px;
-        }
-
-        .sales-count {
-          font-size: 11px;
-          color: #999;
-        }
-
-        .sales-count span {
-          display: inline-flex;
-          align-items: center;
         }
 
         /* Responsive adjustments */

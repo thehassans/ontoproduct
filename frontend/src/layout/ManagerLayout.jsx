@@ -72,13 +72,13 @@ export default function ManagerLayout(){
     ...(canManageBanners ? [{ to: '/manager/banners', label: 'Banners' }] : []),
     ...(canManageCategories ? [{ to: '/manager/categories', label: 'Categories' }] : []),
     ...(canManageBrands ? [{ to: '/manager/brands', label: 'Brands' }] : []),
-    ...(canManageExploreMore ? [{ to: '/manager/explore-more', label: 'Explore More' }] : []),
     ...(canManageHomeHeadline ? [{ to: '/manager/home-headline', label: 'Home Headline' }] : []),
     ...(canManageProductHeadline ? [{ to: '/manager/product-headline', label: 'Product Headline' }] : []),
     ...(canManageHomeBanners ? [{ to: '/manager/home-banners', label: 'Home Banners' }] : []),
     ...(canManageHomeMiniBanners ? [{ to: '/manager/home-mini-banners', label: 'Home Mini Banners' }] : []),
     ...(canManageCoupons ? [{ to: '/manager/coupons', label: 'Coupons' }] : []),
     ...(canManageCashback ? [{ to: '/manager/cashback', label: 'Cashback Offers' }] : []),
+    ...(canManageExploreMore ? [{ to: '/manager/explore-more', label: 'Explore More' }] : []),
     { to: '/manager/me', label: 'Manager Me' },
   ]
   // Mobile tabs - ALL desktop sidebar links
