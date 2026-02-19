@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { apiGet, mediaUrl } from '../../api'
 
@@ -11,8 +11,10 @@ const COUNTRY_MAP = {
 export default function HomeMiniBanner({ selectedCountry = 'GB' }) {
   const [banners, setBanners] = useState([])
   const [current, setCurrent] = useState(0)
-  const pausedRef = useRef(false)
+  const [isTransitioning, setIsTransitioning] = useState(false)
   const timerRef = useRef(null)
+  const touchStartRef = useRef(null)
+  const trackRef = useRef(null)
 
   useEffect(() => {
     let alive = true
@@ -32,39 +34,95 @@ export default function HomeMiniBanner({ selectedCountry = 'GB' }) {
     return () => { alive = false }
   }, [selectedCountry])
 
+  const goTo = useCallback((idx) => {
+    if (isTransitioning) return
+    setIsTransitioning(true)
+    setCurrent(idx)
+    setTimeout(() => setIsTransitioning(false), 500)
+  }, [isTransitioning])
+
+  const goNext = useCallback(() => {
+    if (!banners.length) return
+    goTo((current + 1) % banners.length)
+  }, [current, banners.length, goTo])
+
+  const goPrev = useCallback(() => {
+    if (!banners.length) return
+    goTo((current - 1 + banners.length) % banners.length)
+  }, [current, banners.length, goTo])
+
+  // Auto-slide every 4s
   useEffect(() => {
     if (banners.length <= 1) return
-    timerRef.current = setInterval(() => {
-      if (!pausedRef.current) setCurrent(c => (c + 1) % banners.length)
-    }, 3800)
+    timerRef.current = setInterval(goNext, 4000)
     return () => clearInterval(timerRef.current)
-  }, [banners.length])
+  }, [banners.length, goNext])
+
+  // Pause auto-slide on hover
+  const pauseTimer = () => { if (timerRef.current) clearInterval(timerRef.current) }
+  const resumeTimer = () => {
+    if (banners.length <= 1) return
+    if (timerRef.current) clearInterval(timerRef.current)
+    timerRef.current = setInterval(goNext, 4000)
+  }
+
+  // Touch swipe
+  const onTouchStart = (e) => { touchStartRef.current = e.touches[0].clientX; pauseTimer() }
+  const onTouchEnd = (e) => {
+    if (touchStartRef.current === null) return
+    const diff = touchStartRef.current - e.changedTouches[0].clientX
+    if (Math.abs(diff) > 40) { diff > 0 ? goNext() : goPrev() }
+    touchStartRef.current = null
+    resumeTimer()
+  }
 
   if (!banners.length) return null
 
-  const goTo = (idx) => setCurrent((idx + banners.length) % banners.length)
+  // Single banner — no carousel, just display
+  if (banners.length === 1) {
+    const b = banners[0]
+    const img = mediaUrl(b.mobileImageUrl || b.imageUrl || '')
+    const link = b.link || '#'
+    if (!img) return null
+    const isExternal = link.startsWith('http')
+    const Wrapper = isExternal ? 'a' : Link
+    const wrapperProps = isExternal
+      ? { href: link, target: '_blank', rel: 'noopener noreferrer' }
+      : { to: link }
+    return (
+      <section className="max-w-7xl mx-auto px-2 sm:px-3 lg:px-4" style={{ marginTop: 8, marginBottom: 4 }}>
+        <Wrapper {...wrapperProps} style={{ display: 'block', borderRadius: 14, overflow: 'hidden', textDecoration: 'none' }}>
+          <img src={img} alt={b.title || 'Promotion'} style={{ width: '100%', height: 'auto', display: 'block', borderRadius: 14 }} loading="lazy" />
+        </Wrapper>
+      </section>
+    )
+  }
 
+  // Multi banner carousel
   return (
     <section
-      className="max-w-7xl mx-auto px-1 sm:px-2 lg:px-4"
-      style={{ marginTop: 6, marginBottom: 2 }}
-      onMouseEnter={() => { pausedRef.current = true }}
-      onMouseLeave={() => { pausedRef.current = false }}
+      className="max-w-7xl mx-auto px-2 sm:px-3 lg:px-4"
+      style={{ marginTop: 8, marginBottom: 4 }}
+      onMouseEnter={pauseTimer}
+      onMouseLeave={resumeTimer}
     >
-      <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 14 }}>
-        {/* Slides */}
+      <div style={{ position: 'relative', borderRadius: 14, overflow: 'hidden' }}>
+        {/* Slide track */}
         <div
+          ref={trackRef}
+          onTouchStart={onTouchStart}
+          onTouchEnd={onTouchEnd}
           style={{
             display: 'flex',
-            transition: 'transform 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
             transform: `translateX(-${current * 100}%)`,
+            transition: 'transform 0.5s cubic-bezier(0.4,0,0.2,1)',
             willChange: 'transform',
           }}
         >
-          {banners.map((b, idx) => {
+          {banners.map((b) => {
             const img = mediaUrl(b.mobileImageUrl || b.imageUrl || '')
             const link = b.link || '#'
-            if (!img) return <div key={b._id} style={{ minWidth: '100%', flexShrink: 0 }} />
+            if (!img) return null
             const isExternal = link.startsWith('http')
             const Wrapper = isExternal ? 'a' : Link
             const wrapperProps = isExternal
@@ -74,53 +132,71 @@ export default function HomeMiniBanner({ selectedCountry = 'GB' }) {
               <Wrapper
                 key={b._id}
                 {...wrapperProps}
-                style={{ display: 'block', minWidth: '100%', flexShrink: 0, textDecoration: 'none' }}
-                tabIndex={idx === current ? 0 : -1}
+                style={{ display: 'block', flex: '0 0 100%', width: '100%', textDecoration: 'none' }}
               >
                 <img
                   src={img}
                   alt={b.title || 'Promotion'}
-                  style={{ width: '100%', height: 'auto', display: 'block', borderRadius: 14 }}
-                  loading={idx === 0 ? 'eager' : 'lazy'}
+                  style={{ width: '100%', height: 'auto', display: 'block' }}
+                  loading="lazy"
                 />
               </Wrapper>
             )
           })}
         </div>
 
-        {/* Prev / Next arrows — only when >1 banner */}
-        {banners.length > 1 && (
-          <>
-            <button
-              onClick={() => goTo(current - 1)}
-              aria-label="Previous banner"
-              style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', zIndex: 3, width: 32, height: 32, borderRadius: '50%', border: 'none', cursor: 'pointer', background: 'rgba(255,255,255,0.88)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.14)' }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
-            </button>
-            <button
-              onClick={() => goTo(current + 1)}
-              aria-label="Next banner"
-              style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', zIndex: 3, width: 32, height: 32, borderRadius: '50%', border: 'none', cursor: 'pointer', background: 'rgba(255,255,255,0.88)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.14)' }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
-            </button>
-          </>
-        )}
+        {/* Left / Right arrows */}
+        <button
+          onClick={(e) => { e.preventDefault(); goPrev() }}
+          aria-label="Previous"
+          style={{
+            position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)',
+            width: 32, height: 32, borderRadius: '50%', border: 'none',
+            background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(4px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.12)', zIndex: 2,
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <button
+          onClick={(e) => { e.preventDefault(); goNext() }}
+          aria-label="Next"
+          style={{
+            position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
+            width: 32, height: 32, borderRadius: '50%', border: 'none',
+            background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(4px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.12)', zIndex: 2,
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
 
         {/* Dot indicators */}
-        {banners.length > 1 && (
-          <div style={{ position: 'absolute', bottom: 10, left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 6, zIndex: 3 }}>
-            {banners.map((_, i) => (
-              <button
-                key={i}
-                onClick={() => goTo(i)}
-                aria-label={`Go to banner ${i + 1}`}
-                style={{ width: i === current ? 20 : 7, height: 7, borderRadius: 99, border: 'none', cursor: 'pointer', padding: 0, background: i === current ? '#f97316' : 'rgba(255,255,255,0.7)', transition: 'all 0.3s ease', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }}
-              />
-            ))}
-          </div>
-        )}
+        <div style={{
+          position: 'absolute', bottom: 10, left: '50%', transform: 'translateX(-50%)',
+          display: 'flex', gap: 6, zIndex: 2,
+        }}>
+          {banners.map((_, i) => (
+            <button
+              key={i}
+              onClick={(e) => { e.preventDefault(); goTo(i) }}
+              aria-label={`Go to slide ${i + 1}`}
+              style={{
+                width: current === i ? 20 : 7,
+                height: 7,
+                borderRadius: 4,
+                border: 'none',
+                background: current === i ? '#fff' : 'rgba(255,255,255,0.5)',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                boxShadow: '0 1px 4px rgba(0,0,0,0.15)',
+                padding: 0,
+              }}
+            />
+          ))}
+        </div>
       </div>
     </section>
   )

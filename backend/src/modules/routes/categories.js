@@ -112,7 +112,7 @@ router.post('/', auth, allowRoles('admin', 'user', 'manager'), async (req, res) 
     if (req.user.role === 'manager') {
       const User = (await import('../models/User.js')).default
       const mgr = await User.findById(req.user.id).select('managerPermissions').lean()
-      if (!mgr?.managerPermissions?.canManageProducts && !mgr?.managerPermissions?.canManageCategories) {
+      if (!mgr?.managerPermissions?.canManageCategories && !mgr?.managerPermissions?.canManageProducts) {
         return res.status(403).json({ message: 'Not authorized to manage categories' })
       }
     }
@@ -171,7 +171,7 @@ router.put('/:id', auth, allowRoles('admin', 'user', 'manager'), async (req, res
       if (!hasAccess) {
         const User = (await import('../models/User.js')).default
         const mgr = await User.findById(req.user.id).select('managerPermissions').lean()
-        if (!mgr?.managerPermissions?.canManageProducts && !mgr?.managerPermissions?.canManageCategories) {
+        if (!mgr?.managerPermissions?.canManageCategories && !mgr?.managerPermissions?.canManageProducts) {
           return res.status(403).json({ message: 'Not authorized to edit this category' })
         }
       }
