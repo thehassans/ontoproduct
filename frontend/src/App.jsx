@@ -740,6 +740,13 @@ export default function App() {
               <Route path="products" element={<RequireManagerPerm perm="canManageProducts"><UserProducts /></RequireManagerPerm>} />
               <Route path="products/create" element={<RequireManagerPerm perm="canManageProducts"><InhouseProducts /></RequireManagerPerm>} />
               <Route path="products/:id" element={<RequireManagerPerm perm="canAccessProductDetail"><UserProductDetail /></RequireManagerPerm>} />
+              <Route path="categories" element={<RequireManagerPerm perm="canManageCategories"><UserCategories /></RequireManagerPerm>} />
+              <Route path="home-headline" element={<RequireManagerPerm perm="canManageHomeHeadline"><HomeHeadline /></RequireManagerPerm>} />
+              <Route path="product-headline" element={<RequireManagerPerm perm="canManageProductHeadline"><ProductHeadline /></RequireManagerPerm>} />
+              <Route path="home-banners" element={<RequireManagerPerm perm="canManageHomeBanners"><HomeBanners /></RequireManagerPerm>} />
+              <Route path="home-mini-banners" element={<RequireManagerPerm perm="canManageHomeMiniBanners"><HomeMiniBanners /></RequireManagerPerm>} />
+              <Route path="coupons" element={<RequireManagerPerm perm="canManageCoupons"><Coupons /></RequireManagerPerm>} />
+              <Route path="cashback" element={<RequireManagerPerm perm="canManageCashback"><CashbackOffers /></RequireManagerPerm>} />
               <Route path="expenses" element={<Navigate to="/manager" replace />} />
               <Route path="me" element={<ManagerMe />} />
             </Route>

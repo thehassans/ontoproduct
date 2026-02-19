@@ -49,7 +49,14 @@ export default function ManagerLayout(){
   const canManageBanners = !!(me?.managerPermissions?.canManageBanners)
   const canManageProducts = !!(me?.managerPermissions?.canManageProducts)
   const canCreateDrivers = !!(me?.managerPermissions?.canCreateDrivers)
-  
+  const canManageCategories = !!(me?.managerPermissions?.canManageCategories)
+  const canManageHomeHeadline = !!(me?.managerPermissions?.canManageHomeHeadline)
+  const canManageProductHeadline = !!(me?.managerPermissions?.canManageProductHeadline)
+  const canManageHomeBanners = !!(me?.managerPermissions?.canManageHomeBanners)
+  const canManageHomeMiniBanners = !!(me?.managerPermissions?.canManageHomeMiniBanners)
+  const canManageCoupons = !!(me?.managerPermissions?.canManageCoupons)
+  const canManageCashback = !!(me?.managerPermissions?.canManageCashback)
+
   // Desktop sidebar links (full access; manager panel)
   const links = [
     { to: '/manager', label: 'Dashboard' },
@@ -61,6 +68,13 @@ export default function ManagerLayout(){
     ...(canManageProducts ? [{ to: '/manager/products', label: 'Products' }] : []),
     ...(canManageProducts ? [{ to: '/manager/products/create', label: 'Create Product' }] : []),
     ...(canManageBanners ? [{ to: '/manager/banners', label: 'Banners' }] : []),
+    ...(canManageCategories ? [{ to: '/manager/categories', label: 'Categories' }] : []),
+    ...(canManageHomeHeadline ? [{ to: '/manager/home-headline', label: 'Home Headline' }] : []),
+    ...(canManageProductHeadline ? [{ to: '/manager/product-headline', label: 'Product Headline' }] : []),
+    ...(canManageHomeBanners ? [{ to: '/manager/home-banners', label: 'Home Banners' }] : []),
+    ...(canManageHomeMiniBanners ? [{ to: '/manager/home-mini-banners', label: 'Home Mini Banners' }] : []),
+    ...(canManageCoupons ? [{ to: '/manager/coupons', label: 'Coupons' }] : []),
+    ...(canManageCashback ? [{ to: '/manager/cashback', label: 'Cashback Offers' }] : []),
     { to: '/manager/me', label: 'Manager Me' },
   ]
   // Mobile tabs - ALL desktop sidebar links
