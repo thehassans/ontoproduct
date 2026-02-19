@@ -8,7 +8,7 @@ import { useToast } from '../../ui/Toast'
 import { resolveWarehouse } from '../../utils/warehouse'
 import { getProductRating, getStarArray } from '../../utils/autoReviews'
 
-// Rotating info ticker — cycles rating / sold / free delivery with slide-up
+// Rotating info ticker — cycles rating / sold / free delivery with slide-down fade
 const RotatingInfo = memo(function RotatingInfo({ productId, salesCount }) {
   const [idx, setIdx] = useState(0)
   const { rating, reviewCount } = getProductRating(productId)
@@ -38,9 +38,9 @@ const RotatingInfo = memo(function RotatingInfo({ productId, salesCount }) {
 
   return (
     <div className="rotating-info-wrap">
-      <div className="rotating-info-track" style={{ transform: `translateY(-${idx * 100}%)` }}>
-        {items.map((it, i) => <div key={i} className="rotating-info-item">{it}</div>)}
-      </div>
+      {items.map((it, i) => (
+        <div key={i} className={`rotating-info-item${i === idx ? ' ri-active' : ' ri-hidden'}`}>{it}</div>
+      ))}
     </div>
   )
 })
@@ -705,15 +705,29 @@ const ProductCardMini = memo(function ProductCardMini({ product, selectedCountry
           position: relative;
         }
 
-        .rotating-info-track {
-          transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-          will-change: transform;
-        }
-
         .rotating-info-item {
           height: 18px;
           display: flex;
           align-items: center;
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          opacity: 0;
+          transform: translateY(-8px);
+          transition: opacity 0.7s ease, transform 0.7s ease;
+          pointer-events: none;
+        }
+
+        .rotating-info-item.ri-active {
+          opacity: 1;
+          transform: translateY(0);
+          pointer-events: auto;
+        }
+
+        .rotating-info-item.ri-hidden {
+          opacity: 0;
+          transform: translateY(8px);
         }
 
         .price-section {
