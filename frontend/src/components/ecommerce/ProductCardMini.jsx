@@ -15,7 +15,7 @@ const RotatingInfo = memo(function RotatingInfo({ productId, salesCount }) {
   const stars = getStarArray(rating)
 
   useEffect(() => {
-    const t = setInterval(() => setIdx(p => (p + 1) % 3), 2000)
+    const t = setInterval(() => setIdx(p => (p + 1) % 3), 3000)
     return () => clearInterval(t)
   }, [])
 
@@ -706,7 +706,7 @@ const ProductCardMini = memo(function ProductCardMini({ product, selectedCountry
         }
 
         .rotating-info-track {
-          transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+          transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
           will-change: transform;
         }
 
