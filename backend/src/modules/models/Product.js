@@ -78,6 +78,8 @@ const ProductSchema = new mongoose.Schema(
     subcategory: { type: String, default: "" },
     variants: { type: mongoose.Schema.Types.Mixed, default: {} },
     brand: { type: String, default: "" },
+    exploreMoreOffer: { type: String, default: "" },
+    exploreMoreEnabled: { type: Boolean, default: false },
     weight: { type: Number, default: 0 },
     dimensions: {
       length: { type: Number, default: 0 },

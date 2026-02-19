@@ -145,30 +145,7 @@ export default function HomeMiniBanner({ selectedCountry = 'GB' }) {
           })}
         </div>
 
-        {/* Dot indicators */}
-        <div style={{
-          position: 'absolute', bottom: 10, left: '50%', transform: 'translateX(-50%)',
-          display: 'flex', gap: 6, zIndex: 2,
-        }}>
-          {banners.map((_, i) => (
-            <button
-              key={i}
-              onClick={(e) => { e.preventDefault(); goTo(i) }}
-              aria-label={`Go to slide ${i + 1}`}
-              style={{
-                width: current === i ? 20 : 7,
-                height: 7,
-                borderRadius: 4,
-                border: 'none',
-                background: current === i ? '#fff' : 'rgba(255,255,255,0.5)',
-                cursor: 'pointer',
-                transition: 'all 0.3s ease',
-                boxShadow: '0 1px 4px rgba(0,0,0,0.15)',
-                padding: 0,
-              }}
-            />
-          ))}
-        </div>
+        
       </div>
     </section>
   )

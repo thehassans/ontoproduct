@@ -37,6 +37,7 @@ import couponsRoutes from "./modules/routes/coupons.js";
 import moyasarRoutes from "./modules/routes/moyasar.js";
 import categoriesRoutes from "./modules/routes/categories.js";
 import brandsRoutes from "./modules/routes/brands.js";
+import exploreMoreRoutes from "./modules/routes/exploreMore.js";
 
 
 dotenv.config();
@@ -196,6 +197,7 @@ app.use("/api/references", referencesRoutes);
 app.use("/api/moyasar", moyasarRoutes);
 app.use("/api/categories", categoriesRoutes);
 app.use("/api/brands", brandsRoutes);
+app.use("/api/explore-more", exploreMoreRoutes);
 
 // Serve uploaded product images from a robustly resolved directory
 function resolveUploadsDir() {

@@ -889,6 +889,8 @@ export default function InhouseProducts() {
     fd.append('category', form.category)
     fd.append('subcategory', String(form.subcategory || '').trim())
     fd.append('brand', String(form.brand || '').trim())
+    fd.append('exploreMoreOffer', String(form.exploreMoreOffer || '').trim())
+    fd.append('exploreMoreEnabled', String(!!form.exploreMoreEnabled))
     fd.append('madeInCountry', form.madeInCountry)
     fd.append('description', form.description.trim())
     fd.append('overview', (form.overview || '').trim())
@@ -1091,6 +1093,8 @@ export default function InhouseProducts() {
       category: p.category || 'Other',
       subcategory: p.subcategory || '',
       brand: p.brand || '',
+      exploreMoreOffer: p.exploreMoreOffer || '',
+      exploreMoreEnabled: !!p.exploreMoreEnabled,
       sku: p.sku || '',
       madeInCountry: p.madeInCountry || '',
       description: p.description || '',
@@ -1142,6 +1146,8 @@ export default function InhouseProducts() {
       fd.append('category', editForm.category)
       fd.append('subcategory', String(editForm.subcategory || '').trim())
       fd.append('brand', String(editForm.brand || '').trim())
+      fd.append('exploreMoreOffer', String(editForm.exploreMoreOffer || '').trim())
+      fd.append('exploreMoreEnabled', String(!!editForm.exploreMoreEnabled))
       fd.append('madeInCountry', editForm.madeInCountry)
       fd.append('description', editForm.description)
       try {
@@ -1367,6 +1373,30 @@ export default function InhouseProducts() {
                       <option key={b._id} value={b.name}>{b.name}</option>
                     ))}
                   </select>
+                </div>
+                <div>
+                  <div className="label" style={{ marginBottom: 8, fontWeight: 600 }}>
+                    Explore More Offer <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: 12 }}>(Optional)</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <input
+                      className="input"
+                      name="exploreMoreOffer"
+                      value={form.exploreMoreOffer || ''}
+                      onChange={onChange}
+                      placeholder="e.g. Deals, Bundle Savings"
+                      style={{ padding: 12, flex: 1 }}
+                    />
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', whiteSpace: 'nowrap', fontSize: 13, fontWeight: 600 }}>
+                      <input
+                        type="checkbox"
+                        checked={!!form.exploreMoreEnabled}
+                        onChange={(e) => setForm((f) => ({ ...f, exploreMoreEnabled: e.target.checked }))}
+                        style={{ width: 18, height: 18, accentColor: '#f97316' }}
+                      />
+                      Show in Explore
+                    </label>
+                  </div>
                 </div>
                 <div>
                   <div className="label" style={{ marginBottom: 8, fontWeight: 600 }}>

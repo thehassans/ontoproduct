@@ -34,6 +34,27 @@ function getDefaultCategoryImage(name) {
   return 'https://images.unsplash.com/photo-1472851294608-062f824d29cc?w=400&h=400&fit=crop'
 }
 
+function RotatingMeta({ rating, sold }) {
+  const [idx, setIdx] = useState(0)
+  const items = []
+  if (rating > 0) items.push(<span key="r" style={{display:'flex',alignItems:'center',gap:2}}><svg width="10" height="10" viewBox="0 0 24 24" fill="#f97316" stroke="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"/></svg><span style={{fontWeight:700,color:'#f97316'}}>{rating.toFixed(1)}</span></span>)
+  if (sold > 0) items.push(<span key="s" style={{color:'#6b7280'}}>{sold.toLocaleString()} sold</span>)
+  items.push(<span key="d" style={{color:'#16a34a',fontWeight:600}}>Free Delivery</span>)
+  useEffect(() => {
+    if (items.length <= 1) return
+    const t = setInterval(() => setIdx(p => (p + 1) % items.length), 2200)
+    return () => clearInterval(t)
+  }, [items.length])
+  if (!items.length) return null
+  return (
+    <div className="cb-rotating-meta">
+      <div className="cb-rotating-track" style={{transform:`translateY(-${idx * 100}%)`}}>
+        {items.map((item, i) => <div key={i} className="cb-rotating-item">{item}</div>)}
+      </div>
+    </div>
+  )
+}
+
 export default function CategoryBrowser({ selectedCountry = 'GB' }) {
   const [categories, setCategories] = useState([])
   const [activeIdx, setActiveIdx] = useState(0)
@@ -110,35 +131,6 @@ export default function CategoryBrowser({ selectedCountry = 'GB' }) {
         </Link>
       </div>
 
-      {/* Horizontal category image blocks */}
-      <div className="cb-cats-scroll">
-        {categories.map((cat, idx) => {
-          const isActive = idx === activeIdx
-          const catImg = cat.image ? mediaUrl(cat.image) : cat.icon ? mediaUrl(cat.icon) : getDefaultCategoryImage(cat.name)
-          return (
-            <button
-              key={cat._id || idx}
-              onClick={() => setActiveIdx(idx)}
-              className={`cb-cat-block ${isActive ? 'cb-cat-active' : ''}`}
-            >
-              <div className="cb-cat-img-wrap">
-                <img
-                  src={catImg}
-                  alt={cat.name}
-                  className="cb-cat-img"
-                  loading="lazy"
-                  onError={e => { e.target.src = getDefaultCategoryImage(cat.name) }}
-                />
-                {isActive && <div className="cb-cat-ring" />}
-              </div>
-              <span className={`cb-cat-label ${isActive ? 'cb-cat-label-active' : ''}`}>
-                {cat.name}
-              </span>
-            </button>
-          )
-        })}
-      </div>
-
       {/* Horizontal product scroll */}
       {products.length > 0 ? (
         <div ref={productsRef} className="cb-products-scroll">
@@ -174,6 +166,7 @@ export default function CategoryBrowser({ selectedCountry = 'GB' }) {
                       )}
                     </div>
                   )}
+                  <RotatingMeta rating={p.rating || 0} sold={p.sold || p.totalSold || 0} />
                 </div>
               </Link>
             )
@@ -192,6 +185,35 @@ export default function CategoryBrowser({ selectedCountry = 'GB' }) {
       ) : (
         <div className="cb-empty" style={{ color: '#d1d5db' }}>Loading...</div>
       )}
+
+      {/* Horizontal category image blocks — below products */}
+      <div className="cb-cats-scroll">
+        {categories.map((cat, idx) => {
+          const isActive = idx === activeIdx
+          const catImg = cat.image ? mediaUrl(cat.image) : cat.icon ? mediaUrl(cat.icon) : getDefaultCategoryImage(cat.name)
+          return (
+            <button
+              key={cat._id || idx}
+              onClick={() => setActiveIdx(idx)}
+              className={`cb-cat-block ${isActive ? 'cb-cat-active' : ''}`}
+            >
+              <div className="cb-cat-img-wrap">
+                <img
+                  src={catImg}
+                  alt={cat.name}
+                  className="cb-cat-img"
+                  loading="lazy"
+                  onError={e => { e.target.src = getDefaultCategoryImage(cat.name) }}
+                />
+                {isActive && <div className="cb-cat-ring" />}
+              </div>
+              <span className={`cb-cat-label ${isActive ? 'cb-cat-label-active' : ''}`}>
+                {cat.name}
+              </span>
+            </button>
+          )
+        })}
+      </div>
 
       <style>{`
         .cb-section {
@@ -396,6 +418,24 @@ export default function CategoryBrowser({ selectedCountry = 'GB' }) {
           text-align: center;
           color: #9ca3af;
           font-size: 13px;
+        }
+
+        /* Rotating meta animation */
+        .cb-rotating-meta {
+          height: 16px;
+          overflow: hidden;
+          margin-top: 4px;
+        }
+        .cb-rotating-track {
+          transition: transform 0.4s cubic-bezier(0.4,0,0.2,1);
+        }
+        .cb-rotating-item {
+          height: 16px;
+          display: flex;
+          align-items: center;
+          font-size: 10.5px;
+          line-height: 1;
+          gap: 3px;
         }
 
         @media (min-width: 768px) {

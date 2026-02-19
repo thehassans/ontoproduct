@@ -56,6 +56,7 @@ const UserSchema = new mongoose.Schema(
       canManageCoupons: { type: Boolean, default: false },
       canManageCashback: { type: Boolean, default: false },
       canManageBrands: { type: Boolean, default: false },
+      canManageExploreMore: { type: Boolean, default: false },
     },
     // SEO manager: which countries this seo_manager can manage pixels/SEO for
     seoCountries: {

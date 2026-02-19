@@ -57,6 +57,7 @@ export default function ManagerLayout(){
   const canManageCoupons = !!(me?.managerPermissions?.canManageCoupons)
   const canManageCashback = !!(me?.managerPermissions?.canManageCashback)
   const canManageBrands = !!(me?.managerPermissions?.canManageBrands)
+  const canManageExploreMore = !!(me?.managerPermissions?.canManageExploreMore)
 
   // Desktop sidebar links (full access; manager panel)
   const links = [
@@ -71,6 +72,7 @@ export default function ManagerLayout(){
     ...(canManageBanners ? [{ to: '/manager/banners', label: 'Banners' }] : []),
     ...(canManageCategories ? [{ to: '/manager/categories', label: 'Categories' }] : []),
     ...(canManageBrands ? [{ to: '/manager/brands', label: 'Brands' }] : []),
+    ...(canManageExploreMore ? [{ to: '/manager/explore-more', label: 'Explore More' }] : []),
     ...(canManageHomeHeadline ? [{ to: '/manager/home-headline', label: 'Home Headline' }] : []),
     ...(canManageProductHeadline ? [{ to: '/manager/product-headline', label: 'Product Headline' }] : []),
     ...(canManageHomeBanners ? [{ to: '/manager/home-banners', label: 'Home Banners' }] : []),

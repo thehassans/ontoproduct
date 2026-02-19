@@ -1371,6 +1371,7 @@ router.post(
         canManageCoupons: !!perms.canManageCoupons,
         canManageCashback: !!perms.canManageCashback,
         canManageBrands: !!perms.canManageBrands,
+        canManageExploreMore: !!perms.canManageExploreMore,
       },
     });
     await manager.save();
@@ -1671,6 +1672,9 @@ router.patch(
           ),
           canManageBrands: !!(
             perm.canManageBrands ?? mgr.managerPermissions?.canManageBrands
+          ),
+          canManageExploreMore: !!(
+            perm.canManageExploreMore ?? mgr.managerPermissions?.canManageExploreMore
           ),
         };
       }

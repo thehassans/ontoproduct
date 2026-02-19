@@ -10,6 +10,7 @@ import PremiumFooter from '../../components/layout/PremiumFooter'
 import CategoryBrowser from '../../components/ecommerce/CategoryBrowser'
 import HomeMiniBanner from '../../components/ecommerce/HomeMiniBanner'
 import BrandBrowser from '../../components/ecommerce/BrandBrowser'
+import ExploreMoreBlock from '../../components/ecommerce/ExploreMoreBlock'
 import PromoBlock from '../../components/ecommerce/PromoBlock'
 
 export default function Home(){
@@ -359,7 +360,7 @@ export default function Home(){
               .homeHeadlineMarqueeViewport {
                 overflow: hidden;
                 white-space: nowrap;
-                padding: 10px 14px;
+                padding: 4px 14px;
               }
               .homeHeadlineMarqueeTrack {
                 display: inline-flex;
@@ -435,6 +436,9 @@ export default function Home(){
 
       {/* Brand Browser — horizontal brand logos */}
       <BrandBrowser />
+
+      {/* Explore More — promotional blocks */}
+      <ExploreMoreBlock />
 
       {/* Promo Block — cashback/shop/delivery */}
       <PromoBlock />
