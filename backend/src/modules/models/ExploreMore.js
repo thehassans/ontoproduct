@@ -1,4 +1,4 @@
-const mongoose = require('mongoose')
+import mongoose from 'mongoose'
 
 const exploreMoreSchema = new mongoose.Schema({
   title: { type: String, required: true, trim: true },
@@ -11,4 +11,4 @@ const exploreMoreSchema = new mongoose.Schema({
 
 exploreMoreSchema.index({ sortOrder: 1 })
 
-module.exports = mongoose.model('ExploreMore', exploreMoreSchema)
+export default mongoose.model('ExploreMore', exploreMoreSchema)

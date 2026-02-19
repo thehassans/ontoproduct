@@ -1,11 +1,15 @@
-const express = require('express')
+import express from 'express'
+import multer from 'multer'
+import path from 'path'
+import fs from 'fs'
+import sharp from 'sharp'
+import { fileURLToPath } from 'url'
+import ExploreMore from '../models/ExploreMore.js'
+import User from '../models/User.js'
+
 const router = express.Router()
-const ExploreMore = require('../models/ExploreMore')
-const User = require('../models/User')
-const multer = require('multer')
-const sharp = require('sharp')
-const path = require('path')
-const fs = require('fs')
+const __filename_em = fileURLToPath(import.meta.url)
+const __dirname_em = path.dirname(__filename_em)
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } })
 
@@ -79,7 +83,7 @@ router.post('/:id/image', authMiddleware, ownerOrManager, upload.single('image')
     const item = await ExploreMore.findById(req.params.id)
     if (!item) return res.status(404).json({ message: 'Not found' })
 
-    const uploadDir = path.join(__dirname, '..', '..', '..', 'uploads', 'explore')
+    const uploadDir = path.join(__dirname_em, '..', '..', '..', 'uploads', 'explore')
     if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true })
 
     const filename = `explore_${item._id}_${Date.now()}.webp`
@@ -89,7 +93,7 @@ router.post('/:id/image', authMiddleware, ownerOrManager, upload.single('image')
 
     // Remove old image
     if (item.image) {
-      const oldPath = path.join(__dirname, '..', '..', '..', 'uploads', item.image.replace(/^\/uploads\//, ''))
+      const oldPath = path.join(__dirname_em, '..', '..', '..', 'uploads', item.image.replace(/^\/uploads\//, ''))
       try { if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath) } catch {}
     }
 
@@ -99,4 +103,4 @@ router.post('/:id/image', authMiddleware, ownerOrManager, upload.single('image')
   } catch (err) { res.status(500).json({ message: err.message }) }
 })
 
-module.exports = router
+export default router
