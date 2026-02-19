@@ -11,6 +11,159 @@ const COUNTRIES = [
   { code: 'Australia', name: 'Australia' },
 ]
 
+const S = {
+  page: { padding: 24, maxWidth: 1200, margin: '0 auto' },
+  card: { background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: 20, marginBottom: 16 },
+  btn: { padding: '8px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13, transition: 'all 0.2s' },
+  btnPrimary: { background: '#f97316', color: '#fff' },
+  btnSec: { background: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb' },
+  btnDanger: { background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca' },
+  btnSuccess: { background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0' },
+  input: { width: '100%', padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 14 },
+  label: { display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4, color: '#374151' },
+  badge: { display: 'inline-flex', padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 700 },
+  grid: { display: 'grid', gap: 12 },
+}
+
+function CategoryRow({ cat, depth = 0, managers, load, showToast, onEdit, onDelete, onPublishToggle, onCountryToggle, onManagerAccess }) {
+  const [showCountries, setShowCountries] = useState(false)
+  const [showManagers, setShowManagers] = useState(false)
+  const [showAddSub, setShowAddSub] = useState(false)
+  const [subName, setSubName] = useState('')
+  const [subSaving, setSubSaving] = useState(false)
+  const [imgUploading, setImgUploading] = useState(false)
+  const imgInputRef = useRef(null)
+  const unpub = cat.unpublishedCountries || []
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImgUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append('image', file)
+      await apiUpload(`/api/categories/${cat._id}/image`, fd)
+      showToast('Image uploaded')
+      await load()
+    } catch (err) { showToast(err?.message || 'Upload failed', 'error') }
+    finally { setImgUploading(false); if (imgInputRef.current) imgInputRef.current.value = '' }
+  }
+
+  const handleAddSub = async () => {
+    if (!subName.trim()) return showToast('Subcategory name required', 'error')
+    setSubSaving(true)
+    try {
+      await apiPost('/api/categories', { name: subName.trim(), parent: cat._id, isPublished: true })
+      setSubName('')
+      setShowAddSub(false)
+      await load()
+      showToast('Subcategory added')
+    } catch (e) { showToast(e?.message || 'Failed', 'error') }
+    finally { setSubSaving(false) }
+  }
+
+  return (
+    <div style={{ ...S.card, marginLeft: depth * 24, borderLeft: depth ? '3px solid #f97316' : undefined }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {cat.image ? (
+            <img src={mediaUrl(cat.image)} alt="" style={{ width: 32, height: 32, borderRadius: 6, objectFit: 'cover', border: '1px solid #e5e7eb', cursor: 'pointer' }} onClick={() => imgInputRef.current?.click()} title="Click to change image" />
+          ) : null}
+          <span style={{ fontWeight: 700, fontSize: 15 }}>{cat.name}</span>
+          {cat.parent && <span style={{ ...S.badge, background: '#f3f4f6', color: '#6b7280' }}>Sub</span>}
+          <span style={{ ...S.badge, background: cat.isPublished ? '#f0fdf4' : '#fef2f2', color: cat.isPublished ? '#16a34a' : '#dc2626' }}>
+            {cat.isPublished ? 'Published' : 'Unpublished'}
+          </span>
+          {unpub.length > 0 && (
+            <span style={{ ...S.badge, background: '#fff7ed', color: '#c2410c' }}>
+              Hidden in {unpub.length} {unpub.length === 1 ? 'country' : 'countries'}
+            </span>
+          )}
+        </div>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          <input ref={imgInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload} />
+          <button style={{ ...S.btn, background: '#f0f9ff', color: '#0284c7', border: '1px solid #bae6fd', fontSize: 11 }} onClick={() => imgInputRef.current?.click()} disabled={imgUploading}>
+            {imgUploading ? 'Uploading...' : (cat.image ? 'Change Img' : 'Add Image')}
+          </button>
+          {depth === 0 && (
+            <button style={{ ...S.btn, background: '#fff7ed', color: '#c2410c', border: '1px solid #fed7aa', fontSize: 11 }} onClick={() => setShowAddSub(v => !v)}>
+              {showAddSub ? 'Cancel' : '+ Sub'}
+            </button>
+          )}
+          <button style={{ ...S.btn, ...S.btnSec, fontSize: 11 }} onClick={() => setShowCountries(v => !v)}>
+            {showCountries ? 'Hide' : 'Countries'}
+          </button>
+          <button style={{ ...S.btn, ...S.btnSec, fontSize: 11 }} onClick={() => setShowManagers(v => !v)}>
+            Managers
+          </button>
+          <button style={{ ...S.btn, ...(cat.isPublished ? S.btnDanger : S.btnSuccess), fontSize: 11 }} onClick={() => onPublishToggle(cat)}>
+            {cat.isPublished ? 'Unpublish' : 'Publish'}
+          </button>
+          <button style={{ ...S.btn, ...S.btnSec, fontSize: 11 }} onClick={() => onEdit(cat)}>
+            Edit
+          </button>
+          <button style={{ ...S.btn, ...S.btnDanger, fontSize: 11 }} onClick={() => onDelete(cat._id)}>
+            Delete
+          </button>
+        </div>
+      </div>
+
+      {showAddSub && (
+        <div style={{ marginTop: 12, padding: 12, background: '#fffbeb', borderRadius: 8, border: '1px solid #fde68a', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <input style={{ ...S.input, flex: 1, minWidth: 180 }} value={subName} onChange={e => setSubName(e.target.value)} placeholder={`New subcategory under ${cat.name}`} onKeyDown={e => e.key === 'Enter' && handleAddSub()} />
+          <button style={{ ...S.btn, ...S.btnPrimary, fontSize: 12 }} onClick={handleAddSub} disabled={subSaving}>{subSaving ? 'Adding...' : 'Add Subcategory'}</button>
+        </div>
+      )}
+
+      {showCountries && (
+        <div style={{ marginTop: 12, padding: 12, background: '#f9fafb', borderRadius: 8 }}>
+          <p style={{ fontSize: 12, fontWeight: 700, marginBottom: 8, color: '#6b7280' }}>Country Visibility</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {COUNTRIES.map(c => {
+              const isUnpub = unpub.includes(c.code)
+              return (
+                <button key={c.code} onClick={() => onCountryToggle(cat._id, c.code, isUnpub ? 'publish' : 'unpublish')}
+                  style={{ ...S.btn, fontSize: 11, padding: '4px 10px', background: isUnpub ? '#fef2f2' : '#f0fdf4', color: isUnpub ? '#dc2626' : '#16a34a', border: `1px solid ${isUnpub ? '#fecaca' : '#bbf7d0'}` }}>
+                  {c.name} {isUnpub ? '✕' : '✓'}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {showManagers && (
+        <div style={{ marginTop: 12, padding: 12, background: '#f9fafb', borderRadius: 8 }}>
+          <p style={{ fontSize: 12, fontWeight: 700, marginBottom: 8, color: '#6b7280' }}>Manager Access</p>
+          {managers.length === 0 ? (
+            <p style={{ fontSize: 12, color: '#9ca3af' }}>No managers found</p>
+          ) : (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {managers.map(m => {
+                const has = (cat.managerAccess || []).some(mid => String(mid) === String(m._id))
+                return (
+                  <button key={m._id} onClick={() => onManagerAccess(cat._id, m._id, has ? 'revoke' : 'grant')}
+                    style={{ ...S.btn, fontSize: 11, padding: '4px 10px', background: has ? '#eff6ff' : '#f3f4f6', color: has ? '#2563eb' : '#6b7280', border: `1px solid ${has ? '#bfdbfe' : '#e5e7eb'}` }}>
+                    {m.firstName} {m.lastName} {has ? '✓' : '+'}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {cat.subcategories?.length > 0 && (
+        <div style={{ marginTop: 8 }}>
+          {cat.subcategories.map(sub => (
+            <CategoryRow key={sub._id} cat={sub} depth={depth + 1} managers={managers} load={load} showToast={showToast} onEdit={onEdit} onDelete={onDelete} onPublishToggle={onPublishToggle} onCountryToggle={onCountryToggle} onManagerAccess={onManagerAccess} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Categories() {
   const [categories, setCategories] = useState([])
   const [flat, setFlat] = useState([])
@@ -21,10 +174,8 @@ export default function Categories() {
   const [showAdd, setShowAdd] = useState(false)
   const [editCat, setEditCat] = useState(null)
   const [form, setForm] = useState({ name: '', parent: '', description: '', sortOrder: 0 })
-  const [expandedCountry, setExpandedCountry] = useState(null)
-  const [selectedCountry, setSelectedCountry] = useState('')
 
-  const showToast = (msg, type = 'success') => { setToast({ msg, type }); setTimeout(() => setToast(null), 3000) }
+  const showToast = useCallback((msg, type = 'success') => { setToast({ msg, type }); setTimeout(() => setToast(null), 3000) }, [])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -98,184 +249,18 @@ export default function Categories() {
     } catch (e) { showToast(e?.message || 'Failed', 'error') }
   }
 
-  const handleManagerAccess = async (catId, managerId, action) => {
+  const handleManagerAccess = useCallback(async (catId, managerId, action) => {
     try {
       await apiPost(`/api/categories/${catId}/manager-access`, { managerId, action })
       showToast(`Manager ${action}ed`)
       await load()
     } catch (e) { showToast(e?.message || 'Failed', 'error') }
-  }
+  }, [load, showToast])
 
-  const S = {
-    page: { padding: 24, maxWidth: 1200, margin: '0 auto' },
-    card: { background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: 20, marginBottom: 16 },
-    btn: { padding: '8px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13, transition: 'all 0.2s' },
-    btnPrimary: { background: '#f97316', color: '#fff' },
-    btnSec: { background: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb' },
-    btnDanger: { background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca' },
-    btnSuccess: { background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0' },
-    input: { width: '100%', padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 14 },
-    label: { display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4, color: '#374151' },
-    badge: { display: 'inline-flex', padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 700 },
-    grid: { display: 'grid', gap: 12 },
-  }
-
-  const CategoryRow = ({ cat, depth = 0 }) => {
-    const [showCountries, setShowCountries] = useState(false)
-    const [showManagers, setShowManagers] = useState(false)
-    const [showAddSub, setShowAddSub] = useState(false)
-    const [subName, setSubName] = useState('')
-    const [subSaving, setSubSaving] = useState(false)
-    const [imgUploading, setImgUploading] = useState(false)
-    const imgInputRef = useRef(null)
-    const unpub = cat.unpublishedCountries || []
-
-    const handleImageUpload = async (e) => {
-      const file = e.target.files?.[0]
-      if (!file) return
-      setImgUploading(true)
-      try {
-        const fd = new FormData()
-        fd.append('image', file)
-        await apiUpload(`/api/categories/${cat._id}/image`, fd)
-        showToast('Image uploaded')
-        await load()
-      } catch (err) { showToast(err?.message || 'Upload failed', 'error') }
-      finally { setImgUploading(false); if (imgInputRef.current) imgInputRef.current.value = '' }
-    }
-
-    const handleAddSub = async () => {
-      if (!subName.trim()) return showToast('Subcategory name required', 'error')
-      setSubSaving(true)
-      try {
-        await apiPost('/api/categories', { name: subName.trim(), parent: cat._id, isPublished: true })
-        showToast(`Subcategory "${subName.trim()}" added`)
-        setSubName('')
-        setShowAddSub(false)
-        await load()
-      } catch (e) { showToast(e?.message || 'Failed', 'error') }
-      finally { setSubSaving(false) }
-    }
-
-    return (
-      <div style={{ ...S.card, marginLeft: depth * 24, borderLeft: depth ? '3px solid #f97316' : undefined }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {cat.image ? (
-              <img src={mediaUrl(cat.image)} alt="" style={{ width: 32, height: 32, borderRadius: 6, objectFit: 'cover', border: '1px solid #e5e7eb', cursor: 'pointer' }} onClick={() => imgInputRef.current?.click()} title="Click to change image" />
-            ) : null}
-            <span style={{ fontWeight: 700, fontSize: 15 }}>{cat.name}</span>
-            {cat.parent && <span style={{ ...S.badge, background: '#f3f4f6', color: '#6b7280' }}>Sub</span>}
-            <span style={{ ...S.badge, background: cat.isPublished ? '#f0fdf4' : '#fef2f2', color: cat.isPublished ? '#16a34a' : '#dc2626' }}>
-              {cat.isPublished ? 'Published' : 'Unpublished'}
-            </span>
-            {unpub.length > 0 && (
-              <span style={{ ...S.badge, background: '#fff7ed', color: '#c2410c' }}>
-                Hidden in {unpub.length} {unpub.length === 1 ? 'country' : 'countries'}
-              </span>
-            )}
-          </div>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            <input ref={imgInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload} />
-            <button style={{ ...S.btn, background: '#f0f9ff', color: '#0284c7', border: '1px solid #bae6fd', fontSize: 11 }} onClick={() => imgInputRef.current?.click()} disabled={imgUploading}>
-              {imgUploading ? 'Uploading...' : (cat.image ? 'Change Img' : 'Add Image')}
-            </button>
-            {depth === 0 && (
-              <button style={{ ...S.btn, background: '#fff7ed', color: '#c2410c', border: '1px solid #fed7aa', fontSize: 11 }} onClick={() => setShowAddSub(!showAddSub)}>
-                {showAddSub ? 'Cancel' : '+ Sub'}
-              </button>
-            )}
-            <button style={{ ...S.btn, ...S.btnSec, fontSize: 11 }} onClick={() => setShowCountries(!showCountries)}>
-              {showCountries ? 'Hide' : 'Countries'}
-            </button>
-            <button style={{ ...S.btn, ...S.btnSec, fontSize: 11 }} onClick={() => setShowManagers(!showManagers)}>
-              Managers
-            </button>
-            <button style={{ ...S.btn, ...(cat.isPublished ? S.btnDanger : S.btnSuccess), fontSize: 11 }} onClick={() => handlePublishToggle(cat)}>
-              {cat.isPublished ? 'Unpublish' : 'Publish'}
-            </button>
-            <button style={{ ...S.btn, ...S.btnSec, fontSize: 11 }} onClick={() => { setEditCat(cat); setForm({ name: cat.name, parent: cat.parent || '', description: cat.description || '', sortOrder: cat.sortOrder || 0 }) }}>
-              Edit
-            </button>
-            <button style={{ ...S.btn, ...S.btnDanger, fontSize: 11 }} onClick={() => handleDelete(cat._id)}>
-              Delete
-            </button>
-          </div>
-        </div>
-
-        {showAddSub && (
-          <div style={{ marginTop: 12, padding: 12, background: '#fffbeb', borderRadius: 8, border: '1px solid #fde68a', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            <input style={{ ...S.input, flex: 1, minWidth: 180 }} value={subName} onChange={e => setSubName(e.target.value)} placeholder={`New subcategory under ${cat.name}`} onKeyDown={e => e.key === 'Enter' && handleAddSub()} />
-            <button style={{ ...S.btn, ...S.btnPrimary, fontSize: 12 }} onClick={handleAddSub} disabled={subSaving}>{subSaving ? 'Adding...' : 'Add Subcategory'}</button>
-          </div>
-        )}
-
-        {showCountries && (
-          <div style={{ marginTop: 12, padding: 12, background: '#f9fafb', borderRadius: 8 }}>
-            <p style={{ fontSize: 12, fontWeight: 700, marginBottom: 8, color: '#6b7280' }}>Country Visibility</p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {COUNTRIES.map(c => {
-                const isUnpub = unpub.includes(c.code)
-                return (
-                  <button
-                    key={c.code}
-                    onClick={() => handleCountryToggle(cat._id, c.code, isUnpub ? 'publish' : 'unpublish')}
-                    style={{
-                      ...S.btn,
-                      fontSize: 11,
-                      padding: '4px 10px',
-                      background: isUnpub ? '#fef2f2' : '#f0fdf4',
-                      color: isUnpub ? '#dc2626' : '#16a34a',
-                      border: `1px solid ${isUnpub ? '#fecaca' : '#bbf7d0'}`,
-                    }}
-                  >
-                    {c.name} {isUnpub ? '✕' : '✓'}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {showManagers && (
-          <div style={{ marginTop: 12, padding: 12, background: '#f9fafb', borderRadius: 8 }}>
-            <p style={{ fontSize: 12, fontWeight: 700, marginBottom: 8, color: '#6b7280' }}>Manager Access</p>
-            {managers.length === 0 ? (
-              <p style={{ fontSize: 12, color: '#9ca3af' }}>No managers found</p>
-            ) : (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {managers.map(m => {
-                  const has = (cat.managerAccess || []).some(mid => String(mid) === String(m._id))
-                  return (
-                    <button
-                      key={m._id}
-                      onClick={() => handleManagerAccess(cat._id, m._id, has ? 'revoke' : 'grant')}
-                      style={{
-                        ...S.btn, fontSize: 11, padding: '4px 10px',
-                        background: has ? '#eff6ff' : '#f3f4f6',
-                        color: has ? '#2563eb' : '#6b7280',
-                        border: `1px solid ${has ? '#bfdbfe' : '#e5e7eb'}`,
-                      }}
-                    >
-                      {m.firstName} {m.lastName} {has ? '✓' : '+'}
-                    </button>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {cat.subcategories?.length > 0 && (
-          <div style={{ marginTop: 8 }}>
-            {cat.subcategories.map(sub => (
-              <CategoryRow key={sub._id} cat={sub} depth={depth + 1} />
-            ))}
-          </div>
-        )}
-      </div>
-    )
-  }
+  const handleEdit = useCallback((cat) => {
+    setEditCat(cat)
+    setForm({ name: cat.name, parent: cat.parent || '', description: cat.description || '', sortOrder: cat.sortOrder || 0 })
+  }, [])
 
   return (
     <div style={S.page}>
@@ -344,7 +329,9 @@ export default function Categories() {
           <button style={{ ...S.btn, ...S.btnPrimary }} onClick={handleSync} disabled={syncing}>Sync from Products</button>
         </div>
       ) : (
-        categories.map(cat => <CategoryRow key={cat._id} cat={cat} />)
+        categories.map(cat => (
+          <CategoryRow key={cat._id} cat={cat} depth={0} managers={managers} load={load} showToast={showToast} onEdit={handleEdit} onDelete={handleDelete} onPublishToggle={handlePublishToggle} onCountryToggle={handleCountryToggle} onManagerAccess={handleManagerAccess} />
+        ))
       )}
     </div>
   )
