@@ -8,6 +8,7 @@ import PremiumHeroBanner from '../../components/ecommerce/PremiumHeroBanner'
 import MobileBottomNav from '../../components/ecommerce/MobileBottomNav'
 import PremiumFooter from '../../components/layout/PremiumFooter'
 import CategoryBrowser from '../../components/ecommerce/CategoryBrowser'
+import HomeMiniBanner from '../../components/ecommerce/HomeMiniBanner'
 
 export default function Home(){
   const navigate = useNavigate()
@@ -243,34 +244,71 @@ export default function Home(){
         <PremiumHeroBanner />
       </div>
 
-      {/* Mobile slide-out menu — ultra premium glass */}
+      {/* Mobile slide-out menu — OnBuy-style sections */}
       {mobileMenuOpen && (
         <div className="fixed inset-0 z-[9999] lg:hidden">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-md" onClick={() => setMobileMenuOpen(false)} />
-          <div className="absolute top-0 left-0 bottom-0 w-[75vw] max-w-[300px] bg-white/95 backdrop-blur-2xl shadow-2xl flex flex-col animate-[slideIn_0.3s_cubic-bezier(0.16,1,0.3,1)]">
-            {/* Logo + close */}
-            <div className="relative px-6 pt-8 pb-5 flex items-center gap-3">
-              <img src="/BuySial2.png" alt="BuySial" className="h-10 w-10 object-contain" />
-              <button onClick={() => setMobileMenuOpen(false)} className="ml-auto w-8 h-8 rounded-full bg-gray-100/80 flex items-center justify-center hover:bg-gray-200 transition-colors"><svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg></button>
-            </div>
-            <div className="h-px bg-gray-100 mx-5" />
-            {/* Nav items */}
-            <nav className="flex-1 px-5 pt-4">
+          <div className="absolute inset-0 bg-black/30" onClick={() => setMobileMenuOpen(false)} />
+          <div className="absolute top-0 left-0 bottom-0 w-[80vw] max-w-[320px] bg-white shadow-2xl flex flex-col animate-[slideIn_0.25s_cubic-bezier(0.16,1,0.3,1)] overflow-y-auto">
+            {/* Shop header section */}
+            <div className="bg-gray-900 text-white px-5 pt-7 pb-4">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-[17px] font-bold tracking-wide">Shop</span>
+                <button onClick={() => setMobileMenuOpen(false)} className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center"><svg className="w-4 h-4 text-white/80" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg></button>
+              </div>
               {[
-                { to: '/', label: 'Home', icon: 'M3 9.5L12 3l9 6.5V20a2 2 0 01-2 2H5a2 2 0 01-2-2V9.5z' },
-                { to: '/catalog', label: 'Discover', icon: 'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z' },
-                { to: '/categories', label: 'Categories', icon: 'M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z' },
-                { to: '/about', label: 'About', icon: 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
-                { to: '/contact', label: 'Contact', icon: 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
+                { to: '/catalog?sort=newest', label: 'NEW ARRIVALS' },
+                { to: '/catalog?sort=popular', label: 'BEST SELLERS' },
+                { to: '/catalog', label: 'ALL PRODUCTS' },
               ].map(item => (
-                <Link key={item.to} to={item.to} onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3.5 py-3.5 text-gray-700 font-medium text-[15px] border-b border-gray-50/80 last:border-0 hover:text-orange-500 transition-colors">
-                  <svg className="w-[18px] h-[18px] text-gray-400" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d={item.icon} /></svg>
+                <Link key={item.to} to={item.to} onClick={() => setMobileMenuOpen(false)} className="block py-2 text-[13px] font-semibold text-white/90 tracking-wider hover:text-white transition-colors">
                   {item.label}
                 </Link>
               ))}
+            </div>
+
+            {/* See all categories */}
+            <div className="px-5 pt-5 pb-2">
+              <Link to="/categories" onClick={() => setMobileMenuOpen(false)} className="flex items-center justify-between py-2 text-[15px] font-bold text-blue-600 hover:text-blue-700 transition-colors">
+                <span>See all categories</span>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6" /></svg>
+              </Link>
+            </div>
+
+            {/* Dynamic category list */}
+            <nav className="px-5 pb-3">
+              {categoryNames.slice(0, 8).map((cat) => (
+                <Link
+                  key={cat}
+                  to={`/catalog?category=${encodeURIComponent(cat)}`}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0 text-[15px] text-gray-700 hover:text-gray-900 transition-colors"
+                >
+                  <span>{cat}</span>
+                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6" /></svg>
+                </Link>
+              ))}
             </nav>
-            {/* Bottom: country */}
-            <div className="px-5 pb-6 pt-3">
+
+            {/* Divider */}
+            <div className="h-px bg-gray-200 mx-5 my-1" />
+
+            {/* Account & Help section */}
+            <div className="px-5 pt-3 pb-5">
+              <h3 className="text-[15px] font-bold text-gray-900 mb-2">Account & Help</h3>
+              {[
+                { to: '/customer', label: 'Your Account' },
+                { to: '/customer/orders', label: 'Your Orders' },
+                { to: '/about', label: 'About Us' },
+                { to: '/contact', label: 'Help & Contact' },
+              ].map(item => (
+                <Link key={item.to} to={item.to} onClick={() => setMobileMenuOpen(false)} className="block py-2.5 text-[14px] text-gray-600 hover:text-gray-900 transition-colors">
+                  {item.label}
+                </Link>
+              ))}
+            </div>
+
+            {/* Country at bottom */}
+            <div className="mt-auto px-5 pb-6 pt-3 border-t border-gray-100">
               <div className="flex items-center gap-2 text-xs text-gray-400">
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" /></svg>
                 <span>{currentFlag} {currentCountryName}</span>
@@ -387,7 +425,10 @@ export default function Home(){
         )}
       </div>
 
-      {/* Category Browser — Left tabs + Right subcategory cards */}
+      {/* Home Mini Banner — promotional block before categories */}
+      <HomeMiniBanner selectedCountry={selectedCountry} />
+
+      {/* Category Browser — horizontal pills + horizontal product scroll */}
       <CategoryBrowser selectedCountry={selectedCountry} />
 
       <PremiumFooter />

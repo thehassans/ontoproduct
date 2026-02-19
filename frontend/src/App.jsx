@@ -85,6 +85,7 @@ const ShopifyIntegration = lazy(() => import('./pages/user/ShopifyIntegration.js
 const HomeHeadline = lazyWithRetry(() => import('./pages/user/HomeHeadline.jsx'))
 const ProductHeadline = lazyWithRetry(() => import('./pages/user/ProductHeadline.jsx'))
 const HomeBanners = lazy(() => import('./pages/user/HomeBanners.jsx'))
+const HomeMiniBanners = lazy(() => import('./pages/user/HomeMiniBanners.jsx'))
 const WebsiteModification = lazy(() => import('./pages/user/WebsiteModification.jsx'))
 const ErrorLogs = lazy(() => import('./pages/user/ErrorLogs.jsx'))
 const Reports = lazy(() => import('./pages/user/Reports.jsx'))
@@ -807,6 +808,7 @@ export default function App() {
               <Route path="home-headline" element={<HomeHeadline />} />
               <Route path="product-headline" element={<ProductHeadline />} />
               <Route path="home-banners" element={<HomeBanners />} />
+              <Route path="home-mini-banners" element={<HomeMiniBanners />} />
               <Route path="website-modification" element={<WebsiteModification />} />
               <Route path="error-logs" element={<ErrorLogs />} />
               <Route path="support" element={<Support />} />
