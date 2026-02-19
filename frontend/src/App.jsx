@@ -111,6 +111,7 @@ const CashbackOffers = lazy(() => import('./pages/user/CashbackOffers.jsx'))
 const SEOManagers = lazy(() => import('./pages/user/SEOManagers.jsx'))
 const GoogleOAuthSettings = lazy(() => import('./pages/user/GoogleOAuthSettings.jsx'))
 const UserCategories = lazy(() => import('./pages/user/Categories.jsx'))
+const UserBrands = lazy(() => import('./pages/user/Brands.jsx'))
 
 // Agent pages
 const AgentDashboard = lazy(() => import('./pages/agent/Dashboard.jsx'))
@@ -747,6 +748,7 @@ export default function App() {
               <Route path="home-mini-banners" element={<RequireManagerPerm perm="canManageHomeMiniBanners"><HomeMiniBanners /></RequireManagerPerm>} />
               <Route path="coupons" element={<RequireManagerPerm perm="canManageCoupons"><Coupons /></RequireManagerPerm>} />
               <Route path="cashback" element={<RequireManagerPerm perm="canManageCashback"><CashbackOffers /></RequireManagerPerm>} />
+              <Route path="brands" element={<RequireManagerPerm perm="canManageBrands"><UserBrands /></RequireManagerPerm>} />
               <Route path="expenses" element={<Navigate to="/manager" replace />} />
               <Route path="me" element={<ManagerMe />} />
             </Route>
@@ -784,6 +786,7 @@ export default function App() {
               <Route path="coupons" element={<Coupons />} />
               <Route path="cashback-offers" element={<CashbackOffers />} />
               <Route path="categories" element={<UserCategories />} />
+              <Route path="brands" element={<UserBrands />} />
               <Route path="inhouse-products" element={<InhouseProducts />} />
               <Route path="products" element={<UserProducts />} />
               <Route path="products/:id" element={<UserProductDetail />} />

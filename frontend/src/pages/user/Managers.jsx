@@ -5,7 +5,7 @@ import { io } from 'socket.io-client'
 import Modal from '../../components/Modal.jsx'
 
 export default function Managers(){
-  const [form, setForm] = useState({ firstName:'', lastName:'', email:'', password:'', phone:'', country:'', assignedCountry:'', assignedCountries:[], permissions: { canCreateAgents: false, canManageProducts: false, canCreateOrders: false, canCreateDrivers: false, canAccessProductDetail: false, canManageBanners: false, canManageCategories: false, canManageHomeHeadline: false, canManageProductHeadline: false, canManageHomeBanners: false, canManageHomeMiniBanners: false, canManageCoupons: false, canManageCashback: false } })
+  const [form, setForm] = useState({ firstName:'', lastName:'', email:'', password:'', phone:'', country:'', assignedCountry:'', assignedCountries:[], permissions: { canCreateAgents: false, canManageProducts: false, canCreateOrders: false, canCreateDrivers: false, canAccessProductDetail: false, canManageBanners: false, canManageCategories: false, canManageHomeHeadline: false, canManageProductHeadline: false, canManageHomeBanners: false, canManageHomeMiniBanners: false, canManageCoupons: false, canManageCashback: false, canManageBrands: false } })
   const [loading, setLoading] = useState(false)
   const [msg, setMsg] = useState('')
   const [q, setQ] = useState('')
@@ -13,7 +13,7 @@ export default function Managers(){
   const [loadingList, setLoadingList] = useState(false)
   const [phoneError, setPhoneError] = useState('')
   const [delModal, setDelModal] = useState({ open:false, busy:false, error:'', confirm:'', manager:null })
-  const [editModal, setEditModal] = useState({ open:false, busy:false, error:'', manager:null, firstName:'', lastName:'', email:'', phone:'', password:'', country:'', assignedCountries:[], permissions: { canCreateAgents: false, canManageProducts: false, canCreateOrders: false, canCreateDrivers: false, canAccessProductDetail: false, canManageBanners: false, canManageCategories: false, canManageHomeHeadline: false, canManageProductHeadline: false, canManageHomeBanners: false, canManageHomeMiniBanners: false, canManageCoupons: false, canManageCashback: false } })
+  const [editModal, setEditModal] = useState({ open:false, busy:false, error:'', manager:null, firstName:'', lastName:'', email:'', phone:'', password:'', country:'', assignedCountries:[], permissions: { canCreateAgents: false, canManageProducts: false, canCreateOrders: false, canCreateDrivers: false, canAccessProductDetail: false, canManageBanners: false, canManageCategories: false, canManageHomeHeadline: false, canManageProductHeadline: false, canManageHomeBanners: false, canManageHomeMiniBanners: false, canManageCoupons: false, canManageCashback: false, canManageBrands: false } })
 
   function onChange(e){
     const { name, type, value, checked } = e.target
@@ -42,6 +42,7 @@ export default function Managers(){
         canManageHomeMiniBanners: perms.canManageHomeMiniBanners || false,
         canManageCoupons: perms.canManageCoupons || false,
         canManageCashback: perms.canManageCashback || false,
+        canManageBrands: perms.canManageBrands || false,
       }
     })
   }
@@ -142,7 +143,7 @@ export default function Managers(){
       }
       await apiPost('/api/users/managers', payload)
       setMsg('Manager created successfully')
-      setForm({ firstName:'', lastName:'', email:'', password:'', phone:'', country:'', assignedCountry:'', assignedCountries:[], permissions: { canCreateAgents: false, canManageProducts: false, canCreateOrders: false, canCreateDrivers: false, canAccessProductDetail: false, canManageBanners: false, canManageCategories: false, canManageHomeHeadline: false, canManageProductHeadline: false, canManageHomeBanners: false, canManageHomeMiniBanners: false, canManageCoupons: false, canManageCashback: false } })
+      setForm({ firstName:'', lastName:'', email:'', password:'', phone:'', country:'', assignedCountry:'', assignedCountries:[], permissions: { canCreateAgents: false, canManageProducts: false, canCreateOrders: false, canCreateDrivers: false, canAccessProductDetail: false, canManageBanners: false, canManageCategories: false, canManageHomeHeadline: false, canManageProductHeadline: false, canManageHomeBanners: false, canManageHomeMiniBanners: false, canManageCoupons: false, canManageCashback: false, canManageBrands: false } })
       setPhoneError('')
       loadManagers(q)
     }catch(err){ setMsg(err?.message || 'Failed to create manager') }
@@ -315,6 +316,10 @@ export default function Managers(){
               <input type="checkbox" checked={editModal.permissions?.canManageCashback || false} onChange={e=> setEditModal(m=>({ ...m, permissions: { ...m.permissions, canManageCashback: e.target.checked } }))} />
               <span>💰 Cashback Offers</span>
             </label>
+            <label style={{display:'flex', alignItems:'center', gap:8, cursor:'pointer', padding:'8px 12px', background:'var(--panel)', borderRadius:8, border:'1px solid var(--border)'}}>
+              <input type="checkbox" checked={editModal.permissions?.canManageBrands || false} onChange={e=> setEditModal(m=>({ ...m, permissions: { ...m.permissions, canManageBrands: e.target.checked } }))} />
+              <span>🏷️ Brands</span>
+            </label>
           </div>
         </div>
         {editModal.error && <div className="helper-text error">{editModal.error}</div>}
@@ -458,6 +463,10 @@ export default function Managers(){
               <label style={{display:'flex', alignItems:'center', gap:8, cursor:'pointer', padding:'8px 12px', background:'var(--panel)', borderRadius:8, border:'1px solid var(--border)'}}>
                 <input type="checkbox" checked={form.permissions.canManageCashback} onChange={e=> setForm(f=>({ ...f, permissions: { ...f.permissions, canManageCashback: e.target.checked } }))} />
                 <span>💰 Cashback Offers</span>
+              </label>
+              <label style={{display:'flex', alignItems:'center', gap:8, cursor:'pointer', padding:'8px 12px', background:'var(--panel)', borderRadius:8, border:'1px solid var(--border)'}}>
+                <input type="checkbox" checked={form.permissions.canManageBrands} onChange={e=> setForm(f=>({ ...f, permissions: { ...f.permissions, canManageBrands: e.target.checked } }))} />
+                <span>🏷️ Brands</span>
               </label>
             </div>
             <div className="helper-text">Select permissions for this manager. Product Detail Access allows full edit, stock management like user panel.</div>

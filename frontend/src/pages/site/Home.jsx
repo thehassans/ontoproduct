@@ -9,6 +9,8 @@ import MobileBottomNav from '../../components/ecommerce/MobileBottomNav'
 import PremiumFooter from '../../components/layout/PremiumFooter'
 import CategoryBrowser from '../../components/ecommerce/CategoryBrowser'
 import HomeMiniBanner from '../../components/ecommerce/HomeMiniBanner'
+import BrandBrowser from '../../components/ecommerce/BrandBrowser'
+import PromoBlock from '../../components/ecommerce/PromoBlock'
 
 export default function Home(){
   const navigate = useNavigate()
@@ -430,6 +432,12 @@ export default function Home(){
 
       {/* Category Browser — horizontal pills + horizontal product scroll */}
       <CategoryBrowser selectedCountry={selectedCountry} />
+
+      {/* Brand Browser — horizontal brand logos */}
+      <BrandBrowser />
+
+      {/* Promo Block — cashback/shop/delivery */}
+      <PromoBlock />
 
       <PremiumFooter />
 

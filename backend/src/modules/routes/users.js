@@ -1370,6 +1370,7 @@ router.post(
         canManageHomeMiniBanners: !!perms.canManageHomeMiniBanners,
         canManageCoupons: !!perms.canManageCoupons,
         canManageCashback: !!perms.canManageCashback,
+        canManageBrands: !!perms.canManageBrands,
       },
     });
     await manager.save();
@@ -1667,6 +1668,9 @@ router.patch(
           ),
           canManageCashback: !!(
             perm.canManageCashback ?? mgr.managerPermissions?.canManageCashback
+          ),
+          canManageBrands: !!(
+            perm.canManageBrands ?? mgr.managerPermissions?.canManageBrands
           ),
         };
       }

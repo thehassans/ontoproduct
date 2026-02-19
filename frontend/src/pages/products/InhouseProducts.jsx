@@ -156,6 +156,7 @@ export default function InhouseProducts() {
   })
   // Gemini AI state
   const [categories, setCategories] = useState([])
+  const [brandsList, setBrandsList] = useState([])
   const [subcategoriesByCategory, setSubcategoriesByCategory] = useState({})
   const [newSubcategory, setNewSubcategory] = useState('')
   const [editNewSubcategory, setEditNewSubcategory] = useState('')
@@ -673,6 +674,8 @@ export default function InhouseProducts() {
   useEffect(() => {
     load()
     loadCategories()
+    // Load brands for brand dropdown
+    apiGet('/api/brands').then(r => setBrandsList(Array.isArray(r?.brands) ? r.brands : [])).catch(() => {})
   }, [])
 
   // Load currency config once
@@ -885,6 +888,7 @@ export default function InhouseProducts() {
     fd.append('baseCurrency', form.baseCurrency)
     fd.append('category', form.category)
     fd.append('subcategory', String(form.subcategory || '').trim())
+    fd.append('brand', String(form.brand || '').trim())
     fd.append('madeInCountry', form.madeInCountry)
     fd.append('description', form.description.trim())
     fd.append('overview', (form.overview || '').trim())
@@ -1086,6 +1090,7 @@ export default function InhouseProducts() {
       baseCurrency: p.baseCurrency || 'SAR',
       category: p.category || 'Other',
       subcategory: p.subcategory || '',
+      brand: p.brand || '',
       sku: p.sku || '',
       madeInCountry: p.madeInCountry || '',
       description: p.description || '',
@@ -1136,6 +1141,7 @@ export default function InhouseProducts() {
       fd.append('baseCurrency', editForm.baseCurrency)
       fd.append('category', editForm.category)
       fd.append('subcategory', String(editForm.subcategory || '').trim())
+      fd.append('brand', String(editForm.brand || '').trim())
       fd.append('madeInCountry', editForm.madeInCountry)
       fd.append('description', editForm.description)
       try {
@@ -1344,6 +1350,23 @@ export default function InhouseProducts() {
                       })}
                     </div>
                   </div>
+                </div>
+                <div>
+                  <div className="label" style={{ marginBottom: 8, fontWeight: 600 }}>
+                    Brand <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: 12 }}>(Optional)</span>
+                  </div>
+                  <select
+                    className="input"
+                    name="brand"
+                    value={form.brand || ''}
+                    onChange={onChange}
+                    style={{ padding: 12 }}
+                  >
+                    <option value="">No Brand</option>
+                    {brandsList.map((b) => (
+                      <option key={b._id} value={b.name}>{b.name}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <div className="label" style={{ marginBottom: 8, fontWeight: 600 }}>
