@@ -8,6 +8,12 @@ const COUNTRY_MAP = {
   PK: 'Pakistan', US: 'USA', GB: 'UK', CA: 'Canada', AU: 'Australia',
 }
 
+const CURRENCY_MAP = {
+  SA: 'SAR', AE: 'AED', OM: 'OMR', BH: 'BHD',
+  IN: '₹', KW: 'KWD', QA: 'QAR', JO: 'JOD',
+  PK: 'Rs', US: '$', GB: '£', CA: 'C$', AU: 'A$',
+}
+
 function getDefaultCategoryImage(name) {
   const n = String(name || '').toLowerCase()
   if (n.includes('beauty') || n.includes('cosmetic') || n.includes('skin')) return 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=400&h=400&fit=crop'
@@ -33,8 +39,9 @@ export default function CategoryBrowser({ selectedCountry = 'GB' }) {
   const [activeIdx, setActiveIdx] = useState(0)
   const [loading, setLoading] = useState(true)
   const [catProducts, setCatProducts] = useState({})
-  const pillsRef = useRef(null)
   const productsRef = useRef(null)
+
+  const currency = CURRENCY_MAP[selectedCountry] || '£'
 
   useEffect(() => {
     let alive = true
@@ -84,7 +91,6 @@ export default function CategoryBrowser({ selectedCountry = 'GB' }) {
     return () => { alive = false }
   }, [active, catKey, selectedCountry])
 
-  // Scroll products container to start when category changes
   useEffect(() => {
     if (productsRef.current) productsRef.current.scrollLeft = 0
   }, [activeIdx])
@@ -94,67 +100,40 @@ export default function CategoryBrowser({ selectedCountry = 'GB' }) {
   const products = catProducts[catKey] || []
 
   return (
-    <section className="max-w-7xl mx-auto px-1 sm:px-2 lg:px-4" style={{ marginTop: 6, marginBottom: 6 }}>
+    <section className="cb-section">
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 6px 8px' }}>
-        <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700, letterSpacing: '-0.01em', color: '#1a1a1a' }}>
-          Categories
-        </h2>
-        <Link
-          to="/categories"
-          style={{ fontSize: 13, fontWeight: 500, color: '#6b7280', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 3 }}
-        >
+      <div className="cb-header">
+        <h2 className="cb-title">Categories</h2>
+        <Link to="/categories" className="cb-see-all">
           See all
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
         </Link>
       </div>
 
-      {/* Horizontal category pills */}
-      <div
-        ref={pillsRef}
-        style={{
-          display: 'flex',
-          gap: 8,
-          overflowX: 'auto',
-          scrollbarWidth: 'none',
-          msOverflowStyle: 'none',
-          padding: '0 4px 10px',
-          WebkitOverflowScrolling: 'touch',
-        }}
-      >
+      {/* Horizontal category image blocks */}
+      <div className="cb-cats-scroll">
         {categories.map((cat, idx) => {
           const isActive = idx === activeIdx
-          const img = cat.image ? mediaUrl(cat.image) : cat.icon ? mediaUrl(cat.icon) : null
+          const catImg = cat.image ? mediaUrl(cat.image) : cat.icon ? mediaUrl(cat.icon) : getDefaultCategoryImage(cat.name)
           return (
             <button
               key={cat._id || idx}
               onClick={() => setActiveIdx(idx)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '8px 16px',
-                borderRadius: 100,
-                border: isActive ? '1.5px solid #1a1a1a' : '1.5px solid #e5e7eb',
-                background: isActive ? '#1a1a1a' : '#ffffff',
-                color: isActive ? '#ffffff' : '#374151',
-                fontSize: 13,
-                fontWeight: isActive ? 600 : 500,
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                flexShrink: 0,
-                transition: 'all 0.2s ease',
-              }}
+              className={`cb-cat-block ${isActive ? 'cb-cat-active' : ''}`}
             >
-              {img && (
+              <div className="cb-cat-img-wrap">
                 <img
-                  src={img}
-                  alt=""
-                  style={{ width: 20, height: 20, borderRadius: '50%', objectFit: 'cover' }}
-                  onError={e => { e.target.style.display = 'none' }}
+                  src={catImg}
+                  alt={cat.name}
+                  className="cb-cat-img"
+                  loading="lazy"
+                  onError={e => { e.target.src = getDefaultCategoryImage(cat.name) }}
                 />
-              )}
-              {cat.name}
+                {isActive && <div className="cb-cat-ring" />}
+              </div>
+              <span className={`cb-cat-label ${isActive ? 'cb-cat-label-active' : ''}`}>
+                {cat.name}
+              </span>
             </button>
           )
         })}
@@ -162,84 +141,36 @@ export default function CategoryBrowser({ selectedCountry = 'GB' }) {
 
       {/* Horizontal product scroll */}
       {products.length > 0 ? (
-        <div
-          ref={productsRef}
-          style={{
-            display: 'flex',
-            gap: 10,
-            overflowX: 'auto',
-            scrollbarWidth: 'none',
-            msOverflowStyle: 'none',
-            padding: '2px 4px 14px',
-            WebkitOverflowScrolling: 'touch',
-          }}
-        >
+        <div ref={productsRef} className="cb-products-scroll">
           {products.map((p) => {
             const imgSrc = mediaUrl(p?.images?.[0] || p?.imagePath || '') || null
             const price = p?.salePrice || p?.price || 0
             const originalPrice = p?.compareAtPrice || p?.originalPrice || 0
             const hasDiscount = originalPrice > 0 && originalPrice > price
             return (
-              <Link
-                key={p._id}
-                to={`/product/${p._id}`}
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  width: 140,
-                  minWidth: 140,
-                  flexShrink: 0,
-                  textDecoration: 'none',
-                  background: '#fff',
-                  borderRadius: 12,
-                  overflow: 'hidden',
-                  border: '1px solid #f3f4f6',
-                  transition: 'box-shadow 0.2s',
-                }}
-              >
-                <div style={{
-                  width: '100%',
-                  aspectRatio: '1',
-                  background: '#f9fafb',
-                  overflow: 'hidden',
-                }}>
+              <Link key={p._id} to={`/product/${p._id}`} className="cb-product-card">
+                <div className="cb-product-img-wrap">
                   {imgSrc ? (
                     <img
                       src={imgSrc}
                       alt={p.name}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      className="cb-product-img"
                       loading="lazy"
                       onError={(e) => { e.target.onerror = null; e.target.src = getDefaultCategoryImage(active?.name || '') }}
                     />
                   ) : (
-                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d1d5db' }}>
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg>
+                    <div className="cb-product-placeholder">
+                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg>
                     </div>
                   )}
                 </div>
-                <div style={{ padding: '8px 8px 10px' }}>
-                  <div style={{
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: '#1f2937',
-                    lineHeight: 1.3,
-                    display: '-webkit-box',
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: 'vertical',
-                    overflow: 'hidden',
-                    marginBottom: 4,
-                  }}>
-                    {p.name}
-                  </div>
+                <div className="cb-product-info">
+                  <div className="cb-product-name">{p.name}</div>
                   {price > 0 && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>
-                        {price.toFixed(2)}
-                      </span>
+                    <div className="cb-product-price-row">
+                      <span className="cb-product-price">{currency} {price.toFixed(2)}</span>
                       {hasDiscount && (
-                        <span style={{ fontSize: 11, color: '#9ca3af', textDecoration: 'line-through' }}>
-                          {originalPrice.toFixed(2)}
-                        </span>
+                        <span className="cb-product-old-price">{currency} {originalPrice.toFixed(2)}</span>
                       )}
                     </div>
                   )}
@@ -248,43 +179,230 @@ export default function CategoryBrowser({ selectedCountry = 'GB' }) {
             )
           })}
 
-          {/* View all button at the end */}
           <Link
             to={`/catalog?category=${encodeURIComponent(active?.name || '')}`}
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 100,
-              minWidth: 100,
-              flexShrink: 0,
-              textDecoration: 'none',
-              background: '#f9fafb',
-              borderRadius: 12,
-              border: '1px solid #f3f4f6',
-              color: '#6b7280',
-              fontSize: 12,
-              fontWeight: 600,
-              gap: 6,
-            }}
+            className="cb-view-all"
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
             View All
           </Link>
         </div>
       ) : catProducts[catKey] !== undefined ? (
-        <div style={{ padding: '20px 0', textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>
-          No products in this category yet
-        </div>
+        <div className="cb-empty">No products in this category yet</div>
       ) : (
-        <div style={{ padding: '20px 0', textAlign: 'center', color: '#d1d5db', fontSize: 13 }}>
-          Loading...
-        </div>
+        <div className="cb-empty" style={{ color: '#d1d5db' }}>Loading...</div>
       )}
 
       <style>{`
-        div::-webkit-scrollbar { display: none; }
+        .cb-section {
+          max-width: 1280px;
+          margin: 8px auto 10px;
+          padding: 0 6px;
+        }
+        .cb-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 14px 4px 6px;
+        }
+        .cb-title {
+          margin: 0;
+          font-size: 17px;
+          font-weight: 800;
+          letter-spacing: -0.02em;
+          color: #111;
+        }
+        .cb-see-all {
+          font-size: 13px;
+          font-weight: 500;
+          color: #6b7280;
+          text-decoration: none;
+          display: flex;
+          align-items: center;
+          gap: 2px;
+          transition: color 0.2s;
+        }
+        .cb-see-all:hover { color: #111; }
+
+        /* Category image blocks */
+        .cb-cats-scroll {
+          display: flex;
+          gap: 14px;
+          overflow-x: auto;
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+          padding: 6px 4px 14px;
+          -webkit-overflow-scrolling: touch;
+        }
+        .cb-cats-scroll::-webkit-scrollbar { display: none; }
+
+        .cb-cat-block {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 6px;
+          background: none;
+          border: none;
+          cursor: pointer;
+          padding: 0;
+          flex-shrink: 0;
+          min-width: 68px;
+          transition: transform 0.15s ease;
+        }
+        .cb-cat-block:active { transform: scale(0.95); }
+
+        .cb-cat-img-wrap {
+          position: relative;
+          width: 62px;
+          height: 62px;
+          border-radius: 50%;
+          overflow: hidden;
+          background: #f3f4f6;
+        }
+        .cb-cat-img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          border-radius: 50%;
+        }
+        .cb-cat-ring {
+          position: absolute;
+          inset: 0;
+          border-radius: 50%;
+          border: 2.5px solid #111;
+          pointer-events: none;
+        }
+
+        .cb-cat-label {
+          font-size: 11px;
+          font-weight: 500;
+          color: #6b7280;
+          text-align: center;
+          max-width: 72px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          line-height: 1.2;
+        }
+        .cb-cat-label-active {
+          color: #111;
+          font-weight: 700;
+        }
+
+        /* Products scroll */
+        .cb-products-scroll {
+          display: flex;
+          gap: 10px;
+          overflow-x: auto;
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+          padding: 2px 4px 16px;
+          -webkit-overflow-scrolling: touch;
+        }
+        .cb-products-scroll::-webkit-scrollbar { display: none; }
+
+        .cb-product-card {
+          display: flex;
+          flex-direction: column;
+          width: 150px;
+          min-width: 150px;
+          flex-shrink: 0;
+          text-decoration: none;
+          background: #fff;
+          border-radius: 14px;
+          overflow: hidden;
+          border: 1px solid #f0f0f0;
+          transition: box-shadow 0.2s, transform 0.15s;
+        }
+        .cb-product-card:hover {
+          box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+          transform: translateY(-1px);
+        }
+
+        .cb-product-img-wrap {
+          width: 100%;
+          aspect-ratio: 1;
+          background: #fafafa;
+          overflow: hidden;
+        }
+        .cb-product-img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+        .cb-product-placeholder {
+          width: 100%;
+          height: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #e5e7eb;
+        }
+
+        .cb-product-info {
+          padding: 8px 10px 10px;
+        }
+        .cb-product-name {
+          font-size: 12.5px;
+          font-weight: 600;
+          color: #1f2937;
+          line-height: 1.35;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+          margin-bottom: 5px;
+        }
+        .cb-product-price-row {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          flex-wrap: wrap;
+        }
+        .cb-product-price {
+          font-size: 14px;
+          font-weight: 800;
+          color: #111;
+        }
+        .cb-product-old-price {
+          font-size: 11px;
+          color: #b0b0b0;
+          text-decoration: line-through;
+          font-weight: 400;
+        }
+
+        .cb-view-all {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          width: 100px;
+          min-width: 100px;
+          flex-shrink: 0;
+          text-decoration: none;
+          background: #f9fafb;
+          border-radius: 14px;
+          border: 1px solid #f0f0f0;
+          color: #6b7280;
+          font-size: 12px;
+          font-weight: 600;
+          gap: 6px;
+          transition: background 0.2s;
+        }
+        .cb-view-all:hover { background: #f3f4f6; }
+
+        .cb-empty {
+          padding: 24px 0;
+          text-align: center;
+          color: #9ca3af;
+          font-size: 13px;
+        }
+
+        @media (min-width: 768px) {
+          .cb-cat-img-wrap { width: 72px; height: 72px; }
+          .cb-cat-label { font-size: 12px; max-width: 80px; }
+          .cb-product-card { width: 170px; min-width: 170px; }
+        }
       `}</style>
     </section>
   )

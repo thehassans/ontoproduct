@@ -49,6 +49,12 @@ const UserSchema = new mongoose.Schema(
       canAccessProductDetail: { type: Boolean, default: false }, // Full product detail access like user
       canManageBanners: { type: Boolean, default: false },
       canManageCategories: { type: Boolean, default: false },
+      canManageHomeHeadline: { type: Boolean, default: false },
+      canManageProductHeadline: { type: Boolean, default: false },
+      canManageHomeBanners: { type: Boolean, default: false },
+      canManageHomeMiniBanners: { type: Boolean, default: false },
+      canManageCoupons: { type: Boolean, default: false },
+      canManageCashback: { type: Boolean, default: false },
     },
     // SEO manager: which countries this seo_manager can manage pixels/SEO for
     seoCountries: {

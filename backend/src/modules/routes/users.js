@@ -1363,6 +1363,13 @@ router.post(
         canCreateDrivers: perms.canCreateDrivers !== undefined ? !!perms.canCreateDrivers : true,
         canAccessProductDetail: !!perms.canAccessProductDetail,
         canManageBanners: !!perms.canManageBanners,
+        canManageCategories: !!perms.canManageCategories,
+        canManageHomeHeadline: !!perms.canManageHomeHeadline,
+        canManageProductHeadline: !!perms.canManageProductHeadline,
+        canManageHomeBanners: !!perms.canManageHomeBanners,
+        canManageHomeMiniBanners: !!perms.canManageHomeMiniBanners,
+        canManageCoupons: !!perms.canManageCoupons,
+        canManageCashback: !!perms.canManageCashback,
       },
     });
     await manager.save();
@@ -1639,6 +1646,27 @@ router.patch(
           ),
           canManageBanners: !!(
             perm.canManageBanners ?? mgr.managerPermissions?.canManageBanners
+          ),
+          canManageCategories: !!(
+            perm.canManageCategories ?? mgr.managerPermissions?.canManageCategories
+          ),
+          canManageHomeHeadline: !!(
+            perm.canManageHomeHeadline ?? mgr.managerPermissions?.canManageHomeHeadline
+          ),
+          canManageProductHeadline: !!(
+            perm.canManageProductHeadline ?? mgr.managerPermissions?.canManageProductHeadline
+          ),
+          canManageHomeBanners: !!(
+            perm.canManageHomeBanners ?? mgr.managerPermissions?.canManageHomeBanners
+          ),
+          canManageHomeMiniBanners: !!(
+            perm.canManageHomeMiniBanners ?? mgr.managerPermissions?.canManageHomeMiniBanners
+          ),
+          canManageCoupons: !!(
+            perm.canManageCoupons ?? mgr.managerPermissions?.canManageCoupons
+          ),
+          canManageCashback: !!(
+            perm.canManageCashback ?? mgr.managerPermissions?.canManageCashback
           ),
         };
       }
