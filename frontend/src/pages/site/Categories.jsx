@@ -2,170 +2,68 @@ import React, { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import Header from '../../components/layout/Header'
 import MobileBottomNav from '../../components/ecommerce/MobileBottomNav'
-import { apiGet } from '../../api'
+import { apiGet, mediaUrl } from '../../api'
 
-// Premium SVG Icons for Categories
-const CategoryIcon = ({ name, className = "w-10 h-10" }) => {
-  const icons = {
-    'Skincare': (
-      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
-      </svg>
-    ),
-    'Health': (
-      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
-      </svg>
-    ),
-    'Personal Care': (
-      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693L5 14.5m14.8.8l1.402 5.607a2.24 2.24 0 01-1.402 2.647l-3.8 1.266a2.25 2.25 0 01-1.5 0l-3.8-1.266a2.24 2.24 0 01-1.402-2.647L5 14.5" />
-      </svg>
-    ),
-    'Beauty': (
-      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9.53 16.122a3 3 0 00-5.78 1.128 2.25 2.25 0 01-2.4 2.245 4.5 4.5 0 008.4-2.245c0-.399-.078-.78-.22-1.128zm0 0a15.998 15.998 0 003.388-1.62m-5.043-.025a15.994 15.994 0 011.622-3.395m3.42 3.42a15.995 15.995 0 004.764-4.648l3.876-5.814a1.151 1.151 0 00-1.597-1.597L14.146 6.32a15.996 15.996 0 00-4.649 4.763m3.42 3.42a6.776 6.776 0 00-3.42-3.42" />
-      </svg>
-    ),
-    'Electronics': (
-      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" />
-      </svg>
-    ),
-    'Fashion': (
-      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-      </svg>
-    ),
-    'Home': (
-      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
-      </svg>
-    ),
-    'Food': (
-      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 8.25v-1.5m0 1.5c-1.355 0-2.697.056-4.024.166C6.845 8.51 6 9.473 6 10.608v2.513m6-4.87c1.355 0 2.697.055 4.024.165C17.155 8.51 18 9.473 18 10.608v2.513m-3-4.87v-1.5m-6 1.5v-1.5m12 9.75l-1.5.75a3.354 3.354 0 01-3 0 3.354 3.354 0 00-3 0 3.354 3.354 0 01-3 0 3.354 3.354 0 00-3 0 3.354 3.354 0 01-3 0L3 16.5m15-3.38a48.474 48.474 0 00-6-.37c-2.032 0-4.034.125-6 .37m12 0c.39.049.777.102 1.163.16 1.07.16 1.837 1.094 1.837 2.175v5.17c0 .62-.504 1.124-1.125 1.124H4.125A1.125 1.125 0 013 20.625v-5.17c0-1.08.768-2.014 1.837-2.174A47.78 47.78 0 016 13.12M12.265 3.11a.375.375 0 11-.53 0L12 2.845l.265.265zm-3 0a.375.375 0 11-.53 0L9 2.845l.265.265zm6 0a.375.375 0 11-.53 0L15 2.845l.265.265z" />
-      </svg>
-    ),
-    'Sports': (
-      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 007.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 002.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 012.916.52 6.003 6.003 0 01-5.395 4.972m0 0a6.726 6.726 0 01-2.749 1.35m0 0a6.772 6.772 0 01-3.044 0" />
-      </svg>
-    ),
-    'Toys': (
-      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M14.25 6.087c0-.355.186-.676.401-.959.221-.29.349-.634.349-1.003 0-1.036-1.007-1.875-2.25-1.875s-2.25.84-2.25 1.875c0 .369.128.713.349 1.003.215.283.401.604.401.959v0a.64.64 0 01-.657.643 48.39 48.39 0 01-4.163-.3c.186 1.613.293 3.25.315 4.907a.656.656 0 01-.658.663v0c-.355 0-.676-.186-.959-.401a1.647 1.647 0 00-1.003-.349c-1.036 0-1.875 1.007-1.875 2.25s.84 2.25 1.875 2.25c.369 0 .713-.128 1.003-.349.283-.215.604-.401.959-.401v0c.31 0 .555.26.532.57a48.039 48.039 0 01-.642 5.056c1.518.19 3.058.309 4.616.354a.64.64 0 00.657-.643v0c0-.355-.186-.676-.401-.959a1.647 1.647 0 01-.349-1.003c0-1.035 1.008-1.875 2.25-1.875 1.243 0 2.25.84 2.25 1.875 0 .369-.128.713-.349 1.003-.215.283-.4.604-.4.959v0c0 .333.277.599.61.58a48.1 48.1 0 005.427-.63 48.05 48.05 0 00.582-4.717.532.532 0 00-.533-.57v0c-.355 0-.676.186-.959.401-.29.221-.634.349-1.003.349-1.035 0-1.875-1.007-1.875-2.25s.84-2.25 1.875-2.25c.37 0 .713.128 1.003.349.283.215.604.401.96.401v0a.656.656 0 00.658-.663 48.422 48.422 0 00-.37-5.36c-1.886.342-3.81.574-5.766.689a.578.578 0 01-.61-.58v0z" />
-      </svg>
-    ),
-    'Books': (
-      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
-      </svg>
-    ),
-    'Jewelry': (
-      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M21 11.25v8.25a1.5 1.5 0 01-1.5 1.5H5.25a1.5 1.5 0 01-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 109.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1114.625 7.5H12m0 0V21m-8.625-9.75h18c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125h-18c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
-      </svg>
-    ),
-    'Watches': (
-      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-    ),
-    'Bags': (
-      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-      </svg>
-    ),
-    'Shoes': (
-      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
-      </svg>
-    ),
-    'Other': (
-      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
-      </svg>
-    ),
-    'default': (
-      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-      </svg>
-    )
-  }
-  return icons[name] || icons['default']
+const COUNTRY_MAP = {
+  SA: 'Saudi Arabia', AE: 'UAE', OM: 'Oman', BH: 'Bahrain',
+  IN: 'India', KW: 'Kuwait', QA: 'Qatar', JO: 'Jordan',
+  PK: 'Pakistan', US: 'USA', GB: 'UK', CA: 'Canada', AU: 'Australia',
 }
 
-// Stats icons
-const StatsIcon = ({ type, className = "w-8 h-8" }) => {
-  const icons = {
-    'categories': (
-      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
-      </svg>
-    ),
-    'products': (
-      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
-      </svg>
-    ),
-    'countries': (
-      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418" />
-      </svg>
-    ),
-    'support': (
-      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
-      </svg>
-    )
-  }
-  return icons[type] || icons['categories']
+function fallbackImg(name) {
+  const n = String(name || '').toLowerCase()
+  if (n.includes('beauty') || n.includes('cosmetic') || n.includes('skin')) return 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=600&h=400&fit=crop'
+  if (n.includes('electr') || n.includes('tech') || n.includes('phone')) return 'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=600&h=400&fit=crop'
+  if (n.includes('fashion') || n.includes('cloth') || n.includes('wear')) return 'https://images.unsplash.com/photo-1445205170230-053b83016050?w=600&h=400&fit=crop'
+  if (n.includes('hair')) return 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=600&h=400&fit=crop'
+  if (n.includes('health') || n.includes('wellness')) return 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=600&h=400&fit=crop'
+  if (n.includes('home') || n.includes('house') || n.includes('decor')) return 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=600&h=400&fit=crop'
+  if (n.includes('jewel') || n.includes('watch') || n.includes('accessor')) return 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=600&h=400&fit=crop'
+  if (n.includes('kitchen') || n.includes('food')) return 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=600&h=400&fit=crop'
+  if (n.includes('sport') || n.includes('fitness')) return 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=600&h=400&fit=crop'
+  if (n.includes('toy') || n.includes('kid') || n.includes('baby')) return 'https://images.unsplash.com/photo-1566576912321-d58ddd7a6088?w=600&h=400&fit=crop'
+  if (n.includes('auto') || n.includes('car')) return 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=600&h=400&fit=crop'
+  if (n.includes('clean')) return 'https://images.unsplash.com/photo-1563453392212-326f5e854473?w=600&h=400&fit=crop'
+  if (n.includes('pet') || n.includes('animal')) return 'https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=600&h=400&fit=crop'
+  if (n.includes('garden') || n.includes('plant')) return 'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=600&h=400&fit=crop'
+  if (n.includes('book') || n.includes('office')) return 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=600&h=400&fit=crop'
+  if (n.includes('body')) return 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=600&h=400&fit=crop'
+  if (n.includes('household')) return 'https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=600&h=400&fit=crop'
+  return 'https://images.unsplash.com/photo-1472851294608-062f824d29cc?w=600&h=400&fit=crop'
 }
 
-const CATEGORY_COLORS = [
-  { bg: 'from-orange-500 to-orange-600', light: 'from-orange-50 to-orange-100' },
-  { bg: 'from-blue-500 to-blue-600', light: 'from-blue-50 to-blue-100' },
-  { bg: 'from-purple-500 to-purple-600', light: 'from-purple-50 to-purple-100' },
-  { bg: 'from-green-500 to-green-600', light: 'from-green-50 to-green-100' },
-  { bg: 'from-pink-500 to-pink-600', light: 'from-pink-50 to-pink-100' },
-  { bg: 'from-indigo-500 to-indigo-600', light: 'from-indigo-50 to-indigo-100' },
-  { bg: 'from-teal-500 to-teal-600', light: 'from-teal-50 to-teal-100' },
-  { bg: 'from-rose-500 to-rose-600', light: 'from-rose-50 to-rose-100' },
-]
+function catImage(cat) {
+  if (cat.image) return mediaUrl(cat.image)
+  if (cat.icon) return mediaUrl(cat.icon)
+  return fallbackImg(cat.name)
+}
 
 export default function Categories() {
   const navigate = useNavigate()
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
+  const [expandedCat, setExpandedCat] = useState(null)
   const [selectedCountry, setSelectedCountry] = useState(() => {
     try { return localStorage.getItem('selected_country') || 'GB' } catch { return 'GB' }
   })
 
   useEffect(() => {
-    const handleCountryChange = (e) => {
-      if (e.detail?.code) {
-        setSelectedCountry(e.detail.code)
-      }
-    }
-    window.addEventListener('countryChanged', handleCountryChange)
-    return () => window.removeEventListener('countryChanged', handleCountryChange)
+    const h = (e) => { if (e.detail?.code) setSelectedCountry(e.detail.code) }
+    window.addEventListener('countryChanged', h)
+    return () => window.removeEventListener('countryChanged', h)
   }, [])
 
   useEffect(() => {
     let alive = true
     ;(async () => {
       try {
-        const res = await apiGet(`/api/products/public/categories-usage?country=${encodeURIComponent(selectedCountry)}`)
-        if (alive && res?.counts) {
-          const cats = Object.entries(res.counts)
-            .filter(([_, count]) => count > 0)
-            .map(([name, count]) => ({ name, count }))
-            .sort((a, b) => b.count - a.count)
-          setCategories(cats)
-        }
-      } catch (e) {
-        console.error('Error loading categories:', e)
+        setLoading(true)
+        const countryName = COUNTRY_MAP[selectedCountry] || selectedCountry || ''
+        const res = await apiGet(`/api/categories/public?country=${encodeURIComponent(countryName)}`)
+        const cats = Array.isArray(res?.categories) ? res.categories : []
+        if (alive) setCategories(cats.filter(c => c.parent === null || !c.parent))
+      } catch {
+        if (alive) setCategories([])
       } finally {
         if (alive) setLoading(false)
       }
@@ -173,130 +71,299 @@ export default function Categories() {
     return () => { alive = false }
   }, [selectedCountry])
 
-  const handleCategoryClick = (categoryName) => {
-    navigate(`/catalog?category=${encodeURIComponent(categoryName)}`)
-  }
-
-  const getCategoryColor = (idx) => {
-    return CATEGORY_COLORS[idx % CATEGORY_COLORS.length]
+  const handleCatClick = (cat) => {
+    const subs = cat.subcategories || []
+    if (subs.length > 0) {
+      setExpandedCat(prev => prev === cat._id ? null : cat._id)
+    } else {
+      navigate(`/catalog?category=${encodeURIComponent(cat.name)}`)
+    }
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div style={{ minHeight: '100vh', background: '#f8fafc' }}>
       <Header onCartClick={() => {}} />
 
-      {/* Hero Section - Ultra Premium */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-orange-50 via-white to-purple-50" />
-        <div className="absolute top-10 left-10 w-72 h-72 bg-orange-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse" />
-        <div className="absolute bottom-10 right-10 w-72 h-72 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse" />
-        
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16">
-          <div className="text-center">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-orange-100 rounded-full mb-6">
-              <span className="w-2 h-2 bg-orange-500 rounded-full animate-pulse" />
-              <span className="text-orange-700 text-sm font-semibold">Explore Our Collection</span>
-            </div>
-            <h1 className="text-5xl md:text-7xl font-black text-gray-900 tracking-tight mb-6">
-              Shop by <span className="bg-gradient-to-r from-orange-500 to-orange-600 bg-clip-text text-transparent">Category</span>
-            </h1>
-            <p className="text-xl md:text-2xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
-              Discover quality products across all categories. Find exactly what you need.
-            </p>
+      {/* Hero */}
+      <section style={{
+        background: 'linear-gradient(135deg, #111827 0%, #1f2937 50%, #111827 100%)',
+        position: 'relative',
+        overflow: 'hidden',
+        padding: '56px 16px 40px',
+      }}>
+        <div style={{
+          position: 'absolute', top: '-40%', right: '-10%',
+          width: 320, height: 320, borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(249,115,22,0.15) 0%, transparent 70%)',
+        }} />
+        <div style={{
+          position: 'absolute', bottom: '-30%', left: '-5%',
+          width: 260, height: 260, borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(99,102,241,0.1) 0%, transparent 70%)',
+        }} />
+        <div style={{ maxWidth: 800, margin: '0 auto', textAlign: 'center', position: 'relative', zIndex: 1 }}>
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+            padding: '6px 16px', borderRadius: 50,
+            background: 'rgba(249,115,22,0.15)', marginBottom: 16,
+          }}>
+            <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#f97316' }} />
+            <span style={{ color: '#fb923c', fontSize: 13, fontWeight: 700, letterSpacing: 0.5 }}>EXPLORE COLLECTION</span>
           </div>
+          <h1 style={{
+            fontSize: 'clamp(28px, 6vw, 52px)', fontWeight: 900,
+            color: '#fff', margin: '0 0 12px', lineHeight: 1.1,
+          }}>
+            Shop by <span style={{ color: '#f97316' }}>Category</span>
+          </h1>
+          <p style={{ fontSize: 'clamp(14px, 2.5vw, 18px)', color: '#9ca3af', margin: 0, maxWidth: 500, marginLeft: 'auto', marginRight: 'auto' }}>
+            Browse our curated collections and find exactly what you need
+          </p>
         </div>
       </section>
 
-      {/* Categories Grid - Ultra Premium */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-24">
+      {/* Categories Grid */}
+      <main style={{ maxWidth: 1200, margin: '0 auto', padding: '24px 12px 80px' }}>
         {loading ? (
-          <div className="flex justify-center py-20">
-            <div className="w-12 h-12 border-3 border-orange-500 border-t-transparent rounded-full animate-spin" />
+          <div style={{ textAlign: 'center', padding: '60px 0' }}>
+            <div style={{
+              width: 40, height: 40, border: '3px solid #f97316',
+              borderTopColor: 'transparent', borderRadius: '50%',
+              animation: 'spin 0.8s linear infinite',
+              margin: '0 auto',
+            }} />
+            <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
           </div>
         ) : categories.length === 0 ? (
-          <div className="text-center py-20">
-            <div className="w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-50 rounded-3xl flex items-center justify-center mx-auto mb-6">
-              <span className="text-5xl">📦</span>
-            </div>
-            <p className="text-gray-400 text-xl font-medium">No categories available</p>
-            <p className="text-gray-300 mt-2">Check back soon for new products!</p>
+          <div style={{ textAlign: 'center', padding: '60px 0', color: '#9ca3af' }}>
+            <p style={{ fontSize: 20, fontWeight: 700 }}>No categories available</p>
+            <p style={{ fontSize: 14, marginTop: 4 }}>Check back soon for new products!</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {categories.map((cat, idx) => {
-              const color = getCategoryColor(idx)
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+            gap: 16,
+          }}>
+            {categories.map((cat) => {
+              const isExpanded = expandedCat === cat._id
+              const subs = cat.subcategories || []
+              const hasSubs = subs.length > 0
               return (
-                <button
-                  key={cat.name}
-                  onClick={() => handleCategoryClick(cat.name)}
-                  className="group relative bg-white border border-gray-100 rounded-3xl p-6 md:p-8 text-left hover:shadow-2xl hover:shadow-orange-500/10 transition-all duration-500 hover:-translate-y-2 overflow-hidden"
-                >
-                  {/* Hover gradient overlay */}
-                  <div className={`absolute inset-0 bg-gradient-to-br ${color.light} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
-                  
-                  {/* Arrow indicator */}
-                  <div className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0">
-                    <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                    </svg>
-                  </div>
-                  
-                  {/* Icon */}
-                  <div className="relative mb-6">
-                    <div className={`w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-gradient-to-br ${color.bg} flex items-center justify-center shadow-lg group-hover:shadow-xl group-hover:scale-110 transition-all duration-300 text-white`}>
-                      <CategoryIcon name={cat.name} className="w-8 h-8 md:w-10 md:h-10" />
+                <div key={cat._id} style={{ display: 'flex', flexDirection: 'column' }}>
+                  {/* Category Card */}
+                  <button
+                    onClick={() => handleCatClick(cat)}
+                    style={{
+                      position: 'relative',
+                      borderRadius: 16,
+                      overflow: 'hidden',
+                      border: isExpanded ? '2px solid #f97316' : '2px solid transparent',
+                      cursor: 'pointer',
+                      background: '#111827',
+                      padding: 0,
+                      textAlign: 'left',
+                      transition: 'all 0.3s ease',
+                      boxShadow: isExpanded ? '0 8px 32px rgba(249,115,22,0.2)' : '0 2px 12px rgba(0,0,0,0.08)',
+                    }}
+                    onMouseEnter={e => {
+                      if (!isExpanded) e.currentTarget.style.boxShadow = '0 8px 32px rgba(0,0,0,0.15)'
+                      e.currentTarget.style.transform = 'translateY(-4px)'
+                    }}
+                    onMouseLeave={e => {
+                      if (!isExpanded) e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)'
+                      e.currentTarget.style.transform = 'translateY(0)'
+                    }}
+                  >
+                    {/* Image */}
+                    <div style={{ position: 'relative', paddingTop: '60%', overflow: 'hidden' }}>
+                      <img
+                        src={catImage(cat)}
+                        alt={cat.name}
+                        loading="lazy"
+                        onError={e => { e.target.src = fallbackImg(cat.name) }}
+                        style={{
+                          position: 'absolute', top: 0, left: 0,
+                          width: '100%', height: '100%',
+                          objectFit: 'cover',
+                          transition: 'transform 0.5s ease',
+                        }}
+                        onMouseEnter={e => { e.target.style.transform = 'scale(1.08)' }}
+                        onMouseLeave={e => { e.target.style.transform = 'scale(1)' }}
+                      />
+                      {/* Dark gradient overlay */}
+                      <div style={{
+                        position: 'absolute', bottom: 0, left: 0, right: 0,
+                        height: '70%',
+                        background: 'linear-gradient(to top, rgba(17,24,39,0.95) 0%, transparent 100%)',
+                      }} />
+                      {/* Subcategory count badge */}
+                      {hasSubs && (
+                        <div style={{
+                          position: 'absolute', top: 10, right: 10,
+                          background: 'rgba(249,115,22,0.9)',
+                          color: '#fff', fontSize: 11, fontWeight: 800,
+                          padding: '3px 10px', borderRadius: 50,
+                          backdropFilter: 'blur(4px)',
+                        }}>
+                          {subs.length} sub{subs.length > 1 ? 's' : ''}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                  
-                  {/* Content */}
-                  <div className="relative">
-                    <h3 className="font-bold text-gray-900 text-lg md:text-xl mb-2 group-hover:text-orange-600 transition-colors">
-                      {cat.name}
-                    </h3>
-                    <p className="text-sm text-gray-400 font-medium">
-                      {cat.count} {cat.count === 1 ? 'product' : 'products'}
-                    </p>
-                  </div>
-                </button>
+                    {/* Info */}
+                    <div style={{ padding: '14px 16px 16px', position: 'relative' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div>
+                          <h3 style={{
+                            fontSize: 17, fontWeight: 800, color: '#fff',
+                            margin: 0, lineHeight: 1.2,
+                          }}>{cat.name}</h3>
+                          {cat.description && (
+                            <p style={{ fontSize: 12, color: '#9ca3af', margin: '4px 0 0', lineHeight: 1.3 }}>
+                              {cat.description.length > 50 ? cat.description.slice(0, 50) + '...' : cat.description}
+                            </p>
+                          )}
+                        </div>
+                        <div style={{
+                          width: 32, height: 32, borderRadius: '50%',
+                          background: isExpanded ? '#f97316' : 'rgba(255,255,255,0.1)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          flexShrink: 0, transition: 'all 0.3s ease',
+                          transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                        }}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M9 18l6-6-6-6" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+
+                  {/* Subcategories Panel */}
+                  {isExpanded && hasSubs && (
+                    <div style={{
+                      marginTop: 6,
+                      borderRadius: 14,
+                      background: '#fff',
+                      border: '1px solid #e5e7eb',
+                      overflow: 'hidden',
+                      boxShadow: '0 4px 20px rgba(0,0,0,0.06)',
+                      animation: 'fadeSlideIn 0.25s ease',
+                    }}>
+                      <style>{`@keyframes fadeSlideIn { from { opacity:0; transform:translateY(-8px) } to { opacity:1; transform:translateY(0) } }`}</style>
+                      {/* View all in this category */}
+                      <Link
+                        to={`/catalog?category=${encodeURIComponent(cat.name)}`}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 10,
+                          padding: '12px 16px',
+                          borderBottom: '1px solid #f3f4f6',
+                          textDecoration: 'none',
+                          transition: 'background 0.2s',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.background = '#fff7ed' }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                      >
+                        <div style={{
+                          width: 36, height: 36, borderRadius: 10,
+                          background: 'linear-gradient(135deg, #111827, #1f2937)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                        }}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" />
+                            <rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" />
+                          </svg>
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <span style={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>All {cat.name}</span>
+                          <span style={{ display: 'block', fontSize: 11, color: '#9ca3af' }}>Browse entire category</span>
+                        </div>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="2"><path d="M9 18l6-6-6-6" /></svg>
+                      </Link>
+                      {/* Subcategory items */}
+                      {subs.map((sub, i) => (
+                        <Link
+                          key={sub._id || i}
+                          to={`/catalog?category=${encodeURIComponent(cat.name)}&subcategory=${encodeURIComponent(sub.name)}`}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 10,
+                            padding: '10px 16px',
+                            borderBottom: i < subs.length - 1 ? '1px solid #f3f4f6' : 'none',
+                            textDecoration: 'none',
+                            transition: 'background 0.2s',
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.background = '#fff7ed' }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                        >
+                          <div style={{
+                            width: 36, height: 36, borderRadius: 10,
+                            overflow: 'hidden', flexShrink: 0,
+                            background: '#f3f4f6',
+                          }}>
+                            {(sub.image || sub.icon) ? (
+                              <img
+                                src={sub.image ? mediaUrl(sub.image) : mediaUrl(sub.icon)}
+                                alt={sub.name}
+                                loading="lazy"
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                onError={e => { e.target.style.display = 'none' }}
+                              />
+                            ) : (
+                              <div style={{
+                                width: '100%', height: '100%',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                background: 'linear-gradient(135deg, #f3f4f6, #e5e7eb)',
+                              }}>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="1.5">
+                                  <path d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z" />
+                                </svg>
+                              </div>
+                            )}
+                          </div>
+                          <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: '#374151' }}>{sub.name}</span>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="2"><path d="M9 18l6-6-6-6" /></svg>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )
             })}
           </div>
         )}
 
-        {/* Browse All CTA - Fixed visibility */}
-        <div className="mt-20 text-center">
-          <Link
-            to="/catalog"
-            className="inline-flex items-center gap-3 px-10 py-5 bg-gradient-to-r from-orange-500 to-orange-600 rounded-full font-bold text-lg shadow-2xl shadow-orange-500/30 hover:shadow-orange-500/50 hover:scale-105 transition-all duration-300"
-            style={{ color: '#ffffff' }}
-          >
-            <span style={{ color: '#ffffff' }}>Browse All Products</span>
-            <svg className="w-6 h-6" fill="none" stroke="#ffffff" strokeWidth="2" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
-            </svg>
-          </Link>
-        </div>
-
-        {/* Stats Section */}
-        <div className="mt-24 grid grid-cols-2 md:grid-cols-4 gap-6">
-          {[
-            { value: categories.length, label: 'Categories', type: 'categories', color: 'from-orange-500 to-orange-600' },
-            { value: categories.reduce((sum, c) => sum + c.count, 0), label: 'Products', type: 'products', color: 'from-blue-500 to-blue-600' },
-            { value: '13+', label: 'Countries', type: 'countries', color: 'from-green-500 to-green-600' },
-            { value: '24/7', label: 'Support', type: 'support', color: 'from-purple-500 to-purple-600' },
-          ].map((stat, idx) => (
-            <div key={idx} className="bg-gradient-to-br from-gray-50 to-white rounded-2xl p-6 border border-gray-100 text-center group hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
-              <div className={`w-14 h-14 mx-auto mb-4 rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform duration-300`}>
-                <StatsIcon type={stat.type} className="w-7 h-7" />
-              </div>
-              <p className="text-3xl font-black text-gray-900">{stat.value}</p>
-              <p className="text-sm text-gray-400 mt-1 font-medium">{stat.label}</p>
-            </div>
-          ))}
-        </div>
+        {/* Browse All CTA */}
+        {!loading && categories.length > 0 && (
+          <div style={{ textAlign: 'center', marginTop: 40 }}>
+            <Link
+              to="/catalog"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 10,
+                padding: '14px 36px',
+                background: 'linear-gradient(135deg, #111827 0%, #1f2937 100%)',
+                color: '#fff', fontWeight: 800, fontSize: 15,
+                borderRadius: 50, textDecoration: 'none',
+                boxShadow: '0 4px 20px rgba(17,24,39,0.3)',
+                transition: 'all 0.3s ease',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.boxShadow = '0 8px 32px rgba(249,115,22,0.3)'
+                e.currentTarget.style.transform = 'translateY(-2px)'
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.boxShadow = '0 4px 20px rgba(17,24,39,0.3)'
+                e.currentTarget.style.transform = 'translateY(0)'
+              }}
+            >
+              Browse All Products
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 12h14M12 5l7 7-7 7" />
+              </svg>
+            </Link>
+          </div>
+        )}
       </main>
 
-      {/* Mobile Bottom Navigation */}
       <MobileBottomNav />
     </div>
   )
