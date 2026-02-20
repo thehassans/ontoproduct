@@ -132,9 +132,10 @@ router.post('/', auth, allowRoles('admin', 'user', 'manager'), async (req, res) 
 
     await cat.save()
 
+    const Setting = (await import('../models/Setting.js')).default
+
     // Also add to product schema enum if not exists (via settings)
     try {
-      const Setting = (await import('../models/Setting.js')).default
       let doc = await Setting.findOne({ key: 'customCategories' })
       if (!doc) doc = new Setting({ key: 'customCategories', value: { list: [] } })
       const list = Array.isArray(doc.value?.list) ? doc.value.list : []
@@ -146,6 +147,26 @@ router.post('/', auth, allowRoles('admin', 'user', 'manager'), async (req, res) 
         await doc.save()
       }
     } catch {}
+
+    // If this is a subcategory (has parent), sync to productSubcategoriesByCategory Setting
+    if (parent) {
+      try {
+        const parentCat = await Category.findById(parent).select('name').lean()
+        if (parentCat) {
+          let doc = await Setting.findOne({ key: 'productSubcategoriesByCategory' })
+          if (!doc) doc = new Setting({ key: 'productSubcategoriesByCategory', value: {} })
+          const map = (doc.value && typeof doc.value === 'object') ? doc.value : {}
+          const list = Array.isArray(map[parentCat.name]) ? map[parentCat.name] : []
+          const trimmed = String(name).trim()
+          if (!list.some(x => String(x).toLowerCase() === trimmed.toLowerCase())) {
+            list.push(trimmed)
+          }
+          doc.value = { ...map, [parentCat.name]: list }
+          doc.markModified('value')
+          await doc.save()
+        }
+      } catch {}
+    }
 
     return res.status(201).json({ message: 'Category created', category: cat })
   } catch (err) {
@@ -177,7 +198,11 @@ router.put('/:id', auth, allowRoles('admin', 'user', 'manager'), async (req, res
       }
     }
 
-    if (updates.name !== undefined) cat.name = String(updates.name).trim()
+    const oldName = cat.name
+    const newName = updates.name !== undefined ? String(updates.name).trim() : oldName
+    const nameChanged = updates.name !== undefined && newName !== oldName
+
+    if (updates.name !== undefined) cat.name = newName
     if (updates.description !== undefined) cat.description = updates.description
     if (updates.image !== undefined) cat.image = updates.image
     if (updates.icon !== undefined) cat.icon = updates.icon
@@ -189,6 +214,62 @@ router.put('/:id', auth, allowRoles('admin', 'user', 'manager'), async (req, res
     if (updates.parent !== undefined) cat.parent = updates.parent || null
 
     await cat.save()
+
+    // Propagate name change to products and settings
+    if (nameChanged) {
+      const Setting = (await import('../models/Setting.js')).default
+      const isSubcategory = !!cat.parent
+
+      if (isSubcategory) {
+        // Subcategory renamed — update Product.subcategory
+        const parentCat = await Category.findById(cat.parent).select('name').lean()
+        if (parentCat) {
+          await Product.updateMany(
+            { category: parentCat.name, subcategory: oldName },
+            { $set: { subcategory: newName } }
+          )
+          // Update productSubcategoriesByCategory Setting
+          try {
+            const doc = await Setting.findOne({ key: 'productSubcategoriesByCategory' })
+            if (doc?.value && typeof doc.value === 'object') {
+              const list = Array.isArray(doc.value[parentCat.name]) ? doc.value[parentCat.name] : []
+              const idx = list.indexOf(oldName)
+              if (idx !== -1) { list[idx] = newName }
+              doc.value = { ...doc.value, [parentCat.name]: list }
+              doc.markModified('value')
+              await doc.save()
+            }
+          } catch {}
+        }
+      } else {
+        // Top-level category renamed — update Product.category
+        await Product.updateMany(
+          { category: oldName },
+          { $set: { category: newName } }
+        )
+        // Update customCategories Setting
+        try {
+          const doc = await Setting.findOne({ key: 'customCategories' })
+          if (doc?.value?.list && Array.isArray(doc.value.list)) {
+            const idx = doc.value.list.indexOf(oldName)
+            if (idx !== -1) { doc.value.list[idx] = newName }
+            doc.markModified('value')
+            await doc.save()
+          }
+        } catch {}
+        // Update productSubcategoriesByCategory Setting key
+        try {
+          const doc = await Setting.findOne({ key: 'productSubcategoriesByCategory' })
+          if (doc?.value && typeof doc.value === 'object' && doc.value[oldName] !== undefined) {
+            doc.value[newName] = doc.value[oldName]
+            delete doc.value[oldName]
+            doc.markModified('value')
+            await doc.save()
+          }
+        } catch {}
+      }
+    }
+
     return res.json({ message: 'Category updated', category: cat })
   } catch (err) {
     return res.status(500).json({ message: err?.message || 'Failed to update category' })

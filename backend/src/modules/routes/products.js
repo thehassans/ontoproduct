@@ -1052,11 +1052,11 @@ router.get('/categories', async (req, res) => {
     if (req.user.role === 'manager') {
       try {
         const mgr = await User.findById(req.user.id).select('managerPermissions').lean()
-        if (!mgr?.managerPermissions?.canManageProducts) {
-          return res.status(403).json({ message: 'Manager not allowed to manage products' })
+        if (!mgr?.managerPermissions?.canManageProducts && !mgr?.managerPermissions?.canManageCategories) {
+          return res.status(403).json({ message: 'Manager not allowed to manage categories' })
         }
       } catch {
-        return res.status(403).json({ message: 'Manager not allowed to manage products' })
+        return res.status(403).json({ message: 'Manager not allowed to manage categories' })
       }
     }
 
@@ -1088,11 +1088,11 @@ router.get('/categories', async (req, res) => {
     if (req.user.role === 'manager') {
       try {
         const mgr = await User.findById(req.user.id).select('managerPermissions').lean()
-        if (!mgr?.managerPermissions?.canManageProducts) {
-          return res.status(403).json({ message: 'Manager not allowed to manage products' })
+        if (!mgr?.managerPermissions?.canManageProducts && !mgr?.managerPermissions?.canManageCategories) {
+          return res.status(403).json({ message: 'Manager not allowed to manage categories' })
         }
       } catch {
-        return res.status(403).json({ message: 'Manager not allowed to manage products' })
+        return res.status(403).json({ message: 'Manager not allowed to manage categories' })
       }
     }
 
