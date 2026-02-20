@@ -603,15 +603,37 @@ export async function apiGetBlob(path) {
   return res.blob()
 }
 
-export async function apiPatch(path, body) {
+export async function apiPatch(path, body, maxRetries = 3) {
   const headers = await authHeader()
-  const res = await fetch(buildUrl(path), {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', ...headers },
-    body: JSON.stringify(body),
-  })
-  await handle(res)
-  return res.json()
+  let lastError = null
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 30000)
+      const res = await fetch(buildUrl(path), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...headers },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      })
+      clearTimeout(timeoutId)
+      if ((res.status === 502 || res.status === 504) && attempt < maxRetries) {
+        console.log(`[apiPatch] Attempt ${attempt} got ${res.status}, retrying...`)
+        await new Promise(r => setTimeout(r, 1500 * attempt))
+        continue
+      }
+      await handle(res)
+      return res.json()
+    } catch (err) {
+      lastError = err
+      if (err.name === 'AbortError') lastError = new Error('Request timed out. Please try again.')
+      if (attempt < maxRetries) {
+        console.log(`[apiPatch] Attempt ${attempt} failed, retrying...`)
+        await new Promise(r => setTimeout(r, 1500 * attempt))
+      }
+    }
+  }
+  throw lastError
 }
 
 export async function apiPut(path, body) {
@@ -632,15 +654,37 @@ export async function apiDelete(path) {
   return res.json()
 }
 
-export async function apiUploadPatch(path, formData) {
+export async function apiUploadPatch(path, formData, maxRetries = 3) {
   const headers = await authHeader()
-  const res = await fetch(buildUrl(path), {
-    method: 'PATCH',
-    headers: { ...headers },
-    body: formData,
-  })
-  await handle(res)
-  return res.json()
+  let lastError = null
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 120000)
+      const res = await fetch(buildUrl(path), {
+        method: 'PATCH',
+        headers: { ...headers },
+        body: formData,
+        signal: controller.signal,
+      })
+      clearTimeout(timeoutId)
+      if ((res.status === 502 || res.status === 504) && attempt < maxRetries) {
+        console.log(`[apiUploadPatch] Attempt ${attempt} got ${res.status}, retrying...`)
+        await new Promise(r => setTimeout(r, 2000 * attempt))
+        continue
+      }
+      await handle(res)
+      return res.json()
+    } catch (err) {
+      lastError = err
+      if (err.name === 'AbortError') lastError = new Error('Upload timed out. Please try again.')
+      if (attempt < maxRetries) {
+        console.log(`[apiUploadPatch] Attempt ${attempt} failed, retrying...`)
+        await new Promise(r => setTimeout(r, 2000 * attempt))
+      }
+    }
+  }
+  throw lastError
 }
 
 // Internal: retry helper primarily for idempotent GET requests

@@ -43,6 +43,7 @@ export default memo(function HorizontalProductSection({
   const scrollCheckRafRef = useRef(0)
   const loopEnabledRef = useRef(false)
   const [isPaused, setIsPaused] = useState(false)
+  const pauseTimerRef = useRef(null)
   const [isInView, setIsInView] = useState(false)
   const [isPageVisible, setIsPageVisible] = useState(true)
 
@@ -220,7 +221,7 @@ export default memo(function HorizontalProductSection({
 
     const animate = (ts) => {
       if (!lastTs) lastTs = ts
-      const delta = ts - lastTs
+      const delta = Math.min(ts - lastTs, 100)
       lastTs = ts
       const step = (delta / 16.67) * speed
 
@@ -319,10 +320,11 @@ export default memo(function HorizontalProductSection({
       {/* Products Container */}
       <div 
         className="products-wrapper"
-        onMouseEnter={() => setIsPaused(true)}
+        onMouseEnter={() => { setIsPaused(true); clearTimeout(pauseTimerRef.current) }}
         onMouseLeave={() => setIsPaused(false)}
-        onTouchStart={() => setIsPaused(true)}
-        onTouchEnd={() => setTimeout(() => setIsPaused(false), 2000)}
+        onTouchStart={() => { setIsPaused(true); clearTimeout(pauseTimerRef.current) }}
+        onTouchEnd={() => { clearTimeout(pauseTimerRef.current); pauseTimerRef.current = setTimeout(() => setIsPaused(false), 2000) }}
+        onTouchCancel={() => { clearTimeout(pauseTimerRef.current); pauseTimerRef.current = setTimeout(() => setIsPaused(false), 1000) }}
       >
         {/* Left Arrow */}
         {(loopEnabled || canScrollLeft) && (
