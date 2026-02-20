@@ -32,8 +32,8 @@ export default function Home(){
     subtitle: 'Curated collections, trusted quality, and seamless shopping across the Gulf.',
     chips: [],
     speed: 18,
-    bg1: '#0b5ed7',
-    bg2: '#f97316',
+    bg1: '#111827',
+    bg2: '#1f2937',
     textColor: '#ffffff'
   })
   const COUNTRY_LIST_LOCAL = [

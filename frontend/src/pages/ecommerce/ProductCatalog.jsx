@@ -267,13 +267,13 @@ export default function ProductCatalog() {
       codeLabel: '',
       code: 'ONEDAY',
       link: '/catalog',
-      bg1: '#fde68a',
-      bg2: '#f59e0b',
-      textColor: '#111827',
-      accentBg: '#ffffff',
-      accentText: '#111827',
-      codeBg: '#ffffff',
-      codeText: '#111827'
+      bg1: '#111827',
+      bg2: '#1f2937',
+      textColor: '#ffffff',
+      accentBg: '#f97316',
+      accentText: '#ffffff',
+      codeBg: 'rgba(255,255,255,0.15)',
+      codeText: '#ffffff'
     },
     {
       title: 'Extra 20% off',
@@ -282,13 +282,13 @@ export default function ProductCatalog() {
       codeLabel: 'Use code',
       code: 'ARB20',
       link: '/catalog',
-      bg1: '#1d4ed8',
-      bg2: '#0ea5e9',
+      bg1: '#1f2937',
+      bg2: '#111827',
       textColor: '#ffffff',
-      accentBg: '#fde047',
-      accentText: '#111827',
-      codeBg: '#111827',
-      codeText: '#ffffff'
+      accentBg: '#f97316',
+      accentText: '#ffffff',
+      codeBg: 'rgba(249,115,22,0.2)',
+      codeText: '#f97316'
     }
   ])
   const [catalogHeadline, setCatalogHeadline] = useState({

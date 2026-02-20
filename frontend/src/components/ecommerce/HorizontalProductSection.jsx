@@ -109,7 +109,7 @@ export default memo(function HorizontalProductSection({
   }, [filter, limit, apiEndpoint, showVideo, selectedCountry])
 
   const loopEnabled = useMemo(() => {
-    return Boolean(autoScroll) && !loading && products.length > 1
+    return Boolean(autoScroll) && !loading && products.length > 4
   }, [autoScroll, loading, products.length])
 
   useEffect(() => {

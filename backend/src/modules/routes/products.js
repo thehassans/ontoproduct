@@ -583,7 +583,7 @@ router.post('/', auth, allowRoles('admin','user','manager'), upload.any(), async
       mediaSequence: normalizedMediaSequence,
       purchasePrice: (purchasePrice != null && purchasePrice !== '' && !isNaN(Number(purchasePrice))) ? Number(purchasePrice) : 0,
       baseCurrency: baseCurrency,
-      category: ['Skincare', 'Haircare', 'Bodycare', 'Household', 'Kitchen', 'Cleaning', 'Home Decor', 'Electronics', 'Clothing', 'Books', 'Sports', 'Health', 'Beauty', 'Toys', 'Automotive', 'Garden', 'Pet Supplies', 'Personal Care', 'Office', 'Fashion', 'Home', 'Jewelry', 'Tools', 'Other'].includes(category) ? category : 'Other',
+      category: String(category || '').trim() || 'Other',
       subcategory: String(subcategory || '').trim(),
       variants: normalizeVariants(parsedVariants, imagePaths),
       madeInCountry: madeInCountry || '',
@@ -1369,7 +1369,7 @@ router.patch('/:id', auth, allowRoles('admin','user','manager'), upload.any(), a
   if (dropshippingPrice != null) { trackChange('dropshippingPrice', prod.dropshippingPrice, Number(dropshippingPrice)); prod.dropshippingPrice = Number(dropshippingPrice) }
   if (stockQty != null) { trackChange('stockQty', prod.stockQty, Math.max(0, Number(stockQty))); prod.stockQty = Math.max(0, Number(stockQty)) }
   if (purchasePrice != null) { trackChange('purchasePrice', prod.purchasePrice, Number(purchasePrice)); prod.purchasePrice = Number(purchasePrice) }
-  if (category != null) prod.category = ['Skincare', 'Haircare', 'Bodycare', 'Household', 'Kitchen', 'Cleaning', 'Home Decor', 'Electronics', 'Clothing', 'Books', 'Sports', 'Health', 'Beauty', 'Toys', 'Automotive', 'Garden', 'Pet Supplies', 'Personal Care', 'Office', 'Fashion', 'Home', 'Jewelry', 'Tools', 'Other'].includes(category) ? category : 'Other'
+  if (category != null) prod.category = String(category || '').trim() || 'Other'
   if (subcategory != null) prod.subcategory = String(subcategory || '').trim()
   if (inStock != null) prod.inStock = Boolean(inStock)
   if (madeInCountry != null) prod.madeInCountry = String(madeInCountry)

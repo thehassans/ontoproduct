@@ -1171,3 +1171,39 @@ router.post(
     }
   }
 );
+
+// ── Social media links (for footer) ──
+// Public GET
+router.get("/public/social-links", async (_req, res) => {
+  try {
+    const doc = await Setting.findOne({ key: "socialLinks" }).lean();
+    res.json({ links: doc?.value || {} });
+  } catch (e) {
+    res.json({ links: {} });
+  }
+});
+
+// Authenticated PUT (admin / user)
+router.put(
+  "/social-links",
+  auth,
+  allowRoles("admin", "user"),
+  async (req, res) => {
+    try {
+      const ALLOWED = ["facebook", "instagram", "whatsapp", "twitter", "pinterest"];
+      const links = {};
+      for (const k of ALLOWED) {
+        const v = String(req.body?.[k] || "").trim();
+        if (v) links[k] = v;
+      }
+      await Setting.findOneAndUpdate(
+        { key: "socialLinks" },
+        { $set: { value: links } },
+        { upsert: true, new: true }
+      );
+      res.json({ success: true, links });
+    } catch (e) {
+      res.status(500).json({ message: e?.message || "Failed to save social links" });
+    }
+  }
+);
