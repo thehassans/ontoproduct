@@ -70,35 +70,49 @@ function normalizeStringList(input) {
 }
 
 async function buildCategoriesPayload() {
-  const categories = [
-    'Skincare',
-    'Haircare',
-    'Bodycare',
-    'Household',
-    'Kitchen',
-    'Cleaning',
-    'Home Decor',
-    'Electronics',
-    'Clothing',
-    'Books',
-    'Sports',
-    'Health',
-    'Beauty',
-    'Toys',
-    'Automotive',
-    'Garden',
-    'Pet Supplies',
-    'Personal Care',
-    'Office',
-    'Fashion',
-    'Home',
-    'Jewelry',
-    'Tools',
-    'Gift Sets',
-    'Other'
-  ]
+  const Category = (await import('../models/Category.js')).default
 
+  // Pull top-level categories from the Category model (sorted)
+  const catDocs = await Category.find({ parent: null }).sort({ sortOrder: 1, name: 1 }).select('name').lean()
+  const modelNames = catDocs.map(c => c.name).filter(Boolean)
+
+  // Also pull from customCategories Setting (legacy / product-discovered)
+  let customNames = []
+  try {
+    const doc = await Setting.findOne({ key: 'customCategories' }).select('value').lean()
+    if (doc?.value?.list && Array.isArray(doc.value.list)) customNames = doc.value.list.filter(Boolean)
+  } catch {}
+
+  // Also discover categories used by existing products
+  let productCats = []
+  try {
+    productCats = (await Product.distinct('category')).filter(Boolean)
+  } catch {}
+
+  // Merge: Category model first, then custom, then product-discovered, deduplicated
+  const seen = new Set()
+  const categories = []
+  for (const name of [...modelNames, ...customNames, ...productCats]) {
+    const key = name.toLowerCase()
+    if (seen.has(key) || key === 'other') continue
+    seen.add(key)
+    categories.push(name)
+  }
+  categories.push('Other')
+
+  // Build subcategories map: from Category model children + stored Setting + product aggregation
   const storedMap = await getSubcategoriesSettingMap()
+
+  // Subcategories from Category model
+  const subDocs = await Category.find({ parent: { $ne: null } }).sort({ sortOrder: 1, name: 1 }).select('name parent').lean()
+  const modelSubMap = {}
+  for (const sub of subDocs) {
+    const parentDoc = catDocs.find(c => String(c._id) === String(sub.parent))
+    if (!parentDoc) continue
+    if (!modelSubMap[parentDoc.name]) modelSubMap[parentDoc.name] = []
+    modelSubMap[parentDoc.name].push(sub.name)
+  }
+
   let discovered = {}
   try {
     const rows = await Product.aggregate([
@@ -120,16 +134,21 @@ async function buildCategoriesPayload() {
   } catch {}
 
   const out = {}
-  const keys = new Set([...Object.keys(storedMap || {}), ...Object.keys(discovered || {})])
-  for (const c of keys) {
+  const allKeys = new Set([...Object.keys(modelSubMap || {}), ...Object.keys(storedMap || {}), ...Object.keys(discovered || {})])
+  for (const c of allKeys) {
+    const modelList = normalizeStringList(modelSubMap?.[c])
     const storedList = normalizeStringList(storedMap?.[c])
     const discoveredList = normalizeStringList(discovered?.[c])
-    if (storedList.length) {
-      const seen = new Set(storedList.map((x) => x.toLowerCase()))
-      out[c] = [...storedList, ...discoveredList.filter((x) => !seen.has(String(x).toLowerCase()))]
-    } else if (discoveredList.length) {
-      out[c] = [...discoveredList]
+    // Model subs first, then stored, then discovered — deduplicated
+    const merged = []
+    const seenSub = new Set()
+    for (const s of [...modelList, ...storedList, ...discoveredList]) {
+      const k = s.toLowerCase()
+      if (seenSub.has(k)) continue
+      seenSub.add(k)
+      merged.push(s)
     }
+    if (merged.length) out[c] = merged
   }
 
   return { categories, subcategoriesByCategory: out }
