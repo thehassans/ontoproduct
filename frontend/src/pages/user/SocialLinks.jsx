@@ -7,6 +7,7 @@ const PLATFORMS = [
   { key: 'whatsapp', label: 'WhatsApp', placeholder: 'https://wa.me/1234567890', color: '#25D366' },
   { key: 'twitter', label: 'Twitter / X', placeholder: 'https://x.com/yourhandle', color: '#000' },
   { key: 'pinterest', label: 'Pinterest', placeholder: 'https://pinterest.com/yourprofile', color: '#E60023' },
+  { key: 'tiktok', label: 'TikTok', placeholder: 'https://tiktok.com/@yourhandle', color: '#010101' },
 ]
 
 export default function SocialLinks() {

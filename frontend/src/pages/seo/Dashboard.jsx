@@ -733,6 +733,35 @@ export default function SEODashboard() {
         {/* Country SEO Tab */}
         {activeTab === 'countries' && (
           <div>
+            {/* Subfolder URL Structure Guide */}
+            <div style={cardStyle}>
+              <h3 style={{ margin: '0 0 12px', color: '#1e293b', display: 'flex', alignItems: 'center', gap: 8 }}>
+                Country Subfolder URL Structure
+              </h3>
+              <p style={helpTextStyle}>Use subfolders for authority consolidation. Each country gets a separate crawlable URL, sitemap, product URLs, categories, internal linking, structured data, and hreflang setup.</p>
+              <div style={{ background: '#0f172a', borderRadius: 10, padding: '14px 18px', marginTop: 14, fontFamily: 'monospace', fontSize: 13, color: '#94a3b8', lineHeight: 1.8, overflowX: 'auto' }}>
+                {[
+                  { code: 'uk', label: 'UK' }, { code: 'ae', label: 'UAE' }, { code: 'sa', label: 'Saudi Arabia' },
+                  { code: 'qa', label: 'Qatar' }, { code: 'in', label: 'India' }, { code: 'pk', label: 'Pakistan' },
+                  { code: 'bh', label: 'Bahrain' }, { code: 'om', label: 'Oman' }, { code: 'kw', label: 'Kuwait' },
+                  { code: 'jo', label: 'Jordan' }, { code: 'us', label: 'USA' }, { code: 'ca', label: 'Canada' }, { code: 'au', label: 'Australia' },
+                ].map(c => (
+                  <div key={c.code}><span style={{ color: '#38bdf8' }}>buysial.com</span><span style={{ color: '#f97316' }}>/{c.code}/</span> <span style={{ color: '#475569', fontSize: 11 }}>— {c.label}</span></div>
+                ))}
+              </div>
+              <div style={{ marginTop: 16, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
+                {[
+                  'Separate crawlable URL', 'Separate sitemap', 'Separate product URLs',
+                  'Separate categories', 'Separate internal linking', 'Separate structured data', 'Hreflang setup',
+                ].map(item => (
+                  <div key={item} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#16a34a', fontWeight: 500 }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    {item}
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <div style={cardStyle}>
               <h3 style={{ margin: '0 0 20px', color: '#1e293b', display: 'flex', alignItems: 'center', gap: 8 }}>
                 Country-Specific SEO Settings
