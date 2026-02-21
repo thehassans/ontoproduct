@@ -9,7 +9,7 @@ export async function detectCountryCode() {
 
   // 1) Try backend proxy (avoids CORS)
   try {
-    const res = await fetch(`${API_BASE}/api/geocode/detect-country`)
+    const res = await fetch(`${API_BASE}/geocode/detect-country`)
     if (res.ok) {
       const data = await res.json()
       const code = String(data?.country_code || '').toUpperCase()

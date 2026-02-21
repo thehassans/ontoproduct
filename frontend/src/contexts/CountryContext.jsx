@@ -56,7 +56,7 @@ export function CountryProvider({ children }) {
         const t = setTimeout(() => {
           try { controller.abort() } catch {}
         }, 3500)
-        const res = await fetch(`${API_BASE}/api/geocode/detect-country`, { signal: controller.signal })
+        const res = await fetch(`${API_BASE}/geocode/detect-country`, { signal: controller.signal })
         clearTimeout(t)
         if (!res.ok) throw new Error('Failed')
         const data = await res.json()
