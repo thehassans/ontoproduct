@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
-import { apiGet } from '../api'
+import { apiGet, API_BASE } from '../api'
 
 const COUNTRY_TO_CURRENCY = {
   'SA': 'SAR', 'AE': 'AED', 'OM': 'OMR', 'BH': 'BHD', 'KW': 'KWD', 'QA': 'QAR',
@@ -56,7 +56,7 @@ export function CountryProvider({ children }) {
         const t = setTimeout(() => {
           try { controller.abort() } catch {}
         }, 3500)
-        const res = await fetch('https://ipapi.co/json/', { signal: controller.signal })
+        const res = await fetch(`${API_BASE}/api/geocode/detect-country`, { signal: controller.signal })
         clearTimeout(t)
         if (!res.ok) throw new Error('Failed')
         const data = await res.json()

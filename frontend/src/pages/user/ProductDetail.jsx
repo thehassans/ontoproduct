@@ -22,6 +22,8 @@ export default function ProductDetail() {
   const [editForm, setEditForm] = useState({})
   const [saving, setSaving] = useState(false)
   const [categories, setCategories] = useState([])
+  const [subcategoriesByCategory, setSubcategoriesByCategory] = useState({})
+  const [brandsList, setBrandsList] = useState([])
   const [displayCurrency, setDisplayCurrency] = useState('SAR')
   const [selectedMediaIndex, setSelectedMediaIndex] = useState(0)
   const mediaSwipeStartX = useRef(null)
@@ -88,6 +90,7 @@ export default function ProductDetail() {
   useEffect(() => {
     loadCurrencyRates()
     loadCategories()
+    loadSubcategoriesAndBrands()
     if (id) {
       loadProductAndOrders()
     }
@@ -103,6 +106,21 @@ export default function ProductDetail() {
     }
   }
 
+  async function loadSubcategoriesAndBrands() {
+    try {
+      const [subcatRes, brandsRes] = await Promise.allSettled([
+        apiGet('/api/products/categories'),
+        apiGet('/api/brands'),
+      ])
+      if (subcatRes.status === 'fulfilled' && subcatRes.value?.subcategoriesByCategory) {
+        setSubcategoriesByCategory(subcatRes.value.subcategoriesByCategory)
+      }
+      if (brandsRes.status === 'fulfilled') {
+        setBrandsList(Array.isArray(brandsRes.value?.brands) ? brandsRes.value.brands : [])
+      }
+    } catch {}
+  }
+
   function openEditModal() {
     setEditForm({
       name: product?.name || '',
@@ -113,6 +131,8 @@ export default function ProductDetail() {
       specifications: product?.specifications || '',
       descriptionBlocks: product?.descriptionBlocks || [],
       category: product?.category || '',
+      subcategory: product?.subcategory || '',
+      brand: product?.brand || '',
       baseCurrency: product?.baseCurrency || 'SAR',
       price: product?.price || 0,
       purchasePrice: product?.purchasePrice || '',
@@ -319,6 +339,8 @@ export default function ProductDetail() {
         fd.append('specifications', editForm.specifications || '')
         fd.append('descriptionBlocks', JSON.stringify((editForm.descriptionBlocks || []).filter(b => b.label && b.value)))
         fd.append('category', editForm.category)
+        fd.append('subcategory', editForm.subcategory || '')
+        fd.append('brand', editForm.brand || '')
         fd.append('baseCurrency', editForm.baseCurrency)
         fd.append('price', String(Number(editForm.price)))
         if (editForm.purchasePrice) fd.append('purchasePrice', String(Number(editForm.purchasePrice)))
@@ -358,6 +380,8 @@ export default function ProductDetail() {
           specifications: editForm.specifications || '',
           descriptionBlocks: (editForm.descriptionBlocks || []).filter(b => b.label && b.value),
           category: editForm.category,
+          subcategory: editForm.subcategory || '',
+          brand: editForm.brand || '',
           baseCurrency: editForm.baseCurrency,
           price: Number(editForm.price),
           purchasePrice: editForm.purchasePrice ? Number(editForm.purchasePrice) : null,
@@ -2201,6 +2225,44 @@ export default function ProductDetail() {
                     <option key={cat} value={cat}>{cat}</option>
                   ))}
                 </select>
+              </div>
+
+              {/* Subcategory */}
+              <div>
+                <label style={{ display: 'block', fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Subcategory</label>
+                <select
+                  className="input"
+                  value={editForm.subcategory || ''}
+                  onChange={(e) => setEditForm({ ...editForm, subcategory: e.target.value })}
+                  style={{ width: '100%', padding: 12, borderRadius: 8 }}
+                >
+                  <option value="">Select Subcategory</option>
+                  {(subcategoriesByCategory[editForm.category] || []).map((sub) => (
+                    <option key={sub} value={sub}>{sub}</option>
+                  ))}
+                </select>
+                {editForm.subcategory && !(subcategoriesByCategory[editForm.category] || []).includes(editForm.subcategory) && (
+                  <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>Current: {editForm.subcategory}</div>
+                )}
+              </div>
+
+              {/* Brand */}
+              <div>
+                <label style={{ display: 'block', fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Brand</label>
+                <select
+                  className="input"
+                  value={editForm.brand || ''}
+                  onChange={(e) => setEditForm({ ...editForm, brand: e.target.value })}
+                  style={{ width: '100%', padding: 12, borderRadius: 8 }}
+                >
+                  <option value="">Select Brand</option>
+                  {brandsList.map((b) => (
+                    <option key={b._id || b.name} value={b.name}>{b.name}</option>
+                  ))}
+                </select>
+                {editForm.brand && !brandsList.some(b => b.name === editForm.brand) && (
+                  <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>Current: {editForm.brand}</div>
+                )}
               </div>
 
               {/* Product Images & Video Section */}

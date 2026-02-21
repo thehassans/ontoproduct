@@ -119,4 +119,28 @@ router.post('/distance', auth, async (req, res) => {
   }
 })
 
+// GET /api/geocode/detect-country - Public IP-based country detection (no auth)
+// Proxies ipapi.co server-side to avoid CORS issues on the frontend
+router.get('/detect-country', async (req, res) => {
+  try {
+    // Forward the client's real IP to ipapi
+    const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip
+    const url = clientIp && clientIp !== '127.0.0.1' && clientIp !== '::1'
+      ? `https://ipapi.co/${clientIp}/json/`
+      : 'https://ipapi.co/json/'
+
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 4000)
+    const ipRes = await fetch(url, { signal: controller.signal })
+    clearTimeout(timeout)
+
+    if (!ipRes.ok) throw new Error('ipapi request failed')
+    const data = await ipRes.json()
+    res.json({ country_code: data.country_code || null })
+  } catch (err) {
+    // Fallback: return null so frontend uses its own fallback
+    res.json({ country_code: null })
+  }
+})
+
 export default router

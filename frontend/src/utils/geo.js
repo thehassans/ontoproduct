@@ -1,16 +1,18 @@
 // Simple geolocation helper to detect user country by IP (best-effort)
-// No API key required; falls back to browser locale and then to SA
+// Uses backend proxy to avoid CORS issues; falls back to browser locale and then to SA
+
+import { API_BASE } from '../api'
 
 export async function detectCountryCode() {
   // Supported site country codes
   const SUPPORTED = new Set(['SA','AE','OM','BH','IN','KW','QA'])
 
-  // 1) Try ipapi.co
+  // 1) Try backend proxy (avoids CORS)
   try {
-    const res = await fetch('https://ipapi.co/json/')
+    const res = await fetch(`${API_BASE}/api/geocode/detect-country`)
     if (res.ok) {
       const data = await res.json()
-      const code = String(data?.country || '').toUpperCase()
+      const code = String(data?.country_code || '').toUpperCase()
       if (SUPPORTED.has(code)) return code
     }
   } catch {}
