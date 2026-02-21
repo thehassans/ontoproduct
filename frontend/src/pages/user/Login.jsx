@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState } from 'react'
 import { API_BASE, apiGet, apiPost } from '../../api.js'
 import { useToast } from '../../ui/Toast.jsx'
 
@@ -13,7 +13,6 @@ export default function UserLogin() {
   const [mounted, setMounted] = useState(false)
   const [emailFocus, setEmailFocus] = useState(false)
   const [pwFocus, setPwFocus] = useState(false)
-  const canvasRef = useRef(null)
 
   useEffect(() => { requestAnimationFrame(() => setMounted(true)) }, [])
 
@@ -34,73 +33,6 @@ export default function UserLogin() {
         else if (me.role === 'seo_manager') location.href = '/seo'
         else if (me.role === 'user') location.href = '/user'
       } catch {}
-    }
-  }, [])
-
-  // Animated background particles
-  useEffect(() => {
-    const cvs = canvasRef.current
-    if (!cvs) return
-    const ctx = cvs.getContext('2d')
-    let raf
-    let w = 0, h = 0
-    const particles = []
-    const COUNT = 60
-
-    function resize() {
-      w = cvs.width = window.innerWidth
-      h = cvs.height = window.innerHeight
-    }
-    resize()
-    window.addEventListener('resize', resize)
-
-    for (let i = 0; i < COUNT; i++) {
-      particles.push({
-        x: Math.random() * w,
-        y: Math.random() * h,
-        r: Math.random() * 1.5 + 0.5,
-        dx: (Math.random() - 0.5) * 0.3,
-        dy: (Math.random() - 0.5) * 0.3,
-        o: Math.random() * 0.5 + 0.1,
-      })
-    }
-
-    function draw() {
-      ctx.clearRect(0, 0, w, h)
-      for (const p of particles) {
-        p.x += p.dx
-        p.y += p.dy
-        if (p.x < 0) p.x = w
-        if (p.x > w) p.x = 0
-        if (p.y < 0) p.y = h
-        if (p.y > h) p.y = 0
-        ctx.beginPath()
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2)
-        ctx.fillStyle = `rgba(255,255,255,${p.o})`
-        ctx.fill()
-      }
-      // draw faint connections
-      for (let i = 0; i < particles.length; i++) {
-        for (let j = i + 1; j < particles.length; j++) {
-          const dx = particles[i].x - particles[j].x
-          const dy = particles[i].y - particles[j].y
-          const dist = Math.sqrt(dx * dx + dy * dy)
-          if (dist < 120) {
-            ctx.beginPath()
-            ctx.moveTo(particles[i].x, particles[i].y)
-            ctx.lineTo(particles[j].x, particles[j].y)
-            ctx.strokeStyle = `rgba(255,255,255,${0.06 * (1 - dist / 120)})`
-            ctx.lineWidth = 0.5
-            ctx.stroke()
-          }
-        }
-      }
-      raf = requestAnimationFrame(draw)
-    }
-    draw()
-    return () => {
-      cancelAnimationFrame(raf)
-      window.removeEventListener('resize', resize)
     }
   }, [])
 
@@ -187,496 +119,402 @@ export default function UserLogin() {
   })()
 
   return (
-    <div className="ul-root">
-      {/* Animated particle canvas */}
-      <canvas ref={canvasRef} className="ul-canvas" />
-
-      {/* Floating gradient orbs */}
-      <div className="ul-orb ul-orb-1" />
-      <div className="ul-orb ul-orb-2" />
-      <div className="ul-orb ul-orb-3" />
+    <div className="pl-root">
+      {/* Subtle decorative shapes */}
+      <div className="pl-deco pl-deco-1" />
+      <div className="pl-deco pl-deco-2" />
 
       {/* Center stage */}
-      <div className={`ul-stage ${mounted ? 'ul-mounted' : ''}`}>
-        {/* Glass card */}
-        <form onSubmit={login} className="ul-card" autoComplete="on">
+      <div className={`pl-stage ${mounted ? 'pl-mounted' : ''}`}>
+        <form onSubmit={login} className="pl-card" autoComplete="on">
           {/* Logo */}
-          <div className="ul-logo-wrap">
-            <div className="ul-logo-ring">
-              <img src={logoSrc} alt="BuySial" className="ul-logo-img" />
+          <div className="pl-logo-wrap">
+            <div className="pl-logo-box">
+              <img src={logoSrc} alt="BuySial" className="pl-logo-img" />
             </div>
           </div>
 
           {/* Heading */}
-          <div className="ul-heading">
-            <h1 className="ul-title">Welcome back</h1>
-            <p className="ul-subtitle">Sign in to your management workspace</p>
+          <div className="pl-heading">
+            <h1 className="pl-title">Welcome back</h1>
+            <p className="pl-subtitle">Sign in to your workspace</p>
           </div>
 
-          {/* Email field */}
-          <div className={`ul-field ${emailFocus ? 'ul-field--focus' : ''}`}>
-            <div className="ul-field-icon">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                <rect x="2" y="4" width="20" height="16" rx="3" stroke="currentColor" strokeWidth="1.7"/>
-                <path d="M2 7l10 6 10-6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/>
-              </svg>
-            </div>
+          {/* Email */}
+          <label className="pl-label">Email</label>
+          <div className={`pl-field ${emailFocus ? 'pl-field--focus' : ''}`}>
+            <svg className="pl-field-icon" width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <rect x="2" y="4" width="20" height="16" rx="3" stroke="currentColor" strokeWidth="1.6"/>
+              <path d="M2 7l10 6 10-6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+            </svg>
             <input
               type="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
               onFocus={() => setEmailFocus(true)}
               onBlur={() => setEmailFocus(false)}
-              placeholder="Email address"
+              placeholder="you@company.com"
               autoComplete="email"
               required
-              className="ul-input"
+              className="pl-input"
             />
           </div>
 
-          {/* Password field */}
-          <div className={`ul-field ${pwFocus ? 'ul-field--focus' : ''}`}>
-            <div className="ul-field-icon">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                <rect x="5" y="11" width="14" height="10" rx="2.5" stroke="currentColor" strokeWidth="1.7"/>
-                <path d="M8 11V8a4 4 0 118 0v3" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/>
-                <circle cx="12" cy="16" r="1.5" fill="currentColor"/>
-              </svg>
-            </div>
+          {/* Password */}
+          <label className="pl-label">Password</label>
+          <div className={`pl-field ${pwFocus ? 'pl-field--focus' : ''}`}>
+            <svg className="pl-field-icon" width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <rect x="5" y="11" width="14" height="10" rx="2.5" stroke="currentColor" strokeWidth="1.6"/>
+              <path d="M8 11V8a4 4 0 118 0v3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+            </svg>
             <input
               type={showPw ? 'text' : 'password'}
               value={password}
               onChange={e => setPassword(e.target.value)}
               onFocus={() => setPwFocus(true)}
               onBlur={() => setPwFocus(false)}
-              placeholder="Password"
+              placeholder="Enter password"
               autoComplete="current-password"
               required
-              className="ul-input"
+              className="pl-input"
             />
-            <button type="button" className="ul-eye" onClick={() => setShowPw(s => !s)} tabIndex={-1}>
+            <button type="button" className="pl-eye" onClick={() => setShowPw(s => !s)} tabIndex={-1} aria-label={showPw ? 'Hide' : 'Show'}>
               {showPw ? (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M17.94 17.94A10.94 10.94 0 0112 19c-7 0-11-7-11-7a20.84 20.84 0 015.06-5.94M9.9 4.24A10.94 10.94 0 0112 4c7 0 11 7 11 7a20.84 20.84 0 01-4.12 5.23M1 1l22 22" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M17.94 17.94A10.94 10.94 0 0112 19c-7 0-11-7-11-7a20.84 20.84 0 015.06-5.94M9.9 4.24A10.94 10.94 0 0112 4c7 0 11 7 11 7a20.84 20.84 0 01-4.12 5.23M1 1l22 22" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/></svg>
               ) : (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8"/></svg>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12Z" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/><circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.7"/></svg>
               )}
             </button>
           </div>
 
           {/* Forgot */}
-          <div className="ul-forgot-row">
-            <a href="#" className="ul-forgot" onClick={e => { e.preventDefault(); toast.info('Forgot password coming soon') }}>
+          <div className="pl-forgot-row">
+            <a href="#" className="pl-forgot" onClick={e => { e.preventDefault(); toast.info('Forgot password coming soon') }}>
               Forgot password?
             </a>
           </div>
 
           {/* Submit */}
-          <button type="submit" className="ul-btn" disabled={loading}>
-            <span className="ul-btn-shimmer" />
+          <button type="submit" className="pl-btn" disabled={loading}>
             {loading ? (
-              <span className="ul-btn-inner"><span className="ul-spinner" /> Signing in...</span>
+              <><span className="pl-spinner" /> Signing in...</>
             ) : (
-              <span className="ul-btn-inner">
-                Sign In
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              </span>
+              <>Sign In</>
             )}
           </button>
 
           {/* Health status */}
           {healthBad && (
-            <button type="button" className="ul-health" onClick={() => window.location.reload()}>
-              <span className="ul-health-dot" />
+            <button type="button" className="pl-health" onClick={() => window.location.reload()}>
+              <span className="pl-health-dot" />
               Connection issue — tap to retry
             </button>
           )}
 
           {/* Footer */}
-          <div className="ul-footer">
-            <span className="ul-footer-text">Powered by</span>
-            <span className="ul-footer-brand">BuySial</span>
-          </div>
+          <p className="pl-footer">Powered by <strong>BuySial</strong></p>
         </form>
       </div>
 
       <style>{`
-        /* ====== Ultra Premium Login ====== */
-        .ul-root {
+        .pl-root {
           position: fixed;
           inset: 0;
           display: flex;
           align-items: center;
           justify-content: center;
-          background: #050a18;
+          background: #f8f9fb;
           overflow: hidden;
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
         }
 
-        .ul-canvas {
-          position: absolute;
-          inset: 0;
-          width: 100%;
-          height: 100%;
-          z-index: 0;
-        }
-
-        /* Floating gradient orbs */
-        .ul-orb {
+        /* Subtle decorative background shapes */
+        .pl-deco {
           position: absolute;
           border-radius: 50%;
-          filter: blur(80px);
-          opacity: 0.45;
+          filter: blur(100px);
+          opacity: 0.5;
           z-index: 0;
-          will-change: transform;
+          pointer-events: none;
         }
-        .ul-orb-1 {
+        .pl-deco-1 {
+          width: 600px; height: 600px;
+          background: radial-gradient(circle, #dbeafe 0%, transparent 70%);
+          top: -20%; right: -10%;
+        }
+        .pl-deco-2 {
           width: 500px; height: 500px;
-          background: radial-gradient(circle, #1d4ed8 0%, transparent 70%);
-          top: -10%; left: -8%;
-          animation: ul-float1 18s ease-in-out infinite;
-        }
-        .ul-orb-2 {
-          width: 400px; height: 400px;
-          background: radial-gradient(circle, #7c3aed 0%, transparent 70%);
-          bottom: -12%; right: -5%;
-          animation: ul-float2 22s ease-in-out infinite;
-        }
-        .ul-orb-3 {
-          width: 300px; height: 300px;
-          background: radial-gradient(circle, #f97316 0%, transparent 70%);
-          top: 50%; left: 50%;
-          transform: translate(-50%, -50%);
-          opacity: 0.15;
-          animation: ul-float3 15s ease-in-out infinite;
+          background: radial-gradient(circle, #ede9fe 0%, transparent 70%);
+          bottom: -18%; left: -8%;
         }
 
-        @keyframes ul-float1 {
-          0%, 100% { transform: translate(0, 0) scale(1); }
-          33% { transform: translate(60px, 40px) scale(1.08); }
-          66% { transform: translate(-30px, 60px) scale(0.95); }
-        }
-        @keyframes ul-float2 {
-          0%, 100% { transform: translate(0, 0) scale(1); }
-          33% { transform: translate(-50px, -30px) scale(1.05); }
-          66% { transform: translate(40px, -50px) scale(0.97); }
-        }
-        @keyframes ul-float3 {
-          0%, 100% { transform: translate(-50%, -50%) scale(1); }
-          50% { transform: translate(-50%, -50%) scale(1.3); }
-        }
-
-        /* Stage & entrance */
-        .ul-stage {
+        /* Stage entrance */
+        .pl-stage {
           position: relative;
           z-index: 1;
           width: 100%;
-          max-width: 440px;
+          max-width: 400px;
           padding: 24px;
           opacity: 0;
-          transform: translateY(30px) scale(0.97);
-          transition: opacity 0.8s cubic-bezier(.16,1,.3,1), transform 0.8s cubic-bezier(.16,1,.3,1);
+          transform: translateY(24px);
+          transition: opacity 0.7s cubic-bezier(.16,1,.3,1), transform 0.7s cubic-bezier(.16,1,.3,1);
         }
-        .ul-stage.ul-mounted {
+        .pl-stage.pl-mounted {
           opacity: 1;
-          transform: translateY(0) scale(1);
+          transform: translateY(0);
         }
 
-        /* Glass card */
-        .ul-card {
+        /* Card */
+        .pl-card {
           display: flex;
           flex-direction: column;
-          gap: 20px;
+          gap: 0;
           padding: 40px 32px 32px;
-          border-radius: 24px;
-          background: rgba(255, 255, 255, 0.04);
-          backdrop-filter: blur(40px) saturate(1.6);
-          -webkit-backdrop-filter: blur(40px) saturate(1.6);
-          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 20px;
+          background: #ffffff;
+          border: 1px solid #e5e7eb;
           box-shadow:
-            0 0 0 1px rgba(255,255,255,0.03),
-            0 30px 80px -20px rgba(0,0,0,0.7),
-            0 0 60px -10px rgba(29,78,216,0.15),
-            inset 0 1px 0 rgba(255,255,255,0.06);
+            0 1px 3px rgba(0,0,0,0.04),
+            0 8px 40px -12px rgba(0,0,0,0.08);
         }
 
         /* Logo */
-        .ul-logo-wrap {
+        .pl-logo-wrap {
           display: flex;
           justify-content: center;
-          margin-bottom: -4px;
+          margin-bottom: 24px;
         }
-        .ul-logo-ring {
-          width: 68px; height: 68px;
-          border-radius: 20px;
-          background: rgba(255,255,255,0.95);
+        .pl-logo-box {
+          width: 60px; height: 60px;
+          border-radius: 16px;
+          background: #ffffff;
           display: grid;
           place-items: center;
-          box-shadow:
-            0 8px 32px rgba(0,0,0,0.3),
-            0 0 0 1px rgba(255,255,255,0.1),
-            0 0 30px rgba(29,78,216,0.2);
-          animation: ul-logoPulse 3s ease-in-out infinite;
+          border: 1px solid #e5e7eb;
+          box-shadow: 0 2px 12px rgba(0,0,0,0.06);
         }
-        .ul-logo-img {
-          height: 42px;
+        .pl-logo-img {
+          height: 38px;
           width: auto;
           display: block;
         }
-        @keyframes ul-logoPulse {
-          0%, 100% { box-shadow: 0 8px 32px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.1), 0 0 30px rgba(29,78,216,0.2); }
-          50% { box-shadow: 0 8px 32px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.15), 0 0 50px rgba(29,78,216,0.35); }
-        }
 
         /* Heading */
-        .ul-heading {
+        .pl-heading {
           text-align: center;
+          margin-bottom: 28px;
         }
-        .ul-title {
-          font-size: 28px;
-          font-weight: 800;
-          letter-spacing: -0.03em;
-          margin: 0 0 6px;
-          background: linear-gradient(135deg, #ffffff 0%, #94a3b8 100%);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
+        .pl-title {
+          font-size: 24px;
+          font-weight: 700;
+          letter-spacing: -0.02em;
+          color: #111827;
+          margin: 0 0 4px;
         }
-        .ul-subtitle {
+        .pl-subtitle {
           font-size: 14px;
-          color: rgba(148, 163, 184, 0.8);
+          color: #6b7280;
           margin: 0;
           font-weight: 400;
         }
 
+        /* Labels */
+        .pl-label {
+          display: block;
+          font-size: 13px;
+          font-weight: 600;
+          color: #374151;
+          margin-bottom: 6px;
+          margin-top: 16px;
+        }
+        .pl-card .pl-label:first-of-type {
+          margin-top: 0;
+        }
+
         /* Input fields */
-        .ul-field {
+        .pl-field {
           display: flex;
           align-items: center;
           gap: 0;
-          background: rgba(255,255,255,0.04);
-          border: 1.5px solid rgba(255,255,255,0.08);
-          border-radius: 14px;
+          background: #f9fafb;
+          border: 1.5px solid #e5e7eb;
+          border-radius: 12px;
           padding: 0 14px;
-          height: 52px;
-          transition: border-color 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
+          height: 48px;
+          transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
         }
-        .ul-field--focus {
-          border-color: rgba(99, 102, 241, 0.6);
-          box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1), 0 0 20px rgba(99, 102, 241, 0.08);
-          background: rgba(255,255,255,0.06);
+        .pl-field--focus {
+          border-color: #818cf8;
+          box-shadow: 0 0 0 3px rgba(129,140,248,0.12);
+          background: #ffffff;
         }
-        .ul-field-icon {
+        .pl-field-icon {
           flex-shrink: 0;
-          width: 36px;
+          width: 32px;
           display: flex;
           align-items: center;
-          justify-content: center;
-          color: rgba(148, 163, 184, 0.5);
-          transition: color 0.3s ease;
+          color: #9ca3af;
+          transition: color 0.2s ease;
         }
-        .ul-field--focus .ul-field-icon {
-          color: rgba(165, 180, 252, 0.9);
+        .pl-field--focus .pl-field-icon {
+          color: #6366f1;
         }
-        .ul-input {
+        .pl-input {
           flex: 1;
           background: none !important;
           border: none !important;
           outline: none !important;
-          color: #e2e8f0 !important;
+          color: #111827 !important;
           font-size: 15px;
-          font-weight: 500;
+          font-weight: 400;
           height: 100%;
           padding: 0;
-          letter-spacing: 0.01em;
         }
-        .ul-input::placeholder {
-          color: rgba(148, 163, 184, 0.4);
-          font-weight: 400;
+        .pl-input::placeholder {
+          color: #9ca3af;
         }
-        .ul-input:-webkit-autofill,
-        .ul-input:-webkit-autofill:hover,
-        .ul-input:-webkit-autofill:focus {
-          -webkit-text-fill-color: #e2e8f0 !important;
-          -webkit-box-shadow: 0 0 0 40px rgba(5,10,24,0.95) inset !important;
+        .pl-input:-webkit-autofill,
+        .pl-input:-webkit-autofill:hover,
+        .pl-input:-webkit-autofill:focus {
+          -webkit-text-fill-color: #111827 !important;
+          -webkit-box-shadow: 0 0 0 40px #f9fafb inset !important;
           transition: background-color 5000s ease-in-out 0s;
         }
 
-        .ul-eye {
+        .pl-eye {
           flex-shrink: 0;
           background: none;
           border: none;
           cursor: pointer;
-          color: rgba(148, 163, 184, 0.4);
+          color: #9ca3af;
           padding: 6px;
           border-radius: 8px;
           display: grid;
           place-items: center;
-          transition: color 0.2s, background 0.2s;
+          transition: color 0.15s, background 0.15s;
         }
-        .ul-eye:hover {
-          color: rgba(165, 180, 252, 0.9);
-          background: rgba(255,255,255,0.05);
+        .pl-eye:hover {
+          color: #6366f1;
+          background: #f3f4f6;
         }
 
         /* Forgot */
-        .ul-forgot-row {
+        .pl-forgot-row {
           display: flex;
           justify-content: flex-end;
-          margin-top: -8px;
+          margin-top: 8px;
+          margin-bottom: 20px;
         }
-        .ul-forgot {
+        .pl-forgot {
           font-size: 13px;
           font-weight: 500;
-          color: rgba(165, 180, 252, 0.7);
+          color: #6366f1;
           text-decoration: none;
-          transition: color 0.2s;
+          transition: color 0.15s;
         }
-        .ul-forgot:hover {
-          color: #a5b4fc;
+        .pl-forgot:hover {
+          color: #4f46e5;
           text-decoration: underline;
         }
 
         /* Submit button */
-        .ul-btn {
-          position: relative;
-          overflow: hidden;
+        .pl-btn {
           width: 100%;
-          height: 52px;
-          border-radius: 14px;
+          height: 48px;
+          border-radius: 12px;
           border: none;
           cursor: pointer;
-          background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #6366f1 100%);
-          background-size: 200% 200%;
-          animation: ul-gradShift 4s ease infinite;
+          background: #111827;
           color: #ffffff;
           font-size: 15px;
-          font-weight: 700;
-          letter-spacing: 0.02em;
-          box-shadow:
-            0 8px 30px -4px rgba(99, 102, 241, 0.5),
-            0 0 0 1px rgba(99, 102, 241, 0.2),
-            inset 0 1px 0 rgba(255,255,255,0.15);
-          transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
-        }
-        .ul-btn:hover:not(:disabled) {
-          transform: translateY(-2px);
-          box-shadow:
-            0 14px 40px -4px rgba(99, 102, 241, 0.6),
-            0 0 0 1px rgba(99, 102, 241, 0.3),
-            inset 0 1px 0 rgba(255,255,255,0.2);
-          filter: brightness(1.08);
-        }
-        .ul-btn:active:not(:disabled) {
-          transform: translateY(0);
-        }
-        .ul-btn:disabled {
-          opacity: 0.7;
-          cursor: not-allowed;
-        }
-        .ul-btn-inner {
-          position: relative;
-          z-index: 1;
+          font-weight: 600;
           display: flex;
           align-items: center;
           justify-content: center;
           gap: 8px;
+          transition: background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 4px 12px rgba(0,0,0,0.05);
         }
-        .ul-btn-shimmer {
-          position: absolute;
-          top: 0; left: -100%;
-          width: 60%; height: 100%;
-          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
-          transform: skewX(-20deg);
-          animation: ul-shimmer 3s ease-in-out infinite;
+        .pl-btn:hover:not(:disabled) {
+          background: #1f2937;
+          transform: translateY(-1px);
+          box-shadow: 0 2px 8px rgba(0,0,0,0.12), 0 8px 24px rgba(0,0,0,0.08);
         }
-        @keyframes ul-shimmer {
-          0% { left: -100%; }
-          100% { left: 200%; }
+        .pl-btn:active:not(:disabled) {
+          transform: translateY(0);
+          background: #030712;
         }
-        @keyframes ul-gradShift {
-          0%, 100% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
+        .pl-btn:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
         }
 
         /* Spinner */
-        .ul-spinner {
+        .pl-spinner {
           display: inline-block;
-          width: 18px; height: 18px;
-          border: 2.5px solid rgba(255,255,255,0.3);
+          width: 16px; height: 16px;
+          border: 2px solid rgba(255,255,255,0.3);
           border-top-color: #fff;
           border-radius: 50%;
-          animation: ul-spin 0.7s linear infinite;
+          animation: pl-spin 0.6s linear infinite;
         }
-        @keyframes ul-spin {
+        @keyframes pl-spin {
           to { transform: rotate(360deg); }
         }
 
         /* Health */
-        .ul-health {
+        .pl-health {
           display: flex;
           align-items: center;
           justify-content: center;
           gap: 8px;
-          background: rgba(239, 68, 68, 0.1);
-          border: 1px solid rgba(239, 68, 68, 0.2);
-          border-radius: 12px;
+          background: #fef2f2;
+          border: 1px solid #fecaca;
+          border-radius: 10px;
           padding: 10px 16px;
-          color: #fca5a5;
+          margin-top: 12px;
+          color: #dc2626;
           font-size: 13px;
           font-weight: 500;
           cursor: pointer;
-          transition: background 0.2s, border-color 0.2s;
+          transition: background 0.15s;
         }
-        .ul-health:hover {
-          background: rgba(239, 68, 68, 0.15);
-          border-color: rgba(239, 68, 68, 0.35);
+        .pl-health:hover {
+          background: #fee2e2;
         }
-        .ul-health-dot {
-          width: 8px; height: 8px;
+        .pl-health-dot {
+          width: 7px; height: 7px;
           border-radius: 50%;
           background: #ef4444;
-          box-shadow: 0 0 8px rgba(239,68,68,0.6);
-          animation: ul-blink 1.5s ease-in-out infinite;
+          animation: pl-blink 1.5s ease-in-out infinite;
         }
-        @keyframes ul-blink {
+        @keyframes pl-blink {
           0%, 100% { opacity: 1; }
           50% { opacity: 0.3; }
         }
 
         /* Footer */
-        .ul-footer {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 5px;
-          padding-top: 4px;
-        }
-        .ul-footer-text {
+        .pl-footer {
+          text-align: center;
           font-size: 11px;
-          color: rgba(148, 163, 184, 0.3);
+          color: #9ca3af;
+          margin: 20px 0 0;
           font-weight: 400;
         }
-        .ul-footer-brand {
-          font-size: 11px;
-          font-weight: 700;
-          background: linear-gradient(135deg, #6366f1, #f97316);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
+        .pl-footer strong {
+          font-weight: 600;
+          color: #6b7280;
         }
 
         /* Mobile */
         @media (max-width: 480px) {
-          .ul-stage { padding: 16px; max-width: 100%; }
-          .ul-card { padding: 32px 20px 24px; border-radius: 20px; }
-          .ul-title { font-size: 24px; }
-          .ul-logo-ring { width: 58px; height: 58px; border-radius: 16px; }
-          .ul-logo-img { height: 36px; }
-          .ul-field { height: 48px; border-radius: 12px; }
-          .ul-btn { height: 48px; border-radius: 12px; }
-          .ul-orb-1 { width: 300px; height: 300px; }
-          .ul-orb-2 { width: 250px; height: 250px; }
-          .ul-orb-3 { width: 180px; height: 180px; }
+          .pl-stage { padding: 16px; max-width: 100%; }
+          .pl-card { padding: 32px 20px 24px; border-radius: 16px; }
+          .pl-title { font-size: 22px; }
+          .pl-logo-box { width: 52px; height: 52px; border-radius: 14px; }
+          .pl-logo-img { height: 32px; }
+          .pl-field { height: 46px; }
+          .pl-btn { height: 46px; }
         }
       `}</style>
     </div>
