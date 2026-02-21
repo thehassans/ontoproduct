@@ -1281,6 +1281,7 @@ router.post('/:id/seo', auth, allowRoles('admin','user','manager','seo_manager')
 
 // Update product (admin; user owner; manager with permission on owner's products)
 router.patch('/:id', auth, allowRoles('admin','user','manager'), upload.any(), async (req, res) => {
+  try {
   const { id } = req.params
   const prod = await Product.findById(id)
   if (!prod) return res.status(404).json({ message: 'Product not found' })
@@ -1556,6 +1557,10 @@ router.patch('/:id', auth, allowRoles('admin','user','manager'), upload.any(), a
   
   await prod.save()
   res.json({ message: 'Updated', product: prod })
+  } catch (e) {
+    console.error('Error updating product:', e)
+    if (!res.headersSent) res.status(500).json({ message: e?.message || 'Failed to update product' })
+  }
 })
 
 // Generate additional product images via AI and append to product

@@ -609,7 +609,7 @@ export async function apiPatch(path, body, maxRetries = 3) {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 30000)
+      const timeoutId = setTimeout(() => controller.abort(), 90000)
       const res = await fetch(buildUrl(path), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', ...headers },
@@ -619,17 +619,19 @@ export async function apiPatch(path, body, maxRetries = 3) {
       clearTimeout(timeoutId)
       if ((res.status === 502 || res.status === 504) && attempt < maxRetries) {
         console.log(`[apiPatch] Attempt ${attempt} got ${res.status}, retrying...`)
-        await new Promise(r => setTimeout(r, 1500 * attempt))
+        await new Promise(r => setTimeout(r, 2000 * attempt))
         continue
       }
       await handle(res)
       return res.json()
     } catch (err) {
+      if (err.name === 'AbortError') {
+        throw new Error('Request timed out. Please try again.')
+      }
       lastError = err
-      if (err.name === 'AbortError') lastError = new Error('Request timed out. Please try again.')
       if (attempt < maxRetries) {
         console.log(`[apiPatch] Attempt ${attempt} failed, retrying...`)
-        await new Promise(r => setTimeout(r, 1500 * attempt))
+        await new Promise(r => setTimeout(r, 2000 * attempt))
       }
     }
   }
