@@ -7,6 +7,7 @@ import { readWishlistIds, toggleWishlist } from '../../util/wishlist'
 import { useToast } from '../../ui/Toast'
 import { resolveWarehouse } from '../../utils/warehouse'
 import { getProductRating, getStarArray } from '../../utils/autoReviews'
+import { getCountryPrice } from '../../utils/countryPrice'
 
 // Rotating info ticker — cycles rating / sold / free delivery with slide-down fade
 const RotatingInfo = memo(function RotatingInfo({ productId, salesCount }) {
@@ -155,13 +156,14 @@ const ProductCardMini = memo(function ProductCardMini({ product, selectedCountry
   // Get the image URL, fallback to imagePath, then to null
   const imageUrl = getImageUrl(primaryImagePath)
 
-  const basePrice = Number(product?.price) || 0
-  // Apply sale price when salePrice exists and is less than regular price
-  const salePriceVal = Number(product?.salePrice) || 0
+  // Country-specific pricing
+  const countryPricing = getCountryPrice(product, selectedCountry, convertPrice)
+  const basePrice = countryPricing.price
+  const salePriceVal = countryPricing.salePrice
   const hasActiveSale = salePriceVal > 0 && salePriceVal < basePrice
   const finalPrice = hasActiveSale ? salePriceVal : basePrice
-  const displayCurrency = getDisplayCurrency()
-  const convertedPrice = convertPrice(finalPrice, product.baseCurrency || 'SAR', displayCurrency)
+  const displayCurrency = countryPricing.isCountrySpecific ? countryPricing.currency : getDisplayCurrency()
+  const convertedPrice = countryPricing.isCountrySpecific ? finalPrice : convertPrice(finalPrice, product.baseCurrency || 'SAR', displayCurrency)
   const showDiscount = hasActiveSale && basePrice > finalPrice
 
   const primaryVideoPath = useMemo(() => {
@@ -251,10 +253,10 @@ const ProductCardMini = memo(function ProductCardMini({ product, selectedCountry
       let cartItems = []
       if (savedCart) cartItems = JSON.parse(savedCart)
 
-      const basePriceVal = Number(product?.price) || 0
-      const salePriceVal = Number(product?.salePrice) || 0
-      const hasSale = salePriceVal > 0 && salePriceVal < basePriceVal
-      const unitPrice = hasSale ? salePriceVal : basePriceVal
+      // Use country-specific price when available
+      const cp = getCountryPrice(product, selectedCountry, convertPrice)
+      const unitPrice = (cp.salePrice > 0 && cp.salePrice < cp.price) ? cp.salePrice : cp.price
+      const cartCcy = cp.isCountrySpecific ? cp.currency : (product.baseCurrency || 'SAR')
       const addQty = 1
       const max = Number(product?.stockQty || 0)
 
@@ -268,6 +270,8 @@ const ProductCardMini = memo(function ProductCardMini({ product, selectedCountry
         else cartItems[existingItemIndex].quantity = candidate
 
         const wh2 = resolveWarehouse(product, selectedCountry, cartItems[existingItemIndex].quantity)
+        cartItems[existingItemIndex].price = unitPrice
+        cartItems[existingItemIndex].currency = cartCcy
         cartItems[existingItemIndex].warehouseType = wh2.type
         cartItems[existingItemIndex].etaMinDays = wh2.etaMinDays
         cartItems[existingItemIndex].etaMaxDays = wh2.etaMaxDays
@@ -279,7 +283,7 @@ const ProductCardMini = memo(function ProductCardMini({ product, selectedCountry
           productId: product._id,
           name: product.name,
           price: unitPrice,
-          currency: product.baseCurrency || 'SAR',
+          currency: cartCcy,
           image: (Array.isArray(product.images) && product.images.length > 0 ? product.images[0] : (product.imagePath || '')),
           quantity: addQty,
           maxStock: product.stockQty,
@@ -449,7 +453,7 @@ const ProductCardMini = memo(function ProductCardMini({ product, selectedCountry
             <span className="price-decimal">.{convertedPrice.toFixed(2).split('.')[1]}</span>
             {showDiscount && (
               <span className="original-price">
-                {convertPrice(basePrice, product.baseCurrency || 'SAR', displayCurrency).toFixed(0)}
+                {(countryPricing.isCountrySpecific ? basePrice : convertPrice(basePrice, product.baseCurrency || 'SAR', displayCurrency)).toFixed(0)}
               </span>
             )}
           </div>

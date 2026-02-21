@@ -1446,6 +1446,26 @@ router.patch('/:id', auth, allowRoles('admin','user','manager'), upload.any(), a
   if (stockCanada != null) sbc.Canada = Math.max(0, Number(stockCanada))
   if (stockAustralia != null) sbc.Australia = Math.max(0, Number(stockAustralia))
   prod.stockByCountry = sbc
+  // per-country price updates
+  if (req.body?.priceByCountry != null) {
+    try {
+      let pbc = req.body.priceByCountry
+      if (typeof pbc === 'string') pbc = JSON.parse(pbc)
+      if (pbc && typeof pbc === 'object' && !Array.isArray(pbc)) {
+        const existing = prod.priceByCountry ? (typeof prod.priceByCountry.toObject === 'function' ? prod.priceByCountry.toObject() : { ...prod.priceByCountry }) : {}
+        const countries = ['UAE','Oman','KSA','Bahrain','India','Kuwait','Qatar','Pakistan','Jordan','USA','UK','Canada','Australia']
+        for (const c of countries) {
+          if (pbc[c] != null && typeof pbc[c] === 'object') {
+            existing[c] = {
+              price: Math.max(0, Number(pbc[c].price || 0)),
+              salePrice: Math.max(0, Number(pbc[c].salePrice || 0)),
+            }
+          }
+        }
+        prod.priceByCountry = existing
+      }
+    } catch (e) { console.error('Failed to parse priceByCountry', e) }
+  }
   // if client didn't send stockQty explicitly, recompute from per-country
   if (stockQty == null && (stockUAE != null || stockOman != null || stockKSA != null || stockBahrain != null || stockIndia != null || stockKuwait != null || stockQatar != null || stockPakistan != null || stockJordan != null || stockUSA != null || stockUK != null || stockCanada != null || stockAustralia != null)){
     prod.stockQty = Object.values(sbc).reduce((sum, val) => sum + val, 0)

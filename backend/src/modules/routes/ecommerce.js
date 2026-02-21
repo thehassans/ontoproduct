@@ -941,12 +941,23 @@ router.post("/orders", async (req, res) => {
       const etaMaxDaysRaw = it?.etaMaxDays;
       const etaMinDays = etaMinDaysRaw == null ? null : Number(etaMinDaysRaw);
       const etaMaxDays = etaMaxDaysRaw == null ? null : Number(etaMaxDaysRaw);
-      // Use salePrice if available and less than regular price
-      const hasSale = p.salePrice != null && Number(p.salePrice) > 0 && Number(p.salePrice) < Number(p.price);
-      const basePrice = hasSale ? Number(p.salePrice) : Number(p.price || 0);
-      const baseCurrency = p.baseCurrency || 'SAR';
-      // Convert to order currency
-      const unit = convertPrice(basePrice, baseCurrency, currency);
+      // Resolve country-specific price if available
+      const codeToStockKey = { AE:'UAE', SA:'KSA', OM:'Oman', BH:'Bahrain', IN:'India', KW:'Kuwait', QA:'Qatar', PK:'Pakistan', JO:'Jordan', US:'USA', GB:'UK', CA:'Canada', AU:'Australia' };
+      const stockKey = codeToStockKey[orderCountry.trim()] || orderCountry.trim();
+      const countryPriceEntry = p.priceByCountry && p.priceByCountry[stockKey];
+      const hasCountryPrice = countryPriceEntry && Number(countryPriceEntry.price) > 0;
+      let unit;
+      if (hasCountryPrice) {
+        const cp = Number(countryPriceEntry.price);
+        const csp = Number(countryPriceEntry.salePrice || 0);
+        const hasCpSale = csp > 0 && csp < cp;
+        unit = hasCpSale ? csp : cp;
+      } else {
+        const hasSale = p.salePrice != null && Number(p.salePrice) > 0 && Number(p.salePrice) < Number(p.price);
+        const basePrice = hasSale ? Number(p.salePrice) : Number(p.price || 0);
+        const baseCurrency = p.baseCurrency || 'SAR';
+        unit = convertPrice(basePrice, baseCurrency, currency);
+      }
       total += unit * qty;
       orderItems.push({
         productId: p._id,
@@ -1106,11 +1117,23 @@ router.post(
         const etaMaxDaysRaw = it?.etaMaxDays;
         const etaMinDays = etaMinDaysRaw == null ? null : Number(etaMinDaysRaw);
         const etaMaxDays = etaMaxDaysRaw == null ? null : Number(etaMaxDaysRaw);
-        // Use salePrice if available and less than regular price
-        const hasSale = p.salePrice != null && Number(p.salePrice) > 0 && Number(p.salePrice) < Number(p.price);
-        const basePrice = hasSale ? Number(p.salePrice) : Number(p.price || 0);
-        const baseCurrency = p.baseCurrency || 'SAR';
-        const unit = convertPrice(basePrice, baseCurrency, currency);
+        // Resolve country-specific price if available
+        const codeToStockKey = { AE:'UAE', SA:'KSA', OM:'Oman', BH:'Bahrain', IN:'India', KW:'Kuwait', QA:'Qatar', PK:'Pakistan', JO:'Jordan', US:'USA', GB:'UK', CA:'Canada', AU:'Australia' };
+        const stockKey = codeToStockKey[orderCountry.trim()] || orderCountry.trim();
+        const countryPriceEntry = p.priceByCountry && p.priceByCountry[stockKey];
+        const hasCountryPrice = countryPriceEntry && Number(countryPriceEntry.price) > 0;
+        let unit;
+        if (hasCountryPrice) {
+          const cp = Number(countryPriceEntry.price);
+          const csp = Number(countryPriceEntry.salePrice || 0);
+          const hasCpSale = csp > 0 && csp < cp;
+          unit = hasCpSale ? csp : cp;
+        } else {
+          const hasSale = p.salePrice != null && Number(p.salePrice) > 0 && Number(p.salePrice) < Number(p.price);
+          const basePrice = hasSale ? Number(p.salePrice) : Number(p.price || 0);
+          const baseCurrency = p.baseCurrency || 'SAR';
+          unit = convertPrice(basePrice, baseCurrency, currency);
+        }
         total += unit * qty;
         orderItems.push({
           productId: p._id,

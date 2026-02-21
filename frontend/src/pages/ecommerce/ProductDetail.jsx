@@ -12,6 +12,7 @@ import FormattedPrice from '../../components/ui/FormattedPrice'
 import { resolveWarehouse } from '../../utils/warehouse'
 import { readWishlistIds, toggleWishlist } from '../../util/wishlist'
 import { getProductRating, getProductReviews, getStarArray } from '../../utils/autoReviews'
+import { getCountryPrice } from '../../utils/countryPrice'
 
 const ProductDetail = () => {
   const { id } = useParams()
@@ -188,16 +189,16 @@ const ProductDetail = () => {
       const fallbackMax = Number(product?.stockQty || 0)
       const max = variantMax !== Number.POSITIVE_INFINITY ? variantMax : fallbackMax
       if (Number.isFinite(Number(max)) && Number(max) <= 0) { toast.error('Selected option is out of stock'); return }
-      const basePriceVal = Number(product?.price) || 0
-      const salePriceVal = Number(product?.salePrice) || 0
-      const hasSale = salePriceVal > 0 && salePriceVal < basePriceVal
-      const unitPrice = hasSale ? salePriceVal : basePriceVal
+      // Use country-specific price when available
+      const cp = getCountryPrice(product, selectedCountry, convertPrice)
+      const unitPrice = (cp.salePrice > 0 && cp.salePrice < cp.price) ? cp.salePrice : cp.price
+      const cartCcy = cp.isCountrySpecific ? cp.currency : (product.baseCurrency || 'SAR')
       const addQty = Math.max(1, Math.floor(Number(quantity) || 1))
       const wh = resolveWarehouse(product, selectedCountry, addQty)
       const variantSignature = buildVariantSignature(selectedVariants)
       const cartItemId = variantSignature ? `${product._id}::${variantSignature}` : String(product._id)
       const existingItemIndex = cartItems.findIndex(item => String(item.id) === String(cartItemId))
-      const cartItem = { id: cartItemId, productId: product._id, name: product.name, price: unitPrice, currency: product.baseCurrency || 'SAR', image: (Array.isArray(product.images) && product.images.length > 0 ? product.images[0] : (product.imagePath || '')), quantity: addQty, maxStock: max, variants: selectedVariants, stockByCountry: product.stockByCountry || {}, warehouseType: wh.type, etaMinDays: wh.etaMinDays, etaMaxDays: wh.etaMaxDays, warehouseCountry: selectedCountry }
+      const cartItem = { id: cartItemId, productId: product._id, name: product.name, price: unitPrice, currency: cartCcy, image: (Array.isArray(product.images) && product.images.length > 0 ? product.images[0] : (product.imagePath || '')), quantity: addQty, maxStock: max, variants: selectedVariants, stockByCountry: product.stockByCountry || {}, warehouseType: wh.type, etaMinDays: wh.etaMinDays, etaMaxDays: wh.etaMaxDays, warehouseCountry: selectedCountry }
       if (existingItemIndex >= 0) {
         const current = Number(cartItems[existingItemIndex].quantity || 0)
         const candidate = current + addQty
@@ -299,8 +300,10 @@ const ProductDetail = () => {
   const waText = (() => { try { return encodeURIComponent(`Product: ${product?.name || ''}\nImage: ${waImage}\nLink: ${waProductUrl}`) } catch { return '' } })()
   const waUrl = waNumber ? `https://wa.me/${waNumber}?text=${waText}` : ''
 
-  const basePrice = Number(product.price) || 0
-  const salePrice2 = Number(product.salePrice) || 0
+  // Country-specific pricing: check priceByCountry first, then fall back to base price
+  const countryPricing = getCountryPrice(product, selectedCountry, convertPrice)
+  const basePrice = countryPricing.price
+  const salePrice2 = countryPricing.salePrice
   const hasActiveSale = salePrice2 > 0 && salePrice2 < basePrice
   const displayPrice = hasActiveSale ? salePrice2 : basePrice
   const originalPrice = hasActiveSale ? basePrice : null
@@ -333,9 +336,10 @@ const ProductDetail = () => {
   }
 
   // Shared price display (numeric values for FormattedPrice)
-  const priceConverted = convertPrice(displayPrice, product.baseCurrency || 'SAR', getDisplayCurrency())
-  const origPriceConverted = originalPrice ? convertPrice(originalPrice, product.baseCurrency || 'SAR', getDisplayCurrency()) : null
-  const dispCcy = getDisplayCurrency()
+  // If country-specific price is set, it's already in the right currency — no conversion needed
+  const dispCcy = countryPricing.isCountrySpecific ? countryPricing.currency : getDisplayCurrency()
+  const priceConverted = countryPricing.isCountrySpecific ? displayPrice : convertPrice(displayPrice, product.baseCurrency || 'SAR', dispCcy)
+  const origPriceConverted = originalPrice ? (countryPricing.isCountrySpecific ? originalPrice : convertPrice(originalPrice, product.baseCurrency || 'SAR', dispCcy)) : null
   // Legacy string fallbacks for places that still use text
   const priceDisplay = formatPrice(priceConverted, dispCcy)
   const origPriceDisplay = origPriceConverted ? formatPrice(origPriceConverted, dispCcy) : null
