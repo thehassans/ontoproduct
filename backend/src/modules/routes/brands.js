@@ -47,7 +47,7 @@ async function checkManagerBrandPerm(req) {
 }
 
 // GET /api/brands - Get all brands (authenticated)
-router.get('/', auth, allowRoles('admin', 'user', 'manager'), async (req, res) => {
+router.get('/', auth, allowRoles('admin', 'user', 'manager', 'designer'), async (req, res) => {
   try {
     const brands = await Brand.find({}).sort({ sortOrder: 1, name: 1 }).lean()
     return res.json({ brands })
@@ -67,7 +67,7 @@ router.get('/public', async (req, res) => {
 })
 
 // POST /api/brands - Create brand
-router.post('/', auth, allowRoles('admin', 'user', 'manager'), async (req, res) => {
+router.post('/', auth, allowRoles('admin', 'user', 'manager', 'designer'), async (req, res) => {
   try {
     if (!(await checkManagerBrandPerm(req))) {
       return res.status(403).json({ message: 'Not authorized to manage brands' })
@@ -94,7 +94,7 @@ router.post('/', auth, allowRoles('admin', 'user', 'manager'), async (req, res) 
 })
 
 // PUT /api/brands/:id - Update brand
-router.put('/:id', auth, allowRoles('admin', 'user', 'manager'), async (req, res) => {
+router.put('/:id', auth, allowRoles('admin', 'user', 'manager', 'designer'), async (req, res) => {
   try {
     if (!(await checkManagerBrandPerm(req))) {
       return res.status(403).json({ message: 'Not authorized to manage brands' })
@@ -118,7 +118,7 @@ router.put('/:id', auth, allowRoles('admin', 'user', 'manager'), async (req, res
 })
 
 // DELETE /api/brands/:id - Delete brand
-router.delete('/:id', auth, allowRoles('admin', 'user', 'manager'), async (req, res) => {
+router.delete('/:id', auth, allowRoles('admin', 'user', 'manager', 'designer'), async (req, res) => {
   try {
     if (!(await checkManagerBrandPerm(req))) {
       return res.status(403).json({ message: 'Not authorized to manage brands' })
@@ -131,7 +131,7 @@ router.delete('/:id', auth, allowRoles('admin', 'user', 'manager'), async (req, 
 })
 
 // POST /api/brands/:id/logo - Upload brand logo
-router.post('/:id/logo', auth, allowRoles('admin', 'user', 'manager'), brandUpload.single('logo'), async (req, res) => {
+router.post('/:id/logo', auth, allowRoles('admin', 'user', 'manager', 'designer'), brandUpload.single('logo'), async (req, res) => {
   try {
     if (!(await checkManagerBrandPerm(req))) {
       return res.status(403).json({ message: 'Not authorized to manage brands' })

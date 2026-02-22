@@ -47,6 +47,7 @@ const CommissionerLayout = lazy(() => import('./layout/CommissionerLayout.jsx'))
 const ConfirmerLayout = lazy(() => import('./layout/ConfirmerLayout.jsx'))
 const DropshipperLayout = lazy(() => import('./layout/DropshipperLayout.jsx'))
 const SEOManagerLayout = lazy(() => import('./layout/SEOManagerLayout.jsx'))
+const DesignerLayout = lazy(() => import('./layout/DesignerLayout.jsx'))
 const CustomerLayout = lazy(() => import('./layout/CustomerLayout.jsx'))
 
 // Admin pages
@@ -114,6 +115,8 @@ const GoogleOAuthSettings = lazy(() => import('./pages/user/GoogleOAuthSettings.
 const UserCategories = lazy(() => import('./pages/user/Categories.jsx'))
 const UserBrands = lazy(() => import('./pages/user/Brands.jsx'))
 const UserExploreMore = lazy(() => import('./pages/user/ExploreMore.jsx'))
+const Designers = lazy(() => import('./pages/user/Designers.jsx'))
+const DesignerDashboard = lazy(() => import('./pages/designer/Dashboard.jsx'))
 
 // Agent pages
 const AgentDashboard = lazy(() => import('./pages/agent/Dashboard.jsx'))
@@ -333,6 +336,7 @@ function RequireRole({ roles = [], children }) {
     if (role === 'dropshipper') return <Navigate to="/dropshipper" replace />
     if (role === 'investor') return <Navigate to="/investor" replace />
     if (role === 'seo_manager') return <Navigate to="/seo" replace />
+    if (role === 'designer') return <Navigate to="/designer" replace />
     if (role === 'admin' || role === 'user') return <Navigate to="/user" replace />
     return <Navigate to="/login" replace />
   }
@@ -772,6 +776,7 @@ export default function App() {
               <Route path="agents" element={<Agents />} />
               <Route path="managers" element={<Managers />} />
               <Route path="seo-managers" element={<SEOManagers />} />
+              <Route path="designers" element={<Designers />} />
               <Route path="google-oauth" element={<GoogleOAuthSettings />} />
 
               <Route path="drivers" element={<Drivers />} />
@@ -869,6 +874,26 @@ export default function App() {
               <Route path="products" element={<SEODashboard />} />
               <Route path="schema" element={<SEODashboard />} />
               <Route path="advanced" element={<SEODashboard />} />
+            </Route>
+
+            {/* Designer Panel */}
+            <Route
+              path="/designer"
+              element={
+                <RequireAuth>
+                  <RequireRole roles={['designer']}>
+                    <DesignerLayout />
+                  </RequireRole>
+                </RequireAuth>
+              }
+            >
+              <Route index element={<DesignerDashboard />} />
+              <Route path="home-headline" element={<HomeHeadline />} />
+              <Route path="product-headline" element={<ProductHeadline />} />
+              <Route path="home-banners" element={<HomeBanners />} />
+              <Route path="home-mini-banners" element={<HomeMiniBanners />} />
+              <Route path="brands" element={<UserBrands />} />
+              <Route path="explore-more" element={<UserExploreMore />} />
             </Route>
 
             <Route

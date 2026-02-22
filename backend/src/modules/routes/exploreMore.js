@@ -43,6 +43,9 @@ router.get('/', auth, async (req, res) => {
     if (user.role === 'manager') {
       const perms = user.managerPermissions || {}
       if (!perms.canManageExploreMore) return res.status(403).json({ message: 'No permission' })
+    } else if (user.role === 'designer') {
+      const perms = user.designerPermissions || {}
+      if (!perms.canManageExploreMore) return res.status(403).json({ message: 'No permission' })
     } else if (user.role !== 'user') {
       return res.status(403).json({ message: 'Forbidden' })
     }
@@ -65,6 +68,9 @@ router.post('/', auth, async (req, res) => {
     const user = req.user
     if (user.role === 'manager') {
       const perms = user.managerPermissions || {}
+      if (!perms.canManageExploreMore) return res.status(403).json({ message: 'No permission' })
+    } else if (user.role === 'designer') {
+      const perms = user.designerPermissions || {}
       if (!perms.canManageExploreMore) return res.status(403).json({ message: 'No permission' })
     } else if (user.role !== 'user') {
       return res.status(403).json({ message: 'Forbidden' })
@@ -89,6 +95,9 @@ router.put('/:id', auth, async (req, res) => {
     if (user.role === 'manager') {
       const perms = user.managerPermissions || {}
       if (!perms.canManageExploreMore) return res.status(403).json({ message: 'No permission' })
+    } else if (user.role === 'designer') {
+      const perms = user.designerPermissions || {}
+      if (!perms.canManageExploreMore) return res.status(403).json({ message: 'No permission' })
     } else if (user.role !== 'user') {
       return res.status(403).json({ message: 'Forbidden' })
     }
@@ -110,6 +119,9 @@ router.delete('/:id', auth, async (req, res) => {
     if (user.role === 'manager') {
       const perms = user.managerPermissions || {}
       if (!perms.canManageExploreMore) return res.status(403).json({ message: 'No permission' })
+    } else if (user.role === 'designer') {
+      const perms = user.designerPermissions || {}
+      if (!perms.canManageExploreMore) return res.status(403).json({ message: 'No permission' })
     } else if (user.role !== 'user') {
       return res.status(403).json({ message: 'Forbidden' })
     }
@@ -124,6 +136,9 @@ router.post('/:id/image', auth, upload.single('image'), async (req, res) => {
     const user = req.user
     if (user.role === 'manager') {
       const perms = user.managerPermissions || {}
+      if (!perms.canManageExploreMore) return res.status(403).json({ message: 'No permission' })
+    } else if (user.role === 'designer') {
+      const perms = user.designerPermissions || {}
       if (!perms.canManageExploreMore) return res.status(403).json({ message: 'No permission' })
     } else if (user.role !== 'user') {
       return res.status(403).json({ message: 'Forbidden' })
