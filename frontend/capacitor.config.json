@@ -2,12 +2,28 @@
   "appId": "com.buysial.app",
   "appName": "BuySial",
   "webDir": "dist",
+  "ios": {
+    "contentInset": "automatic",
+    "allowsLinkPreview": true,
+    "scrollEnabled": true,
+    "backgroundColor": "#ffffff"
+  },
   "plugins": {
     "SplashScreen": {
       "launchShowDuration": 2000,
+      "launchAutoHide": true,
       "backgroundColor": "#ffffff",
       "showSpinner": true,
-      "spinnerColor": "#f97316"
+      "spinnerColor": "#f97316",
+      "iosSpinnerStyle": "large"
+    },
+    "Keyboard": {
+      "resize": "body",
+      "resizeOnFullScreen": true
+    },
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#ffffff"
     }
   }
 }

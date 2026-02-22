@@ -47,5 +47,17 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>UIStatusBarStyle</key>
+	<string>UIStatusBarStyleDefault</string>
+	<key>NSCameraUsageDescription</key>
+	<string>BuySial needs access to your camera to take product photos and scan items.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>BuySial needs access to your photos to upload product images.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>BuySial needs permission to save images to your photo library.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>BuySial uses your location to show nearby products and calculate shipping.</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>
