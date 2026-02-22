@@ -27,7 +27,6 @@ const UserSchema = new mongoose.Schema(
         "commissioner",
         "confirmer",
         "seo_manager",
-        "designer",
       ],
       default: "user",
       index: true,
@@ -58,15 +57,6 @@ const UserSchema = new mongoose.Schema(
       canManageCashback: { type: Boolean, default: false },
       canManageBrands: { type: Boolean, default: false },
       canManageExploreMore: { type: Boolean, default: false },
-    },
-    // Designer permissions (content creation focused)
-    designerPermissions: {
-      canManageHomeHeadline: { type: Boolean, default: true },
-      canManageProductHeadline: { type: Boolean, default: true },
-      canManageHomeBanners: { type: Boolean, default: true },
-      canManageHomeMiniBanners: { type: Boolean, default: true },
-      canManageBrands: { type: Boolean, default: true },
-      canManageExploreMore: { type: Boolean, default: true },
     },
     // SEO manager: which countries this seo_manager can manage pixels/SEO for
     seoCountries: {

@@ -234,7 +234,7 @@ router.get('/banners', async (req, res) => {
 router.post(
   '/banners',
   auth,
-  allowRoles('admin', 'user', 'manager', 'designer'),
+  allowRoles('admin', 'user', 'manager'),
   allowBannerManagers,
   upload.fields([
     { name: 'banner', maxCount: 1 },
@@ -308,9 +308,7 @@ router.post(
       country: String(country || '').trim() || '', // empty = all countries
       active: asBool(active),
       createdAt: new Date(),
-      uploadedBy: req.user.id,
-      uploadedByName: (() => { try { return `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() } catch { return '' } })(),
-      uploadedByRole: req.user.role || '',
+      uploadedBy: req.user.id
     }
 
     const nextBanners = [...banners, newBanner]
@@ -339,7 +337,7 @@ router.post(
 })
 
 // Edit banner metadata (title, country, linkCategory, active)
-router.post('/banners/:id/edit', auth, allowRoles('admin', 'user', 'manager', 'designer'), allowBannerManagers, async (req, res) => {
+router.post('/banners/:id/edit', auth, allowRoles('admin', 'user', 'manager'), allowBannerManagers, async (req, res) => {
   try {
     const { id } = req.params
     const { title, country, linkCategory, active } = req.body || {}
@@ -404,8 +402,8 @@ async function deleteBanner(req, res) {
 /**
  * Delete a banner (authenticated)
  */
-router.get('/banners/:id/delete', auth, allowRoles('admin', 'user', 'manager', 'designer'), allowBannerManagers, deleteBanner)
-router.post('/banners/:id/delete', auth, allowRoles('admin', 'user', 'manager', 'designer'), allowBannerManagers, deleteBanner)
+router.get('/banners/:id/delete', auth, allowRoles('admin', 'user', 'manager'), allowBannerManagers, deleteBanner)
+router.post('/banners/:id/delete', auth, allowRoles('admin', 'user', 'manager'), allowBannerManagers, deleteBanner)
 
 async function toggleBanner(req, res) {
   try {
@@ -438,13 +436,13 @@ async function toggleBanner(req, res) {
 /**
  * Toggle banner active status (authenticated)
  */
-router.get('/banners/:id/toggle', auth, allowRoles('admin', 'user', 'manager', 'designer'), allowBannerManagers, toggleBanner)
-router.post('/banners/:id/toggle', auth, allowRoles('admin', 'user', 'manager', 'designer'), allowBannerManagers, toggleBanner)
+router.get('/banners/:id/toggle', auth, allowRoles('admin', 'user', 'manager'), allowBannerManagers, toggleBanner)
+router.post('/banners/:id/toggle', auth, allowRoles('admin', 'user', 'manager'), allowBannerManagers, toggleBanner)
 
 /**
  * Update banner order (authenticated)
  */
-router.post('/banners/reorder', auth, allowRoles('admin', 'user', 'manager', 'designer'), allowBannerManagers, async (req, res) => {
+router.post('/banners/reorder', auth, allowRoles('admin', 'user', 'manager'), allowBannerManagers, async (req, res) => {
   try {
     const { bannerIds } = req.body
     
@@ -512,7 +510,7 @@ router.get('/content', async (req, res) => {
  * Save page content (authenticated)
  * Body: { page, elements: [{ id, text, styles }] }
  */
-router.post('/content', auth, allowRoles('admin', 'user', 'designer'), async (req, res) => {
+router.post('/content', auth, allowRoles('admin', 'user'), async (req, res) => {
   try {
     const { page, elements } = req.body
     
@@ -527,20 +525,11 @@ router.post('/content', auth, allowRoles('admin', 'user', 'designer'), async (re
     // Get or create content setting
     let contentSetting = await Setting.findOne({ key: `pageContent_${page}` })
     
-    // Resolve user name for attribution
-    let updatedByName = ''
-    try {
-      const u = await User.findById(req.user.id, 'firstName lastName role').lean()
-      if (u) updatedByName = `${u.firstName || ''} ${u.lastName || ''}`.trim()
-    } catch {}
-
     const contentData = {
       page,
       elements,
       lastUpdated: new Date(),
-      updatedBy: req.user.id,
-      updatedByName,
-      updatedByRole: req.user.role || '',
+      updatedBy: req.user.id
     }
     
     if (contentSetting) {
@@ -567,7 +556,7 @@ router.post('/content', auth, allowRoles('admin', 'user', 'designer'), async (re
 /**
  * Delete page content (authenticated)
  */
-router.delete('/content/:page', auth, allowRoles('admin', 'user', 'designer'), async (req, res) => {
+router.delete('/content/:page', auth, allowRoles('admin', 'user'), async (req, res) => {
   try {
     const { page } = req.params
     

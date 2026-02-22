@@ -77,7 +77,6 @@ export default function ProductHeadline() {
   const [saving, setSaving] = useState(false)
   const [notice, setNotice] = useState('')
   const [selectedCountry, setSelectedCountry] = useState('')
-  const [attribution, setAttribution] = useState({ name: '', role: '', date: '' })
 
   const [form, setForm] = useState({
     enabled: true,
@@ -115,7 +114,6 @@ export default function ProductHeadline() {
             font,
             slides: slides.length ? slides : defaultSlides
           })
-          setAttribution({ name: res?.content?.updatedByName || '', role: res?.content?.updatedByRole || '', date: res?.content?.lastUpdated || '' })
         }
       } catch (err) {
         console.error(err)
@@ -240,15 +238,6 @@ export default function ProductHeadline() {
           </div>
         </div>
       </div>
-
-      {attribution.name && (
-        <div style={{ marginBottom: 12, padding: '8px 14px', borderRadius: 8, background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.18)', display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 12, maxWidth: 980 }}>
-          <span style={{ fontWeight: 600, color: '#8b5cf6' }}>Last edited by</span>
-          <span style={{ fontWeight: 700 }}>{attribution.name}</span>
-          <span style={{ color: 'var(--muted)', textTransform: 'capitalize' }}>({attribution.role === 'user' ? 'admin' : attribution.role})</span>
-          {attribution.date && <span style={{ color: 'var(--muted)' }}>&middot; {new Date(attribution.date).toLocaleString()}</span>}
-        </div>
-      )}
 
       <div className="card" style={{ padding: 20, maxWidth: 980 }}>
         {loading ? (

@@ -124,10 +124,8 @@ export default function Categories() {
     const [showCountries, setShowCountries] = useState(false)
     const [showManagers, setShowManagers] = useState(false)
     const [showAddSub, setShowAddSub] = useState(false)
-    const [showLinkSub, setShowLinkSub] = useState(false)
     const [subName, setSubName] = useState('')
     const [subSaving, setSubSaving] = useState(false)
-    const [linkSaving, setLinkSaving] = useState(false)
     const [imgUploading, setImgUploading] = useState(false)
     const imgInputRef = useRef(null)
     const unpub = cat.unpublishedCountries || []
@@ -183,14 +181,9 @@ export default function Categories() {
               {imgUploading ? 'Uploading...' : (cat.image ? 'Change Img' : 'Add Image')}
             </button>
             {depth === 0 && (
-              <>
-                <button style={{ ...S.btn, background: '#fff7ed', color: '#c2410c', border: '1px solid #fed7aa', fontSize: 11 }} onClick={() => { setShowAddSub(!showAddSub); setShowLinkSub(false) }}>
-                  {showAddSub ? 'Cancel' : '+ Sub'}
-                </button>
-                <button style={{ ...S.btn, background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', fontSize: 11 }} onClick={() => { setShowLinkSub(!showLinkSub); setShowAddSub(false) }}>
-                  {showLinkSub ? 'Cancel' : 'Link Sub'}
-                </button>
-              </>
+              <button style={{ ...S.btn, background: '#fff7ed', color: '#c2410c', border: '1px solid #fed7aa', fontSize: 11 }} onClick={() => setShowAddSub(!showAddSub)}>
+                {showAddSub ? 'Cancel' : '+ Sub'}
+              </button>
             )}
             <button style={{ ...S.btn, ...S.btnSec, fontSize: 11 }} onClick={() => setShowCountries(!showCountries)}>
               {showCountries ? 'Hide' : 'Countries'}
@@ -214,45 +207,8 @@ export default function Categories() {
           <div style={{ marginTop: 12, padding: 12, background: '#fffbeb', borderRadius: 8, border: '1px solid #fde68a', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <input style={{ ...S.input, flex: 1, minWidth: 180 }} value={subName} onChange={e => setSubName(e.target.value)} placeholder={`New subcategory under ${cat.name}`} onKeyDown={e => e.key === 'Enter' && handleAddSub()} />
             <button style={{ ...S.btn, ...S.btnPrimary, fontSize: 12 }} onClick={handleAddSub} disabled={subSaving}>{subSaving ? 'Adding...' : 'Add Subcategory'}</button>
-            <button style={{ ...S.btn, ...S.btnSec, fontSize: 12 }} onClick={() => { setShowLinkSub(!showLinkSub); setShowAddSub(false) }}>Link Existing</button>
           </div>
         )}
-
-        {showLinkSub && (() => {
-          const existingSubs = flat.filter(c => c.parent && String(c.parent) !== String(cat._id))
-          const existingChildNames = new Set((cat.subcategories || []).map(s => s.name?.toLowerCase()))
-          const linkable = existingSubs.filter(c => !existingChildNames.has(c.name?.toLowerCase()))
-          const uniqueNames = [...new Map(linkable.map(c => [c.name?.toLowerCase(), c])).values()]
-          const handleLink = async (subcat) => {
-            setLinkSaving(true)
-            try {
-              await apiPost('/api/categories', { name: subcat.name, parent: cat._id, isPublished: true, description: subcat.description || '' })
-              showToast(`Subcategory "${subcat.name}" linked under ${cat.name}`)
-              setShowLinkSub(false)
-              await load()
-            } catch (e) { showToast(e?.message || 'Failed to link', 'error') }
-            finally { setLinkSaving(false) }
-          }
-          return (
-            <div style={{ marginTop: 12, padding: 12, background: '#f0f9ff', borderRadius: 8, border: '1px solid #bae6fd' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <p style={{ fontSize: 12, fontWeight: 700, color: '#0369a1' }}>Link existing subcategory to {cat.name}</p>
-                <button style={{ ...S.btn, ...S.btnSec, fontSize: 11, padding: '4px 10px' }} onClick={() => setShowLinkSub(false)}>Close</button>
-              </div>
-              {uniqueNames.length === 0 ? (
-                <p style={{ fontSize: 12, color: '#6b7280' }}>No other subcategories available to link</p>
-              ) : (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {uniqueNames.map(sc => (
-                    <button key={sc._id} style={{ ...S.btn, background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', fontSize: 11 }} onClick={() => handleLink(sc)} disabled={linkSaving}>
-                      + {sc.name}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )
-        })()}
 
         {showCountries && (
           <div style={{ marginTop: 12, padding: 12, background: '#f9fafb', borderRadius: 8 }}>

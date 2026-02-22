@@ -141,7 +141,6 @@ router.post(
           email: user.email,
           ...(user.role === 'seo_manager' && Array.isArray(user.seoCountries) ? { seoCountries: user.seoCountries } : {}),
           ...(user.role === 'manager' && user.managerPermissions ? { managerPermissions: user.managerPermissions } : {}),
-          ...(user.role === 'designer' && user.designerPermissions ? { designerPermissions: user.designerPermissions } : {}),
         },
       });
     } catch (err) {
