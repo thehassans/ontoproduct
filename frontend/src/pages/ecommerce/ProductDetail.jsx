@@ -9,7 +9,7 @@ import ShoppingCart from '../../components/ecommerce/ShoppingCart'
 import { trackPageView, trackProductView, trackAddToCart } from '../../utils/analytics'
 import { getCurrencyConfig, convert as fxConvert, formatMoney } from '../../util/currency'
 import FormattedPrice from '../../components/ui/FormattedPrice'
-import { resolveWarehouse } from '../../utils/warehouse'
+import { resolveWarehouse, getLocalStockByCountry } from '../../utils/warehouse'
 import { readWishlistIds, toggleWishlist } from '../../util/wishlist'
 import { getProductRating, getProductReviews, getStarArray } from '../../utils/autoReviews'
 
@@ -185,7 +185,15 @@ const ProductDetail = () => {
         const hit = Array.isArray(opts) ? opts.find((o) => String(o?.value) === selectedVal) : null
         if (hit && Number.isFinite(Number(hit.stockQty))) variantMax = Math.min(variantMax, Math.max(0, Number(hit.stockQty)))
       }
-      const fallbackMax = Number(product?.stockQty || 0)
+      let fallbackMax = Number(product?.stockQty || 0)
+      if (fallbackMax <= 0 && product?.stockByCountry && typeof product.stockByCountry === 'object') {
+        const localStock = getLocalStockByCountry(product.stockByCountry, selectedCountry)
+        if (localStock > 0) { fallbackMax = localStock }
+        else {
+          const totalStock = Object.values(product.stockByCountry).reduce((s, v) => s + Math.max(0, Number(v) || 0), 0)
+          if (totalStock > 0) fallbackMax = totalStock
+        }
+      }
       const max = variantMax !== Number.POSITIVE_INFINITY ? variantMax : fallbackMax
       if (Number.isFinite(Number(max)) && Number(max) <= 0) { toast.error('Selected option is out of stock'); return }
       const basePriceVal = Number(product?.price) || 0
@@ -666,7 +674,7 @@ const ProductDetail = () => {
                   <span className="w-12 h-11 grid place-items-center font-bold text-lg">{quantity}</span>
                   <button onClick={() => setQuantity(quantity + 1)} className="w-11 h-11 grid place-items-center text-gray-600 hover:bg-gray-200 rounded-r-2xl"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg></button>
                 </div>
-                {product.stockQty > 0 && <span className="text-xs text-gray-400">{product.stockQty} available</span>}
+                {(() => { const sq = Number(product.stockQty || 0); const lc = getLocalStockByCountry(product.stockByCountry, selectedCountry); const avail = sq > 0 ? sq : lc > 0 ? lc : 0; return avail > 0 ? <span className="text-xs text-gray-400">{avail} available</span> : null })()}
               </div>
 
               <div className="mt-auto flex gap-4">
