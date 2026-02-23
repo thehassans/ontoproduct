@@ -5,7 +5,7 @@ import { API_BASE } from '../api'
 
 export async function detectCountryCode() {
   // Supported site country codes
-  const SUPPORTED = new Set(['SA','AE','OM','BH','IN','KW','QA','PK','JO','US','GB','CA','AU'])
+  const SUPPORTED = new Set(['SA','AE','OM','BH','IN','KW','QA'])
 
   // 1) Try backend proxy (avoids CORS)
   try {

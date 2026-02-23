@@ -5,7 +5,6 @@ import { trackProductView, trackAddToCart } from '../../utils/analytics'
 import { mediaUrl } from '../../api.js'
 import { getCurrencyConfig, convert as fxConvert, formatMoney } from '../../util/currency'
 import { resolveWarehouse } from '../../utils/warehouse'
-import { getCountryPrice } from '../../utils/countryPrice'
 
 export default function ProductCard({ product, onAddToCart, selectedCountry = 'SA', selectionEnabled = false, selected = false, onToggleSelect }) {
   const navigate = useNavigate()
@@ -67,10 +66,11 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
     
     // Instant cart update for responsiveness
     try {
-        // Use country-specific price when available
-        const cp = getCountryPrice(product, selectedCountry, convertPrice)
-        const unitPrice = (cp.salePrice > 0 && cp.salePrice < cp.price) ? cp.salePrice : cp.price
-        const cartCcy = cp.isCountrySpecific ? cp.currency : (product.baseCurrency || 'SAR')
+        const basePrice = Number(product?.price) || 0
+        const salePriceVal = Number(product?.salePrice) || 0
+        const hasSale = salePriceVal > 0 && salePriceVal < basePrice
+        const discounted = Number(product?.discount) > 0 ? basePrice * (1 - Number(product.discount) / 100) : basePrice
+        const unitPrice = hasSale ? salePriceVal : discounted
         const addQty = 1
         const savedCart = localStorage.getItem('shopping_cart')
         let cartItems = savedCart ? JSON.parse(savedCart) : []
@@ -89,7 +89,7 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
           }
           const wh = resolveWarehouse(product, selectedCountry, cartItems[existingItemIndex].quantity)
           cartItems[existingItemIndex].price = unitPrice
-          cartItems[existingItemIndex].currency = cartCcy
+          cartItems[existingItemIndex].currency = product.baseCurrency || 'SAR'
           cartItems[existingItemIndex].maxStock = product.stockQty
           cartItems[existingItemIndex].stockByCountry = product.stockByCountry || cartItems[existingItemIndex].stockByCountry || {}
           cartItems[existingItemIndex].warehouseType = wh.type
@@ -102,7 +102,7 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
             id: product._id,
             name: product.name,
             price: unitPrice,
-            currency: cartCcy,
+            currency: product.baseCurrency || 'SAR',
             image: product.images?.[0] || '',
             quantity: addQty,
             maxStock: product.stockQty,
@@ -164,13 +164,11 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
   const hasDiscount = (product.discount || 0) > 0
   const isOutOfStock = !product.inStock || product.stockQty === 0
   
-  // Country-specific pricing: check priceByCountry first, then fall back
-  const countryPricing = getCountryPrice(product, selectedCountry, convertPrice)
-  const hasSalePrice = countryPricing.salePrice > 0 && countryPricing.salePrice < countryPricing.price
-  const displayPrice = hasSalePrice ? countryPricing.salePrice : countryPricing.price
-  const originalPrice = hasSalePrice ? countryPricing.price : null
+  // Sale price logic: show sale price if salePrice exists and is less than price
+  const hasSalePrice = product.salePrice != null && Number(product.salePrice) > 0 && Number(product.salePrice) < Number(product.price)
+  const displayPrice = hasSalePrice ? Number(product.salePrice) : (hasDiscount ? product.price * (1 - product.discount / 100) : Number(product.price))
+  const originalPrice = (hasSalePrice || hasDiscount) ? Number(product.price) : null
   const discountPercent = originalPrice ? Math.round(((originalPrice - displayPrice) / originalPrice) * 100) : 0
-  const cardCurrency = countryPricing.isCountrySpecific ? countryPricing.currency : getDisplayCurrency()
 
   return (
     <>
@@ -305,11 +303,11 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
           {/* Price Section - Minimal */}
           <div className="price-section-minimal">
             <span className="price-minimal">
-              {formatPrice(countryPricing.isCountrySpecific ? displayPrice : getConvertedPrice(displayPrice), cardCurrency)}
+              {formatPrice(getConvertedPrice(displayPrice), getDisplayCurrency())}
             </span>
             {originalPrice && (
               <span className="price-original-minimal">
-                {formatPrice(countryPricing.isCountrySpecific ? originalPrice : getConvertedPrice(originalPrice), cardCurrency)}
+                {formatPrice(getConvertedPrice(originalPrice), getDisplayCurrency())}
               </span>
             )}
           </div>

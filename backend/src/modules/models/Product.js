@@ -19,25 +19,6 @@ const StockByCountrySchema = new mongoose.Schema(
   { _id: false, strict: false }
 );
 
-const PriceByCountrySchema = new mongoose.Schema(
-  {
-    UAE: { price: { type: Number, default: 0 }, salePrice: { type: Number, default: 0 } },
-    Oman: { price: { type: Number, default: 0 }, salePrice: { type: Number, default: 0 } },
-    KSA: { price: { type: Number, default: 0 }, salePrice: { type: Number, default: 0 } },
-    Bahrain: { price: { type: Number, default: 0 }, salePrice: { type: Number, default: 0 } },
-    India: { price: { type: Number, default: 0 }, salePrice: { type: Number, default: 0 } },
-    Kuwait: { price: { type: Number, default: 0 }, salePrice: { type: Number, default: 0 } },
-    Qatar: { price: { type: Number, default: 0 }, salePrice: { type: Number, default: 0 } },
-    Pakistan: { price: { type: Number, default: 0 }, salePrice: { type: Number, default: 0 } },
-    Jordan: { price: { type: Number, default: 0 }, salePrice: { type: Number, default: 0 } },
-    USA: { price: { type: Number, default: 0 }, salePrice: { type: Number, default: 0 } },
-    UK: { price: { type: Number, default: 0 }, salePrice: { type: Number, default: 0 } },
-    Canada: { price: { type: Number, default: 0 }, salePrice: { type: Number, default: 0 } },
-    Australia: { price: { type: Number, default: 0 }, salePrice: { type: Number, default: 0 } },
-  },
-  { _id: false, strict: false }
-);
-
 const ProductSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
@@ -53,7 +34,6 @@ const ProductSchema = new mongoose.Schema(
     inStock: { type: Boolean, default: true },
     stockQty: { type: Number, default: 0 },
     stockByCountry: { type: StockByCountrySchema, default: () => ({}) },
-    priceByCountry: { type: PriceByCountrySchema, default: () => ({}) },
     totalPurchased: { type: Number, default: 0 }, // Total inventory purchased/added (cumulative)
     imagePath: { type: String, default: "" },
     images: [{ type: String }],

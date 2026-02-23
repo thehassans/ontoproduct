@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { apiGet, apiPost, API_BASE } from '../../api'
 import { COUNTRY_LIST, COUNTRY_TO_CURRENCY } from '../../utils/constants'
-import { getCountryPrice } from '../../utils/countryPrice'
 
 // Currency conversion via SAR (approximate)
 const SAR_TO = { SAR: 1, AED: 0.98, OMR: 0.10, BHD: 0.10, QAR: 0.97, KWD: 0.082, INR: 22.0 }
@@ -160,7 +159,7 @@ export default function Catalog(){
               <div style={{display:'grid', gap:4}}>
                 <div style={{fontWeight:800}}>{p.name}</div>
                 <div className="helper">{p.category||'Other'}</div>
-                <div style={{fontWeight:800}}>{(() => { const cp = getCountryPrice(p, country, convertPrice); const pr = (cp.salePrice > 0 && cp.salePrice < cp.price) ? cp.salePrice : cp.price; return `${cp.isCountrySpecific ? cp.currency : currency} ${(cp.isCountrySpecific ? pr : convertPrice(pr, p.baseCurrency||'SAR', currency)).toFixed(2)}` })()}</div>
+                <div style={{fontWeight:800}}>{currency} {convertPrice(Number(p.price||0), p.baseCurrency||'SAR', currency).toFixed(2)}</div>
               </div>
               <div style={{display:'flex', gap:8}}>
                 <button className="btn" onClick={()=> addToCart(p, 1)}>Add to Cart</button>
@@ -193,7 +192,7 @@ export default function Catalog(){
                   </div>
                 </div>
                 <div style={{display:'grid', gap:10}}>
-                  <div style={{fontSize:22, fontWeight:900}}>{(() => { const cp = getCountryPrice(selected, country, convertPrice); const pr = (cp.salePrice > 0 && cp.salePrice < cp.price) ? cp.salePrice : cp.price; return `${cp.isCountrySpecific ? cp.currency : currency} ${(cp.isCountrySpecific ? pr : convertPrice(pr, selected.baseCurrency||'SAR', currency)).toFixed(2)}` })()}</div>
+                  <div style={{fontSize:22, fontWeight:900}}>{currency} {convertPrice(Number(selected.price||0), selected.baseCurrency||'SAR', currency).toFixed(2)}</div>
                   <div style={{whiteSpace:'pre-wrap', opacity:0.9}}>{selected.description || 'No description'}</div>
                   <div style={{display:'flex', gap:8}}>
                     <button className="btn" onClick={()=> addToCart(selected, 1)}>Add to Cart</button>

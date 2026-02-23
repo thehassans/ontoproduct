@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { apiGet, apiPatch, apiPost, apiUploadPatch, API_BASE, clearApiCache } from '../../api'
 import { useToast } from '../../ui/Toast.jsx'
 import Modal from '../../components/Modal.jsx'
-import { getCountriesWithStock, STOCK_KEY_TO_CURRENCY } from '../../utils/countryPrice'
 
 export default function ProductDetail() {
   const { id } = useParams()
@@ -147,7 +146,6 @@ export default function ProductDetail() {
       images: product?.images || [],
       imagePath: product?.imagePath || '',
       video: product?.video || '',
-      priceByCountry: product?.priceByCountry || {},
     })
     // Reset media upload state
     setNewImages([])
@@ -343,7 +341,6 @@ export default function ProductDetail() {
         fd.append('category', editForm.category)
         fd.append('subcategory', editForm.subcategory || '')
         fd.append('brand', editForm.brand || '')
-        fd.append('priceByCountry', JSON.stringify(editForm.priceByCountry || {}))
         fd.append('baseCurrency', editForm.baseCurrency)
         fd.append('price', String(Number(editForm.price)))
         if (editForm.purchasePrice) fd.append('purchasePrice', String(Number(editForm.purchasePrice)))
@@ -385,7 +382,6 @@ export default function ProductDetail() {
           category: editForm.category,
           subcategory: editForm.subcategory || '',
           brand: editForm.brand || '',
-          priceByCountry: editForm.priceByCountry || {},
           baseCurrency: editForm.baseCurrency,
           price: Number(editForm.price),
           purchasePrice: editForm.purchasePrice ? Number(editForm.purchasePrice) : null,
@@ -2605,73 +2601,6 @@ export default function ProductDetail() {
                     />
                   </div>
                 </div>
-
-                {/* Per-Country Pricing */}
-                {(() => {
-                  const countriesWithStock = getCountriesWithStock(product)
-                  if (!countriesWithStock.length) return null
-                  return (
-                    <div style={{ marginTop: 16, padding: 16, background: '#fef3c7', borderRadius: 12, border: '1px solid #fde68a' }}>
-                      <h4 style={{ fontSize: 14, fontWeight: 700, margin: '0 0 12px', color: '#92400e' }}>
-                        🌍 Country-Specific Prices <span style={{ fontWeight: 400, fontSize: 12 }}>(countries with stock)</span>
-                      </h4>
-                      <div style={{ display: 'grid', gap: 10 }}>
-                        {countriesWithStock.map(country => {
-                          const ccy = STOCK_KEY_TO_CURRENCY[country] || 'SAR'
-                          const stock = Number(product?.stockByCountry?.[country] || 0)
-                          const entry = editForm.priceByCountry?.[country] || {}
-                          return (
-                            <div key={country} style={{ display: 'grid', gridTemplateColumns: '100px 1fr 1fr', gap: 10, alignItems: 'center' }}>
-                              <div style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>
-                                {country} <span style={{ fontSize: 11, color: '#6b7280' }}>({ccy})</span>
-                                <div style={{ fontSize: 10, color: '#9ca3af' }}>{stock} in stock</div>
-                              </div>
-                              <input
-                                type="number"
-                                placeholder={`Price (${ccy})`}
-                                value={entry.price || ''}
-                                onChange={(e) => {
-                                  const val = e.target.value
-                                  setEditForm(prev => ({
-                                    ...prev,
-                                    priceByCountry: {
-                                      ...prev.priceByCountry,
-                                      [country]: { ...(prev.priceByCountry?.[country] || {}), price: val ? Number(val) : 0 }
-                                    }
-                                  }))
-                                }}
-                                style={{ padding: '8px 10px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: 13 }}
-                                min="0"
-                                step="0.01"
-                              />
-                              <input
-                                type="number"
-                                placeholder={`Sale (${ccy})`}
-                                value={entry.salePrice || ''}
-                                onChange={(e) => {
-                                  const val = e.target.value
-                                  setEditForm(prev => ({
-                                    ...prev,
-                                    priceByCountry: {
-                                      ...prev.priceByCountry,
-                                      [country]: { ...(prev.priceByCountry?.[country] || {}), salePrice: val ? Number(val) : 0 }
-                                    }
-                                  }))
-                                }}
-                                style={{ padding: '8px 10px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: 13 }}
-                                min="0"
-                                step="0.01"
-                              />
-                            </div>
-                          )
-                        })}
-                      </div>
-                      <p style={{ fontSize: 11, color: '#92400e', marginTop: 8, marginBottom: 0 }}>
-                        Set prices in local currency for each country. Leave empty to auto-convert from base price.
-                      </p>
-                    </div>
-                  )
-                })()}
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                   <div>

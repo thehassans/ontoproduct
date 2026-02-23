@@ -13,7 +13,6 @@ import {
   mediaUrl,
 } from '../../api'
 import { getCurrencyConfig, convert as fxConvert } from '../../util/currency'
-import { STOCK_KEY_TO_CURRENCY } from '../../utils/countryPrice'
 
 // Convert ISO 3166-1 alpha-2 country code to emoji flag
 function codeToFlag(code) {
@@ -107,7 +106,6 @@ export default function InhouseProducts() {
     stockUK: 0,
     stockCanada: 0,
     stockAustralia: 0,
-    priceByCountry: {},
     // Premium E-commerce Features
     sellByBuysial: false,
     salePrice: '',
@@ -913,7 +911,18 @@ export default function InhouseProducts() {
     fd.append('stockKuwait', String(form.stockKuwait))
     fd.append('stockQatar', String(form.stockQatar))
     fd.append('stockPakistan', String(form.stockPakistan))
-    fd.append('priceByCountry', JSON.stringify(form.priceByCountry || {}))
+    fd.append('stockJordan', String(form.stockJordan))
+    fd.append('stockUSA', String(form.stockUSA))
+    fd.append('stockUK', String(form.stockUK))
+    fd.append('stockCanada', String(form.stockCanada))
+    fd.append('stockAustralia', String(form.stockAustralia))
+    fd.append('sellByBuysial', String(!!form.sellByBuysial))
+    fd.append('salePrice', form.salePrice || '')
+    fd.append('onSale', String(!!form.onSale))
+    fd.append('isBestSelling', String(!!form.isBestSelling))
+    fd.append('isFeatured', String(!!form.isFeatured))
+    fd.append('isTrending', String(!!form.isTrending))
+    fd.append('isLimitedStock', String(!!form.isLimitedStock))
     for (const f of form.images || []) fd.append('images', f)
     if (form.video) fd.append('video', form.video)
     try {
@@ -1108,7 +1117,6 @@ export default function InhouseProducts() {
       stockIndia: p.stockByCountry?.India || 0,
       stockKuwait: p.stockByCountry?.Kuwait || 0,
       stockQatar: p.stockByCountry?.Qatar || 0,
-      priceByCountry: p.priceByCountry || {},
       images: [],
     })
     setEditPreviews([])
@@ -1166,7 +1174,6 @@ export default function InhouseProducts() {
       fd.append('stockUK', String(editForm.stockUK))
       fd.append('stockCanada', String(editForm.stockCanada))
       fd.append('stockAustralia', String(editForm.stockAustralia))
-      fd.append('priceByCountry', JSON.stringify(editForm.priceByCountry || {}))
       for (const f of editForm.images || []) fd.append('images', f)
       try {
         const imgs = Array.isArray(editForm.images) ? editForm.images : []
@@ -2070,79 +2077,6 @@ export default function InhouseProducts() {
                   </div>
                 </div>
               )}
-
-              {/* Per-Country Pricing — show for countries that have stock > 0 */}
-              {(() => {
-                const countriesWithStock = form.availableCountries.filter(c => {
-                  const key = `stock${c === 'UAE' || c === 'KSA' ? c : c.replace(/\s+/g, '')}`
-                  return Number(form[key] || 0) > 0
-                })
-                if (!countriesWithStock.length) return null
-                return (
-                  <div style={{ background: '#fef3c7', padding: 16, borderRadius: 12, border: '1px solid #fde68a' }}>
-                    <div className="label" style={{ marginBottom: 12, fontWeight: 700, color: '#92400e' }}>
-                      🌍 Price by Country <span style={{ fontWeight: 400, fontSize: 12 }}>(local currency per country)</span>
-                    </div>
-                    <div style={{ display: 'grid', gap: 10 }}>
-                      {countriesWithStock.map(c => {
-                        const ccy = STOCK_KEY_TO_CURRENCY[c] || 'SAR'
-                        const stockKey = `stock${c === 'UAE' || c === 'KSA' ? c : c.replace(/\s+/g, '')}`
-                        const stock = Number(form[stockKey] || 0)
-                        const entry = form.priceByCountry?.[c] || {}
-                        return (
-                          <div key={c} style={{ display: 'grid', gridTemplateColumns: '100px 1fr 1fr', gap: 10, alignItems: 'center' }}>
-                            <div style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>
-                              {c} <span style={{ fontSize: 11, color: '#6b7280' }}>({ccy})</span>
-                              <div style={{ fontSize: 10, color: '#9ca3af' }}>{stock} in stock</div>
-                            </div>
-                            <input
-                              type="number"
-                              placeholder={`Price (${ccy})`}
-                              value={entry.price || ''}
-                              onChange={(e) => {
-                                const val = e.target.value
-                                setForm(prev => ({
-                                  ...prev,
-                                  priceByCountry: {
-                                    ...prev.priceByCountry,
-                                    [c]: { ...(prev.priceByCountry?.[c] || {}), price: val ? Number(val) : 0 }
-                                  }
-                                }))
-                              }}
-                              className="input"
-                              style={{ padding: '8px 10px', fontSize: 13 }}
-                              min="0"
-                              step="0.01"
-                            />
-                            <input
-                              type="number"
-                              placeholder={`Sale (${ccy})`}
-                              value={entry.salePrice || ''}
-                              onChange={(e) => {
-                                const val = e.target.value
-                                setForm(prev => ({
-                                  ...prev,
-                                  priceByCountry: {
-                                    ...prev.priceByCountry,
-                                    [c]: { ...(prev.priceByCountry?.[c] || {}), salePrice: val ? Number(val) : 0 }
-                                  }
-                                }))
-                              }}
-                              className="input"
-                              style={{ padding: '8px 10px', fontSize: 13 }}
-                              min="0"
-                              step="0.01"
-                            />
-                          </div>
-                        )
-                      })}
-                    </div>
-                    <div style={{ fontSize: 11, color: '#92400e', marginTop: 8 }}>
-                      Set prices in each country's local currency. Leave empty to auto-convert from base price.
-                    </div>
-                  </div>
-                )
-              })()}
 
               <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', paddingTop: 8 }}>
                 <label
@@ -4028,80 +3962,6 @@ export default function InhouseProducts() {
                   </div>
                 </div>
               )}
-
-              {/* Per-Country Pricing in Edit Modal */}
-              {(() => {
-                const countries = (editForm.availableCountries || []).filter(c => {
-                  const key = `stock${c === 'UAE' || c === 'KSA' ? c : c.replace(/\s+/g, '')}`
-                  return Number(editForm[key] || 0) > 0
-                })
-                if (!countries.length) return null
-                return (
-                  <div style={{ background: '#fef3c7', padding: 16, borderRadius: 12, border: '1px solid #fde68a', marginTop: 8 }}>
-                    <div className="label" style={{ marginBottom: 12, fontWeight: 700, color: '#92400e' }}>
-                      🌍 Price by Country <span style={{ fontWeight: 400, fontSize: 12 }}>(local currency per country)</span>
-                    </div>
-                    <div style={{ display: 'grid', gap: 10 }}>
-                      {countries.map(c => {
-                        const ccy = STOCK_KEY_TO_CURRENCY[c] || 'SAR'
-                        const stockKey = `stock${c === 'UAE' || c === 'KSA' ? c : c.replace(/\s+/g, '')}`
-                        const stock = Number(editForm[stockKey] || 0)
-                        const entry = editForm.priceByCountry?.[c] || {}
-                        return (
-                          <div key={c} style={{ display: 'grid', gridTemplateColumns: '100px 1fr 1fr', gap: 10, alignItems: 'center' }}>
-                            <div style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>
-                              {c} <span style={{ fontSize: 11, color: '#6b7280' }}>({ccy})</span>
-                              <div style={{ fontSize: 10, color: '#9ca3af' }}>{stock} in stock</div>
-                            </div>
-                            <input
-                              type="number"
-                              placeholder={`Price (${ccy})`}
-                              value={entry.price || ''}
-                              onChange={(e) => {
-                                const val = e.target.value
-                                setEditForm(prev => ({
-                                  ...prev,
-                                  priceByCountry: {
-                                    ...prev.priceByCountry,
-                                    [c]: { ...(prev.priceByCountry?.[c] || {}), price: val ? Number(val) : 0 }
-                                  }
-                                }))
-                              }}
-                              className="input"
-                              style={{ padding: '8px 10px', fontSize: 13 }}
-                              min="0"
-                              step="0.01"
-                            />
-                            <input
-                              type="number"
-                              placeholder={`Sale (${ccy})`}
-                              value={entry.salePrice || ''}
-                              onChange={(e) => {
-                                const val = e.target.value
-                                setEditForm(prev => ({
-                                  ...prev,
-                                  priceByCountry: {
-                                    ...prev.priceByCountry,
-                                    [c]: { ...(prev.priceByCountry?.[c] || {}), salePrice: val ? Number(val) : 0 }
-                                  }
-                                }))
-                              }}
-                              className="input"
-                              style={{ padding: '8px 10px', fontSize: 13 }}
-                              min="0"
-                              step="0.01"
-                            />
-                          </div>
-                        )
-                      })}
-                    </div>
-                    <div style={{ fontSize: 11, color: '#92400e', marginTop: 8 }}>
-                      Set prices in each country's local currency. Leave empty to auto-convert from base price.
-                    </div>
-                  </div>
-                )
-              })()}
-
               <div>
                 <div className="label">Availability Countries</div>
                 <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
