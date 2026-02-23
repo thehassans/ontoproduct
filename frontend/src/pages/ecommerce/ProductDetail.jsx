@@ -12,7 +12,7 @@ import FormattedPrice from '../../components/ui/FormattedPrice'
 import { resolveWarehouse } from '../../utils/warehouse'
 import { readWishlistIds, toggleWishlist } from '../../util/wishlist'
 import { getProductRating, getProductReviews, getStarArray } from '../../utils/autoReviews'
-import { getCountryPrice } from '../../utils/countryPrice'
+import { getCountryPrice, CODE_TO_STOCK_KEY } from '../../utils/countryPrice'
 
 const ProductDetail = () => {
   const { id } = useParams()
@@ -45,6 +45,18 @@ const ProductDetail = () => {
       if (alive) setCcyCfg(cfg)
     }).catch(() => {})
     return () => { alive = false }
+  }, [])
+
+  // Auto-detect country for new/external visitors
+  useEffect(() => {
+    const saved = localStorage.getItem('selected_country')
+    if (saved) return
+    detectCountryCode().then(code => {
+      if (code) {
+        setSelectedCountry(code)
+        try { localStorage.setItem('selected_country', code) } catch {}
+      }
+    }).catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -186,8 +198,10 @@ const ProductDetail = () => {
         const hit = Array.isArray(opts) ? opts.find((o) => String(o?.value) === selectedVal) : null
         if (hit && Number.isFinite(Number(hit.stockQty))) variantMax = Math.min(variantMax, Math.max(0, Number(hit.stockQty)))
       }
-      const fallbackMax = Number(product?.stockQty || 0)
-      const max = variantMax !== Number.POSITIVE_INFINITY ? variantMax : fallbackMax
+      const stockKey = CODE_TO_STOCK_KEY[selectedCountry] || selectedCountry
+      const countryStock = Number(product?.stockByCountry?.[stockKey] || 0)
+      const fallbackMax = countryStock > 0 ? countryStock : Number(product?.stockQty || 0)
+      const max = variantMax !== Number.POSITIVE_INFINITY ? variantMax : (fallbackMax > 0 ? fallbackMax : 999)
       if (Number.isFinite(Number(max)) && Number(max) <= 0) { toast.error('Selected option is out of stock'); return }
       // Use country-specific price when available
       const cp = getCountryPrice(product, selectedCountry, convertPrice)
@@ -297,9 +311,6 @@ const ProductDetail = () => {
   const waNumber = sanitizeWhatsAppNumber(product?.whatsappNumber)
   const waImage = toAbsoluteUrl((images && images.length ? images[0] : resolveImageUrl(product?.imagePath)) || '')
   const waProductUrl = (() => { try { return window.location.href } catch { return '' } })()
-  const waText = (() => { try { return encodeURIComponent(`Product: ${product?.name || ''}\nImage: ${waImage}\nLink: ${waProductUrl}`) } catch { return '' } })()
-  const waUrl = waNumber ? `https://wa.me/${waNumber}?text=${waText}` : ''
-
   // Country-specific pricing: check priceByCountry first, then fall back to base price
   const countryPricing = getCountryPrice(product, selectedCountry, convertPrice)
   const basePrice = countryPricing.price
@@ -343,6 +354,10 @@ const ProductDetail = () => {
   // Legacy string fallbacks for places that still use text
   const priceDisplay = formatPrice(priceConverted, dispCcy)
   const origPriceDisplay = origPriceConverted ? formatPrice(origPriceConverted, dispCcy) : null
+
+  // WhatsApp share message (premium format with image + link)
+  const waText = (() => { try { return encodeURIComponent(`🛒 *${product?.name || ''}*\n\n💰 Price: ${priceDisplay}${origPriceDisplay ? ` ~${origPriceDisplay}~` : ''}\n\n🔗 ${waProductUrl}\n\n📸 ${waImage}\n\n✅ Shop now on BuySial — Fast delivery & Buyer Protection`) } catch { return '' } })()
+  const waUrl = waNumber ? `https://wa.me/${waNumber}?text=${waText}` : ''
 
   // --- Variant Selector Component ---
   const VariantSelector = ({ excludeColor }) => {
@@ -586,23 +601,23 @@ const ProductDetail = () => {
 
         {/* Mobile Bottom Bar - Glassmorphism */}
         <div className="fixed bottom-0 left-0 right-0 z-50" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0)' }}>
-          <div className="bg-white/80 backdrop-blur-xl mx-2 mb-2 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.12)] border border-white/60 px-2.5 py-2 flex items-center gap-1.5">
+          <div className="bg-white/80 backdrop-blur-xl mx-2 mb-2 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.12)] border border-white/60 px-2 py-2 flex items-center gap-1">
             {/* Qty selector */}
             <div className="flex items-center bg-gray-100/80 rounded-lg flex-shrink-0">
-              <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-7 h-8 grid place-items-center text-gray-600 active:bg-gray-200 rounded-l-lg"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M20 12H4" /></svg></button>
-              <span className="w-6 h-8 grid place-items-center font-bold text-xs text-gray-900">{quantity}</span>
-              <button onClick={() => setQuantity(quantity + 1)} className="w-7 h-8 grid place-items-center text-gray-600 active:bg-gray-200 rounded-r-lg"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg></button>
+              <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-6 h-8 grid place-items-center text-gray-600 active:bg-gray-200 rounded-l-lg"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M20 12H4" /></svg></button>
+              <span className="w-5 h-8 grid place-items-center font-bold text-xs text-gray-900">{quantity}</span>
+              <button onClick={() => setQuantity(quantity + 1)} className="w-6 h-8 grid place-items-center text-gray-600 active:bg-gray-200 rounded-r-lg"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg></button>
             </div>
             {/* Price */}
-            <div className="flex-shrink-0 min-w-0 truncate">
-              <FormattedPrice amount={priceConverted} currency={dispCcy} size={12} className="text-gray-900 font-bold text-sm tabular-nums" />
-              {origPriceConverted && <span className="text-gray-400 text-[9px] line-through ml-0.5"><FormattedPrice amount={origPriceConverted} currency={dispCcy} size={8} /></span>}
+            <div className="flex-shrink min-w-0 truncate">
+              <FormattedPrice amount={priceConverted} currency={dispCcy} size={11} className="text-gray-900 font-bold text-xs tabular-nums" />
+              {origPriceConverted && <span className="text-gray-400 text-[8px] line-through ml-0.5"><FormattedPrice amount={origPriceConverted} currency={dispCcy} size={7} /></span>}
             </div>
             {/* Add to cart + WhatsApp */}
-            <div className="flex-1 flex gap-1 justify-end min-w-0">
-              <button onClick={handleAddToCart} className="flex-1 min-w-0 max-w-[130px] bg-gradient-to-r from-orange-500 to-orange-400 text-white font-semibold py-2.5 rounded-xl shadow-lg shadow-orange-500/25 active:scale-[0.98] transition-all flex items-center justify-center gap-1 text-xs">
+            <div className="flex gap-1 justify-end flex-shrink-0">
+              <button onClick={handleAddToCart} className="bg-gradient-to-r from-orange-500 to-orange-400 text-white font-semibold py-2.5 px-3 rounded-xl shadow-lg shadow-orange-500/25 active:scale-[0.98] transition-all flex items-center justify-center gap-1 text-xs whitespace-nowrap">
                 <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-                <span className="truncate">Add to cart</span>
+                <span>Add</span>
               </button>
               {waUrl && <a href={waUrl} target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-green-500 text-white rounded-xl grid place-items-center shadow-lg flex-shrink-0"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d={waPath} /></svg></a>}
             </div>
