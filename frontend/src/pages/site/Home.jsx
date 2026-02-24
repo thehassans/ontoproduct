@@ -272,16 +272,16 @@ export default function Home(){
                 </button>
               ))}
             </div>
-            {/* 3-dot menu — fixed right */}
+            {/* Hamburger menu — fixed right */}
             <div style={{ flexShrink: 0, padding: '0 10px' }}>
               <button
-                onClick={() => navigate('/categories')}
+                onClick={() => setMobileMenuOpen(true)}
                 className="w-9 h-9 rounded-full flex items-center justify-center transition-colors"
                 style={{ background: 'rgba(255,255,255,0.15)' }}
-                title="All categories"
+                title="Menu"
               >
-                <svg className="w-5 h-5" style={{ color: '#fff' }} fill="currentColor" viewBox="0 0 24 24">
-                  <circle cx="5" cy="12" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="19" cy="12" r="2" />
+                <svg className="w-5 h-5" style={{ color: '#fff' }} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <line x1="4" y1="7" x2="20" y2="7" /><line x1="4" y1="12" x2="20" y2="12" /><line x1="4" y1="17" x2="20" y2="17" />
                 </svg>
               </button>
             </div>
@@ -294,14 +294,8 @@ export default function Home(){
       {/* Hero Banner — pulled up 44px behind the transparent nav */}
       <div className="relative lg:hidden" style={{ marginTop: catNav.enabled && catNav.categories.length > 0 ? '-44px' : 0 }}>
         <PremiumHeroBanner />
-        {/* Floating hamburger + search + cart on banner */}
-        <div className="absolute left-3 right-3 z-30 flex items-center justify-between pointer-events-none" style={{ top: catNav.enabled && catNav.categories.length > 0 ? '56px' : '12px' }}>
-          <button
-            onClick={() => setMobileMenuOpen(true)}
-            className="pointer-events-auto w-10 h-10 rounded-full bg-white/80 backdrop-blur-md shadow-sm flex items-center justify-center active:scale-95 transition-transform"
-          >
-            <svg className="w-5 h-5 text-gray-800" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><line x1="4" y1="7" x2="20" y2="7" /><line x1="4" y1="12" x2="20" y2="12" /><line x1="4" y1="17" x2="20" y2="17" /></svg>
-          </button>
+        {/* Floating search + cart on banner */}
+        <div className="absolute right-3 z-30 flex items-center pointer-events-none" style={{ top: catNav.enabled && catNav.categories.length > 0 ? '56px' : '12px' }}>
           <div className="flex items-center gap-2 pointer-events-auto">
             <button
               onClick={() => { setMobileSearchOpen(prev => !prev); setTimeout(() => searchInputRef.current?.focus(), 100) }}
