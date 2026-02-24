@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { COUNTRY_LIST } from '../../utils/constants'
 import { useCountry } from '../../contexts/CountryContext'
 import { readWishlistIds, syncWishlistFromServer } from '../../util/wishlist'
+import { apiGet } from '../../api.js'
 
 const countries = [
   { code: 'AE', name: 'UAE', flag: '🇦🇪', currency: 'AED' },
@@ -85,6 +86,7 @@ const getCustomer = () => {
 }
 
 export default function Header({ onCartClick, editMode = false, editState = {}, onExitEdit = null }) {
+  const [annBar, setAnnBar] = useState(null) // { text, bg, color }
   const [cartCount, setCartCount] = useState(0)
   const [cartImage, setCartImage] = useState(null)
   const [wishlistCount, setWishlistCount] = useState(() => {
@@ -100,6 +102,27 @@ export default function Header({ onCartClick, editMode = false, editState = {}, 
   const [isCountryOpen, setIsCountryOpen] = useState(false)
   const { country: selectedCountry, setCountry: setSelectedCountry } = useCountry()
   const countryRef = useRef(null)
+
+  useEffect(() => {
+    // Load announcement bar from API
+    let alive = true
+    apiGet('/api/settings/website/content?page=home').then(res => {
+      if (!alive) return
+      const els = Array.isArray(res?.content?.elements) ? res.content.elements : []
+      const get = (id, fb) => { const e = els.find(x => x?.id === id); return typeof e?.text === 'string' ? e.text : fb }
+      const enabled = get('annBar_enabled', 'true') !== 'false'
+      if (enabled) {
+        setAnnBar({
+          text: get('annBar_text', ''),
+          bg: get('annBar_bg', '#111827'),
+          color: get('annBar_color', '#ffffff'),
+        })
+      } else {
+        setAnnBar(null)
+      }
+    }).catch(() => {})
+    return () => { alive = false }
+  }, [])
 
   useEffect(() => {
     // Initial cart count load
@@ -181,6 +204,23 @@ export default function Header({ onCartClick, editMode = false, editState = {}, 
   }
 
   return (
+    <>
+    {annBar?.text && (
+      <div style={{
+        background: annBar.bg || '#111827',
+        color: annBar.color || '#fff',
+        textAlign: 'center',
+        padding: '8px 16px',
+        fontSize: 13,
+        fontWeight: 500,
+        letterSpacing: '0.01em',
+        lineHeight: 1.4,
+        position: 'relative',
+        zIndex: 1001,
+      }}>
+        {annBar.text}
+      </div>
+    )}
     <header className="ecommerce-header">
       <div className="header-container">
         <div className="header-left">
@@ -1205,5 +1245,6 @@ export default function Header({ onCartClick, editMode = false, editState = {}, 
         }
       `}</style>
     </header>
+    </>
   )
 }

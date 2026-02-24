@@ -124,11 +124,30 @@ export default function Categories() {
     const [showCountries, setShowCountries] = useState(false)
     const [showManagers, setShowManagers] = useState(false)
     const [showAddSub, setShowAddSub] = useState(false)
+    const [showCopySub, setShowCopySub] = useState(false)
     const [subName, setSubName] = useState('')
     const [subSaving, setSubSaving] = useState(false)
+    const [copySaving, setCopySaving] = useState(false)
     const [imgUploading, setImgUploading] = useState(false)
     const imgInputRef = useRef(null)
     const unpub = cat.unpublishedCountries || []
+
+    // Copy subcategories from another top-level category
+    const handleCopySubsFrom = async (srcCat) => {
+      const subs = (srcCat.subcategories || []).filter(s => s?.name)
+      if (!subs.length) return showToast(`"${srcCat.name}" has no subcategories`, 'error')
+      setCopySaving(true)
+      try {
+        const existingNames = new Set((cat.subcategories || []).map(s => String(s.name).toLowerCase()))
+        const toCreate = subs.filter(s => !existingNames.has(String(s.name).toLowerCase()))
+        if (!toCreate.length) { showToast('All subcategories already exist here'); setCopySaving(false); return }
+        await Promise.all(toCreate.map(s => apiPost('/api/categories', { name: s.name, parent: cat._id, isPublished: true })))
+        showToast(`Copied ${toCreate.length} subcategories from "${srcCat.name}"`)
+        setShowCopySub(false)
+        await load()
+      } catch (e) { showToast(e?.message || 'Copy failed', 'error') }
+      finally { setCopySaving(false) }
+    }
 
     const handleImageUpload = async (e) => {
       const file = e.target.files?.[0]
@@ -181,9 +200,14 @@ export default function Categories() {
               {imgUploading ? 'Uploading...' : (cat.image ? 'Change Img' : 'Add Image')}
             </button>
             {depth === 0 && (
-              <button style={{ ...S.btn, background: '#fff7ed', color: '#c2410c', border: '1px solid #fed7aa', fontSize: 11 }} onClick={() => setShowAddSub(!showAddSub)}>
-                {showAddSub ? 'Cancel' : '+ Sub'}
-              </button>
+              <>
+                <button style={{ ...S.btn, background: '#fff7ed', color: '#c2410c', border: '1px solid #fed7aa', fontSize: 11 }} onClick={() => { setShowAddSub(!showAddSub); setShowCopySub(false) }}>
+                  {showAddSub ? 'Cancel' : '+ Sub'}
+                </button>
+                <button style={{ ...S.btn, background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0', fontSize: 11 }} onClick={() => { setShowCopySub(!showCopySub); setShowAddSub(false) }}>
+                  {showCopySub ? 'Cancel' : 'Copy Subs'}
+                </button>
+              </>
             )}
             <button style={{ ...S.btn, ...S.btnSec, fontSize: 11 }} onClick={() => setShowCountries(!showCountries)}>
               {showCountries ? 'Hide' : 'Countries'}
@@ -207,6 +231,28 @@ export default function Categories() {
           <div style={{ marginTop: 12, padding: 12, background: '#fffbeb', borderRadius: 8, border: '1px solid #fde68a', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <input style={{ ...S.input, flex: 1, minWidth: 180 }} value={subName} onChange={e => setSubName(e.target.value)} placeholder={`New subcategory under ${cat.name}`} onKeyDown={e => e.key === 'Enter' && handleAddSub()} />
             <button style={{ ...S.btn, ...S.btnPrimary, fontSize: 12 }} onClick={handleAddSub} disabled={subSaving}>{subSaving ? 'Adding...' : 'Add Subcategory'}</button>
+          </div>
+        )}
+
+        {showCopySub && (
+          <div style={{ marginTop: 12, padding: 14, background: '#f0fdf4', borderRadius: 8, border: '1px solid #bbf7d0' }}>
+            <p style={{ fontSize: 12, fontWeight: 700, color: '#15803d', marginBottom: 10 }}>Copy subcategories from another category into "{cat.name}":</p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {categories.filter(c => String(c._id) !== String(cat._id) && (c.subcategories || []).length > 0).map(srcCat => (
+                <button
+                  key={srcCat._id}
+                  onClick={() => handleCopySubsFrom(srcCat)}
+                  disabled={copySaving}
+                  style={{ ...S.btn, background: '#fff', border: '1px solid #d1fae5', fontSize: 12, color: '#111827', display: 'flex', alignItems: 'center', gap: 6 }}
+                >
+                  <span style={{ fontWeight: 700 }}>{srcCat.name}</span>
+                  <span style={{ color: '#6b7280', fontWeight: 400 }}>({srcCat.subcategories.length} subs: {srcCat.subcategories.slice(0,3).map(s=>s.name).join(', ')}{srcCat.subcategories.length > 3 ? '…' : ''})</span>
+                </button>
+              ))}
+              {categories.filter(c => String(c._id) !== String(cat._id) && (c.subcategories || []).length > 0).length === 0 && (
+                <p style={{ fontSize: 12, color: '#6b7280' }}>No other categories have subcategories yet. Add subcategories to another category first.</p>
+              )}
+            </div>
           </div>
         )}
 

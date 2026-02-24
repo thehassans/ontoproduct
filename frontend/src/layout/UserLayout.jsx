@@ -503,6 +503,18 @@ export default function UserLayout() {
       ),
     },
     {
+      to: '/user/home-header',
+      label: 'Home Header',
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="3" width="18" height="4" rx="1" />
+          <path d="M3 10h18" />
+          <path d="M3 14h10" />
+          <path d="M3 18h14" />
+        </svg>
+      ),
+    },
+    {
       to: '/user/product-headline',
       label: 'Product Headline',
       icon: (
