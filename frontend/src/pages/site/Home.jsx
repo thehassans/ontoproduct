@@ -28,6 +28,7 @@ export default function Home(){
   const [catNav, setCatNav] = useState({ enabled: false, categories: [] })
   const [activeCat, setActiveCat] = useState('All')
   const [annBar, setAnnBar] = useState(null)
+  const [navScrolled, setNavScrolled] = useState(false)
   const [homeHeadline, setHomeHeadline] = useState({
     enabled: true,
     badge: 'Premium Shopping',
@@ -185,6 +186,12 @@ export default function Home(){
     return () => clearInterval(timer)
   }, [categoryNames])
 
+  useEffect(() => {
+    const onScroll = () => setNavScrolled(window.scrollY > 20)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
   // Track cart count updates
   useEffect(() => {
     const update = () => { try { const c = JSON.parse(localStorage.getItem('shopping_cart') || '[]'); setCartCount(c.reduce((s, i) => s + (i.quantity || 1), 0)) } catch { setCartCount(0) } }
@@ -221,9 +228,23 @@ export default function Home(){
         <Header onCartClick={() => setIsCartOpen(true)} />
       </div>
 
-      {/* ── Shopee-style Category Nav Bar ── */}
+      {/* ── Category Nav Bar ── transparent overlay on hero, glassmorphism when scrolled */}
       {catNav.enabled && catNav.categories.length > 0 && (
-        <div className="bg-white border-b border-gray-100 shadow-sm" style={{ position: 'relative', zIndex: 30 }}>
+        <div
+          className="sticky top-0 z-40"
+          style={{
+            background: navScrolled ? 'rgba(8,8,18,0.72)' : 'transparent',
+            backdropFilter: navScrolled ? 'blur(18px)' : 'none',
+            WebkitBackdropFilter: navScrolled ? 'blur(18px)' : 'none',
+            transition: 'background 0.3s, backdrop-filter 0.3s',
+          }}
+        >
+          {/* BuySial logo — appears when scrolled */}
+          {navScrolled && (
+            <div style={{ padding: '8px 14px 0', display: 'flex', alignItems: 'center' }}>
+              <img src="/BuySial2.png" alt="BuySial" style={{ height: 20, objectFit: 'contain', filter: 'brightness(0) invert(1)', opacity: 0.92 }} />
+            </div>
+          )}
           <div className="max-w-7xl mx-auto">
             <div className="flex items-center overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
               {['All', ...catNav.categories].map((cat, i) => (
@@ -234,10 +255,12 @@ export default function Home(){
                     if (cat === 'All') { navigate('/catalog') }
                     else { navigate(`/catalog?category=${encodeURIComponent(cat)}`) }
                   }}
-                  className="flex-shrink-0 px-4 py-3 text-sm font-semibold whitespace-nowrap transition-all"
+                  className="flex-shrink-0 px-4 py-3 text-sm font-semibold whitespace-nowrap"
                   style={{
-                    color: activeCat === cat ? '#111827' : '#6b7280',
-                    borderBottom: activeCat === cat ? '2px solid #111827' : '2px solid transparent',
+                    color: activeCat === cat ? '#ffffff' : 'rgba(255,255,255,0.72)',
+                    borderBottom: activeCat === cat ? '2px solid #ffffff' : '2px solid transparent',
+                    textShadow: navScrolled ? 'none' : '0 1px 4px rgba(0,0,0,0.45)',
+                    transition: 'color 0.2s, border-color 0.2s',
                   }}
                 >
                   {cat}
@@ -246,10 +269,11 @@ export default function Home(){
               <div className="ml-auto flex-shrink-0 pl-2 pr-3">
                 <button
                   onClick={() => navigate('/categories')}
-                  className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-gray-100 active:bg-gray-200 transition-colors"
+                  className="w-9 h-9 rounded-full flex items-center justify-center transition-colors"
+                  style={{ background: 'rgba(255,255,255,0.15)' }}
                   title="All categories"
                 >
-                  <svg className="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5" style={{ color: '#fff' }} fill="currentColor" viewBox="0 0 24 24">
                     <circle cx="5" cy="12" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="19" cy="12" r="2" />
                   </svg>
                 </button>
@@ -261,11 +285,11 @@ export default function Home(){
 
       <h1 className="sr-only">BuySial Commerce</h1>
 
-      {/* Hero Banner with floating controls inside */}
-      <div className="relative lg:hidden">
+      {/* Hero Banner — pulled up 44px behind the transparent nav */}
+      <div className="relative lg:hidden" style={{ marginTop: catNav.enabled && catNav.categories.length > 0 ? '-44px' : 0 }}>
         <PremiumHeroBanner />
         {/* Floating hamburger + search + cart on banner */}
-        <div className="absolute top-3 left-3 right-3 z-30 flex items-center justify-between pointer-events-none">
+        <div className="absolute left-3 right-3 z-30 flex items-center justify-between pointer-events-none" style={{ top: catNav.enabled && catNav.categories.length > 0 ? '56px' : '12px' }}>
           <button
             onClick={() => setMobileMenuOpen(true)}
             className="pointer-events-auto w-10 h-10 rounded-full bg-white/80 backdrop-blur-md shadow-sm flex items-center justify-center active:scale-95 transition-transform"
