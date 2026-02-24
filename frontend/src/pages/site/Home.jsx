@@ -239,14 +239,15 @@ export default function Home(){
             transition: 'background 0.3s, backdrop-filter 0.3s',
           }}
         >
-          {/* BuySial logo — appears when scrolled */}
-          {navScrolled && (
-            <div style={{ padding: '8px 14px 0', display: 'flex', alignItems: 'center' }}>
-              <img src="/BuySial2.png" alt="BuySial" style={{ height: 20, objectFit: 'contain', filter: 'brightness(0) invert(1)', opacity: 0.92 }} />
-            </div>
-          )}
-          <div className="max-w-7xl mx-auto">
-            <div className="flex items-center overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+          <div className="flex items-center" style={{ minHeight: 44 }}>
+            {/* BuySial logo — inline left, visible when scrolled */}
+            {navScrolled && (
+              <div style={{ flexShrink: 0, padding: '0 10px 0 14px', display: 'flex', alignItems: 'center' }}>
+                <img src="/BuySial2.png" alt="BuySial" style={{ height: 22, objectFit: 'contain', filter: 'brightness(0) invert(1)', opacity: 0.92 }} />
+              </div>
+            )}
+            {/* Scrollable category tabs */}
+            <div className="flex items-center overflow-x-auto flex-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
               {['All', ...catNav.categories].map((cat, i) => (
                 <button
                   key={i}
@@ -255,8 +256,9 @@ export default function Home(){
                     if (cat === 'All') { navigate('/catalog') }
                     else { navigate(`/catalog?category=${encodeURIComponent(cat)}`) }
                   }}
-                  className="flex-shrink-0 px-4 py-3 text-sm font-semibold whitespace-nowrap"
+                  className="flex-shrink-0 px-4 text-sm font-semibold whitespace-nowrap"
                   style={{
+                    height: 44,
                     color: activeCat === cat ? '#ffffff' : 'rgba(255,255,255,0.72)',
                     borderBottom: activeCat === cat ? '2px solid #ffffff' : '2px solid transparent',
                     textShadow: navScrolled ? 'none' : '0 1px 4px rgba(0,0,0,0.45)',
@@ -266,18 +268,19 @@ export default function Home(){
                   {cat}
                 </button>
               ))}
-              <div className="ml-auto flex-shrink-0 pl-2 pr-3">
-                <button
-                  onClick={() => navigate('/categories')}
-                  className="w-9 h-9 rounded-full flex items-center justify-center transition-colors"
-                  style={{ background: 'rgba(255,255,255,0.15)' }}
-                  title="All categories"
-                >
-                  <svg className="w-5 h-5" style={{ color: '#fff' }} fill="currentColor" viewBox="0 0 24 24">
-                    <circle cx="5" cy="12" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="19" cy="12" r="2" />
-                  </svg>
-                </button>
-              </div>
+            </div>
+            {/* 3-dot menu — fixed right */}
+            <div style={{ flexShrink: 0, padding: '0 10px' }}>
+              <button
+                onClick={() => navigate('/categories')}
+                className="w-9 h-9 rounded-full flex items-center justify-center transition-colors"
+                style={{ background: 'rgba(255,255,255,0.15)' }}
+                title="All categories"
+              >
+                <svg className="w-5 h-5" style={{ color: '#fff' }} fill="currentColor" viewBox="0 0 24 24">
+                  <circle cx="5" cy="12" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="19" cy="12" r="2" />
+                </svg>
+              </button>
             </div>
           </div>
         </div>
