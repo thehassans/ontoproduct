@@ -589,13 +589,13 @@ const ProductDetail = () => {
         </div>
 
         {/* Mobile Bottom Bar - Glassmorphism */}
-        <div className="fixed bottom-0 left-0 right-0 z-50" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0)' }}>
+        <div className="fixed bottom-0 left-0 right-0 z-50" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 4px)', touchAction: 'manipulation' }}>
           <div className="bg-white/80 backdrop-blur-xl mx-2 mb-2 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.12)] border border-white/60 px-2.5 py-2 flex items-center gap-1.5">
             {/* Qty selector */}
             <div className="flex items-center bg-gray-100/80 rounded-lg flex-shrink-0">
-              <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-7 h-8 grid place-items-center text-gray-600 active:bg-gray-200 rounded-l-lg"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M20 12H4" /></svg></button>
+              <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} style={{ touchAction: 'manipulation' }} className="w-7 h-8 grid place-items-center text-gray-600 active:bg-gray-200 rounded-l-lg"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M20 12H4" /></svg></button>
               <span className="w-6 h-8 grid place-items-center font-bold text-xs text-gray-900">{quantity}</span>
-              <button onClick={() => setQuantity(quantity + 1)} className="w-7 h-8 grid place-items-center text-gray-600 active:bg-gray-200 rounded-r-lg"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg></button>
+              <button type="button" onClick={() => setQuantity(quantity + 1)} style={{ touchAction: 'manipulation' }} className="w-7 h-8 grid place-items-center text-gray-600 active:bg-gray-200 rounded-r-lg"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg></button>
             </div>
             {/* Price */}
             <div className="flex-shrink-0 min-w-0 truncate">
@@ -604,7 +604,7 @@ const ProductDetail = () => {
             </div>
             {/* Add to cart + WhatsApp */}
             <div className="flex-1 flex gap-1 justify-end min-w-0">
-              <button onClick={handleAddToCart} className="flex-1 min-w-0 max-w-[130px] bg-gradient-to-r from-orange-500 to-orange-400 text-white font-semibold py-2.5 rounded-xl shadow-lg shadow-orange-500/25 active:scale-[0.98] transition-all flex items-center justify-center gap-1 text-xs">
+              <button type="button" onClick={() => { handleAddToCart(); setTimeout(() => navigate('/cart'), 150) }} style={{ touchAction: 'manipulation' }} className="flex-1 min-w-0 max-w-[130px] bg-gradient-to-r from-orange-500 to-orange-400 text-white font-semibold py-2.5 rounded-xl shadow-lg shadow-orange-500/25 active:scale-[0.98] transition-all flex items-center justify-center gap-1 text-xs">
                 <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                 <span className="truncate">Add to cart</span>
               </button>

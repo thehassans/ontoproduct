@@ -914,6 +914,7 @@ export default function Header({ onCartClick, editMode = false, editState = {}, 
           display: flex;
           flex-direction: column;
           animation: slideIn 0.3s ease;
+          z-index: 1;
         }
 
         @keyframes slideIn {
