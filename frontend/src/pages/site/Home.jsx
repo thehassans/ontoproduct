@@ -242,8 +242,11 @@ export default function Home(){
           <div className="flex items-center" style={{ minHeight: 44 }}>
             {/* BuySial logo — inline left, visible when scrolled */}
             {navScrolled && (
-              <div style={{ flexShrink: 0, padding: '0 10px 0 14px', display: 'flex', alignItems: 'center' }}>
-                <img src="/BuySial2.png" alt="BuySial" style={{ height: 22, objectFit: 'contain', filter: 'brightness(0) invert(1)', opacity: 0.92 }} />
+              <div style={{ flexShrink: 0, padding: '0 8px 0 12px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <img src="/logo.png" alt="" style={{ height: 26, width: 26, objectFit: 'contain', borderRadius: '50%' }} />
+                <span style={{ fontWeight: 800, fontSize: 15, letterSpacing: '-0.3px', lineHeight: 1, whiteSpace: 'nowrap' }}>
+                  <span style={{ color: '#fff' }}>buy</span><span style={{ color: '#f97316' }}>sial</span>
+                </span>
               </div>
             )}
             {/* Scrollable category tabs */}
