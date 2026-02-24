@@ -19,10 +19,27 @@ export default function CartPage() {
   })
   const [cartLoaded, setCartLoaded] = useState(false)
   const [cartKey, setCartKey] = useState(0) // Force re-render key
+  const [annBar, setAnnBar] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
   const toast = useToast()
   const navigate = useNavigate()
   const routeLocation = useLocation()
+
+  useEffect(() => {
+    let alive = true
+    ;(async () => {
+      try {
+        const res = await apiGet('/api/settings/website/content?page=home')
+        if (!alive) return
+        const elements = Array.isArray(res?.content?.elements) ? res.content.elements : []
+        const getText = (id, fb = '') => { const el = elements.find(e => e?.id === id); return typeof el?.text === 'string' ? el.text : fb }
+        if (getText('annBar_enabled', 'true') !== 'false' && getText('annBar_text', '')) {
+          setAnnBar({ text: getText('annBar_text', ''), bg: getText('annBar_bg', '#111827'), color: getText('annBar_color', '#ffffff') })
+        }
+      } catch {}
+    })()
+    return () => { alive = false }
+  }, [])
   const [form, setForm] = useState(() => {
     let c = 'GB'
     try { c = localStorage.getItem('selected_country') || 'GB' } catch {}
@@ -1210,7 +1227,12 @@ export default function CartPage() {
       <div className="hidden lg:block">
         <Header />
       </div>
-      
+      {/* Announcement bar */}
+      {annBar?.text && (
+        <div className="lg:hidden" style={{ background: annBar.bg || '#111827', color: annBar.color || '#fff', textAlign: 'center', padding: '8px 16px', fontSize: 12, fontWeight: 500, letterSpacing: '0.01em' }}>
+          {annBar.text}
+        </div>
+      )}
       {/* Mobile: ultra minimal header */}
       <div className="lg:hidden" style={{ background: '#fff', borderBottom: '1px solid #f1f5f9', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
         <button onClick={() => navigate(-1)} style={{ width: 36, height: 36, borderRadius: '50%', background: '#f8fafc', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>

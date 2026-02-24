@@ -272,15 +272,8 @@ export default function Home(){
                 </button>
               ))}
             </div>
-            {/* Search + Cart + Hamburger — fixed right */}
+            {/* Cart + Hamburger — fixed right */}
             <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4, paddingRight: 8 }}>
-              <button
-                onClick={() => { setMobileSearchOpen(prev => !prev); setTimeout(() => searchInputRef.current?.focus(), 100) }}
-                className="w-9 h-9 rounded-full flex items-center justify-center transition-colors"
-                style={{ background: 'rgba(255,255,255,0.15)' }}
-              >
-                <svg className="w-4 h-4" style={{ color: '#fff' }} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
-              </button>
               <button
                 onClick={() => navigate('/cart')}
                 className="w-9 h-9 rounded-full flex items-center justify-center transition-colors relative"
