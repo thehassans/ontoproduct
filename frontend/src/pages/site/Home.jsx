@@ -27,6 +27,7 @@ export default function Home(){
   const [cartCount, setCartCount] = useState(() => { try { const c = JSON.parse(localStorage.getItem('shopping_cart') || '[]'); return c.reduce((s, i) => s + (i.quantity || 1), 0) } catch { return 0 } })
   const [catNav, setCatNav] = useState({ enabled: false, categories: [] })
   const [activeCat, setActiveCat] = useState('All')
+  const [annBar, setAnnBar] = useState(null)
   const [homeHeadline, setHomeHeadline] = useState({
     enabled: true,
     badge: 'Premium Shopping',
@@ -140,6 +141,16 @@ export default function Home(){
             textColor
           })
           setCatNav({ enabled: catNavEnabled, categories: catNavList })
+
+          // Parse announcement bar
+          const annEnabled = getText('annBar_enabled', 'true') !== 'false'
+          if (annEnabled) {
+            setAnnBar({
+              text: getText('annBar_text', ''),
+              bg: getText('annBar_bg', '#111827'),
+              color: getText('annBar_color', '#ffffff'),
+            })
+          }
         }
       } catch (_err) {
       }
@@ -190,6 +201,21 @@ export default function Home(){
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#f4f4f4' }}>
+      {/* Announcement bar — mobile only (desktop gets it from Header.jsx) */}
+      {annBar?.text && (
+        <div className="lg:hidden" style={{
+          background: annBar.bg || '#111827',
+          color: annBar.color || '#fff',
+          textAlign: 'center',
+          padding: '8px 16px',
+          fontSize: 12,
+          fontWeight: 500,
+          lineHeight: 1.4,
+          letterSpacing: '0.01em',
+        }}>
+          {annBar.text}
+        </div>
+      )}
       {/* Desktop Header only (hidden on tablet & mobile) */}
       <div className="hidden lg:block">
         <Header onCartClick={() => setIsCartOpen(true)} />
