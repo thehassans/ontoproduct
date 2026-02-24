@@ -221,6 +221,44 @@ export default function Home(){
         <Header onCartClick={() => setIsCartOpen(true)} />
       </div>
 
+      {/* ── Shopee-style Category Nav Bar ── */}
+      {catNav.enabled && catNav.categories.length > 0 && (
+        <div className="bg-white border-b border-gray-100 shadow-sm" style={{ position: 'relative', zIndex: 30 }}>
+          <div className="max-w-7xl mx-auto">
+            <div className="flex items-center overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+              {['All', ...catNav.categories].map((cat, i) => (
+                <button
+                  key={i}
+                  onClick={() => {
+                    setActiveCat(cat)
+                    if (cat === 'All') { navigate('/catalog') }
+                    else { navigate(`/catalog?category=${encodeURIComponent(cat)}`) }
+                  }}
+                  className="flex-shrink-0 px-4 py-3 text-sm font-semibold whitespace-nowrap transition-all"
+                  style={{
+                    color: activeCat === cat ? '#111827' : '#6b7280',
+                    borderBottom: activeCat === cat ? '2px solid #111827' : '2px solid transparent',
+                  }}
+                >
+                  {cat}
+                </button>
+              ))}
+              <div className="ml-auto flex-shrink-0 pl-2 pr-3">
+                <button
+                  onClick={() => navigate('/categories')}
+                  className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-gray-100 active:bg-gray-200 transition-colors"
+                  title="All categories"
+                >
+                  <svg className="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 24 24">
+                    <circle cx="5" cy="12" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="19" cy="12" r="2" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <h1 className="sr-only">BuySial Commerce</h1>
 
       {/* Hero Banner with floating controls inside */}
@@ -280,45 +318,6 @@ export default function Home(){
       <div className="hidden lg:block relative">
         <PremiumHeroBanner />
       </div>
-
-      {/* ── Shopee-style Category Nav Bar ── */}
-      {catNav.enabled && catNav.categories.length > 0 && (
-        <div className="bg-white border-b border-gray-100 shadow-sm sticky top-0 z-40">
-          <div className="max-w-7xl mx-auto">
-            <div className="flex items-center overflow-x-auto scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
-              {['All', ...catNav.categories].map((cat, i) => (
-                <button
-                  key={i}
-                  onClick={() => {
-                    setActiveCat(cat)
-                    if (cat === 'All') { navigate('/catalog') }
-                    else { navigate(`/catalog?category=${encodeURIComponent(cat)}`) }
-                  }}
-                  className="flex-shrink-0 px-4 py-3 text-sm font-semibold whitespace-nowrap transition-all relative"
-                  style={{
-                    color: activeCat === cat ? '#111827' : '#6b7280',
-                    borderBottom: activeCat === cat ? '2px solid #111827' : '2px solid transparent',
-                  }}
-                >
-                  {cat}
-                </button>
-              ))}
-              {/* 3-dot menu on the right */}
-              <div className="ml-auto flex-shrink-0 pl-2 pr-3">
-                <button
-                  onClick={() => navigate('/categories')}
-                  className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-gray-100 active:bg-gray-200 transition-colors"
-                  title="All categories"
-                >
-                  <svg className="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 24 24">
-                    <circle cx="5" cy="12" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="19" cy="12" r="2" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Mobile slide-out menu — OnBuy-style sections */}
       {mobileMenuOpen && (
