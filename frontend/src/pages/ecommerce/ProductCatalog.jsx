@@ -356,6 +356,7 @@ export default function ProductCatalog() {
   const [placeholderIdx, setPlaceholderIdx] = useState(0)
   const [placeholderAnim, setPlaceholderAnim] = useState(false)
   const [cartCount, setCartCount] = useState(() => { try { const c = JSON.parse(localStorage.getItem('shopping_cart') || '[]'); return c.reduce((s, i) => s + (i.quantity || 1), 0) } catch { return 0 } })
+  const [annBar, setAnnBar] = useState(null)
   const COUNTRY_LIST_LOCAL = [
     { code: 'GB', name: 'UK', flag: '🇬🇧' }, { code: 'US', name: 'USA', flag: '🇺🇸' },
     { code: 'AE', name: 'UAE', flag: '🇦🇪' }, { code: 'SA', name: 'KSA', flag: '🇸🇦' },
@@ -370,6 +371,22 @@ export default function ProductCatalog() {
     const update = () => { try { const c = JSON.parse(localStorage.getItem('shopping_cart') || '[]'); setCartCount(c.reduce((s, i) => s + (i.quantity || 1), 0)) } catch { setCartCount(0) } }
     window.addEventListener('cartUpdated', update); window.addEventListener('storage', update)
     return () => { window.removeEventListener('cartUpdated', update); window.removeEventListener('storage', update) }
+  }, [])
+
+  useEffect(() => {
+    let alive = true
+    ;(async () => {
+      try {
+        const res = await apiGet('/api/settings/website/content?page=home')
+        if (!alive) return
+        const elements = Array.isArray(res?.content?.elements) ? res.content.elements : []
+        const getText = (id, fb = '') => { const el = elements.find(e => e?.id === id); return typeof el?.text === 'string' ? el.text : fb }
+        if (getText('annBar_enabled', 'true') !== 'false' && getText('annBar_text', '')) {
+          setAnnBar({ text: getText('annBar_text', ''), bg: getText('annBar_bg', '#111827'), color: getText('annBar_color', '#ffffff') })
+        }
+      } catch {}
+    })()
+    return () => { alive = false }
   }, [])
 
   // Fetch categories by country for category pills
@@ -1023,7 +1040,12 @@ export default function ProductCatalog() {
         onExit={() => setEditMode(false)} 
         onSave={setEditState}
       />
-      
+      {/* Announcement bar */}
+      {annBar?.text && (
+        <div className="lg:hidden" style={{ background: annBar.bg || '#111827', color: annBar.color || '#fff', textAlign: 'center', padding: '8px 16px', fontSize: 12, fontWeight: 500, letterSpacing: '0.01em' }}>
+          {annBar.text}
+        </div>
+      )}
       {/* Mobile: clean light header */}
       <div className="lg:hidden bg-white border-b border-gray-100">
         {/* Row: home + search + cart */}
@@ -1270,34 +1292,6 @@ export default function ProductCatalog() {
               })()
             ) : null}
 
-            {/* Discover Products */}
-            <div className="mb-2">
-              <HorizontalProductSection
-                title="Discover Products"
-                bgGradient="from-orange-500 to-orange-600"
-                selectedCountry={selectedCountry}
-                limit={50}
-                showVideo={true}
-                autoScroll={true}
-                autoScrollSpeed={0.5}
-                headerVariant="pill"
-              />
-            </div>
-
-            {/* BuySial Recommendations */}
-            <div className="mb-2">
-              <HorizontalProductSection
-                title="BuySial Recommendations"
-                filter="recommended"
-                bgGradient="from-blue-600 to-indigo-600"
-                selectedCountry={selectedCountry}
-                limit={20}
-                showVideo={false}
-                autoScroll={true}
-                autoScrollSpeed={0.4}
-                headerVariant="pill"
-              />
-            </div>
 
             {showFilters && (
               <div className="mb-6 lg:hidden">

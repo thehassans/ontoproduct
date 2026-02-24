@@ -265,11 +265,7 @@ export default function PremiumHeroBanner() {
         }
 
         .slide-text-overlay {
-          position: absolute;
-          inset: 0;
-          background: linear-gradient(to right, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.25) 40%, transparent 70%);
-          pointer-events: none;
-          z-index: 2;
+          display: none;
         }
 
         /* Navigation Arrows */

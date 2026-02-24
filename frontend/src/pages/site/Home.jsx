@@ -272,15 +272,29 @@ export default function Home(){
                 </button>
               ))}
             </div>
-            {/* Hamburger menu — fixed right */}
-            <div style={{ flexShrink: 0, padding: '0 10px' }}>
+            {/* Search + Cart + Hamburger — fixed right */}
+            <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4, paddingRight: 8 }}>
+              <button
+                onClick={() => { setMobileSearchOpen(prev => !prev); setTimeout(() => searchInputRef.current?.focus(), 100) }}
+                className="w-9 h-9 rounded-full flex items-center justify-center transition-colors"
+                style={{ background: 'rgba(255,255,255,0.15)' }}
+              >
+                <svg className="w-4 h-4" style={{ color: '#fff' }} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+              </button>
+              <button
+                onClick={() => navigate('/cart')}
+                className="w-9 h-9 rounded-full flex items-center justify-center transition-colors relative"
+                style={{ background: 'rgba(255,255,255,0.15)' }}
+              >
+                <svg className="w-4 h-4" style={{ color: '#fff' }} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                {cartCount > 0 && <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-[9px] font-bold rounded-full min-w-[16px] h-[16px] flex items-center justify-center px-0.5">{cartCount > 99 ? '99+' : cartCount}</span>}
+              </button>
               <button
                 onClick={() => setMobileMenuOpen(true)}
                 className="w-9 h-9 rounded-full flex items-center justify-center transition-colors"
                 style={{ background: 'rgba(255,255,255,0.15)' }}
-                title="Menu"
               >
-                <svg className="w-5 h-5" style={{ color: '#fff' }} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <svg className="w-4 h-4" style={{ color: '#fff' }} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                   <line x1="4" y1="7" x2="20" y2="7" /><line x1="4" y1="12" x2="20" y2="12" /><line x1="4" y1="17" x2="20" y2="17" />
                 </svg>
               </button>
@@ -294,24 +308,6 @@ export default function Home(){
       {/* Hero Banner — pulled up 44px behind the transparent nav */}
       <div className="relative lg:hidden" style={{ marginTop: catNav.enabled && catNav.categories.length > 0 ? '-44px' : 0 }}>
         <PremiumHeroBanner />
-        {/* Floating search + cart on banner */}
-        <div className="absolute right-3 z-30 flex items-center pointer-events-none" style={{ top: catNav.enabled && catNav.categories.length > 0 ? '56px' : '12px' }}>
-          <div className="flex items-center gap-2 pointer-events-auto">
-            <button
-              onClick={() => { setMobileSearchOpen(prev => !prev); setTimeout(() => searchInputRef.current?.focus(), 100) }}
-              className="w-10 h-10 rounded-full bg-white/80 backdrop-blur-md shadow-sm flex items-center justify-center active:scale-95 transition-transform"
-            >
-              <svg className="w-5 h-5 text-gray-800" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
-            </button>
-            <button
-              onClick={() => navigate('/cart')}
-              className="w-10 h-10 rounded-full bg-white/80 backdrop-blur-md shadow-sm flex items-center justify-center active:scale-95 transition-transform relative"
-            >
-              <svg className="w-5 h-5 text-gray-800" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-              {cartCount > 0 && <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">{cartCount > 99 ? '99+' : cartCount}</span>}
-            </button>
-          </div>
-        </div>
         {/* Search bar — slides in from top when search icon clicked */}
         <div className={`absolute bottom-3 left-3 right-3 z-30 transition-all duration-300 ${mobileSearchOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
           <form onSubmit={e => { e.preventDefault(); if (searchQuery.trim()) { navigate(`/catalog?search=${encodeURIComponent(searchQuery.trim())}`); setSearchQuery(''); setMobileSearchOpen(false) } }} className="flex items-center gap-2.5 bg-black/30 backdrop-blur-xl rounded-full px-4 py-2.5 shadow-lg border border-white/20">
