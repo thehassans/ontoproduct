@@ -251,7 +251,7 @@ export default function Home(){
       {mobileMenuOpen && (
         <div className="fixed inset-0 z-[9999] lg:hidden">
           <div className="absolute inset-0 bg-black/30" onClick={() => setMobileMenuOpen(false)} />
-          <div className="absolute top-0 left-0 bottom-0 w-[80vw] max-w-[320px] bg-white shadow-2xl flex flex-col animate-[slideIn_0.25s_cubic-bezier(0.16,1,0.3,1)] overflow-y-auto">
+          <div className="absolute top-0 left-0 bottom-0 w-[80vw] max-w-[320px] bg-white shadow-2xl flex flex-col animate-[slideIn_0.25s_cubic-bezier(0.16,1,0.3,1)] overflow-y-auto z-10">
             {/* Shop header section */}
             <div className="bg-gray-900 text-white px-5 pt-7 pb-4">
               <div className="flex items-center justify-between mb-4">

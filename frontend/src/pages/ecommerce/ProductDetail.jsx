@@ -31,6 +31,7 @@ const ProductDetail = () => {
   const [ccyCfg, setCcyCfg] = useState(null)
   const [wishlisted, setWishlisted] = useState(false)
   const [wishBusy, setWishBusy] = useState(false)
+  const [cartSuccessModal, setCartSuccessModal] = useState(null)
   const [cartCount, setCartCount] = useState(() => { try { const c = JSON.parse(localStorage.getItem('shopping_cart') || '[]'); return c.reduce((s, i) => s + (i.quantity || 1), 0) } catch { return 0 } })
   const mobileGalleryRef = useRef(null)
 
@@ -172,6 +173,18 @@ const ProductDetail = () => {
 
   useEffect(() => { if (!id) return; setSelectedImage(0); setQuantity(1); loadProduct(); loadReviews(); try { window.scrollTo({ top: 0, behavior: 'instant' }) } catch {} }, [id])
 
+  // Pixel/external link back-button fix: inject home into history so pressing back lands on home, not a blank browser page
+  useEffect(() => {
+    try {
+      const ref = document.referrer
+      const isExternal = !ref || !ref.includes(window.location.hostname)
+      if (isExternal) {
+        window.history.pushState({ __buysialHome: true }, '', '/')
+        window.history.pushState({ __buysialProduct: true }, '', window.location.pathname + window.location.search + window.location.hash)
+      }
+    } catch {}
+  }, [])
+
   const handleAddToCart = () => {
     if (!product) return
     try {
@@ -220,7 +233,7 @@ const ProductDetail = () => {
       try { localStorage.setItem('last_added_product', String(product._id)) } catch {}
       trackAddToCart(product._id, product.name, addQty, unitPrice)
       window.dispatchEvent(new CustomEvent('cartUpdated'))
-      toast.success(`Added ${addQty} ${product.name} to cart`)
+      setCartSuccessModal({ image: Array.isArray(product.images) && product.images.length > 0 ? product.images[0] : (product.imagePath || ''), name: product.name, qty: addQty })
     } catch (error) { console.error('Error adding to cart:', error); toast.error('Failed to add item to cart') }
   }
 
@@ -604,7 +617,7 @@ const ProductDetail = () => {
             </div>
             {/* Add to cart + WhatsApp */}
             <div className="flex-1 flex gap-1 justify-end min-w-0">
-              <button type="button" onClick={() => { handleAddToCart(); setTimeout(() => navigate('/cart'), 150) }} style={{ touchAction: 'manipulation' }} className="flex-1 min-w-0 max-w-[130px] bg-gradient-to-r from-orange-500 to-orange-400 text-white font-semibold py-2.5 rounded-xl shadow-lg shadow-orange-500/25 active:scale-[0.98] transition-all flex items-center justify-center gap-1 text-xs">
+              <button type="button" onClick={handleAddToCart} style={{ touchAction: 'manipulation' }} className="flex-1 min-w-0 max-w-[130px] bg-gradient-to-r from-orange-500 to-orange-400 text-white font-semibold py-2.5 rounded-xl shadow-lg shadow-orange-500/25 active:scale-[0.98] transition-all flex items-center justify-center gap-1 text-xs">
                 <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                 <span className="truncate">Add to cart</span>
               </button>
@@ -698,6 +711,70 @@ const ProductDetail = () => {
       </div>
 
       <ShoppingCart isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
+
+      {/* ===== ULTRA PREMIUM CART SUCCESS MODAL ===== */}
+      {cartSuccessModal && (
+        <div className="fixed inset-0 z-[99999] flex items-end sm:items-center justify-center p-0 sm:p-4">
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setCartSuccessModal(null)} style={{ animation: 'cartBdIn 0.3s ease both' }} />
+          {/* Card */}
+          <div className="relative bg-white w-full sm:max-w-sm rounded-t-[32px] sm:rounded-[32px] shadow-2xl overflow-hidden" style={{ animation: 'cartModalIn 0.55s cubic-bezier(0.16,1,0.3,1) both' }}>
+            {/* Top gradient bar */}
+            <div className="h-1.5 bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400" />
+            <div className="px-6 pt-8 pb-8 text-center">
+              {/* Animated product image with ring */}
+              <div className="flex justify-center mb-5">
+                <div className="relative">
+                  <div className="absolute inset-[-6px] rounded-full border-4 border-green-400 opacity-60" style={{ animation: 'ringPulse 2s ease-in-out infinite' }} />
+                  <div className="absolute inset-[-12px] rounded-full border-2 border-green-300 opacity-30" style={{ animation: 'ringPulse 2s 0.4s ease-in-out infinite' }} />
+                  <div className="w-28 h-28 rounded-full border-4 border-green-500 overflow-hidden bg-gray-50 shadow-xl shadow-green-200">
+                    <img
+                      src={(() => { const p = cartSuccessModal.image || ''; if (!p) return '/placeholder-product.svg'; if (String(p).startsWith('http')) return p; return mediaUrl(p) || '/placeholder-product.svg' })()} 
+                      alt={cartSuccessModal.name}
+                      className="w-full h-full object-cover"
+                      onError={e => { e.target.src = '/placeholder-product.svg' }}
+                    />
+                  </div>
+                  {/* Animated checkmark badge */}
+                  <div className="absolute -bottom-1 -right-1 w-10 h-10 bg-green-500 rounded-full flex items-center justify-center shadow-lg shadow-green-400/50" style={{ animation: 'checkPop 0.5s 0.35s cubic-bezier(0.34,1.56,0.64,1) both' }}>
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" style={{ strokeDasharray: 30, strokeDashoffset: 30, animation: 'drawCheck 0.45s 0.65s ease forwards' }} />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+              {/* Floating sparkles */}
+              <div className="relative h-0 pointer-events-none overflow-visible">
+                {[{ x: -70, y: -110, s: '✨', d: 0 }, { x: 70, y: -115, s: '⭐', d: 0.1 }, { x: -50, y: -130, s: '🎉', d: 0.2 }, { x: 55, y: -130, s: '✨', d: 0.15 }, { x: 0, y: -140, s: '⭐', d: 0.05 }].map((p, i) => (
+                  <span key={i} className="absolute text-sm" style={{ left: p.x, top: p.y, animation: `sparklePop 0.6s ${p.d}s cubic-bezier(0.34,1.56,0.64,1) both` }}>{p.s}</span>
+                ))}
+              </div>
+              {/* Text */}
+              <p className="text-green-600 text-xs font-bold tracking-widest uppercase mb-1" style={{ animation: 'fadeSlideUp 0.4s 0.2s ease both' }}>Successfully Added!</p>
+              <h3 className="font-bold text-gray-900 text-[17px] leading-snug line-clamp-2 mb-1" style={{ animation: 'fadeSlideUp 0.4s 0.3s ease both' }}>{cartSuccessModal.name}</h3>
+              {cartSuccessModal.qty > 1 && <p className="text-gray-400 text-sm mb-4" style={{ animation: 'fadeSlideUp 0.4s 0.35s ease both' }}>Qty: {cartSuccessModal.qty}</p>}
+              {/* Buttons */}
+              <div className="flex gap-3 mt-5" style={{ animation: 'fadeSlideUp 0.4s 0.4s ease both' }}>
+                <button type="button" onClick={() => setCartSuccessModal(null)} className="flex-1 py-3.5 rounded-2xl border-2 border-gray-200 text-gray-700 font-bold text-sm hover:border-gray-300 hover:bg-gray-50 active:scale-95 transition-all">
+                  CONTINUE SHOPPING
+                </button>
+                <button type="button" onClick={() => { setCartSuccessModal(null); navigate('/cart') }} className="flex-1 py-3.5 rounded-2xl bg-blue-600 text-white font-bold text-sm shadow-lg shadow-blue-500/25 hover:bg-blue-700 active:scale-95 transition-all">
+                  VIEW CART
+                </button>
+              </div>
+            </div>
+          </div>
+          <style>{`
+            @keyframes cartBdIn { from { opacity:0 } to { opacity:1 } }
+            @keyframes cartModalIn { from { opacity:0; transform:translateY(60px) scale(0.92) } to { opacity:1; transform:translateY(0) scale(1) } }
+            @keyframes ringPulse { 0%,100% { transform:scale(1); opacity:0.6 } 50% { transform:scale(1.15); opacity:0 } }
+            @keyframes checkPop { from { opacity:0; transform:scale(0) rotate(-45deg) } to { opacity:1; transform:scale(1) rotate(0deg) } }
+            @keyframes drawCheck { from { stroke-dashoffset:30 } to { stroke-dashoffset:0 } }
+            @keyframes sparklePop { from { opacity:0; transform:scale(0) translateY(8px) } to { opacity:1; transform:scale(1) translateY(0) } }
+            @keyframes fadeSlideUp { from { opacity:0; transform:translateY(10px) } to { opacity:1; transform:translateY(0) } }
+          `}</style>
+        </div>
+      )}
     </div>
   )
 }
