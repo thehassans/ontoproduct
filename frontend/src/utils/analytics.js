@@ -110,11 +110,8 @@ class Analytics {
 
     // TikTok - ViewContent
     ttqTrack('ViewContent', {
-      content_id: String(productId),
+      contents: [{ content_id: String(productId), content_type: 'product', content_name: productName, price: value, quantity: 1 }],
       content_type: 'product',
-      content_name: productName,
-      content_category: category,
-      price: value,
       value: value,
       currency: currency
     })
@@ -174,11 +171,8 @@ class Analytics {
 
     // TikTok - AddToCart
     ttqTrack('AddToCart', {
-      content_id: String(productId),
+      contents: [{ content_id: String(productId), content_type: 'product', content_name: productName, price: unitPrice, quantity: qty }],
       content_type: 'product',
-      content_name: productName,
-      quantity: qty,
-      price: unitPrice,
       value: totalValue,
       currency: currency
     })
@@ -265,7 +259,13 @@ class Analytics {
     })
 
     // TikTok - InitiateCheckout
+    let _ttqCartContents = []
+    try {
+      const _cart = JSON.parse(localStorage.getItem('shopping_cart') || '[]')
+      _ttqCartContents = _cart.map(i => ({ content_id: String(i._id || i.productId || i.id || ''), content_type: 'product', content_name: i.name || i.productName || '', price: Number(i.price) || 0, quantity: Number(i.quantity) || 1 })).filter(c => c.content_id)
+    } catch {}
     ttqTrack('InitiateCheckout', {
+      contents: _ttqCartContents.length ? _ttqCartContents : [{ content_id: 'cart', content_type: 'product' }],
       content_type: 'product',
       quantity: count,
       value: value,
@@ -317,7 +317,13 @@ class Analytics {
     })
 
     // TikTok - CompletePayment
+    let _ttqOrderContents = []
+    try {
+      const _cart2 = JSON.parse(localStorage.getItem('shopping_cart') || '[]')
+      _ttqOrderContents = _cart2.map(i => ({ content_id: String(i._id || i.productId || i.id || ''), content_type: 'product', content_name: i.name || i.productName || '', price: Number(i.price) || 0, quantity: Number(i.quantity) || 1 })).filter(c => c.content_id)
+    } catch {}
     ttqTrack('CompletePayment', {
+      contents: _ttqOrderContents.length ? _ttqOrderContents : [{ content_id: String(orderId || ''), content_type: 'product' }],
       content_type: 'product',
       quantity: count,
       value: value,
