@@ -130,16 +130,9 @@ export default function DynamicPixels() {
         const userCountryKey = resolveCountryKey(countrySeo, storedCountry)
         const countryPixels = (userCountryKey && countrySeo[userCountryKey]) ? countrySeo[userCountryKey] : {}
 
-        // Hardcoded country-specific pixel fallbacks (used when admin field is empty)
-        const HARDCODED = {
-          BH: { tiktokPixel: 'D6FHVTBC77UCIF8JOPAG' },
-        }
-        const countryCode = String(storedCountry || '').toUpperCase()
-        const hardcoded = HARDCODED[countryCode] || {}
-
-        // Merge global and country-specific settings (admin config > hardcoded > global)
+        // Merge global and country-specific settings (country admin config > global)
         const pixels = {
-          tiktokPixel: pickIds(countryPixels.tiktokPixel || hardcoded.tiktokPixel, seo.tiktokPixel),
+          tiktokPixel: pickIds(countryPixels.tiktokPixel, seo.tiktokPixel),
           facebookPixel: pickIds(countryPixels.facebookPixel, seo.facebookPixel),
           snapchatPixel: pickIds(countryPixels.snapchatPixel, seo.snapchatPixel),
           pinterestTag: pickIds(countryPixels.pinterestTag, seo.pinterestTag),

@@ -118,10 +118,9 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
       .catch(err => console.error('[PWA] Service worker registration failed:', err))
   })
   
-  // Listen for service worker updates
+  // Listen for service worker updates (no auto-reload: would clear in-progress cart actions)
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    console.log('[PWA] New service worker activated - reloading')
-    window.location.reload()
+    console.log('[PWA] New service worker activated')
   })
 }
 

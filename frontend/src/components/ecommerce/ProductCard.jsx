@@ -114,7 +114,9 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
           })
         }
         
-        localStorage.setItem('shopping_cart', JSON.stringify(cartItems))
+        const cartJson = JSON.stringify(cartItems)
+        localStorage.setItem('shopping_cart', cartJson)
+        try { sessionStorage.setItem('shopping_cart_bak', cartJson) } catch {}
         try { localStorage.setItem('last_added_product', String(product._id)) } catch {}
         trackAddToCart(product._id, product.name, unitPrice, addQty)
         window.dispatchEvent(new CustomEvent('cartUpdated'))

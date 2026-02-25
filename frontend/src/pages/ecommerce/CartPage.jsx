@@ -14,7 +14,11 @@ export default function CartPage() {
   const [cartItems, setCartItems] = useState(() => {
     try {
       const saved = localStorage.getItem('shopping_cart')
-      return saved ? JSON.parse(saved) : []
+      const parsed = saved ? JSON.parse(saved) : []
+      if (parsed.length > 0) return parsed
+      // Fallback: sessionStorage backup (covers TikTok/FB in-app browser ephemeral localStorage)
+      const bak = sessionStorage.getItem('shopping_cart_bak')
+      return bak ? JSON.parse(bak) : []
     } catch { return [] }
   })
   const [cartLoaded, setCartLoaded] = useState(false)
@@ -748,7 +752,7 @@ export default function CartPage() {
           try { localStorage.setItem('shopping_cart', JSON.stringify(norm.items)) } catch {}
         }
         setCartItems(norm.items)
-      } catch { setCartItems([]) }
+      } catch(err) { console.error('Error loading cart:', err) /* preserve existing cart */ }
     }
     
     const handler = () => setTimeout(loadCart, 10)
