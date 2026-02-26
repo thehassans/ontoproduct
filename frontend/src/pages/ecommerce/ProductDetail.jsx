@@ -449,11 +449,10 @@ const ProductDetail = () => {
       {activeTab === 'description' && (
         <div className="space-y-4">
           {product.descriptionBlocks?.length > 0 && <div className="grid grid-cols-2 gap-2">{product.descriptionBlocks.map((b, i) => <div key={i} className="bg-white rounded-2xl p-3 shadow-sm"><p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">{b.label}</p><p className="text-gray-900 font-semibold text-sm">{b.value}</p></div>)}</div>}
-          {product.description && <div className="bg-white rounded-2xl p-5 shadow-sm"><p className="text-gray-600 leading-relaxed text-sm whitespace-pre-line">{product.description}</p></div>}
           {product.overview && <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-2xl p-5"><p className="text-gray-700 leading-relaxed text-sm whitespace-pre-line">{product.overview}</p></div>}
           {product.specifications && <div className="bg-white rounded-2xl p-5 shadow-sm"><p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Specifications</p><p className="text-gray-600 text-sm whitespace-pre-line leading-relaxed">{product.specifications}</p></div>}
           {!product.description && !product.overview && !product.specifications && !product.descriptionBlocks?.length && <div className="text-center py-12 text-gray-400">No description available</div>}
-          {/* ── Media Gallery – all images + video, tap to fullscreen ── */}
+          {/* ── Media Gallery – full-width one-by-one carousel ── */}
           {(images.length > 0 || hasVideo) && (
             <div className="mt-2">
               <div className="flex items-center gap-2 mb-3">
@@ -461,27 +460,47 @@ const ProductDetail = () => {
                 <span className="text-xs font-bold text-gray-700 uppercase tracking-widest">Photos & Videos</span>
                 <span className="ml-auto text-[11px] text-gray-400 font-medium">{images.length + (hasVideo ? 1 : 0)} media</span>
               </div>
-              <div className="grid grid-cols-3 gap-1.5">
-                {images.map((img, idx) => (
-                  <button key={idx} onClick={() => setFullscreenIdx(idx)}
-                    className="relative aspect-square rounded-2xl overflow-hidden bg-gray-100 active:scale-95 transition-transform shadow-sm group">
-                    <img src={img} alt="" className="w-full h-full object-cover group-active:brightness-90 transition-all" loading="lazy"
-                      onError={e => { e.target.src = '/placeholder-product.svg' }} />
-                    <div className="absolute inset-0 bg-black/0 group-active:bg-black/10 transition-all rounded-2xl" />
-                    {idx === 0 && images.length === 1 && !hasVideo && null}
-                  </button>
-                ))}
-                {hasVideo && (
-                  <button onClick={() => setFullscreenIdx(images.length)}
-                    className="relative aspect-square rounded-2xl overflow-hidden bg-gray-900 active:scale-95 transition-transform shadow-sm group flex items-center justify-center">
-                    {images[0] && <img src={images[0]} alt="" className="absolute inset-0 w-full h-full object-cover opacity-30" />}
-                    <div className="relative z-10 w-11 h-11 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center">
-                      <svg className="w-5 h-5 text-white ml-0.5" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+              {/* Break out of px-4 padding to go edge-to-edge */}
+              <div className="-mx-4 overflow-x-auto snap-x snap-mandatory scrollbar-hide">
+                <div className="flex w-max">
+                  {images.map((img, idx) => (
+                    <div key={idx} className="w-screen flex-shrink-0 snap-center px-4">
+                      <button onClick={() => setFullscreenIdx(idx)}
+                        className="relative w-full overflow-hidden rounded-2xl shadow-md active:scale-[0.98] transition-transform bg-gray-100"
+                        style={{ aspectRatio: '4/3' }}>
+                        <img src={img} alt="" className="w-full h-full object-cover" loading="lazy"
+                          onError={e => { e.target.src = '/placeholder-product.svg' }} />
+                        <div className="absolute bottom-3 right-3 bg-black/40 backdrop-blur-md rounded-full p-2">
+                          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" /></svg>
+                        </div>
+                      </button>
                     </div>
-                    <span className="absolute bottom-2 left-0 right-0 text-center text-[10px] text-white/80 font-semibold">VIDEO</span>
-                  </button>
-                )}
+                  ))}
+                  {hasVideo && (
+                    <div className="w-screen flex-shrink-0 snap-center px-4">
+                      <button onClick={() => setFullscreenIdx(images.length)}
+                        className="relative w-full overflow-hidden rounded-2xl shadow-md active:scale-[0.98] transition-transform bg-gray-900 flex items-center justify-center"
+                        style={{ aspectRatio: '4/3' }}>
+                        {images[0] && <img src={images[0]} alt="" className="absolute inset-0 w-full h-full object-cover opacity-25" />}
+                        <div className="relative z-10 flex flex-col items-center gap-3">
+                          <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center">
+                            <svg className="w-6 h-6 text-white ml-1" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                          </div>
+                          <span className="text-white/80 text-xs font-bold uppercase tracking-widest">Play Video</span>
+                        </div>
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
+              {/* Dot indicators */}
+              {(images.length + (hasVideo ? 1 : 0)) > 1 && (
+                <div className="flex justify-center gap-1.5 mt-3">
+                  {[...Array(images.length + (hasVideo ? 1 : 0))].map((_, i) => (
+                    <div key={i} className="h-1.5 rounded-full bg-gray-300" style={{ width: 6 }} />
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -631,6 +650,7 @@ const ProductDetail = () => {
             <span className="text-sm font-semibold text-gray-700">{displayRating.toFixed(1)}</span>
             <span className="text-xs text-gray-400">({displayReviewCount})</span>
           </div>
+          {product.description && <p className="text-gray-500 text-sm leading-relaxed mb-4">{product.description}</p>}
           <div className="mb-5"><VariantSelector excludeColor /></div>
 
 
