@@ -607,29 +607,32 @@ const ProductDetail = () => {
 
           {hasActiveSale && !isVideoSelected && <div className="absolute top-8 left-20 z-20 bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">-{discountPercentage}%</div>}
 
-          {/* Glassmorphism Thumbnails - INSIDE the hero image, scrollable */}
-          {(images.length > 1 || hasVideo) && (
-            <div className="absolute bottom-5 left-3 right-3 z-20 flex justify-center">
-              <div className="flex gap-2 bg-white/40 backdrop-blur-xl px-3 py-2 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] border border-white/50 overflow-x-auto scrollbar-hide max-w-full">
-                {images.map((img, idx) => (
-                  <button key={idx} onClick={() => scrollToImage(idx)} className={`w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 transition-all bg-white/70 ${selectedImage === idx && !isVideoSelected ? 'ring-2 ring-orange-500 scale-110 shadow-md bg-white' : 'opacity-70 hover:opacity-100 hover:scale-105'}`}>
-                    <img src={img} alt="" className="w-full h-full object-contain p-0.5" onError={e => { e.target.src = '/placeholder-product.svg' }} />
-                  </button>
-                ))}
-                {hasVideo && (
-                  <button onClick={() => scrollToImage(images.length)} className={`w-12 h-12 rounded-xl bg-gray-900/80 grid place-items-center flex-shrink-0 transition-all ${isVideoSelected ? 'ring-2 ring-orange-500 scale-110 shadow-md' : 'opacity-70 hover:opacity-100 hover:scale-105'}`}>
-                    <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Mobile Product Info */}
         <div className="px-4 pb-28">
           {product.category && <span className="inline-block px-3 py-1 rounded-full bg-orange-50 text-orange-600 text-xs font-semibold tracking-wide uppercase mb-2">{product.category}</span>}
           <h1 className="text-xl font-bold text-gray-900 leading-snug mb-1.5 line-clamp-2">{product.name}</h1>
+          {/* ── Ultra-premium inline video below title ── */}
+          {hasVideo && (
+            <div className="mb-4 -mx-4">
+              <div className="relative bg-black overflow-hidden" style={{ borderRadius: '0 0 28px 28px' }}>
+                <video
+                  src={videoUrl}
+                  controls
+                  loop
+                  playsInline
+                  poster={images[0]}
+                  className="w-full block"
+                  style={{ maxHeight: '55vw', objectFit: 'cover' }}
+                />
+                <div className="absolute top-3 left-3 bg-black/50 backdrop-blur-md px-2.5 py-1 rounded-full flex items-center gap-1.5">
+                  <svg className="w-3 h-3 text-orange-400" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                  <span className="text-white text-[10px] font-bold uppercase tracking-widest">Product Video</span>
+                </div>
+              </div>
+            </div>
+          )}
           <div className="flex items-center gap-2 mb-3">
             <StarRating rating={displayRating} />
             <span className="text-sm font-semibold text-gray-700">{displayRating.toFixed(1)}</span>
