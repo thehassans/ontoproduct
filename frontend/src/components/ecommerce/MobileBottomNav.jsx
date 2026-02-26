@@ -9,14 +9,20 @@ export default function MobileBottomNav({ onCartClick }) {
   const [cartCount, setCartCount] = useState(0)
   const [wishlistCount, setWishlistCount] = useState(0)
   
-  // Get cart count from localStorage
+  // Get cart count from localStorage (with sessionStorage fallback for TikTok/FB in-app browser)
   useEffect(() => {
     const updateCartCount = () => {
       try {
-        const cart = JSON.parse(localStorage.getItem('shopping_cart') || '[]')
+        let cart = JSON.parse(localStorage.getItem('shopping_cart') || '[]')
+        if (!cart.length) {
+          try {
+            const bak = sessionStorage.getItem('shopping_cart_bak')
+            if (bak) cart = JSON.parse(bak)
+          } catch {}
+        }
         const count = cart.reduce((sum, item) => sum + (item.quantity || 1), 0)
         setCartCount(count)
-      } catch { setCartCount(0) }
+      } catch { /* preserve existing count */ }
     }
 
     const updateWishlistCount = () => {
@@ -30,18 +36,11 @@ export default function MobileBottomNav({ onCartClick }) {
     window.addEventListener('storage', updateCartCount)
     window.addEventListener('storage', updateWishlistCount)
     
-    // Check periodically for mobile
-    const interval = setInterval(() => {
-      updateCartCount()
-      updateWishlistCount()
-    }, 1000)
-    
     return () => {
       window.removeEventListener('cartUpdated', updateCartCount)
       window.removeEventListener('wishlistUpdated', updateWishlistCount)
       window.removeEventListener('storage', updateCartCount)
       window.removeEventListener('storage', updateWishlistCount)
-      clearInterval(interval)
     }
   }, [])
   
