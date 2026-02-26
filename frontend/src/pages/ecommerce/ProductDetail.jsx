@@ -460,45 +460,32 @@ const ProductDetail = () => {
                 <span className="text-xs font-bold text-gray-700 uppercase tracking-widest">Photos & Videos</span>
                 <span className="ml-auto text-[11px] text-gray-400 font-medium">{images.length + (hasVideo ? 1 : 0)} media</span>
               </div>
-              {/* Horizontal swipable carousel — each slide is full width, snap per item */}
-              <div className="-mx-4 overflow-x-auto snap-x snap-mandatory scrollbar-hide">
-                <div className="flex w-max">
-                  {images.map((img, idx) => (
-                    <div key={idx} className="w-screen flex-shrink-0 snap-center px-4">
-                      <button onClick={() => setFullscreenIdx(idx)}
-                        className="relative w-full overflow-hidden rounded-2xl shadow-md active:scale-[0.98] transition-transform bg-gray-100 aspect-[4/3] block">
-                        <img src={img} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy"
-                          onError={e => { e.target.src = '/placeholder-product.svg' }} />
-                        <div className="absolute bottom-3 right-3 bg-black/40 backdrop-blur-md rounded-full p-2">
-                          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" /></svg>
-                        </div>
-                      </button>
+              {/* Vertical stack — each image full width, one below the other */}
+              <div className="flex flex-col gap-3">
+                {images.map((img, idx) => (
+                  <button key={idx} onClick={() => setFullscreenIdx(idx)}
+                    className="relative w-full overflow-hidden rounded-2xl shadow-md active:scale-[0.99] transition-transform bg-gray-100">
+                    <img src={img} alt="" className="w-full object-cover block" loading="lazy"
+                      onError={e => { e.target.src = '/placeholder-product.svg' }} />
+                    <div className="absolute bottom-3 right-3 bg-black/40 backdrop-blur-md rounded-full p-2">
+                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" /></svg>
                     </div>
-                  ))}
-                  {hasVideo && (
-                    <div className="w-screen flex-shrink-0 snap-center px-4">
-                      <button onClick={() => setFullscreenIdx(images.length)}
-                        className="relative w-full overflow-hidden rounded-2xl shadow-md active:scale-[0.98] transition-transform bg-gray-900 aspect-[4/3] flex items-center justify-center">
-                        {images[0] && <img src={images[0]} alt="" className="absolute inset-0 w-full h-full object-cover opacity-25" />}
-                        <div className="relative z-10 flex flex-col items-center gap-3">
-                          <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center">
-                            <svg className="w-6 h-6 text-white ml-1" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
-                          </div>
-                          <span className="text-white/80 text-xs font-bold uppercase tracking-widest">Play Video</span>
-                        </div>
-                      </button>
+                  </button>
+                ))}
+                {hasVideo && (
+                  <button onClick={() => setFullscreenIdx(images.length)}
+                    className="relative w-full overflow-hidden rounded-2xl shadow-md active:scale-[0.99] transition-transform bg-gray-900 flex items-center justify-center"
+                    style={{ minHeight: 200 }}>
+                    {images[0] && <img src={images[0]} alt="" className="absolute inset-0 w-full h-full object-cover opacity-25" />}
+                    <div className="relative z-10 flex flex-col items-center gap-3 py-10">
+                      <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center">
+                        <svg className="w-6 h-6 text-white ml-1" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                      </div>
+                      <span className="text-white/80 text-xs font-bold uppercase tracking-widest">Play Video</span>
                     </div>
-                  )}
-                </div>
+                  </button>
+                )}
               </div>
-              {/* Dot indicators */}
-              {(images.length + (hasVideo ? 1 : 0)) > 1 && (
-                <div className="flex justify-center gap-1.5 mt-3">
-                  {[...Array(images.length + (hasVideo ? 1 : 0))].map((_, i) => (
-                    <div key={i} className="w-1.5 h-1.5 rounded-full bg-gray-300" />
-                  ))}
-                </div>
-              )}
             </div>
           )}
         </div>
@@ -623,11 +610,11 @@ const ProductDetail = () => {
         </div>
 
         {/* Mobile Product Info */}
-        <div className="px-4 pb-28">
+        <div className="px-4 pt-4 pb-28">
           {/* ── Ultra-premium inline video first ── */}
           {hasVideo && (
-            <div className="mb-4 -mx-4">
-              <div className="relative bg-black overflow-hidden" style={{ borderRadius: '0 0 28px 28px' }}>
+            <div className="mb-4 -mx-4 px-4">
+              <div className="relative bg-black overflow-hidden rounded-3xl shadow-xl">
                 <video
                   src={videoUrl}
                   controls
