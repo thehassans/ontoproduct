@@ -624,9 +624,7 @@ const ProductDetail = () => {
 
         {/* Mobile Product Info */}
         <div className="px-4 pb-28">
-          {product.category && <span className="inline-block px-3 py-1 rounded-full bg-orange-50 text-orange-600 text-xs font-semibold tracking-wide uppercase mb-2">{product.category}</span>}
-          <h1 className="text-xl font-bold text-gray-900 leading-snug mb-1.5 line-clamp-2">{product.name}</h1>
-          {/* ── Ultra-premium inline video below title ── */}
+          {/* ── Ultra-premium inline video first ── */}
           {hasVideo && (
             <div className="mb-4 -mx-4">
               <div className="relative bg-black overflow-hidden" style={{ borderRadius: '0 0 28px 28px' }}>
@@ -646,6 +644,8 @@ const ProductDetail = () => {
               </div>
             </div>
           )}
+          {product.category && <span className="inline-block px-3 py-1 rounded-full bg-orange-50 text-orange-600 text-xs font-semibold tracking-wide uppercase mb-2">{product.category}</span>}
+          <h1 className="text-xl font-bold text-gray-900 leading-snug mb-1.5 line-clamp-2">{product.name}</h1>
           <div className="flex items-center gap-2 mb-3">
             <StarRating rating={displayRating} />
             <span className="text-sm font-semibold text-gray-700">{displayRating.toFixed(1)}</span>
