@@ -173,17 +173,6 @@ const ProductDetail = () => {
 
   useEffect(() => { if (!id) return; setSelectedImage(0); setQuantity(1); loadProduct(); loadReviews(); try { window.scrollTo({ top: 0, behavior: 'instant' }) } catch {} }, [id])
 
-  // Pixel/external link back-button fix: inject home into history so pressing back lands on home, not a blank browser page
-  useEffect(() => {
-    try {
-      const ref = document.referrer
-      const isExternal = !ref || !ref.includes(window.location.hostname)
-      if (isExternal) {
-        window.history.pushState({ __buysialHome: true }, '', '/')
-        window.history.pushState({ __buysialProduct: true }, '', window.location.pathname + window.location.search + window.location.hash)
-      }
-    } catch {}
-  }, [])
 
   const handleAddToCart = () => {
     if (!product) return

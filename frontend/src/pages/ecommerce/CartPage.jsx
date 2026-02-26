@@ -765,18 +765,23 @@ export default function CartPage() {
       } catch(err) { console.error('Error loading cart:', err) /* preserve existing cart */ }
     }
     
+    let visTimer = null
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return
+      clearTimeout(visTimer)
+      visTimer = setTimeout(loadCart, 300)
+    }
     const handler = () => setTimeout(loadCart, 10)
     window.addEventListener('cartUpdated', handler)
     window.addEventListener('storage', handler)
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') loadCart()
-    })
-    window.addEventListener('focus', loadCart)
+    document.addEventListener('visibilitychange', onVisible)
+    // NOTE: no 'focus' listener — it fires on every input click and shakes the cart list
     
     return () => {
       window.removeEventListener('cartUpdated', handler)
       window.removeEventListener('storage', handler)
-      window.removeEventListener('focus', loadCart)
+      document.removeEventListener('visibilitychange', onVisible)
+      clearTimeout(visTimer)
     }
   }, [])
 
@@ -1337,35 +1342,35 @@ export default function CartPage() {
               
               <div style={{ display: 'grid', gap: 12 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 4 }}>Full Name *</label>
-                  <input name="name" value={form.name} onChange={onChange} placeholder="Your full name" style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} />
+                  <label htmlFor="cart-name" style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 4 }}>Full Name *</label>
+                  <input id="cart-name" name="name" autoComplete="name" value={form.name} onChange={onChange} placeholder="Your full name" style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} />
                 </div>
                 
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 4 }}>Phone Number *</label>
+                  <label htmlFor="cart-phone" style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 4 }}>Phone Number *</label>
                   <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 8 }}>
-                    <select name="country" value={form.country} onChange={onChange} style={{ padding: '10px 6px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 13 }}>
+                    <select id="cart-country-dial" name="country" autoComplete="country" value={form.country} onChange={onChange} style={{ padding: '10px 6px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 13 }}>
                       {COUNTRY_LIST.map(c => <option key={c.code} value={c.code}>{c.flag} {c.dial}</option>)}
                     </select>
-                    <input name="phone" value={form.phone} onChange={onChange} placeholder="Phone number" style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} />
+                    <input id="cart-phone" name="phone" autoComplete="tel" value={form.phone} onChange={onChange} placeholder="Phone number" style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} />
                   </div>
                 </div>
                 
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 4 }}>City *</label>
-                  <select name="city" value={form.city} onChange={onChange} style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14 }}>
+                  <label htmlFor="cart-city" style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 4 }}>City *</label>
+                  <select id="cart-city" name="city" autoComplete="address-level2" value={form.city} onChange={onChange} style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14 }}>
                     {(CITY_OPTIONS[form.country] || []).map(c => <option key={c} value={c}>{c}</option>)}
                     <option value="Other">Other</option>
                   </select>
                   {form.city === 'Other' && (
-                    <input name="cityOther" value={form.cityOther} onChange={onChange} placeholder="Enter city name" style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, marginTop: 8, boxSizing: 'border-box' }} />
+                    <input id="cart-city-other" name="cityOther" autoComplete="address-level2" value={form.cityOther} onChange={onChange} placeholder="Enter city name" style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, marginTop: 8, boxSizing: 'border-box' }} />
                   )}
                 </div>
                 
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 4 }}>{isUkCountry(form.country) ? 'Postal Code *' : 'Area *'}</label>
+                  <label htmlFor="cart-area" style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 4 }}>{isUkCountry(form.country) ? 'Postal Code *' : 'Area *'}</label>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <input name="area" value={form.area} onChange={onChange} placeholder={isUkCountry(form.country) ? 'Enter postal code (e.g. SW1A 1AA)' : 'Area/District'} style={{ flex: 1, padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} />
+                    <input id="cart-area" name="area" autoComplete={isUkCountry(form.country) ? 'postal-code' : 'address-level3'} value={form.area} onChange={onChange} placeholder={isUkCountry(form.country) ? 'Enter postal code (e.g. SW1A 1AA)' : 'Area/District'} style={{ flex: 1, padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} />
                     <button
                       type="button"
                       onClick={() => setShowMapPicker(true)}
@@ -1428,13 +1433,13 @@ export default function CartPage() {
                 </div>
                 
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 4 }}>Full Address *</label>
-                  <textarea name="address" value={form.address} onChange={onChange} placeholder="Street, building, apartment..." rows={2} style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, resize: 'none', boxSizing: 'border-box' }} />
+                  <label htmlFor="cart-address" style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 4 }}>Full Address *</label>
+                  <textarea id="cart-address" name="address" autoComplete="street-address" value={form.address} onChange={onChange} placeholder="Street, building, apartment..." rows={2} style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, resize: 'none', boxSizing: 'border-box' }} />
                 </div>
                 
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 4 }}>Notes (optional)</label>
-                  <textarea name="details" value={form.details} onChange={onChange} placeholder="Delivery instructions..." rows={2} style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, resize: 'none', boxSizing: 'border-box' }} />
+                  <label htmlFor="cart-details" style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 4 }}>Notes (optional)</label>
+                  <textarea id="cart-details" name="details" autoComplete="off" value={form.details} onChange={onChange} placeholder="Delivery instructions..." rows={2} style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, resize: 'none', boxSizing: 'border-box' }} />
                 </div>
 
                 {/* Payment Method Selection */}
@@ -1473,9 +1478,12 @@ export default function CartPage() {
                     {paymentMethod === 'stripe' && (
                       <div style={{ marginLeft: 26, padding: '16px', background: '#fafafa', borderRadius: 10, border: '1px solid #e2e8f0' }}>
                         <div style={{ marginBottom: 12 }}>
-                          <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#64748b', marginBottom: 6, textTransform: 'uppercase' }}>Cardholder Name</label>
+                          <label htmlFor="card-holder-name" style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#64748b', marginBottom: 6, textTransform: 'uppercase' }}>Cardholder Name</label>
                           <input
+                            id="card-holder-name"
+                            name="cardName"
                             type="text"
+                            autoComplete="cc-name"
                             value={cardName}
                             onChange={(e) => setCardName(e.target.value)}
                             placeholder="John Doe"
