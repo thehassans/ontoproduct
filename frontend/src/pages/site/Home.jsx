@@ -27,7 +27,9 @@ export default function Home(){
   const [cartCount, setCartCount] = useState(() => { try { const c = JSON.parse(localStorage.getItem('shopping_cart') || '[]'); return c.reduce((s, i) => s + (i.quantity || 1), 0) } catch { return 0 } })
   const [catNav, setCatNav] = useState({ enabled: false, categories: [] })
   const [activeCat, setActiveCat] = useState('All')
-  const [annBar, setAnnBar] = useState(null)
+  const [annBar, setAnnBar] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('_ann_bar') || 'null') } catch { return null }
+  })
   const [navScrolled, setNavScrolled] = useState(false)
   const [homeHeadline, setHomeHeadline] = useState({
     enabled: true,
@@ -145,12 +147,13 @@ export default function Home(){
 
           // Parse announcement bar
           const annEnabled = getText('annBar_enabled', 'true') !== 'false'
-          if (annEnabled) {
-            setAnnBar({
-              text: getText('annBar_text', ''),
-              bg: getText('annBar_bg', '#111827'),
-              color: getText('annBar_color', '#ffffff'),
-            })
+          if (annEnabled && getText('annBar_text', '')) {
+            const bar = { text: getText('annBar_text', ''), bg: getText('annBar_bg', '#111827'), color: getText('annBar_color', '#ffffff') }
+            setAnnBar(bar)
+            try { localStorage.setItem('_ann_bar', JSON.stringify(bar)) } catch {}
+          } else {
+            setAnnBar(null)
+            try { localStorage.removeItem('_ann_bar') } catch {}
           }
         }
       } catch (_err) {

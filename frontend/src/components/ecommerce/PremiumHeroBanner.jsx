@@ -97,7 +97,21 @@ export default function PremiumHeroBanner() {
     setCurrentSlide(0)
   }, [slides.length])
 
-  // Preload images
+  // Inject <link rel="preload"> for first slide immediately — browser fetches it in parallel
+  // with JS instead of waiting for new Image() to fire (fixes homepage LCP)
+  useEffect(() => {
+    const firstSrc = String(slides[0]?.bgImage || '').trim()
+    if (!firstSrc) return
+    const link = document.createElement('link')
+    link.rel = 'preload'
+    link.as = 'image'
+    link.href = firstSrc
+    link.setAttribute('fetchpriority', 'high')
+    document.head.appendChild(link)
+    return () => { try { document.head.removeChild(link) } catch {} }
+  }, [slides[0]?.bgImage])
+
+  // Preload all slide images via new Image() for smooth transitions
   useEffect(() => {
     slides.forEach((slide, idx) => {
       const src = String(slide?.bgImage || '').trim()

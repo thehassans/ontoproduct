@@ -173,6 +173,29 @@ const ProductDetail = () => {
 
   useEffect(() => { if (!id) return; setSelectedImage(0); setQuantity(1); loadProduct(); loadReviews(); try { window.scrollTo({ top: 0, behavior: 'instant' }) } catch {} }, [id])
 
+  // Inject <link rel="preload"> for first product image the moment we know the URL — starts
+  // browser fetch one full API round-trip earlier than waiting for the <img> to render
+  useEffect(() => {
+    if (!product) return
+    const raw = (() => {
+      const seq = Array.isArray(product.mediaSequence) ? product.mediaSequence : []
+      const first = seq.find(m => m && typeof m === 'object' && String(m.type || 'image') === 'image' && String(m.url || '').trim())
+      if (first) return String(first.url).trim()
+      const imgs = Array.isArray(product.images) && product.images.length ? product.images : []
+      return imgs[0] ? String(imgs[0]) : ''
+    })()
+    if (!raw) return
+    const src = raw.startsWith('http') ? raw : (mediaUrl(raw) || '')
+    if (!src || src === '/placeholder-product.svg') return
+    const link = document.createElement('link')
+    link.rel = 'preload'
+    link.as = 'image'
+    link.href = src
+    link.setAttribute('fetchpriority', 'high')
+    document.head.appendChild(link)
+    return () => { try { document.head.removeChild(link) } catch {} }
+  }, [product?._id])
+
 
   const handleAddToCart = () => {
     if (!product) return

@@ -23,7 +23,9 @@ export default function CartPage() {
   })
   const [cartLoaded, setCartLoaded] = useState(false)
   const [cartKey, setCartKey] = useState(0) // Force re-render key
-  const [annBar, setAnnBar] = useState(null)
+  const [annBar, setAnnBar] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('_ann_bar') || 'null') } catch { return null }
+  })
   const [isLoading, setIsLoading] = useState(false)
   const toast = useToast()
   const navigate = useNavigate()
@@ -38,7 +40,12 @@ export default function CartPage() {
         const elements = Array.isArray(res?.content?.elements) ? res.content.elements : []
         const getText = (id, fb = '') => { const el = elements.find(e => e?.id === id); return typeof el?.text === 'string' ? el.text : fb }
         if (getText('annBar_enabled', 'true') !== 'false' && getText('annBar_text', '')) {
-          setAnnBar({ text: getText('annBar_text', ''), bg: getText('annBar_bg', '#111827'), color: getText('annBar_color', '#ffffff') })
+          const bar = { text: getText('annBar_text', ''), bg: getText('annBar_bg', '#111827'), color: getText('annBar_color', '#ffffff') }
+          setAnnBar(bar)
+          try { localStorage.setItem('_ann_bar', JSON.stringify(bar)) } catch {}
+        } else {
+          setAnnBar(null)
+          try { localStorage.removeItem('_ann_bar') } catch {}
         }
       } catch {}
     })()
