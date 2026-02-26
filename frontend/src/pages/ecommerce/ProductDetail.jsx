@@ -32,6 +32,7 @@ const ProductDetail = () => {
   const [wishlisted, setWishlisted] = useState(false)
   const [wishBusy, setWishBusy] = useState(false)
   const [cartSuccessModal, setCartSuccessModal] = useState(null)
+  const [fullscreenIdx, setFullscreenIdx] = useState(null)
   const [cartCount, setCartCount] = useState(() => { try { const c = JSON.parse(localStorage.getItem('shopping_cart') || '[]'); return c.reduce((s, i) => s + (i.quantity || 1), 0) } catch { return 0 } })
   const mobileGalleryRef = useRef(null)
 
@@ -452,6 +453,37 @@ const ProductDetail = () => {
           {product.overview && <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-2xl p-5"><p className="text-gray-700 leading-relaxed text-sm whitespace-pre-line">{product.overview}</p></div>}
           {product.specifications && <div className="bg-white rounded-2xl p-5 shadow-sm"><p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Specifications</p><p className="text-gray-600 text-sm whitespace-pre-line leading-relaxed">{product.specifications}</p></div>}
           {!product.description && !product.overview && !product.specifications && !product.descriptionBlocks?.length && <div className="text-center py-12 text-gray-400">No description available</div>}
+          {/* ── Media Gallery – all images + video, tap to fullscreen ── */}
+          {(images.length > 0 || hasVideo) && (
+            <div className="mt-2">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-1 h-5 bg-gradient-to-b from-orange-500 to-amber-400 rounded-full" />
+                <span className="text-xs font-bold text-gray-700 uppercase tracking-widest">Photos & Videos</span>
+                <span className="ml-auto text-[11px] text-gray-400 font-medium">{images.length + (hasVideo ? 1 : 0)} media</span>
+              </div>
+              <div className="grid grid-cols-3 gap-1.5">
+                {images.map((img, idx) => (
+                  <button key={idx} onClick={() => setFullscreenIdx(idx)}
+                    className="relative aspect-square rounded-2xl overflow-hidden bg-gray-100 active:scale-95 transition-transform shadow-sm group">
+                    <img src={img} alt="" className="w-full h-full object-cover group-active:brightness-90 transition-all" loading="lazy"
+                      onError={e => { e.target.src = '/placeholder-product.svg' }} />
+                    <div className="absolute inset-0 bg-black/0 group-active:bg-black/10 transition-all rounded-2xl" />
+                    {idx === 0 && images.length === 1 && !hasVideo && null}
+                  </button>
+                ))}
+                {hasVideo && (
+                  <button onClick={() => setFullscreenIdx(images.length)}
+                    className="relative aspect-square rounded-2xl overflow-hidden bg-gray-900 active:scale-95 transition-transform shadow-sm group flex items-center justify-center">
+                    {images[0] && <img src={images[0]} alt="" className="absolute inset-0 w-full h-full object-cover opacity-30" />}
+                    <div className="relative z-10 w-11 h-11 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center">
+                      <svg className="w-5 h-5 text-white ml-0.5" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                    </div>
+                    <span className="absolute bottom-2 left-0 right-0 text-center text-[10px] text-white/80 font-semibold">VIDEO</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
       {activeTab === 'reviews' && (
@@ -543,21 +575,21 @@ const ProductDetail = () => {
             </div>
           </div>
 
-          {/* Floating Controls - large white circles like Blue Velvet */}
+          {/* Floating Controls — ultra-premium dark glass */}
           <div className="absolute top-6 left-5 z-20">
-            <button onClick={goBack} className="bg-white w-12 h-12 rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.12)] flex items-center justify-center hover:scale-110 transition-transform">
-              <svg className="w-5 h-5 text-gray-800" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
+            <button onClick={goBack} className="bg-black/25 backdrop-blur-2xl border border-white/20 w-11 h-11 rounded-full flex items-center justify-center active:scale-90 transition-all shadow-[0_8px_32px_rgba(0,0,0,0.25)]">
+              <svg className="w-5 h-5 text-white drop-shadow" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
             </button>
           </div>
           <div className="absolute top-6 right-5 z-20 flex gap-2">
-            <button onClick={handleShare} className="bg-white/80 backdrop-blur-md w-10 h-10 rounded-full shadow-[0_2px_12px_rgba(0,0,0,0.08)] flex items-center justify-center hover:scale-110 active:scale-95 transition-transform">
-              <svg className="w-[17px] h-[17px] text-gray-700" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+            <button onClick={handleShare} className="bg-black/25 backdrop-blur-2xl border border-white/20 w-10 h-10 rounded-full flex items-center justify-center active:scale-90 transition-all shadow-[0_8px_32px_rgba(0,0,0,0.2)]">
+              <svg className="w-[17px] h-[17px] text-white drop-shadow" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
             </button>
-            <button onClick={onToggleWishlist} disabled={wishBusy} className={`w-10 h-10 rounded-full shadow-[0_2px_12px_rgba(0,0,0,0.08)] flex items-center justify-center hover:scale-110 active:scale-95 transition-transform ${wishlisted ? 'bg-orange-500 text-white' : 'bg-white/80 backdrop-blur-md text-gray-700'}`}>
-              <svg className="w-[17px] h-[17px]" viewBox="0 0 24 24" fill={wishlisted ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+            <button onClick={onToggleWishlist} disabled={wishBusy} className={`w-10 h-10 rounded-full flex items-center justify-center active:scale-90 transition-all shadow-[0_8px_32px_rgba(0,0,0,0.2)] border ${wishlisted ? 'bg-orange-500 border-orange-400' : 'bg-black/25 backdrop-blur-2xl border-white/20'}`}>
+              <svg className="w-[17px] h-[17px] text-white drop-shadow" viewBox="0 0 24 24" fill={wishlisted ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
             </button>
-            <button onClick={() => navigate('/cart')} className="bg-white/80 backdrop-blur-md w-10 h-10 rounded-full shadow-[0_2px_12px_rgba(0,0,0,0.08)] flex items-center justify-center hover:scale-110 active:scale-95 transition-transform relative">
-              <svg className="w-[17px] h-[17px] text-gray-700" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+            <button onClick={() => navigate('/cart')} className="bg-black/25 backdrop-blur-2xl border border-white/20 w-10 h-10 rounded-full flex items-center justify-center active:scale-90 transition-all shadow-[0_8px_32px_rgba(0,0,0,0.2)] relative">
+              <svg className="w-[17px] h-[17px] text-white drop-shadow" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
               {cartCount > 0 && <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">{cartCount > 99 ? '99+' : cartCount}</span>}
             </button>
           </div>
@@ -599,8 +631,6 @@ const ProductDetail = () => {
             <span className="text-sm font-semibold text-gray-700">{displayRating.toFixed(1)}</span>
             <span className="text-xs text-gray-400">({displayReviewCount})</span>
           </div>
-          {product.description && <p className="text-gray-500 text-sm leading-relaxed mb-4 line-clamp-3">{product.description}</p>}
-
           <div className="mb-5"><VariantSelector excludeColor /></div>
 
 
@@ -725,6 +755,70 @@ const ProductDetail = () => {
       </div>
 
       <ShoppingCart isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
+
+      {/* ===== FULLSCREEN MEDIA LIGHTBOX ===== */}
+      {fullscreenIdx !== null && (() => {
+        const totalMedia = images.length + (hasVideo ? 1 : 0)
+        const isVid = hasVideo && fullscreenIdx === images.length
+        const prev = () => setFullscreenIdx(i => (i - 1 + totalMedia) % totalMedia)
+        const next = () => setFullscreenIdx(i => (i + 1) % totalMedia)
+        return (
+          <div className="fixed inset-0 z-[99998] bg-black flex flex-col" style={{ paddingTop: 'env(safe-area-inset-top, 0px)', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+            {/* Header bar */}
+            <div className="flex items-center justify-between px-4 py-3 flex-shrink-0">
+              <span className="text-white/50 text-sm font-medium tabular-nums">{fullscreenIdx + 1} / {totalMedia}</span>
+              <button onClick={() => setFullscreenIdx(null)}
+                className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-xl border border-white/15 flex items-center justify-center active:scale-90 transition-all">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            {/* Main media */}
+            <div className="flex-1 relative flex items-center justify-center overflow-hidden">
+              {isVid
+                ? <video src={videoUrl} controls loop playsInline autoPlay className="max-w-full max-h-full object-contain" poster={images[0]} />
+                : <img src={images[fullscreenIdx]} alt="" className="max-w-full max-h-full object-contain select-none"
+                    style={{ animation: 'fsImgIn 0.22s cubic-bezier(0.22,1,0.36,1) both' }}
+                    onError={e => { e.target.src = '/placeholder-product.svg' }} />
+              }
+              {/* Prev / Next arrows */}
+              {totalMedia > 1 && (
+                <>
+                  <button onClick={prev} className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/40 backdrop-blur-xl border border-white/15 flex items-center justify-center active:scale-90 transition-all z-10">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
+                  </button>
+                  <button onClick={next} className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/40 backdrop-blur-xl border border-white/15 flex items-center justify-center active:scale-90 transition-all z-10">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+                  </button>
+                </>
+              )}
+            </div>
+            {/* Thumbnail strip */}
+            {totalMedia > 1 && (
+              <div className="flex-shrink-0 flex gap-2 px-4 py-3 overflow-x-auto scrollbar-hide">
+                {images.map((img, idx) => (
+                  <button key={idx} onClick={() => setFullscreenIdx(idx)}
+                    className={`flex-shrink-0 w-14 h-14 rounded-xl overflow-hidden border-2 transition-all active:scale-90 ${
+                      fullscreenIdx === idx ? 'border-white scale-110 shadow-lg shadow-white/20' : 'border-white/20 opacity-50'
+                    }`}>
+                    <img src={img} alt="" className="w-full h-full object-cover" onError={e => { e.target.src = '/placeholder-product.svg' }} />
+                  </button>
+                ))}
+                {hasVideo && (
+                  <button onClick={() => setFullscreenIdx(images.length)}
+                    className={`flex-shrink-0 w-14 h-14 rounded-xl border-2 bg-gray-800 flex items-center justify-center transition-all active:scale-90 ${
+                      fullscreenIdx === images.length ? 'border-white scale-110' : 'border-white/20 opacity-50'
+                    }`}>
+                    <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                  </button>
+                )}
+              </div>
+            )}
+            <style>{`
+              @keyframes fsImgIn { from { opacity:0; transform:scale(0.94) } to { opacity:1; transform:scale(1) } }
+            `}</style>
+          </div>
+        )
+      })()}
 
       {/* ===== ULTRA PREMIUM CART SUCCESS MODAL ===== */}
       {cartSuccessModal && (
