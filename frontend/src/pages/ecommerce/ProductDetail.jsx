@@ -568,14 +568,14 @@ const ProductDetail = () => {
             <div className="flex w-max">
               {images.length > 0 ? images.map((img, idx) => (
                 <div key={idx} className="w-screen flex-shrink-0 snap-center">
-                  <div className="relative bg-[#f0f0f2] w-full aspect-[4/3]">
-                    <img src={img} alt={`Product ${idx + 1}`} className="absolute inset-0 w-full h-full object-cover" loading={idx === 0 ? 'eager' : 'lazy'} fetchPriority={idx === 0 ? 'high' : 'auto'} onError={e => { e.target.src = '/placeholder-product.svg' }} />
+                  <div className="bg-[#f0f0f2] w-full">
+                    <img src={img} alt={`Product ${idx + 1}`} className="w-full h-auto block" loading={idx === 0 ? 'eager' : 'lazy'} fetchPriority={idx === 0 ? 'high' : 'auto'} onError={e => { e.target.src = '/placeholder-product.svg' }} />
                   </div>
                 </div>
               )) : !hasVideo ? (
-                <div className="w-screen flex-shrink-0 snap-center"><div className="bg-gradient-to-br from-gray-50 to-gray-100 aspect-[4/3] flex items-center justify-center"><div className="text-center text-gray-300"><div className="text-6xl mb-2">📦</div><p>No image</p></div></div></div>
+                <div className="w-screen flex-shrink-0 snap-center"><div className="bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center" style={{ minHeight: 280 }}><div className="text-center text-gray-300"><div className="text-6xl mb-2">📦</div><p>No image</p></div></div></div>
               ) : null}
-              {hasVideo && <div className="w-screen flex-shrink-0 snap-center"><div className="bg-black aspect-[4/3] flex items-center justify-center"><video src={videoUrl} controls loop playsInline className="w-full h-full object-contain" poster={images[0]} /></div></div>}
+              {hasVideo && <div className="w-screen flex-shrink-0 snap-center"><div className="bg-black flex items-center justify-center" style={{ minHeight: 280 }}><video src={videoUrl} controls loop playsInline className="w-full h-auto block" poster={images[0]} /></div></div>}
             </div>
           </div>
 
