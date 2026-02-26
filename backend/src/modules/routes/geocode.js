@@ -120,10 +120,17 @@ router.post('/distance', auth, async (req, res) => {
 })
 
 // GET /api/geocode/detect-country - Public IP-based country detection (no auth)
-// Proxies ipapi.co server-side to avoid CORS issues on the frontend
+// Primary: Cloudflare CF-IPCountry header (instant, zero latency, already on every request)
+// Fallback: ipapi.co proxy for direct/non-CF traffic
 router.get('/detect-country', async (req, res) => {
+  // Cloudflare sets CF-IPCountry on every proxied request — use it first (instant)
+  const cfCountry = (req.headers['cf-ipcountry'] || '').toUpperCase().trim()
+  if (cfCountry && cfCountry !== 'XX' && cfCountry !== 'T1') {
+    return res.json({ country_code: cfCountry })
+  }
+
   try {
-    // Forward the client's real IP to ipapi
+    // Fallback: forward the client's real IP to ipapi.co (for non-Cloudflare traffic)
     const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip
     const url = clientIp && clientIp !== '127.0.0.1' && clientIp !== '::1'
       ? `https://ipapi.co/${clientIp}/json/`
@@ -138,7 +145,6 @@ router.get('/detect-country', async (req, res) => {
     const data = await ipRes.json()
     res.json({ country_code: data.country_code || null })
   } catch (err) {
-    // Fallback: return null so frontend uses its own fallback
     res.json({ country_code: null })
   }
 })
