@@ -170,10 +170,21 @@ export default function PremiumHeroBanner() {
             key={idx}
             className={`hero-slide ${idx === currentSlide ? 'active' : ''}`}
             style={{ 
-              backgroundImage: imagesLoaded[idx] ? `url(${imagesLoaded[idx]})` : 'none',
+              backgroundImage: idx > 0 && imagesLoaded[idx] ? `url(${imagesLoaded[idx]})` : 'none',
               backgroundColor: !imagesLoaded[idx] ? '#f8fafc' : 'transparent'
             }}
           >
+            {/* First slide uses real <img> so browser can preload it (fixes LCP) */}
+            {idx === 0 && imagesLoaded[0] && (
+              <img
+                src={imagesLoaded[0]}
+                alt={slide.title || 'Banner'}
+                fetchPriority="high"
+                loading="eager"
+                decoding="async"
+                className="slide-bg-img"
+              />
+            )}
             {!imagesLoaded[idx] && (
               <div className="slide-fallback" style={{ background: slide.fallbackGradient }}></div>
             )}
@@ -257,6 +268,15 @@ export default function PremiumHeroBanner() {
 
         .hero-slide.active {
           opacity: 1;
+        }
+
+        .slide-bg-img {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          object-position: center;
         }
 
         .slide-fallback {

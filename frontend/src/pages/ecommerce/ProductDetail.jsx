@@ -521,7 +521,7 @@ const ProductDetail = () => {
               {images.length > 0 ? images.map((img, idx) => (
                 <div key={idx} className="w-screen flex-shrink-0 snap-center">
                   <div className="relative bg-[#f0f0f2] w-full" style={{ height: '60vh' }}>
-                    <img src={img} alt={`Product ${idx + 1}`} className="w-full h-full object-cover" onError={e => { e.target.src = '/placeholder-product.svg' }} />
+                    <img src={img} alt={`Product ${idx + 1}`} className="w-full h-full object-cover" loading={idx === 0 ? 'eager' : 'lazy'} fetchPriority={idx === 0 ? 'high' : 'auto'} onError={e => { e.target.src = '/placeholder-product.svg' }} />
                   </div>
                 </div>
               )) : !hasVideo ? (

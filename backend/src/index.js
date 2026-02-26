@@ -281,9 +281,11 @@ const UPLOADS_DIRS = (() => {
   }
 })();
 const uploadsStaticOpts = {
-  setHeaders: (res) => {
+  setHeaders: (res, filePath) => {
     try {
-      res.setHeader("Cache-Control", "public, max-age=86400");
+      // Uploaded files have unique timestamp-based names — safe to cache for 1 year
+      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      res.setHeader("Vary", "Accept-Encoding");
     } catch {}
   },
 };

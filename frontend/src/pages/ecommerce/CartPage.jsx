@@ -746,12 +746,22 @@ export default function CartPage() {
     const loadCart = () => {
       try {
         const savedCart = localStorage.getItem('shopping_cart')
-        const parsed = savedCart ? JSON.parse(savedCart) : []
+        let parsed = savedCart ? JSON.parse(savedCart) : []
+        // Fallback: sessionStorage backup covers TikTok/FB in-app browser where localStorage is ephemeral
+        if (!parsed.length) {
+          try {
+            const bak = sessionStorage.getItem('shopping_cart_bak')
+            if (bak) parsed = JSON.parse(bak)
+          } catch {}
+        }
         const norm = normalizeCartItems(parsed, form.country)
         if (norm.changed) {
           try { localStorage.setItem('shopping_cart', JSON.stringify(norm.items)) } catch {}
         }
-        setCartItems(norm.items)
+        // Only clear cart if we are certain it's empty (no backup either)
+        if (norm.items.length > 0 || !parsed.length) {
+          setCartItems(norm.items)
+        }
       } catch(err) { console.error('Error loading cart:', err) /* preserve existing cart */ }
     }
     
