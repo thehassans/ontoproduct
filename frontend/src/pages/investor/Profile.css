@@ -1,0 +1,281 @@
+/* Ultra Premium Profile Styles */
+
+.investor-profile {
+  padding: 32px;
+  min-height: 100vh;
+  background-color: var(--il-bg);
+  color: var(--il-text);
+  font-family: 'Inter', system-ui, sans-serif;
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+.ip-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32px;
+}
+
+.ip-greeting {
+  font-size: 13px;
+  color: var(--il-text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  margin-bottom: 6px;
+}
+
+.ip-title {
+  font-size: 32px;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--il-text) 0%, var(--il-text-muted) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin: 0;
+}
+
+/* Premium Cards */
+.ip-card {
+  background: var(--il-card-bg);
+  border: 1px solid var(--il-glass-border);
+  backdrop-filter: blur(12px);
+  padding: 32px;
+  border-radius: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ip-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 25px 30px -5px rgba(0, 0, 0, 0.08);
+}
+
+.ip-card-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--il-text);
+  margin: 0 0 24px 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ip-card-title svg {
+  color: var(--il-active-text);
+}
+
+/* Profile Header */
+.ip-profile-header {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-bottom: 32px;
+  padding-bottom: 32px;
+  border-bottom: 1px solid var(--il-glass-border);
+}
+
+.ip-avatar {
+  width: 88px;
+  height: 88px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36px;
+  font-weight: 700;
+  color: white;
+  box-shadow: 0 10px 30px rgba(16, 185, 129, 0.35);
+  flex-shrink: 0;
+}
+
+.ip-profile-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ip-name {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--il-text);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.ip-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  background: var(--il-active-bg);
+  border: 1px solid var(--il-active-border);
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--il-active-text);
+  width: fit-content;
+}
+
+/* Details Grid */
+.ip-details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 24px;
+}
+
+.ip-detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ip-detail-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--il-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ip-detail-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--il-text);
+}
+
+.ip-highlight-blue {
+  color: #3b82f6;
+  font-size: 18px;
+}
+
+.ip-highlight-green {
+  color: var(--il-active-text);
+  font-size: 18px;
+}
+
+/* Status Badges */
+.ip-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: capitalize;
+  width: fit-content;
+}
+
+.ip-status-badge.active {
+  background: rgba(16, 185, 129, 0.15);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.ip-status-badge.paused {
+  background: rgba(245, 158, 11, 0.15);
+  color: #d97706;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.ip-status-badge.completed {
+  background: rgba(59, 130, 246, 0.15);
+  color: #2563eb;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.ip-status-badge.inactive {
+  background: rgba(100, 116, 139, 0.15);
+  color: #64748b;
+  border: 1px solid rgba(100, 116, 139, 0.3);
+}
+
+/* Account ID */
+.ip-account-id {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  background: var(--il-hover-bg);
+  border: 1px solid var(--il-glass-border);
+  border-radius: 14px;
+  transition: all 0.2s ease;
+}
+
+.ip-account-id:hover {
+  background: var(--il-active-bg);
+  border-color: var(--il-active-border);
+}
+
+.ip-account-id code {
+  flex: 1;
+  font-family: 'SF Mono', 'Monaco', 'Courier New', monospace;
+  font-size: 13px;
+  color: var(--il-text-muted);
+  word-break: break-all;
+  line-height: 1.6;
+}
+
+.ip-copy-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--il-text);
+  border: none;
+  border-radius: 10px;
+  color: var(--il-bg);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.ip-copy-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.ip-copy-btn svg {
+  flex-shrink: 0;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .investor-profile {
+    padding: 16px;
+  }
+  
+  .ip-card {
+    padding: 20px;
+  }
+  
+  .ip-profile-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .ip-details-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .ip-title {
+    font-size: 24px;
+  }
+  
+  .ip-name {
+    font-size: 22px;
+  }
+  
+  .ip-account-id {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .ip-copy-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

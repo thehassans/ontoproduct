@@ -1,0 +1,306 @@
+/* InvestorLayout Premium Styles with Theme Support */
+
+:root {
+  /* Default Dark Theme Variables */
+  --il-bg: #0f172a;
+  --il-sidebar-bg: rgba(15, 23, 42, 0.95);
+  --il-sidebar-border: rgba(255, 255, 255, 0.05);
+  --il-text: #f8fafc;
+  --il-text-muted: #94a3b8;
+  --il-card-bg: rgba(30, 41, 59, 0.6);
+  --il-glass-border: rgba(255, 255, 255, 0.05);
+  --il-hover-bg: rgba(255, 255, 255, 0.03);
+  --il-active-bg: rgba(16, 185, 129, 0.1);
+  --il-active-border: rgba(16, 185, 129, 0.2);
+  --il-active-text: #10b981;
+  --il-nav-shadow: 0 0 20px rgba(16, 185, 129, 0.1);
+  --il-mobile-header-bg: rgba(15, 23, 42, 0.8);
+  --il-bottom-nav-bg: rgba(15, 23, 42, 0.9);
+}
+
+[data-theme='light'] {
+  /* Light Theme Variables */
+  --il-bg: #f0f4f8;
+  --il-sidebar-bg: rgba(255, 255, 255, 0.95);
+  --il-sidebar-border: rgba(0, 0, 0, 0.05);
+  --il-text: #0f172a;
+  --il-text-muted: #64748b;
+  --il-card-bg: rgba(255, 255, 255, 0.8);
+  --il-glass-border: rgba(0, 0, 0, 0.05);
+  --il-hover-bg: rgba(0, 0, 0, 0.03);
+  --il-active-bg: rgba(16, 185, 129, 0.1);
+  --il-active-border: rgba(16, 185, 129, 0.2);
+  --il-active-text: #059669;
+  --il-nav-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+  --il-mobile-header-bg: rgba(255, 255, 255, 0.8);
+  --il-bottom-nav-bg: rgba(255, 255, 255, 0.95);
+}
+
+.il-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--il-bg);
+  color: var(--il-text);
+  font-family: 'Inter', system-ui, sans-serif;
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+/* Mobile Header */
+.il-mobile-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--il-mobile-header-bg);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--il-sidebar-border);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.il-theme-btn-mobile {
+  background: none;
+  border: none;
+  color: var(--il-text-muted);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+
+.il-theme-btn-mobile:hover {
+  background: var(--il-hover-bg);
+}
+
+.il-logout-btn-mobile {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.il-logout-btn-mobile:hover {
+  background: rgba(239, 68, 68, 0.2);
+}
+
+/* Desktop Topbar */
+.il-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--il-sidebar-bg);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--il-sidebar-border);
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 72px;
+}
+
+.il-user-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 20px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.1) 100%);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+.il-badge-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+  flex-shrink: 0;
+  font-size: 18px;
+}
+
+.il-badge-role {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.il-badge-name {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Premium Theme Toggle Switch */
+.il-theme-toggle-switch {
+  position: relative;
+  width: 70px;
+  height: 34px;
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  border-radius: 17px;
+  border: 2px solid #334155;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.3), 0 2px 8px rgba(0,0,0,0.2);
+  padding: 0;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+[data-theme='light'] .il-theme-toggle-switch {
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+  border: 2px solid #cbd5e1;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.1), 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.il-toggle-track {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px;
+}
+
+.il-toggle-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+[data-theme='dark'] .il-toggle-thumb {
+  left: 37px;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
+}
+
+[data-theme='light'] .il-toggle-thumb {
+  left: 3px;
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  box-shadow: 0 2px 8px rgba(251, 191, 36, 0.4);
+}
+
+.il-logout-btn-desktop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 10px;
+  color: #ef4444;
+  font-weight: 500;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.il-logout-btn-desktop:hover {
+  background: rgba(239, 68, 68, 0.15);
+  transform: translateX(2px);
+}
+
+/* Main Content */
+.il-main {
+  flex: 1;
+  min-height: calc(100vh - 72px);
+  position: relative;
+  z-index: 1;
+}
+
+/* Mobile Bottom Navigation */
+.il-bottom-nav {
+  display: none;
+}
+
+/* Responsive Styles */
+@media (max-width: 768px) {
+  .il-topbar {
+    display: none;
+  }
+
+  .il-main {
+    min-height: calc(100vh - 146px);
+    padding-bottom: 80px;
+  }
+  
+  .il-bottom-nav {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 70px;
+    background: var(--il-bottom-nav-bg);
+    backdrop-filter: blur(16px);
+    border-top: 1px solid var(--il-sidebar-border);
+    z-index: 1000;
+    padding-bottom: env(safe-area-inset-bottom);
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+  }
+
+  .il-bottom-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    height: 100%;
+    color: var(--il-text-muted);
+    text-decoration: none;
+    gap: 4px;
+    transition: all 0.2s ease;
+  }
+
+  .il-bottom-nav-item.active {
+    color: var(--il-active-text);
+  }
+  
+  .il-bottom-nav-item.active .il-nav-icon {
+    transform: translateY(-2px);
+  }
+
+  .il-bottom-nav-item .il-nav-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s;
+  }
+  
+  .il-bottom-nav-item .il-nav-label {
+    font-size: 10px;
+    font-weight: 500;
+  }
+}

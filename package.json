@@ -1,0 +1,9 @@
+{
+  "name": "buysial-shopify-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "BuySial Shopify Integration",
+  "scripts": {
+    "shopify": "shopify"
+  }
+}
