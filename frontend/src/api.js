@@ -416,7 +416,7 @@ export async function apiPost(path, body) {
   const url = buildUrl(path)
   const isLogin =
     /\/auth\/login$/.test(path) || /\/api\/auth\/login$/.test(path) || path.includes('/auth/login')
-  const isAI = path.includes('/generate-description') || path.includes('/images/ai')
+  const isAI = path.includes('/generate-description') || path.includes('/images/ai') || path.includes('/generate-seo')
   
   const authHeaders = await authHeader()
   const headers = { 'Content-Type': 'application/json', ...authHeaders }
