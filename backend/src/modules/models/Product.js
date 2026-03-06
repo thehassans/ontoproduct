@@ -96,6 +96,9 @@ const ProductSchema = new mongoose.Schema(
     slug: { type: String, default: "" },
     canonicalUrl: { type: String, default: "" },
     noIndex: { type: Boolean, default: false },
+    ogTitle: { type: String, default: "" },
+    ogDescription: { type: String, default: "" },
+    ogImage: { type: String, default: "" },
     // Country-wise SEO overrides (e.g. { UAE: { metaTitle, metaDescription, keywords, hreflang } })
     countrySeo: { type: mongoose.Schema.Types.Mixed, default: {} },
     // Backlinks tracking

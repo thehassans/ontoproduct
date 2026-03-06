@@ -1276,7 +1276,7 @@ router.post('/:id/seo', auth, allowRoles('admin','user','manager','seo_manager')
       }
     }
     
-    const { seoTitle, seoDescription, seoKeywords, metaTitle, metaDescription, slug, canonicalUrl, noIndex } = req.body
+    const { seoTitle, seoDescription, seoKeywords, metaTitle, metaDescription, slug, canonicalUrl, noIndex, ogTitle, ogDescription, ogImage } = req.body
     
     if (seoTitle !== undefined) prod.seoTitle = String(seoTitle || '')
     if (seoDescription !== undefined) prod.seoDescription = String(seoDescription || '')
@@ -1286,6 +1286,9 @@ router.post('/:id/seo', auth, allowRoles('admin','user','manager','seo_manager')
     if (slug !== undefined) prod.slug = String(slug || '').toLowerCase().replace(/[^a-z0-9-]/g, '-')
     if (canonicalUrl !== undefined) prod.canonicalUrl = String(canonicalUrl || '')
     if (noIndex !== undefined) prod.noIndex = Boolean(noIndex)
+    if (ogTitle !== undefined) prod.ogTitle = String(ogTitle || '')
+    if (ogDescription !== undefined) prod.ogDescription = String(ogDescription || '')
+    if (ogImage !== undefined) prod.ogImage = String(ogImage || '')
     
     await prod.save()
     res.json({ success: true, product: prod })
@@ -1435,6 +1438,9 @@ router.patch('/:id', auth, allowRoles('admin','user','manager'), upload.any(), a
   if (req.body?.slug != null) prod.slug = String(req.body.slug || '').toLowerCase().replace(/[^a-z0-9-]/g, '-')
   if (req.body?.canonicalUrl != null) prod.canonicalUrl = String(req.body.canonicalUrl || '')
   if (req.body?.noIndex != null) prod.noIndex = (req.body.noIndex === true || String(req.body.noIndex).toLowerCase() === 'true')
+  if (req.body?.ogTitle != null) prod.ogTitle = String(req.body.ogTitle || '')
+  if (req.body?.ogDescription != null) prod.ogDescription = String(req.body.ogDescription || '')
+  if (req.body?.ogImage != null) prod.ogImage = String(req.body.ogImage || '')
   if (req.body?.countrySeo != null) {
     try {
       let cs = req.body.countrySeo
