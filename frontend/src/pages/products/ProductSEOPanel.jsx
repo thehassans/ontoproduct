@@ -75,6 +75,39 @@ export default function ProductSEOPanel({ form, setForm, countryOpts, productId,
     })
   }
 
+  function applyAISeo(s) {
+    setForm(f => ({
+      ...f,
+      seo: {
+        ...(f.seo || {}),
+        seoTitle: s.seoTitle || '',
+        slug: s.slug || '',
+        seoDescription: s.seoDescription || '',
+        seoKeywords: s.seoKeywords || '',
+        canonicalUrl: s.canonicalUrl || '',
+        ogTitle: s.ogTitle || '',
+        ogDescription: s.ogDescription || '',
+      },
+      countrySeo: s.countrySeo && typeof s.countrySeo === 'object'
+        ? { ...(f.countrySeo || {}), ...s.countrySeo }
+        : f.countrySeo,
+      // Replace old AI-suggested backlinks, keep manual ones
+      backlinks: [
+        ...(f.backlinks || []).filter(b => !b.aiSuggested),
+        ...(Array.isArray(s.backlinks) ? s.backlinks.map(b => ({
+          url: b.url || '',
+          anchor: b.anchor || '',
+          type: b.type || 'dofollow',
+          status: b.status || 'pending',
+          aiSuggested: true,
+          addedAt: new Date().toISOString(),
+        })) : []),
+      ],
+      gscData: { ...(f.gscData || {}), siteUrl: SITE_URL },
+    }))
+    setAiSeoMsg('✅ AI SEO applied to all tabs — review and save')
+  }
+
   async function generateAISeo() {
     if (!form.name) { setAiSeoMsg('❌ Enter a product name first'); return }
     setAiSeoLoading(true)
@@ -94,34 +127,7 @@ export default function ProductSEOPanel({ form, setForm, countryOpts, productId,
       }
       const s = res.seo
       setAiSeoPreview(s)
-      // Apply all SEO fields immediately
-      setForm(f => ({
-        ...f,
-        seo: {
-          ...(f.seo || {}),
-          seoTitle: s.seoTitle || f.seo?.seoTitle || '',
-          slug: s.slug || f.seo?.slug || '',
-          seoDescription: s.seoDescription || f.seo?.seoDescription || '',
-          seoKeywords: s.seoKeywords || f.seo?.seoKeywords || '',
-          canonicalUrl: s.canonicalUrl || f.seo?.canonicalUrl || '',
-          ogTitle: s.ogTitle || f.seo?.ogTitle || '',
-          ogDescription: s.ogDescription || f.seo?.ogDescription || '',
-        },
-        countrySeo: s.countrySeo && typeof s.countrySeo === 'object'
-          ? { ...(f.countrySeo || {}), ...s.countrySeo }
-          : f.countrySeo,
-        backlinks: Array.isArray(s.backlinks) && s.backlinks.length
-          ? [
-              ...(f.backlinks || []),
-              ...s.backlinks.map(b => ({ ...b, addedAt: new Date().toISOString() })),
-            ]
-          : f.backlinks,
-        gscData: {
-          ...(f.gscData || {}),
-          siteUrl: SITE_URL,
-        },
-      }))
-      setAiSeoMsg('✅ AI SEO applied to all tabs — review and save')
+      applyAISeo(s)
     } catch (err) {
       setAiSeoMsg('❌ ' + (err?.message || 'Failed'))
     } finally {
@@ -486,21 +492,21 @@ export default function ProductSEOPanel({ form, setForm, countryOpts, productId,
             {/* Backlinks table */}
             {backlinks.length === 0 ? (
               <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, background: 'var(--panel-2)', borderRadius: 8 }}>
-                No backlinks tracked yet.
+                No backlinks tracked yet. Use <strong>✨ AI SEO</strong> tab to auto-generate suggestions.
               </div>
             ) : (
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                   <thead>
                     <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                      {['Source URL', 'Anchor', 'Type', 'Status', 'Added', ''].map(h => (
+                      {['Source URL', 'Anchor', 'Type', 'Status', 'Source', 'Added', ''].map(h => (
                         <th key={h} style={{ padding: '8px 10px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {backlinks.map((bl, i) => (
-                      <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <tr key={i} style={{ borderBottom: '1px solid var(--border)', background: bl.aiSuggested ? 'rgba(59,130,246,0.03)' : 'transparent' }}>
                         <td style={{ padding: '10px 10px' }}>
                           <a href={bl.url} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6', wordBreak: 'break-all', maxWidth: 220, display: 'block' }}>
                             {bl.url}
@@ -517,13 +523,19 @@ export default function ProductSEOPanel({ form, setForm, countryOpts, productId,
                           </select>
                         </td>
                         <td style={{ padding: '10px 10px' }}>
-                          <span style={{
-                            padding: '3px 8px', borderRadius: 999, fontSize: 11, fontWeight: 700,
-                            background: bl.status === 'active' ? '#dcfce7' : bl.status === 'broken' ? '#fee2e2' : '#fef9c3',
-                            color: bl.status === 'active' ? '#166534' : bl.status === 'broken' ? '#991b1b' : '#854d0e',
-                          }}>
-                            {bl.status || 'pending'}
-                          </span>
+                          <select
+                            style={{ ...inputStyle, padding: '4px 8px', fontSize: 12 }}
+                            value={bl.status || 'pending'}
+                            onChange={e => updateBacklink(i, { status: e.target.value })}
+                          >
+                            {LINK_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                        </td>
+                        <td style={{ padding: '10px 10px', whiteSpace: 'nowrap' }}>
+                          {bl.aiSuggested
+                            ? <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, background: '#dbeafe', color: '#1d4ed8', fontWeight: 700 }}>✨ AI</span>
+                            : <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, background: '#f3f4f6', color: '#6b7280', fontWeight: 700 }}>Manual</span>
+                          }
                         </td>
                         <td style={{ padding: '10px 10px', color: 'var(--text-muted)', whiteSpace: 'nowrap', fontSize: 12 }}>
                           {bl.addedAt ? new Date(bl.addedAt).toLocaleDateString() : '—'}
@@ -534,15 +546,19 @@ export default function ProductSEOPanel({ form, setForm, countryOpts, productId,
                             onClick={() => removeBacklink(i)}
                             style={{ padding: '4px 10px', borderRadius: 6, background: '#fee2e2', color: '#991b1b', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
                           >
-                            Remove
+                            ✕
                           </button>
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>
-                  {backlinks.filter(b => b.status === 'active').length} active · {backlinks.filter(b => b.type === 'dofollow').length} dofollow · {backlinks.length} total
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8, display: 'flex', gap: 16 }}>
+                  <span>{backlinks.filter(b => b.status === 'active').length} active</span>
+                  <span>{backlinks.filter(b => b.type === 'dofollow').length} dofollow</span>
+                  <span>{backlinks.filter(b => b.aiSuggested).length} AI-suggested</span>
+                  <span>{backlinks.filter(b => !b.aiSuggested).length} manual</span>
+                  <span style={{ marginLeft: 'auto', fontWeight: 700 }}>{backlinks.length} total</span>
                 </div>
               </div>
             )}
@@ -718,8 +734,24 @@ export default function ProductSEOPanel({ form, setForm, countryOpts, productId,
             {/* Preview of generated data */}
             {aiSeoPreview && (
               <div style={{ display: 'grid', gap: 12 }}>
-                <div style={{ fontWeight: 700, fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span>📋</span> Generated SEO Preview
+                {/* Use / Regenerate toolbar */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <span style={{ fontWeight: 700, fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 }}><span>📋</span> Generated SEO Preview</span>
+                  <button
+                    type="button"
+                    onClick={() => { applyAISeo(aiSeoPreview) }}
+                    style={{ marginLeft: 'auto', padding: '10px 24px', borderRadius: 10, background: 'linear-gradient(135deg,#16a34a,#15803d)', color: '#fff', border: 'none', fontWeight: 800, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
+                  >
+                    ✅ Use This SEO
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setAiSeoPreview(null); setAiSeoMsg(''); generateAISeo() }}
+                    disabled={aiSeoLoading}
+                    style={{ padding: '10px 18px', borderRadius: 10, background: 'var(--panel-2)', border: '1px solid var(--border)', fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+                  >
+                    🔄 Regenerate
+                  </button>
                 </div>
 
                 {/* General SEO fields */}
@@ -767,28 +799,43 @@ export default function ProductSEOPanel({ form, setForm, countryOpts, productId,
 
                 {/* Suggested Backlinks */}
                 {Array.isArray(aiSeoPreview.backlinks) && aiSeoPreview.backlinks.length > 0 && (
-                  <div style={{ padding: 16, background: 'var(--panel-2)', borderRadius: 10, border: '1px solid var(--border)', display: 'grid', gap: 8 }}>
-                    <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Suggested Backlink Targets</div>
-                    {aiSeoPreview.backlinks.map((bl, i) => (
-                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, padding: '6px 0', borderBottom: i < aiSeoPreview.backlinks.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                        <span style={{ padding: '2px 8px', borderRadius: 999, background: bl.type === 'dofollow' ? '#dcfce7' : '#fef3c7', color: bl.type === 'dofollow' ? '#166534' : '#854d0e', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{bl.type}</span>
-                        <a href={bl.url} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6', wordBreak: 'break-all' }}>{bl.url}</a>
-                        <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap', marginLeft: 'auto' }}>"{bl.anchor}"</span>
-                      </div>
-                    ))}
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>These have been added to your Backlinks tab for tracking.</div>
+                  <div style={{ padding: 16, background: 'var(--panel-2)', borderRadius: 10, border: '1px solid var(--border)', display: 'grid', gap: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                      <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Suggested Backlink Targets</span>
+                      <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, background: '#dbeafe', color: '#1d4ed8', fontWeight: 700 }}>AI</span>
+                    </div>
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                        <thead>
+                          <tr style={{ borderBottom: '2px solid var(--border)' }}>
+                            {['Type', 'Target Site (Source URL)', 'Anchor Text', 'Strategy'].map(h => (
+                              <th key={h} style={{ padding: '6px 10px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {aiSeoPreview.backlinks.map((bl, i) => (
+                            <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
+                              <td style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>
+                                <span style={{ padding: '3px 8px', borderRadius: 999, background: bl.type === 'dofollow' ? '#dcfce7' : '#fef3c7', color: bl.type === 'dofollow' ? '#166534' : '#854d0e', fontSize: 11, fontWeight: 700 }}>{bl.type || 'dofollow'}</span>
+                              </td>
+                              <td style={{ padding: '8px 10px', maxWidth: 280 }}>
+                                <a href={bl.url} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6', wordBreak: 'break-all', fontSize: 12 }}>{bl.url}</a>
+                              </td>
+                              <td style={{ padding: '8px 10px', color: 'var(--text)', fontStyle: 'italic', whiteSpace: 'nowrap', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }}>"{bl.anchor}"</td>
+                              <td style={{ padding: '8px 10px', color: 'var(--text-muted)', fontSize: 11, whiteSpace: 'nowrap' }}>
+                                {bl.type === 'dofollow' ? '🔗 Link equity pass-through' : '👁️ Brand visibility / referral'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 10, padding: '8px 0 0', borderTop: '1px solid var(--border)' }}>
+                      ✅ These are tracked in your <strong>Backlinks tab</strong>. Click <strong>"Use This SEO"</strong> above to apply (replaces previous AI suggestions, keeps manual ones).
+                    </div>
                   </div>
                 )}
-
-                {/* Regenerate */}
-                <button
-                  type="button"
-                  onClick={() => { setAiSeoPreview(null); setAiSeoMsg(''); generateAISeo() }}
-                  disabled={aiSeoLoading}
-                  style={{ padding: '10px 20px', borderRadius: 8, background: 'var(--panel-2)', border: '1px solid var(--border)', fontWeight: 600, fontSize: 13, cursor: 'pointer', width: 'fit-content' }}
-                >
-                  🔄 Regenerate AI SEO
-                </button>
               </div>
             )}
 

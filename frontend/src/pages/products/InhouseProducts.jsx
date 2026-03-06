@@ -578,7 +578,10 @@ export default function InhouseProducts() {
                 ? { ...(f.countrySeo || {}), ...s.countrySeo }
                 : f.countrySeo,
               backlinks: Array.isArray(s.backlinks) && s.backlinks.length
-                ? [...(f.backlinks || []), ...s.backlinks.map(b => ({ ...b, addedAt: new Date().toISOString() }))]
+                ? [
+                    ...(f.backlinks || []).filter(b => !b.aiSuggested),
+                    ...s.backlinks.map(b => ({ url: b.url || '', anchor: b.anchor || '', type: b.type || 'dofollow', status: b.status || 'pending', aiSuggested: true, addedAt: new Date().toISOString() })),
+                  ]
                 : f.backlinks,
               gscData: { ...(f.gscData || {}), siteUrl: 'https://buysial.com' },
             }))

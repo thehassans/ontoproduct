@@ -207,11 +207,11 @@ Return ONLY a single valid JSON object (no markdown fences, no explanation) with
     }
   },
   "backlinks": [
-    { "url": "https://authority-blog.com/relevant-article", "anchor": "exact match or partial match anchor", "type": "dofollow", "status": "pending" },
-    { "url": "https://review-site.com/product-category", "anchor": "brand + keyword anchor", "type": "dofollow", "status": "pending" },
-    { "url": "https://news-site.com/category-article", "anchor": "naked URL or generic", "type": "dofollow", "status": "pending" },
-    { "url": "https://forum-or-qa.com/thread", "anchor": "long-tail keyword anchor", "type": "nofollow", "status": "pending" },
-    { "url": "https://social-or-directory.com/listing", "anchor": "brand name anchor", "type": "nofollow", "status": "pending" }
+    { "url": "REAL_AUTHORITY_SITE_1/specific-article-path", "anchor": "primary keyword anchor text", "type": "dofollow", "status": "pending", "domainAuthority": "high", "notes": "why this site is relevant" },
+    { "url": "REAL_AUTHORITY_SITE_2/category-review-page", "anchor": "brand + keyword anchor", "type": "dofollow", "status": "pending", "domainAuthority": "high", "notes": "why this site is relevant" },
+    { "url": "REAL_AUTHORITY_SITE_3/article", "anchor": "long-tail keyword anchor", "type": "dofollow", "status": "pending", "domainAuthority": "medium", "notes": "why this site is relevant" },
+    { "url": "REAL_QA_OR_FORUM_SITE/thread-about-product", "anchor": "question-based anchor", "type": "nofollow", "status": "pending", "domainAuthority": "high", "notes": "community link building" },
+    { "url": "REAL_NEWS_OR_DIRECTORY_SITE/listing", "anchor": "brand name or naked URL", "type": "nofollow", "status": "pending", "domainAuthority": "medium", "notes": "citation and brand mention" }
   ],
   "siteUrl": "${baseUrl}"
 }
@@ -223,7 +223,7 @@ SEO Rules:
 - seoKeywords: Mix short-head (2 words), medium-tail (3 words), long-tail (4+ words). Include price/buy intent keywords.
 - countrySeo: Generate an entry for EVERY country in [${countriesList}]. For Arabic markets (UAE, KSA, Saudi Arabia, Qatar, Bahrain, Kuwait, Oman), provide Arabic-language meta title and description with correct Arabic keywords. Hreflang: en-AE, ar-AE, en-GB, en-US, ar-SA etc.
 - canonicalUrl: Replace SLUG_HERE with the actual slug you generated
-- backlinks: Real-sounding but aspirational authority sites in the product's niche. Mix of blogs, review sites, news sites, Q&A sites, directories.
+- backlinks: CRITICAL — use REAL, well-known, existing websites that are topically relevant to "${category}" and "${productName}". Examples of real sites by niche: Beauty/Skincare → allure.com, byrdie.com, healthline.com/beauty, cosmopolitan.com; Tech → techradar.com, cnet.com, rtings.com, tomsguide.com; Fashion → vogue.com, whowhatwear.com, harpersbazaar.com; Home → houzz.com, apartmenttherapy.com, bhg.com; Food → foodnetwork.com, seriouseats.com; Fitness → menshealth.com, womenshealthmag.com, livestrong.com; General Q&A → reddit.com, quora.com; General directories → trustpilot.com, g2.com. For UAE/KSA markets also include: khaleejtimes.com, gulfnews.com, arabianbusiness.com. Generate REAL domain names with plausible article paths, not placeholder text like "authority-blog.com". Each backlink must have a "notes" field explaining why that specific site and URL path is relevant to this product.
 - siteUrl: Always "${baseUrl}"`;
 
     const text = await this.generateContent(prompt);
