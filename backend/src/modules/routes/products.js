@@ -1663,18 +1663,18 @@ router.post('/:id/seo/request-index', auth, allowRoles('admin','user','manager',
     }
 
     const baseUrl = String(req.body?.siteUrl || prod.gscData?.siteUrl || process.env.PUBLIC_BASE_URL || 'https://buysial.com').replace(/\/$/, '')
-    // Use /product/:id as canonical URL (actual live route); also build slug URL as alternate
-    const productUrl = `${baseUrl}/product/${prod._id}`
     const slug = prod.slug || String(prod.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-    const slugUrl = slug ? `${baseUrl}/products/${slug}` : null
+    // Use the product's stored canonicalUrl first, then slug URL, then fall back to ID URL
+    const productUrl = prod.canonicalUrl || (slug ? `${baseUrl}/products/${slug}` : `${baseUrl}/product/${prod._id}`)
 
     // Try GSC Indexing API via service account stored in Settings
+    let credentials = null
     try {
       const { default: Setting } = await import('../models/Setting.js')
       const gscKeySetting = await Setting.findOne({ key: 'gscServiceAccountKey' }).lean()
       if (gscKeySetting?.value && productUrl) {
         const { GoogleAuth } = await import('google-auth-library')
-        const credentials = typeof gscKeySetting.value === 'string' ? JSON.parse(gscKeySetting.value) : gscKeySetting.value
+        credentials = typeof gscKeySetting.value === 'string' ? JSON.parse(gscKeySetting.value) : gscKeySetting.value
         const gauth = new GoogleAuth({ credentials, scopes: ['https://www.googleapis.com/auth/indexing'] })
         const client = await gauth.getClient()
         const resp = await client.request({
@@ -1688,9 +1688,19 @@ router.post('/:id/seo/request-index', auth, allowRoles('admin','user','manager',
       }
     } catch (gscErr) {
       console.warn('GSC API error:', gscErr?.message)
-      prod.gscData = { ...(prod.gscData?.toObject?.() || prod.gscData || {}), lastIndexRequestAt: new Date(), indexingStatus: 'error', lastError: gscErr?.message || 'GSC API error' }
+      const errMsg = gscErr?.message || 'GSC API error'
+      const isPermissionDenied = /permission|ownership|forbidden|403/i.test(errMsg)
+      prod.gscData = { ...(prod.gscData?.toObject?.() || prod.gscData || {}), lastIndexRequestAt: new Date(), indexingStatus: 'error', lastError: errMsg }
       await prod.save()
-      return res.json({ success: false, message: 'GSC API error: ' + (gscErr?.message || 'Unknown'), productUrl, manualUrl: productUrl ? `https://search.google.com/search-console/inspect?resource_id=${encodeURIComponent(baseUrl)}&id=${encodeURIComponent(productUrl)}` : null })
+      return res.json({
+        success: false,
+        permissionDenied: isPermissionDenied,
+        message: isPermissionDenied
+          ? `Permission denied — the service account is not an Owner of this property in Google Search Console. Fix: Go to Google Search Console → Settings → Users & permissions → Add ${credentials?.client_email || 'your service account email'} as Owner (not User).`
+          : 'GSC API error: ' + errMsg,
+        productUrl,
+        manualUrl: `https://search.google.com/search-console/inspect?resource_id=${encodeURIComponent(baseUrl)}&id=${encodeURIComponent(productUrl)}`,
+      })
     }
 
     // No credentials configured — return instructions for manual submission

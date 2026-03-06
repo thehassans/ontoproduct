@@ -25,6 +25,7 @@ export default function ProductSEOPanel({ form, setForm, countryOpts, productId,
   const [activeTab, setActiveTab] = useState(0)
   const [gscMsg, setGscMsg] = useState('')
   const [gscLoading, setGscLoading] = useState(false)
+  const [gscPermDenied, setGscPermDenied] = useState(null) // { email, manualUrl }
   const [newBacklink, setNewBacklink] = useState({ url: '', anchor: '', type: 'dofollow', status: 'pending' })
   const [activeCountry, setActiveCountry] = useState(null)
   const [aiSeoLoading, setAiSeoLoading] = useState(false)
@@ -147,17 +148,22 @@ export default function ProductSEOPanel({ form, setForm, countryOpts, productId,
     if (!productId) { setGscMsg('Save the product first to request indexing.'); return }
     setGscLoading(true)
     setGscMsg('')
+    setGscPermDenied(null)
     try {
       const res = await apiPost(`/api/products/${productId}/seo/request-index`, {
-        siteUrl: gscData.siteUrl || '',
+        siteUrl: gscData.siteUrl || SITE_URL,
       })
       if (res?.success) {
-        setGscMsg(`✅ ${res.message}${res.productUrl ? ` — ${res.productUrl}` : ''}`)
+        setGscMsg(`✅ Submitted to Google — ${res.productUrl || ''}`)
         setGscData({ indexingStatus: 'submitted', lastIndexRequestAt: new Date().toISOString(), lastError: '' })
       } else if (res?.noCredentials) {
         setGscMsg(`ℹ️ ${res.message}`)
+      } else if (res?.permissionDenied) {
+        setGscPermDenied({ email: gscKeyStatus?.clientEmail, manualUrl: res.manualUrl, productUrl: res.productUrl })
+        setGscData({ indexingStatus: 'error', lastIndexRequestAt: new Date().toISOString(), lastError: 'Permission denied' })
       } else {
         setGscMsg(`⚠️ ${res?.message || 'Failed'}${res?.productUrl ? ` — URL: ${res.productUrl}` : ''}`)
+        setGscData({ indexingStatus: 'error', lastIndexRequestAt: new Date().toISOString(), lastError: res?.message || '' })
       }
     } catch (err) {
       setGscMsg(`❌ ${err?.message || 'Failed to request indexing'}`)
@@ -673,6 +679,38 @@ export default function ProductSEOPanel({ form, setForm, countryOpts, productId,
                 border: `1px solid ${gscMsg.startsWith('✅') ? '#bbf7d0' : gscMsg.startsWith('ℹ️') ? '#bfdbfe' : '#fde68a'}`,
               }}>
                 {gscMsg}
+              </div>
+            )}
+
+            {/* Permission Denied — actionable fix card */}
+            {gscPermDenied && (
+              <div style={{ padding: '14px 16px', borderRadius: 10, background: '#fef2f2', border: '1px solid #fecaca', fontSize: 13, lineHeight: 1.7 }}>
+                <div style={{ fontWeight: 700, color: '#991b1b', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span>🔒</span> Permission Denied — Service Account Not an Owner
+                </div>
+                <p style={{ margin: '0 0 10px', color: '#7f1d1d' }}>
+                  The Google Indexing API requires your service account to be a <strong>Full Owner</strong> of the verified property in Google Search Console (not just a User).
+                </p>
+                <ol style={{ margin: '0 0 12px', paddingLeft: 20, color: '#7f1d1d' }}>
+                  <li>Go to <a href="https://search.google.com/search-console" target="_blank" rel="noopener noreferrer" style={{ color: '#dc2626', fontWeight: 600 }}>Google Search Console</a></li>
+                  <li>Select your property: <strong>{gscData.siteUrl || SITE_URL}</strong></li>
+                  <li>Go to <strong>Settings → Users &amp; permissions</strong></li>
+                  <li>Click <strong>Add User</strong> → paste: <code style={{ background: '#fee2e2', padding: '1px 5px', borderRadius: 3 }}>{gscPermDenied.email || 'your-service-account@....iam.gserviceaccount.com'}</code></li>
+                  <li>Set permission to <strong>Owner</strong> (not User!) → Save</li>
+                  <li>Wait 1–2 minutes, then click <strong>Request Google Indexing</strong> again</li>
+                </ol>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <a href="https://search.google.com/search-console" target="_blank" rel="noopener noreferrer"
+                    style={{ padding: '7px 14px', borderRadius: 7, background: '#dc2626', color: '#fff', fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>
+                    Open GSC → Settings ↗
+                  </a>
+                  {gscPermDenied.manualUrl && (
+                    <a href={gscPermDenied.manualUrl} target="_blank" rel="noopener noreferrer"
+                      style={{ padding: '7px 14px', borderRadius: 7, background: '#fff', border: '1px solid #dc2626', color: '#dc2626', fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>
+                      Inspect URL in GSC ↗
+                    </a>
+                  )}
+                </div>
               </div>
             )}
 

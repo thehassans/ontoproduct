@@ -276,9 +276,15 @@ const ProductDetail = () => {
     try {
       const token = localStorage.getItem('token')
       const res = await apiPost(`/api/products/${product._id}/seo/request-index`, { siteUrl: SITE_URL }, { headers: { Authorization: `Bearer ${token}` } })
-      if (res?.success) setIndexingStatus(`✅ Submitted to Google: ${res.productUrl || ''}`)
-      else if (res?.noCredentials) setIndexingStatus('⚠️ No GSC key configured. Go to Admin → Settings → API Setup.')
-      else setIndexingStatus(`⚠️ ${res?.message || 'Failed'}`)
+      if (res?.success) {
+        setIndexingStatus(`✅ Submitted to Google — ${res.productUrl || ''}`)
+      } else if (res?.noCredentials) {
+        setIndexingStatus('⚠️ No GSC key configured. Go to Admin → Settings → API Setup.')
+      } else if (res?.permissionDenied) {
+        setIndexingStatus(`🔒 PERMISSION_DENIED|${res.productUrl || ''}`)
+      } else {
+        setIndexingStatus(`⚠️ ${res?.message || 'Failed'}`)
+      }
     } catch (err) {
       setIndexingStatus(`❌ ${err?.message || 'Failed to request indexing'}`)
     } finally {
@@ -1083,13 +1089,25 @@ const ProductDetail = () => {
                 <span>🔍</span> {indexingLoading ? 'Submitting to Google…' : 'Request Google Indexing'}
               </button>
 
-              {indexingStatus && (
+              {indexingStatus && !indexingStatus.startsWith('🔒') && (
                 <div style={{
                   padding: '8px 10px', borderRadius: 6, fontSize: 12, marginBottom: 8,
-                  background: indexingStatus.startsWith('✅') ? '#14532d' : indexingStatus.startsWith('⚠️') ? '#422006' : '#450a0a',
-                  color: indexingStatus.startsWith('✅') ? '#86efac' : indexingStatus.startsWith('⚠️') ? '#fde68a' : '#fca5a5',
+                  background: indexingStatus.startsWith('✅') ? '#14532d' : '#422006',
+                  color: indexingStatus.startsWith('✅') ? '#86efac' : '#fde68a',
                 }}>
                   {indexingStatus}
+                </div>
+              )}
+
+              {indexingStatus.startsWith('🔒') && (
+                <div style={{ padding: '10px 12px', borderRadius: 8, background: '#450a0a', border: '1px solid #7f1d1d', fontSize: 11, marginBottom: 8 }}>
+                  <div style={{ fontWeight: 700, color: '#fca5a5', marginBottom: 6 }}>🔒 Permission Denied — Fix Required</div>
+                  <ol style={{ margin: 0, paddingLeft: 16, color: '#fca5a5', lineHeight: 1.8 }}>
+                    <li>Open <a href="https://search.google.com/search-console" target="_blank" rel="noopener noreferrer" style={{ color: '#f87171' }}>Google Search Console</a></li>
+                    <li>Settings → Users &amp; permissions</li>
+                    <li>Add your service account email as <strong>Owner</strong></li>
+                    <li>Wait 1–2 min, then retry</li>
+                  </ol>
                 </div>
               )}
 
