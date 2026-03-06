@@ -716,22 +716,41 @@ export default function ProductSEOPanel({ form, setForm, countryOpts, productId,
 
             {/* GSC Setup Instructions */}
             <div style={{ padding: 16, background: 'var(--panel-2)', borderRadius: 12, border: '1px solid var(--border)' }}>
-              <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10 }}>How to connect Google Search Console API</div>
+              <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8 }}>How to connect Google Search Console API</div>
+
+              {/* Critical Owner warning */}
+              <div style={{ padding: '8px 12px', borderRadius: 8, background: '#fef3c7', border: '1px solid #fbbf24', marginBottom: 10, fontSize: 12, display: 'flex', gap: 6, alignItems: 'flex-start' }}>
+                <span style={{ flexShrink: 0 }}>⚠️</span>
+                <span style={{ color: '#92400e' }}>
+                  <strong>Critical:</strong> In step 4, the service account must be added as <strong>Owner</strong> — NOT "Full user" or "Restricted". Using the wrong role causes "Permission denied" errors.
+                </span>
+              </div>
+
               <ol style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.8 }}>
                 <li>Go to <a href="https://console.cloud.google.com" target="_blank" rel="noopener noreferrer" style={{ color: '#4285f4' }}>Google Cloud Console</a> and create a project</li>
                 <li>Enable the <strong>Web Search Indexing API</strong></li>
                 <li>Create a <strong>Service Account</strong> and download the JSON key</li>
-                <li>In Google Search Console, add the service account email as an <strong>Owner</strong></li>
+                <li style={{ color: 'var(--text)', fontWeight: 600 }}>
+                  In Google Search Console → Settings → Users &amp; permissions → <strong style={{ color: '#dc2626' }}>Add as Owner</strong> (not User)
+                </li>
                 <li>In your admin Settings, paste the JSON key under <strong>GSC Service Account Key</strong></li>
               </ol>
-              <div style={{ marginTop: 12 }}>
+              <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <a
+                  href="https://search.google.com/search-console/users"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ padding: '8px 16px', borderRadius: 8, background: '#dc2626', color: '#fff', fontSize: 13, fontWeight: 600, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                >
+                  GSC → Add Owner ↗
+                </a>
                 <a
                   href="https://search.google.com/search-console"
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{ padding: '8px 16px', borderRadius: 8, background: '#fff', border: '1px solid #4285f4', color: '#4285f4', fontSize: 13, fontWeight: 600, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}
                 >
-                  Open Google Search Console ↗
+                  Open Search Console ↗
                 </a>
               </div>
             </div>

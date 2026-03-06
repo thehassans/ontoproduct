@@ -252,7 +252,13 @@ const ProductDetail = () => {
         response = await apiGet(`/api/products/public/${id}`)
       }
       if (response?.product) {
-        setProduct({ ...response.product, images: response.product.images || [response.product.imagePath || '/placeholder-product.svg'] })
+        const p = response.product
+        // If we arrived via /product/:id and the product has a slug, redirect to the SEO-friendly URL
+        if (!slug && p.slug) {
+          navigate(`/products/${p.slug}`, { replace: true })
+          return
+        }
+        setProduct({ ...p, images: p.images || [p.imagePath || '/placeholder-product.svg'] })
       } else { toast.error('Product not found'); navigate('/catalog') }
     } catch (error) { console.error('Error loading product:', error); toast.error('Failed to load product'); navigate('/catalog') }
     finally { setLoading(false) }
