@@ -716,6 +716,22 @@ router.get('/public/by-ids', async (req, res) => {
   }
 })
 
+// Get single product by slug (public endpoint for SEO-friendly URLs)
+router.get('/public/by-slug/:slug', async (req, res) => {
+  try {
+    const slug = String(req.params.slug || '').trim().toLowerCase()
+    if (!slug) return res.status(400).json({ message: 'Slug required' })
+    const product = await Product.findOne({ slug }).select('-createdBy -updatedAt -__v')
+    if (!product) return res.status(404).json({ message: 'Product not found' })
+    const prod = product.toObject()
+    if (!prod.sku) prod.sku = fallbackSkuFromId(prod._id)
+    res.json({ product: prod })
+  } catch (error) {
+    console.error('Get product by slug error:', error)
+    res.status(500).json({ message: 'Failed to fetch product' })
+  }
+})
+
 // Get single product by ID (public endpoint)
 router.get('/public/:id', async (req, res) => {
   try {
@@ -1646,9 +1662,11 @@ router.post('/:id/seo/request-index', auth, allowRoles('admin','user','manager',
       if (String(prod.createdBy) !== String(ownerId)) return res.status(403).json({ message: 'Not allowed' })
     }
 
-    const baseUrl = String(req.body?.siteUrl || prod.gscData?.siteUrl || process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '')
+    const baseUrl = String(req.body?.siteUrl || prod.gscData?.siteUrl || process.env.PUBLIC_BASE_URL || 'https://buysial.com').replace(/\/$/, '')
+    // Use /product/:id as canonical URL (actual live route); also build slug URL as alternate
+    const productUrl = `${baseUrl}/product/${prod._id}`
     const slug = prod.slug || String(prod.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-    const productUrl = baseUrl ? `${baseUrl}/products/${slug}` : null
+    const slugUrl = slug ? `${baseUrl}/products/${slug}` : null
 
     // Try GSC Indexing API via service account stored in Settings
     try {

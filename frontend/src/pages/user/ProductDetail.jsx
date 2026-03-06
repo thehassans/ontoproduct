@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { apiGet, apiPatch, apiPost, apiUploadPatch, API_BASE, clearApiCache } from '../../api'
 import { useToast } from '../../ui/Toast.jsx'
 import Modal from '../../components/Modal.jsx'
+import ProductSEOPanel from '../products/ProductSEOPanel.jsx'
 
 export default function ProductDetail() {
   const { id } = useParams()
@@ -146,6 +147,20 @@ export default function ProductDetail() {
       images: product?.images || [],
       imagePath: product?.imagePath || '',
       video: product?.video || '',
+      seo: {
+        seoTitle: product?.seoTitle || '',
+        seoDescription: product?.seoDescription || '',
+        seoKeywords: product?.seoKeywords || '',
+        slug: product?.slug || '',
+        canonicalUrl: product?.canonicalUrl || '',
+        noIndex: !!product?.noIndex,
+        ogTitle: product?.ogTitle || '',
+        ogDescription: product?.ogDescription || '',
+      },
+      countrySeo: product?.countrySeo || {},
+      backlinks: Array.isArray(product?.backlinks) ? product.backlinks : [],
+      gscData: product?.gscData || { siteUrl: 'https://buysial.com', indexingStatus: 'not_requested', lastError: '' },
+      availableCountries: product?.availableCountries || [],
     })
     // Reset media upload state
     setNewImages([])
@@ -333,6 +348,21 @@ export default function ProductDetail() {
         const fd = new FormData()
         fd.append('name', editForm.name)
         fd.append('sku', editForm.sku || '')
+        // SEO fields
+        try {
+          const s = editForm.seo || {}
+          if (s.seoTitle != null) fd.append('seoTitle', s.seoTitle)
+          if (s.seoDescription != null) fd.append('seoDescription', s.seoDescription)
+          if (s.seoKeywords != null) fd.append('seoKeywords', s.seoKeywords)
+          if (s.slug != null) fd.append('slug', s.slug)
+          if (s.canonicalUrl != null) fd.append('canonicalUrl', s.canonicalUrl)
+          fd.append('noIndex', String(!!s.noIndex))
+          if (s.ogTitle) fd.append('ogTitle', s.ogTitle)
+          if (s.ogDescription) fd.append('ogDescription', s.ogDescription)
+          fd.append('countrySeo', JSON.stringify(editForm.countrySeo || {}))
+          fd.append('backlinks', JSON.stringify(editForm.backlinks || []))
+          fd.append('gscData', JSON.stringify(editForm.gscData || {}))
+        } catch {}
         fd.append('whatsappNumber', editForm.whatsappNumber || '')
         fd.append('description', editForm.description || '')
         fd.append('overview', editForm.overview || '')
@@ -392,6 +422,17 @@ export default function ProductDetail() {
           isFeatured: editForm.isFeatured,
           isTrending: editForm.isTrending,
           isRecommended: editForm.isRecommended,
+          seoTitle: (editForm.seo || {}).seoTitle || '',
+          seoDescription: (editForm.seo || {}).seoDescription || '',
+          seoKeywords: (editForm.seo || {}).seoKeywords || '',
+          slug: (editForm.seo || {}).slug || '',
+          canonicalUrl: (editForm.seo || {}).canonicalUrl || '',
+          noIndex: !!(editForm.seo || {}).noIndex,
+          ogTitle: (editForm.seo || {}).ogTitle || '',
+          ogDescription: (editForm.seo || {}).ogDescription || '',
+          countrySeo: editForm.countrySeo || {},
+          backlinks: editForm.backlinks || [],
+          gscData: editForm.gscData || {},
         }
         
         await apiPatch(`/api/products/${id}`, updateData)
@@ -2716,6 +2757,17 @@ export default function ProductDetail() {
                     <div style={{ fontSize: 12, opacity: 0.7 }}>Homepage recommendations</div>
                   </div>
                 </label>
+              </div>
+
+              {/* SEO & Google Search Console Panel */}
+              <div style={{ marginTop: 24 }}>
+                <ProductSEOPanel
+                  form={editForm}
+                  setForm={setEditForm}
+                  countryOpts={product?.availableCountries || []}
+                  productId={id}
+                  isMobile={false}
+                />
               </div>
 
               {/* Save Button */}

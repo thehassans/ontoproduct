@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom'
 import { apiGet, apiPost, mediaUrl } from '../../api'
 import { detectCountryCode } from '../../utils/geo'
 import { useToast } from '../../ui/Toast'
@@ -13,8 +13,11 @@ import { resolveWarehouse, getLocalStockByCountry } from '../../utils/warehouse'
 import { readWishlistIds, toggleWishlist } from '../../util/wishlist'
 import { getProductRating, getProductReviews, getStarArray } from '../../utils/autoReviews'
 
+const SITE_URL = 'https://buysial.com'
+
 const ProductDetail = () => {
-  const { id } = useParams()
+  const { id, slug } = useParams()
+  const location = useLocation()
   const navigate = useNavigate()
   const toast = useToast()
   const [product, setProduct] = useState(null)
@@ -115,33 +118,119 @@ const ProductDetail = () => {
     } catch { return false }
   })
 
+  const [isAdmin] = useState(() => {
+    try {
+      const me = JSON.parse(localStorage.getItem('me') || 'null')
+      return !!me && ['admin', 'user', 'manager', 'seo_manager'].includes(me.role)
+    } catch { return false }
+  })
+
+  const [adminSeoOpen, setAdminSeoOpen] = useState(false)
+  const [indexingStatus, setIndexingStatus] = useState('')
+  const [indexingLoading, setIndexingLoading] = useState(false)
+
+  // Inject / clean-up all SEO meta tags whenever product loads
   useEffect(() => {
-    if (product) {
-      const pageTitle = product.metaTitle || product.seoTitle || product.name || 'Product'
-      document.title = pageTitle
-      const metaDesc = product.metaDescription || product.seoDescription || product.description?.slice(0, 160) || ''
-      if (metaDesc) {
-        let metaTag = document.querySelector('meta[name="description"]')
-        if (!metaTag) { metaTag = document.createElement('meta'); metaTag.setAttribute('name', 'description'); document.head.appendChild(metaTag) }
-        metaTag.setAttribute('content', metaDesc)
-      }
-      trackPageView(`/product/${id}`, `Product: ${product.name}`)
-      trackProductView(product._id, product.name, product.category, product.price)
-      if (product.variants && typeof product.variants === 'object') {
-        const normalized = normalizeVariants(product.variants)
-        const initialVariants = {}
-        Object.keys(normalized).forEach((variantType) => {
-          const list = normalized[variantType]
-          if (Array.isArray(list) && list.length > 0) {
-            const firstInStock = list.find((o) => Number(o?.stockQty) > 0)
-            initialVariants[variantType] = String((firstInStock || list[0])?.value || '')
-          }
-        })
-        setSelectedVariants(initialVariants)
-      }
-      if (product.category) loadRelatedProducts(product.category)
+    if (!product) return
+
+    const pageTitle = product.seoTitle || product.metaTitle || product.name || 'Product'
+    document.title = pageTitle
+
+    const canonicalHref = product.canonicalUrl || `${SITE_URL}/product/${product._id}`
+    const pageUrl = `${SITE_URL}${location.pathname}`
+    const metaDesc = product.seoDescription || product.metaDescription || (product.description || '').slice(0, 158)
+    const keywords = product.seoKeywords || ''
+    const ogTitle = product.ogTitle || pageTitle
+    const ogDesc = product.ogDescription || metaDesc
+    const ogImage = (() => {
+      const imgs = Array.isArray(product.images) ? product.images : []
+      const raw = imgs[0] || product.imagePath || ''
+      return raw.startsWith('http') ? raw : raw ? `${SITE_URL}${raw}` : ''
+    })()
+
+    const setMeta = (sel, attr, val) => {
+      if (!val) return
+      let el = document.querySelector(sel)
+      if (!el) { el = document.createElement('meta'); if (sel.includes('property')) el.setAttribute('property', sel.match(/property="([^"]+)"/)?.[1] || ''); else el.setAttribute('name', sel.match(/name="([^"]+)"/)?.[1] || ''); document.head.appendChild(el) }
+      el.setAttribute(attr, val)
     }
-  }, [product, id])
+    const setLink = (rel, href, extra = {}) => {
+      if (!href) return
+      let el = document.querySelector(`link[rel="${rel}"]`)
+      if (!el) { el = document.createElement('link'); el.setAttribute('rel', rel); document.head.appendChild(el) }
+      el.setAttribute('href', href)
+      Object.entries(extra).forEach(([k, v]) => el.setAttribute(k, v))
+    }
+
+    setMeta('meta[name="description"]', 'content', metaDesc)
+    setMeta('meta[name="keywords"]', 'content', keywords)
+    if (product.noIndex) setMeta('meta[name="robots"]', 'content', 'noindex,nofollow')
+    else { const r = document.querySelector('meta[name="robots"]'); if (r) r.setAttribute('content', 'index,follow') }
+    setLink('canonical', canonicalHref)
+    setMeta('meta[property="og:title"]', 'content', ogTitle)
+    setMeta('meta[property="og:description"]', 'content', ogDesc)
+    setMeta('meta[property="og:url"]', 'content', pageUrl)
+    setMeta('meta[property="og:type"]', 'content', 'product')
+    if (ogImage) setMeta('meta[property="og:image"]', 'content', ogImage)
+    setMeta('meta[name="twitter:card"]', 'content', 'summary_large_image')
+    setMeta('meta[name="twitter:title"]', 'content', ogTitle)
+    setMeta('meta[name="twitter:description"]', 'content', ogDesc)
+
+    // Hreflang tags from countrySeo
+    document.querySelectorAll('link[rel="alternate"][hreflang]').forEach(el => el.remove())
+    if (product.countrySeo && typeof product.countrySeo === 'object') {
+      Object.entries(product.countrySeo).forEach(([, cs]) => {
+        if (cs?.hreflang) {
+          const el = document.createElement('link')
+          el.rel = 'alternate'
+          el.setAttribute('hreflang', cs.hreflang)
+          el.href = canonicalHref
+          document.head.appendChild(el)
+        }
+      })
+    }
+
+    // JSON-LD Product structured data
+    let ld = document.getElementById('__product_jsonld')
+    if (!ld) { ld = document.createElement('script'); ld.type = 'application/ld+json'; ld.id = '__product_jsonld'; document.head.appendChild(ld) }
+    ld.textContent = JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'Product',
+      name: product.name,
+      description: product.description || '',
+      image: ogImage || undefined,
+      sku: product.sku || undefined,
+      brand: product.brand ? { '@type': 'Brand', name: product.brand } : undefined,
+      offers: {
+        '@type': 'Offer',
+        priceCurrency: product.baseCurrency || 'SAR',
+        price: product.price || 0,
+        availability: product.inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+        url: canonicalHref,
+      },
+    })
+
+    trackPageView(`/product/${product._id}`, `Product: ${product.name}`)
+    trackProductView(product._id, product.name, product.category, product.price)
+
+    if (product.variants && typeof product.variants === 'object') {
+      const normalized = normalizeVariants(product.variants)
+      const initialVariants = {}
+      Object.keys(normalized).forEach((variantType) => {
+        const list = normalized[variantType]
+        if (Array.isArray(list) && list.length > 0) {
+          const firstInStock = list.find((o) => Number(o?.stockQty) > 0)
+          initialVariants[variantType] = String((firstInStock || list[0])?.value || '')
+        }
+      })
+      setSelectedVariants(initialVariants)
+    }
+    if (product.category) loadRelatedProducts(product.category)
+
+    return () => {
+      try { document.getElementById('__product_jsonld')?.remove() } catch {}
+    }
+  }, [product, location.pathname])
 
   const loadRelatedProducts = async (category) => {
     try {
@@ -155,7 +244,13 @@ const ProductDetail = () => {
   const loadProduct = async () => {
     try {
       setLoading(true)
-      const response = await apiGet(`/api/products/public/${id}`)
+      let response
+      if (slug) {
+        response = await apiGet(`/api/products/public/by-slug/${encodeURIComponent(slug)}`)
+        if (!response?.product && id) response = await apiGet(`/api/products/public/${id}`)
+      } else {
+        response = await apiGet(`/api/products/public/${id}`)
+      }
       if (response?.product) {
         setProduct({ ...response.product, images: response.product.images || [response.product.imagePath || '/placeholder-product.svg'] })
       } else { toast.error('Product not found'); navigate('/catalog') }
@@ -165,14 +260,34 @@ const ProductDetail = () => {
 
   const loadReviews = async () => {
     try {
-      const response = await apiGet(`/api/reviews/product/${id}`)
+      const productId = product?._id || id
+      if (!productId) return
+      const response = await apiGet(`/api/reviews/product/${productId}`)
       if (response?.reviews) {
         setReviews(response.reviews.map(r => ({ id: r._id, name: r.customerName, rating: r.rating, comment: r.comment, date: new Date(r.createdAt).toLocaleDateString(), verified: r.isVerifiedPurchase })))
       }
     } catch (error) { console.error('Error loading reviews:', error) }
   }
 
-  useEffect(() => { if (!id) return; setSelectedImage(0); setQuantity(1); loadProduct(); loadReviews(); try { window.scrollTo({ top: 0, behavior: 'instant' }) } catch {} }, [id])
+  const requestGoogleIndex = async () => {
+    if (!product?._id) return
+    setIndexingLoading(true)
+    setIndexingStatus('')
+    try {
+      const token = localStorage.getItem('token')
+      const res = await apiPost(`/api/products/${product._id}/seo/request-index`, { siteUrl: SITE_URL }, { headers: { Authorization: `Bearer ${token}` } })
+      if (res?.success) setIndexingStatus(`✅ Submitted to Google: ${res.productUrl || ''}`)
+      else if (res?.noCredentials) setIndexingStatus('⚠️ No GSC key configured. Go to Admin → Settings → API Setup.')
+      else setIndexingStatus(`⚠️ ${res?.message || 'Failed'}`)
+    } catch (err) {
+      setIndexingStatus(`❌ ${err?.message || 'Failed to request indexing'}`)
+    } finally {
+      setIndexingLoading(false)
+    }
+  }
+
+  useEffect(() => { setSelectedImage(0); setQuantity(1); loadProduct(); try { window.scrollTo({ top: 0, behavior: 'instant' }) } catch {} }, [id, slug])
+  useEffect(() => { if (product?._id) loadReviews() }, [product?._id])
 
   // Inject <link rel="preload"> for first product image the moment we know the URL — starts
   // browser fetch one full API round-trip earlier than waiting for the <img> to render
@@ -905,6 +1020,104 @@ const ProductDetail = () => {
             @keyframes sparklePop { from { opacity:0; transform:scale(0) translateY(8px) } to { opacity:1; transform:scale(1) translateY(0) } }
             @keyframes fadeSlideUp { from { opacity:0; transform:translateY(10px) } to { opacity:1; transform:translateY(0) } }
           `}</style>
+        </div>
+      )}
+
+      {/* Admin SEO Floating Panel — only visible to staff */}
+      {isAdmin && product && (
+        <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 9999, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10 }}>
+          {adminSeoOpen && (
+            <div style={{
+              background: '#1e293b', color: '#f1f5f9', borderRadius: 14, padding: '18px 20px',
+              width: 320, boxShadow: '0 8px 40px rgba(0,0,0,0.45)', fontSize: 13, lineHeight: 1.6,
+            }}>
+              <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span>🔍</span> SEO Admin Panel
+              </div>
+
+              {/* Product URL */}
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 3, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>Product URL</div>
+                <div style={{ background: '#0f172a', borderRadius: 6, padding: '6px 10px', fontSize: 11, color: '#60a5fa', wordBreak: 'break-all' }}>
+                  {product.canonicalUrl || `${SITE_URL}/product/${product._id}`}
+                </div>
+              </div>
+
+              {/* SEO Title */}
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 3, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>SEO Title</div>
+                <div style={{ background: '#0f172a', borderRadius: 6, padding: '6px 10px', fontSize: 12, color: '#e2e8f0' }}>
+                  {product.seoTitle || product.metaTitle || <span style={{ color: '#64748b', fontStyle: 'italic' }}>Not set — generate AI SEO</span>}
+                </div>
+              </div>
+
+              {/* Meta Description */}
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 3, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>Meta Description</div>
+                <div style={{ background: '#0f172a', borderRadius: 6, padding: '6px 10px', fontSize: 11, color: '#e2e8f0', maxHeight: 56, overflow: 'hidden' }}>
+                  {product.seoDescription || product.metaDescription || <span style={{ color: '#64748b', fontStyle: 'italic' }}>Not set</span>}
+                </div>
+              </div>
+
+              {/* Keywords */}
+              {product.seoKeywords && (
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 3, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>Keywords</div>
+                  <div style={{ background: '#0f172a', borderRadius: 6, padding: '6px 10px', fontSize: 11, color: '#a78bfa' }}>{product.seoKeywords.slice(0, 120)}{product.seoKeywords.length > 120 ? '…' : ''}</div>
+                </div>
+              )}
+
+              {/* Request Indexing Button */}
+              <button
+                type="button"
+                onClick={requestGoogleIndex}
+                disabled={indexingLoading}
+                style={{
+                  width: '100%', padding: '10px 0', borderRadius: 8,
+                  background: indexingLoading ? '#334155' : 'linear-gradient(135deg,#4285f4,#34a853)',
+                  color: '#fff', border: 'none', fontWeight: 700, fontSize: 13,
+                  cursor: indexingLoading ? 'not-allowed' : 'pointer', marginBottom: 8,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                }}
+              >
+                <span>🔍</span> {indexingLoading ? 'Submitting to Google…' : 'Request Google Indexing'}
+              </button>
+
+              {indexingStatus && (
+                <div style={{
+                  padding: '8px 10px', borderRadius: 6, fontSize: 12, marginBottom: 8,
+                  background: indexingStatus.startsWith('✅') ? '#14532d' : indexingStatus.startsWith('⚠️') ? '#422006' : '#450a0a',
+                  color: indexingStatus.startsWith('✅') ? '#86efac' : indexingStatus.startsWith('⚠️') ? '#fde68a' : '#fca5a5',
+                }}>
+                  {indexingStatus}
+                </div>
+              )}
+
+              {/* Edit SEO Link */}
+              <a
+                href={`/admin/inhouse-products`}
+                style={{ display: 'block', textAlign: 'center', padding: '8px 0', borderRadius: 8, background: '#334155', color: '#94a3b8', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}
+              >
+                ✏️ Edit SEO Settings in Admin
+              </a>
+            </div>
+          )}
+
+          {/* Toggle button */}
+          <button
+            type="button"
+            onClick={() => setAdminSeoOpen(o => !o)}
+            style={{
+              width: 48, height: 48, borderRadius: '50%',
+              background: 'linear-gradient(135deg,#4285f4,#34a853)',
+              color: '#fff', border: 'none', fontSize: 20, fontWeight: 700,
+              cursor: 'pointer', boxShadow: '0 4px 20px rgba(66,133,244,0.5)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+            title="Admin SEO Panel"
+          >
+            🔍
+          </button>
         </div>
       )}
     </div>

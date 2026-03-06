@@ -560,6 +560,7 @@ export default function App() {
             {/* Public ecommerce routes */}
             <Route path="/catalog" element={<ProductCatalog />} />
             <Route path="/product/:id" element={<ProductDetail />} />
+            <Route path="/products/:slug" element={<ProductDetail />} />
             <Route path="/cart" element={<CartPage />} />
             <Route path="/checkout" element={<Navigate to="/cart" replace />} />
             <Route path="/order-success" element={<OrderSuccess />} />
