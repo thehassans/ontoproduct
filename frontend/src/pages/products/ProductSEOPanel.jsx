@@ -159,7 +159,7 @@ export default function ProductSEOPanel({ form, setForm, countryOpts, productId,
       } else if (res?.noCredentials) {
         setGscMsg(`ℹ️ ${res.message}`)
       } else if (res?.permissionDenied) {
-        setGscPermDenied({ email: gscKeyStatus?.clientEmail, manualUrl: res.manualUrl, productUrl: res.productUrl })
+        setGscPermDenied({ email: gscKeyStatus?.clientEmail, gscSettingsUrl: res.gscSettingsUrl || 'https://search.google.com/search-console/users', productUrl: res.productUrl })
         setGscData({ indexingStatus: 'error', lastIndexRequestAt: new Date().toISOString(), lastError: 'Permission denied' })
       } else {
         setGscMsg(`⚠️ ${res?.message || 'Failed'}${res?.productUrl ? ` — URL: ${res.productUrl}` : ''}`)
@@ -691,25 +691,23 @@ export default function ProductSEOPanel({ form, setForm, countryOpts, productId,
                 <p style={{ margin: '0 0 10px', color: '#7f1d1d' }}>
                   The Google Indexing API requires your service account to be a <strong>Full Owner</strong> of the verified property in Google Search Console (not just a User).
                 </p>
+                {/* Highlighted email to add */}
+                <div style={{ padding: '8px 12px', borderRadius: 7, background: '#fff', border: '2px solid #dc2626', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 12, color: '#6b7280' }}>Add this exact email as Owner in GSC:</span>
+                  <code style={{ fontWeight: 900, color: '#dc2626', fontSize: 13, letterSpacing: 0.3 }}>{gscPermDenied.email || 'your-service-account@....iam.gserviceaccount.com'}</code>
+                </div>
                 <ol style={{ margin: '0 0 12px', paddingLeft: 20, color: '#7f1d1d' }}>
-                  <li>Go to <a href="https://search.google.com/search-console" target="_blank" rel="noopener noreferrer" style={{ color: '#dc2626', fontWeight: 600 }}>Google Search Console</a></li>
-                  <li>Select your property: <strong>{gscData.siteUrl || SITE_URL}</strong></li>
-                  <li>Go to <strong>Settings → Users &amp; permissions</strong></li>
-                  <li>Click <strong>Add User</strong> → paste: <code style={{ background: '#fee2e2', padding: '1px 5px', borderRadius: 3 }}>{gscPermDenied.email || 'your-service-account@....iam.gserviceaccount.com'}</code></li>
-                  <li>Set permission to <strong>Owner</strong> (not User!) → Save</li>
+                  <li>Click <strong>Open GSC → Users</strong> button below</li>
+                  <li>Select property: <strong>{gscData.siteUrl || SITE_URL}</strong></li>
+                  <li>Click <strong>Add User</strong> → paste the email above</li>
+                  <li>Set permission to <strong style={{ color: '#dc2626' }}>Owner</strong> (NOT "Full user") → Save</li>
                   <li>Wait 1–2 minutes, then click <strong>Request Google Indexing</strong> again</li>
                 </ol>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <a href="https://search.google.com/search-console" target="_blank" rel="noopener noreferrer"
+                  <a href={gscPermDenied.gscSettingsUrl || 'https://search.google.com/search-console/users'} target="_blank" rel="noopener noreferrer"
                     style={{ padding: '7px 14px', borderRadius: 7, background: '#dc2626', color: '#fff', fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>
-                    Open GSC → Settings ↗
+                    Open GSC → Users &amp; Permissions ↗
                   </a>
-                  {gscPermDenied.manualUrl && (
-                    <a href={gscPermDenied.manualUrl} target="_blank" rel="noopener noreferrer"
-                      style={{ padding: '7px 14px', borderRadius: 7, background: '#fff', border: '1px solid #dc2626', color: '#dc2626', fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>
-                      Inspect URL in GSC ↗
-                    </a>
-                  )}
                 </div>
               </div>
             )}

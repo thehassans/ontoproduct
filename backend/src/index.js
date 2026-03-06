@@ -468,30 +468,32 @@ app.get("/sitemap.xml", async (req, res) => {
     "/returns",
   ];
 
-  let products = [];
+  let products = []
   try {
     products = await Product.find({
       displayOnWebsite: true,
       $or: [{ noIndex: { $exists: false } }, { noIndex: false }],
     })
-      .select("_id updatedAt createdAt")
+      .select("_id slug canonicalUrl updatedAt createdAt")
       .sort({ updatedAt: -1 })
-      .lean();
+      .lean()
   } catch (e) {
-    console.warn("[sitemap] Failed to load products (serving static only):", e?.message);
-    products = [];
+    console.warn("[sitemap] Failed to load products (serving static only):", e?.message)
+    products = []
   }
 
-  const urls = [];
+  const urls = []
   for (const p of staticPaths) {
-    urls.push({ loc: `${baseUrl}${p}`, lastmod: now.toISOString() });
+    urls.push({ loc: `${baseUrl}${p}`, lastmod: now.toISOString() })
   }
   for (const p of products) {
-    const last = p?.updatedAt || p?.createdAt || now;
+    const last = p?.updatedAt || p?.createdAt || now
+    // Use canonical URL if set, else slug URL, else ID URL
+    const loc = p.canonicalUrl || (p.slug ? `${baseUrl}/products/${p.slug}` : `${baseUrl}/product/${p._id}`)
     urls.push({
-      loc: `${baseUrl}/product/${p._id}`,
+      loc,
       lastmod: new Date(last).toISOString(),
-    });
+    })
   }
 
   const xml =

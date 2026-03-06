@@ -1705,7 +1705,8 @@ router.post('/:id/seo/request-index', auth, allowRoles('admin','user','manager',
           ? `Permission denied — the service account is not an Owner of this property in Google Search Console. Fix: Go to Google Search Console → Settings → Users & permissions → Add ${credentials?.client_email || 'your service account email'} as Owner (not User).`
           : 'GSC API error: ' + errMsg,
         productUrl,
-        manualUrl: `https://search.google.com/search-console/inspect?resource_id=${encodeURIComponent(baseUrl)}&id=${encodeURIComponent(productUrl)}`,
+        manualUrl: 'https://search.google.com/search-console',
+        gscSettingsUrl: 'https://search.google.com/search-console/users',
       })
     }
 
