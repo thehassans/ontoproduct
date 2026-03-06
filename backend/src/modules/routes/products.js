@@ -1701,6 +1701,28 @@ router.delete('/:id', auth, allowRoles('admin','user','manager'), async (req, re
   res.json({ message: 'Deleted' })
 })
 
+// Generate full SEO package using Gemini AI
+router.post('/generate-seo', auth, allowRoles('admin','user','manager'), async (req, res) => {
+  try {
+    const { productName, category, description, availableCountries, baseUrl } = req.body
+    if (!productName) return res.status(400).json({ message: 'productName is required' })
+    if (!(await geminiService.ensureInitialized())) {
+      return res.status(503).json({ message: 'AI service not configured. Add Gemini API key in Settings > API Setup.' })
+    }
+    const seoData = await geminiService.generateProductSEO(
+      productName,
+      category || '',
+      description || '',
+      Array.isArray(availableCountries) ? availableCountries : [],
+      baseUrl || 'https://buysial.com'
+    )
+    res.json({ success: true, seo: seoData })
+  } catch (err) {
+    console.error('[generate-seo]', err)
+    res.status(500).json({ message: err.message || 'Failed to generate SEO' })
+  }
+})
+
 // Generate product description using Gemini AI
 router.post('/generate-description', auth, allowRoles('admin','user','manager'), async (req, res) => {
   try {

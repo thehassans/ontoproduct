@@ -550,7 +550,45 @@ export default function InhouseProducts() {
 
       if (response?.success && response?.data) {
         setAiDescription(response.data)
-        setMsg('AI content generated successfully! Review below.')
+        setMsg('AI content generated! Filling SEO fields…')
+        // Also generate SEO fields in parallel
+        try {
+          const seoRes = await apiPost('/api/products/generate-seo', {
+            productName: form.name,
+            category: form.category,
+            description: response.data?.description || form.description || '',
+            availableCountries: Array.isArray(form.availableCountries) ? form.availableCountries : [],
+            baseUrl: 'https://buysial.com',
+          })
+          if (seoRes?.success && seoRes?.seo) {
+            const s = seoRes.seo
+            setForm(f => ({
+              ...f,
+              seo: {
+                ...(f.seo || {}),
+                seoTitle: s.seoTitle || '',
+                slug: s.slug || '',
+                seoDescription: s.seoDescription || '',
+                seoKeywords: s.seoKeywords || '',
+                canonicalUrl: s.canonicalUrl || '',
+                ogTitle: s.ogTitle || '',
+                ogDescription: s.ogDescription || '',
+              },
+              countrySeo: s.countrySeo && typeof s.countrySeo === 'object'
+                ? { ...(f.countrySeo || {}), ...s.countrySeo }
+                : f.countrySeo,
+              backlinks: Array.isArray(s.backlinks) && s.backlinks.length
+                ? [...(f.backlinks || []), ...s.backlinks.map(b => ({ ...b, addedAt: new Date().toISOString() }))]
+                : f.backlinks,
+              gscData: { ...(f.gscData || {}), siteUrl: 'https://buysial.com' },
+            }))
+            setMsg('AI content generated! Description + SEO fields filled. Review below.')
+          } else {
+            setMsg('AI content generated successfully! Review below.')
+          }
+        } catch {
+          setMsg('AI content generated successfully! Review below.')
+        }
       } else {
         setAiDescription('')
         setMsg('Failed to generate description. Please try again.')

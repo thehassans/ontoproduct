@@ -177,6 +177,65 @@ class GeminiService {
     }
   }
 
+  async generateProductSEO(productName, category, description = '', availableCountries = [], baseUrl = 'https://buysial.com') {
+    const countriesList = availableCountries.length > 0 ? availableCountries.join(', ') : 'UAE, KSA, UK, US';
+    const prompt = `You are an elite SEO specialist and e-commerce growth expert with deep knowledge of Google's ranking algorithms, E-E-A-T, and international SEO.
+
+Generate a complete, production-ready SEO package for this product:
+Product Name: ${productName}
+Category: ${category}
+Description: ${description || 'Not provided'}
+Target Markets: ${countriesList}
+Website: ${baseUrl}
+
+Return ONLY a single valid JSON object (no markdown fences, no explanation) with these exact keys:
+
+{
+  "seoTitle": "Primary keyword first, product name, brand signal — MUST be 50-60 chars, max 60",
+  "slug": "primary-keyword-product-name-lowercase-hyphens",
+  "seoDescription": "Start with primary keyword, include benefit, CTA (Shop/Discover/Get), 145-158 chars",
+  "seoKeywords": "head keyword, long-tail 1, long-tail 2, modifier + keyword, location + keyword, intent keyword, brand + keyword, 8-12 total comma-separated",
+  "ogTitle": "Social-optimised title, slightly more emotional/clickbait than seoTitle",
+  "ogDescription": "Social sharing description — curiosity-gap, 100-130 chars",
+  "canonicalUrl": "${baseUrl}/products/SLUG_HERE",
+  "countrySeo": {
+    "CountryName": {
+      "metaTitle": "Localised title for this specific market, 50-60 chars",
+      "metaDescription": "Market-specific description with local buying intent signals, 145-158 chars",
+      "keywords": "local market specific keywords",
+      "hreflang": "ISO639-ISO3166 e.g. en-AE or ar-AE"
+    }
+  },
+  "backlinks": [
+    { "url": "https://authority-blog.com/relevant-article", "anchor": "exact match or partial match anchor", "type": "dofollow", "status": "pending" },
+    { "url": "https://review-site.com/product-category", "anchor": "brand + keyword anchor", "type": "dofollow", "status": "pending" },
+    { "url": "https://news-site.com/category-article", "anchor": "naked URL or generic", "type": "dofollow", "status": "pending" },
+    { "url": "https://forum-or-qa.com/thread", "anchor": "long-tail keyword anchor", "type": "nofollow", "status": "pending" },
+    { "url": "https://social-or-directory.com/listing", "anchor": "brand name anchor", "type": "nofollow", "status": "pending" }
+  ],
+  "siteUrl": "${baseUrl}"
+}
+
+SEO Rules:
+- seoTitle: Put primary search keyword first. Include product name. End with brand if space allows. No fluff.
+- slug: 3-6 words max, primary keyword first, no stop words, no numbers unless essential
+- seoDescription: First word MUST be a keyword. Include exactly one CTA verb. Hit 150-158 chars.
+- seoKeywords: Mix short-head (2 words), medium-tail (3 words), long-tail (4+ words). Include price/buy intent keywords.
+- countrySeo: Generate an entry for EVERY country in [${countriesList}]. For Arabic markets (UAE, KSA, Saudi Arabia, Qatar, Bahrain, Kuwait, Oman), provide Arabic-language meta title and description with correct Arabic keywords. Hreflang: en-AE, ar-AE, en-GB, en-US, ar-SA etc.
+- canonicalUrl: Replace SLUG_HERE with the actual slug you generated
+- backlinks: Real-sounding but aspirational authority sites in the product's niche. Mix of blogs, review sites, news sites, Q&A sites, directories.
+- siteUrl: Always "${baseUrl}"`;
+
+    const text = await this.generateContent(prompt);
+    try {
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error('No JSON found in AI response');
+      return JSON.parse(jsonMatch[0]);
+    } catch {
+      throw new Error('Failed to parse AI SEO response — please try again');
+    }
+  }
+
   // Compatibility method for existing checks
   async ensureInitialized() {
     const key = await this.getApiKey();

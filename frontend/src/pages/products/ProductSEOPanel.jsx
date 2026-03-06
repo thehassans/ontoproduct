@@ -1,7 +1,8 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { apiPost, apiPatch } from '../../api'
 
-const TABS = ['General SEO', 'Country SEO', 'Backlinks', 'Google Search Console']
+const SITE_URL = 'https://buysial.com'
+const TABS = ['General SEO', 'Country SEO', 'Backlinks', 'Google Search Console', '✨ AI SEO']
 
 const LINK_TYPES = ['dofollow', 'nofollow', 'sponsored', 'ugc']
 const LINK_STATUSES = ['pending', 'active', 'broken']
@@ -26,11 +27,21 @@ export default function ProductSEOPanel({ form, setForm, countryOpts, productId,
   const [gscLoading, setGscLoading] = useState(false)
   const [newBacklink, setNewBacklink] = useState({ url: '', anchor: '', type: 'dofollow', status: 'pending' })
   const [activeCountry, setActiveCountry] = useState(null)
+  const [aiSeoLoading, setAiSeoLoading] = useState(false)
+  const [aiSeoMsg, setAiSeoMsg] = useState('')
+  const [aiSeoPreview, setAiSeoPreview] = useState(null)
 
   const seo = form.seo || {}
   const countrySeo = form.countrySeo || {}
   const backlinks = Array.isArray(form.backlinks) ? form.backlinks : []
   const gscData = form.gscData || {}
+
+  // Always pre-fill buysial.com as site URL
+  useEffect(() => {
+    if (!form.gscData?.siteUrl) {
+      setGscData({ siteUrl: SITE_URL })
+    }
+  }, []) // eslint-disable-line
 
   function setSeo(patch) {
     setForm(f => ({ ...f, seo: { ...(f.seo || {}), ...patch } }))
@@ -62,6 +73,60 @@ export default function ProductSEOPanel({ form, setForm, countryOpts, productId,
       bl[idx] = { ...bl[idx], ...patch }
       return { ...f, backlinks: bl }
     })
+  }
+
+  async function generateAISeo() {
+    if (!form.name) { setAiSeoMsg('❌ Enter a product name first'); return }
+    setAiSeoLoading(true)
+    setAiSeoMsg('')
+    setAiSeoPreview(null)
+    try {
+      const res = await apiPost('/api/products/generate-seo', {
+        productName: form.name,
+        category: form.category || '',
+        description: form.description || '',
+        availableCountries: Array.isArray(form.availableCountries) ? form.availableCountries : [],
+        baseUrl: SITE_URL,
+      })
+      if (!res?.success || !res?.seo) {
+        setAiSeoMsg('❌ ' + (res?.message || 'Failed to generate SEO'))
+        return
+      }
+      const s = res.seo
+      setAiSeoPreview(s)
+      // Apply all SEO fields immediately
+      setForm(f => ({
+        ...f,
+        seo: {
+          ...(f.seo || {}),
+          seoTitle: s.seoTitle || f.seo?.seoTitle || '',
+          slug: s.slug || f.seo?.slug || '',
+          seoDescription: s.seoDescription || f.seo?.seoDescription || '',
+          seoKeywords: s.seoKeywords || f.seo?.seoKeywords || '',
+          canonicalUrl: s.canonicalUrl || f.seo?.canonicalUrl || '',
+          ogTitle: s.ogTitle || f.seo?.ogTitle || '',
+          ogDescription: s.ogDescription || f.seo?.ogDescription || '',
+        },
+        countrySeo: s.countrySeo && typeof s.countrySeo === 'object'
+          ? { ...(f.countrySeo || {}), ...s.countrySeo }
+          : f.countrySeo,
+        backlinks: Array.isArray(s.backlinks) && s.backlinks.length
+          ? [
+              ...(f.backlinks || []),
+              ...s.backlinks.map(b => ({ ...b, addedAt: new Date().toISOString() })),
+            ]
+          : f.backlinks,
+        gscData: {
+          ...(f.gscData || {}),
+          siteUrl: SITE_URL,
+        },
+      }))
+      setAiSeoMsg('✅ AI SEO applied to all tabs — review and save')
+    } catch (err) {
+      setAiSeoMsg('❌ ' + (err?.message || 'Failed'))
+    } finally {
+      setAiSeoLoading(false)
+    }
   }
 
   async function requestIndex() {
@@ -373,7 +438,15 @@ export default function ProductSEOPanel({ form, setForm, countryOpts, productId,
         {activeTab === 2 && (
           <div style={{ display: 'grid', gap: 18 }}>
             <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-              Track inbound backlinks to this product page. Monitor their status and type.
+              Track inbound backlinks pointing to this product page. The <strong>Source URL</strong> is the external site linking to you; the <strong>Target URL</strong> is your product page.
+            </div>
+
+            {/* Target URL display */}
+            <div style={{ padding: '10px 14px', background: '#f0fdf4', borderRadius: 8, border: '1px solid #bbf7d0', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontWeight: 700, color: '#166534', whiteSpace: 'nowrap' }}>Target URL:</span>
+              <span style={{ color: '#16a34a', wordBreak: 'break-all' }}>
+                {SITE_URL}/products/{seo.slug || slugify(form.name) || '[slug]'}
+              </span>
             </div>
 
             {/* Add new backlink */}
@@ -381,7 +454,7 @@ export default function ProductSEOPanel({ form, setForm, countryOpts, productId,
               <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>Add Backlink</div>
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr 120px 120px auto', gap: 10, alignItems: 'end' }}>
                 <div style={fieldStyle}>
-                  <label style={labelStyle}>Source URL</label>
+                  <label style={labelStyle}>Source URL (external site linking to you)</label>
                   <input style={inputStyle} value={newBacklink.url} placeholder="https://example.com/article" onChange={e => setNewBacklink(b => ({ ...b, url: e.target.value }))} />
                 </div>
                 <div style={fieldStyle}>
@@ -484,8 +557,8 @@ export default function ProductSEOPanel({ form, setForm, countryOpts, productId,
                 <label style={labelStyle}>Site URL (GSC Property)</label>
                 <input
                   style={inputStyle}
-                  value={gscData.siteUrl || ''}
-                  placeholder="https://yourdomain.com"
+                  value={gscData.siteUrl || SITE_URL}
+                  placeholder={SITE_URL}
                   onChange={e => setGscData({ siteUrl: e.target.value })}
                 />
                 <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Must match your verified property in Google Search Console</div>
@@ -496,9 +569,7 @@ export default function ProductSEOPanel({ form, setForm, countryOpts, productId,
                   padding: '10px 12px', borderRadius: 8, background: 'var(--panel-2)', border: '1px solid var(--border)',
                   fontSize: 13, color: '#3b82f6', wordBreak: 'break-all'
                 }}>
-                  {gscData.siteUrl
-                    ? `${String(gscData.siteUrl).replace(/\/$/, '')}/products/${seo.slug || slugify(form.name)}`
-                    : 'Enter site URL above to preview'}
+                  {`${(gscData.siteUrl || SITE_URL).replace(/\/$/, '')}/products/${seo.slug || slugify(form.name) || '[slug]'}`}
                 </div>
               </div>
             </div>
@@ -585,7 +656,7 @@ export default function ProductSEOPanel({ form, setForm, countryOpts, productId,
                 <code style={{ fontSize: 12, color: '#7dd3fc', fontFamily: 'monospace', whiteSpace: 'pre-wrap', display: 'block' }}>
                   {availableCountries.map(c => {
                     const hl = countrySeo[c]?.hreflang || 'en-' + (c === 'UAE' ? 'AE' : c === 'KSA' ? 'SA' : c.toUpperCase().slice(0, 2))
-                    const url = `${(gscData.siteUrl || 'https://yourdomain.com').replace(/\/$/, '')}/products/${seo.slug || slugify(form.name)}`
+                    const url = `${(gscData.siteUrl || SITE_URL).replace(/\/$/, '')}/products/${seo.slug || slugify(form.name)}`
                     return `<link rel="alternate" hreflang="${hl}" href="${url}" />`
                   }).join('\n')}
                 </code>
@@ -593,7 +664,174 @@ export default function ProductSEOPanel({ form, setForm, countryOpts, productId,
             )}
           </div>
         )}
+
+        {/* ── Tab 4: AI SEO ── */}
+        {activeTab === 4 && (
+          <div style={{ display: 'grid', gap: 20 }}>
+            {/* Hero CTA */}
+            <div style={{ padding: 24, background: 'linear-gradient(135deg,#1e1b4b 0%,#312e81 50%,#1e40af 100%)', borderRadius: 14, color: '#fff', textAlign: 'center' }}>
+              <div style={{ fontSize: 32, marginBottom: 8 }}>✨</div>
+              <div style={{ fontWeight: 800, fontSize: 20, marginBottom: 6 }}>AI SEO Generator</div>
+              <div style={{ fontSize: 13, opacity: 0.85, marginBottom: 20, lineHeight: 1.6 }}>
+                Uses Gemini AI with elite SEO algorithms to generate a complete SEO package —<br />
+                SEO title, URL slug, meta description, keywords, country SEO, backlinks &amp; GSC setup.
+              </div>
+              <button
+                type="button"
+                onClick={generateAISeo}
+                disabled={aiSeoLoading}
+                style={{
+                  padding: '14px 36px', borderRadius: 12,
+                  background: aiSeoLoading ? 'rgba(255,255,255,0.2)' : 'linear-gradient(135deg,#f97316,#ef4444)',
+                  color: '#fff', border: '2px solid rgba(255,255,255,0.3)',
+                  fontWeight: 800, fontSize: 16, cursor: aiSeoLoading ? 'not-allowed' : 'pointer',
+                  display: 'inline-flex', alignItems: 'center', gap: 10,
+                  transition: 'all 0.2s',
+                }}
+              >
+                {aiSeoLoading
+                  ? <><span style={{ display: 'inline-block', animation: 'spin 1s linear infinite' }}>⏳</span> Generating AI SEO…</>
+                  : <><span>✨</span> Generate AI SEO</>}
+              </button>
+              {!form.name && (
+                <div style={{ marginTop: 12, fontSize: 12, color: '#fbbf24' }}>⚠️ Enter a product name before generating SEO</div>
+              )}
+            </div>
+
+            {/* Status message */}
+            {aiSeoMsg && (
+              <div style={{
+                padding: '12px 16px', borderRadius: 10, fontSize: 14, fontWeight: 600,
+                background: aiSeoMsg.startsWith('✅') ? '#dcfce7' : '#fee2e2',
+                color: aiSeoMsg.startsWith('✅') ? '#166534' : '#991b1b',
+                border: `1px solid ${aiSeoMsg.startsWith('✅') ? '#bbf7d0' : '#fecaca'}`,
+              }}>
+                {aiSeoMsg}
+                {aiSeoMsg.startsWith('✅') && (
+                  <div style={{ fontWeight: 400, fontSize: 12, marginTop: 4, opacity: 0.8 }}>
+                    Switch to each tab to review the filled fields. All data is applied — just save the product.
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Preview of generated data */}
+            {aiSeoPreview && (
+              <div style={{ display: 'grid', gap: 12 }}>
+                <div style={{ fontWeight: 700, fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span>📋</span> Generated SEO Preview
+                </div>
+
+                {/* General SEO fields */}
+                <div style={{ padding: 16, background: 'var(--panel-2)', borderRadius: 10, border: '1px solid var(--border)', display: 'grid', gap: 10 }}>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>General SEO</div>
+                  <div style={{ display: 'grid', gap: 6 }}>
+                    <PreviewRow label="SEO Title" value={aiSeoPreview.seoTitle} tag={`${(aiSeoPreview.seoTitle || '').length} chars`} />
+                    <PreviewRow label="URL Slug" value={aiSeoPreview.slug} mono />
+                    <PreviewRow label="Meta Description" value={aiSeoPreview.seoDescription} tag={`${(aiSeoPreview.seoDescription || '').length} chars`} />
+                    <PreviewRow label="Keywords" value={aiSeoPreview.seoKeywords} />
+                    <PreviewRow label="OG Title" value={aiSeoPreview.ogTitle} />
+                    <PreviewRow label="OG Description" value={aiSeoPreview.ogDescription} />
+                    <PreviewRow label="Canonical URL" value={aiSeoPreview.canonicalUrl} mono />
+                  </div>
+                </div>
+
+                {/* SERP Preview */}
+                <div style={{ padding: 16, background: '#fff', borderRadius: 10, border: '1px solid #e5e7eb' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', marginBottom: 10, textTransform: 'uppercase' }}>Live SERP Preview</div>
+                  <div style={{ fontSize: 18, color: '#1a0dab', fontWeight: 500, marginBottom: 2, fontFamily: 'Arial,sans-serif' }}>
+                    {aiSeoPreview.seoTitle}
+                  </div>
+                  <div style={{ fontSize: 13, color: '#006621', marginBottom: 4, fontFamily: 'Arial,sans-serif' }}>
+                    {SITE_URL}/products/{aiSeoPreview.slug}
+                  </div>
+                  <div style={{ fontSize: 13, color: '#545454', fontFamily: 'Arial,sans-serif' }}>
+                    {aiSeoPreview.seoDescription}
+                  </div>
+                </div>
+
+                {/* Country SEO */}
+                {aiSeoPreview.countrySeo && Object.keys(aiSeoPreview.countrySeo).length > 0 && (
+                  <div style={{ padding: 16, background: 'var(--panel-2)', borderRadius: 10, border: '1px solid var(--border)', display: 'grid', gap: 10 }}>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Country SEO</div>
+                    {Object.entries(aiSeoPreview.countrySeo).map(([country, data]) => (
+                      <div key={country} style={{ padding: '10px 14px', background: 'var(--card)', borderRadius: 8, border: '1px solid var(--border)' }}>
+                        <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 6 }}>{country} <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: 12 }}>({data.hreflang})</span></div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 2 }}><strong>Title:</strong> {data.metaTitle}</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 2 }}><strong>Desc:</strong> {data.metaDescription}</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}><strong>Keywords:</strong> {data.keywords}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Suggested Backlinks */}
+                {Array.isArray(aiSeoPreview.backlinks) && aiSeoPreview.backlinks.length > 0 && (
+                  <div style={{ padding: 16, background: 'var(--panel-2)', borderRadius: 10, border: '1px solid var(--border)', display: 'grid', gap: 8 }}>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Suggested Backlink Targets</div>
+                    {aiSeoPreview.backlinks.map((bl, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, padding: '6px 0', borderBottom: i < aiSeoPreview.backlinks.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                        <span style={{ padding: '2px 8px', borderRadius: 999, background: bl.type === 'dofollow' ? '#dcfce7' : '#fef3c7', color: bl.type === 'dofollow' ? '#166534' : '#854d0e', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{bl.type}</span>
+                        <a href={bl.url} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6', wordBreak: 'break-all' }}>{bl.url}</a>
+                        <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap', marginLeft: 'auto' }}>"{bl.anchor}"</span>
+                      </div>
+                    ))}
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>These have been added to your Backlinks tab for tracking.</div>
+                  </div>
+                )}
+
+                {/* Regenerate */}
+                <button
+                  type="button"
+                  onClick={() => { setAiSeoPreview(null); setAiSeoMsg(''); generateAISeo() }}
+                  disabled={aiSeoLoading}
+                  style={{ padding: '10px 20px', borderRadius: 8, background: 'var(--panel-2)', border: '1px solid var(--border)', fontWeight: 600, fontSize: 13, cursor: 'pointer', width: 'fit-content' }}
+                >
+                  🔄 Regenerate AI SEO
+                </button>
+              </div>
+            )}
+
+            {/* How it works */}
+            {!aiSeoPreview && !aiSeoLoading && (
+              <div style={{ padding: 16, background: 'var(--panel-2)', borderRadius: 10, border: '1px solid var(--border)', fontSize: 13, lineHeight: 1.8 }}>
+                <div style={{ fontWeight: 700, marginBottom: 8 }}>What AI SEO generates:</div>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 8 }}>
+                  {[
+                    ['🏷️', 'SEO Title', '50-60 chars, keyword-first'],
+                    ['🔗', 'URL Slug', 'Clean, primary-keyword slug'],
+                    ['📝', 'Meta Description', '145-158 chars with CTA'],
+                    ['🔑', 'Focus Keywords', '8-12 head + long-tail terms'],
+                    ['🌍', 'Country SEO', 'Per-market titles, descriptions, hreflang'],
+                    ['🔗', 'Backlinks', '5 topically relevant authority targets'],
+                    ['📊', 'Open Graph', 'Social sharing title + description'],
+                    ['🌐', 'Canonical URL', `${SITE_URL}/products/[slug]`],
+                  ].map(([icon, title, desc]) => (
+                    <div key={title} style={{ display: 'flex', gap: 8, padding: '8px 10px', background: 'var(--card)', borderRadius: 8 }}>
+                      <span style={{ fontSize: 16 }}>{icon}</span>
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: 13 }}>{title}</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{desc}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
+    </div>
+  )
+}
+
+function PreviewRow({ label, value, tag, mono }) {
+  if (!value) return null
+  return (
+    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 13 }}>
+      <span style={{ fontWeight: 700, color: 'var(--text-muted)', minWidth: 120, flexShrink: 0, fontSize: 12 }}>{label}</span>
+      <span style={{ flex: 1, fontFamily: mono ? 'monospace' : 'inherit', fontSize: mono ? 12 : 13, color: 'var(--text)', wordBreak: 'break-all' }}>{value}</span>
+      {tag && <span style={{ fontSize: 11, padding: '2px 6px', borderRadius: 4, background: 'var(--panel)', color: 'var(--text-muted)', flexShrink: 0 }}>{tag}</span>}
     </div>
   )
 }
