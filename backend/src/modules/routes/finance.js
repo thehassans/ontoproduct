@@ -2245,6 +2245,41 @@ router.get(
   }
 );
 
+// Get all commission payments across all agents (for owner overview)
+router.get(
+  "/agents/all-commission-history",
+  auth,
+  allowRoles("admin", "user"),
+  async (req, res) => {
+    try {
+      const { page = 1, limit = 200, agentId } = req.query;
+      const skip = (Number(page) - 1) * Number(limit);
+
+      // Build match: owner scope
+      const matchCond = { status: "sent" };
+      if (req.user.role === "user") {
+        matchCond.owner = req.user._id || req.user.id;
+      }
+      if (agentId) matchCond.agent = agentId;
+
+      const [history, total] = await Promise.all([
+        AgentRemit.find(matchCond)
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(Number(limit))
+          .populate("agent", "firstName lastName phone")
+          .populate("approver", "firstName lastName")
+          .lean(),
+        AgentRemit.countDocuments(matchCond),
+      ]);
+
+      return res.json({ history, total });
+    } catch (err) {
+      return res.status(500).json({ message: "Failed to fetch history" });
+    }
+  }
+);
+
 // Pay commission to agent (admin/user)
 router.post(
   "/agents/:id/pay-commission",

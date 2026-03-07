@@ -811,9 +811,8 @@ export default function UserLayout() {
           ),
         },
         {
-          to: '/user/agent-amounts',
+          to: '/user/agent-history',
           label: 'Agent History',
-          matchPaths: ['/user/agent-history'],
           icon: (
             <svg
               width="18"
