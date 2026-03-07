@@ -2252,14 +2252,21 @@ router.get(
   allowRoles("admin", "user"),
   async (req, res) => {
     try {
-      const { page = 1, limit = 200, agentId } = req.query;
+      const { page = 1, limit = 500, agentId } = req.query;
       const skip = (Number(page) - 1) * Number(limit);
 
-      // Build match: owner scope
+      // Build match: filter by agents belonging to this owner
       const matchCond = { status: "sent" };
-      if (req.user.role === "user") {
-        matchCond.owner = req.user._id || req.user.id;
+      if (req.user.role !== "admin") {
+        // Get all agents under this owner
+        const ownedAgents = await User.find(
+          { role: "agent", createdBy: req.user.id },
+          "_id"
+        ).lean();
+        const ownedAgentIds = ownedAgents.map((a) => a._id);
+        matchCond.agent = { $in: ownedAgentIds };
       }
+      // Optionally filter by specific agent
       if (agentId) matchCond.agent = agentId;
 
       const [history, total] = await Promise.all([
