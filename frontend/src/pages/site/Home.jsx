@@ -402,7 +402,7 @@ export default function Home(){
             <div className="mt-auto px-5 pb-6 pt-3 border-t border-gray-100">
               <div className="flex items-center gap-2 text-xs text-gray-400">
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" /></svg>
-                <span>{currentFlag} {currentCountryName}</span>
+                <span><span key={selectedCountry}>{currentFlag}</span> {currentCountryName}</span>
               </div>
             </div>
           </div>
@@ -500,7 +500,7 @@ export default function Home(){
           <svg className="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" /></svg>
           <button onClick={() => setMobileCountryOpen(!mobileCountryOpen)} className="flex items-center gap-1.5 text-[13px] text-gray-600">
             <span className="font-medium">Deliver to</span>
-            <span className="font-bold text-gray-900">{currentFlag} {currentCountryName}</span>
+            <span className="font-bold text-gray-900"><span key={selectedCountry}>{currentFlag}</span> {currentCountryName}</span>
             <svg className={`w-3.5 h-3.5 text-gray-400 transition-transform ${mobileCountryOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" /></svg>
           </button>
         </div>
@@ -508,7 +508,7 @@ export default function Home(){
           <div className="absolute left-2 right-2 top-full -mt-1 max-h-64 overflow-y-auto bg-white rounded-2xl shadow-[0_12px_48px_rgba(0,0,0,0.15)] border border-gray-100 py-1 z-50">
             {COUNTRY_LIST_LOCAL.map(c => (
               <button key={c.code} onClick={() => handleMobileCountryChange(c.code)} className={`w-full px-4 py-2.5 flex items-center gap-2.5 text-left text-sm transition-colors ${selectedCountry === c.code ? 'bg-orange-50 text-orange-600 font-semibold' : 'text-gray-700 hover:bg-gray-50'}`}>
-                <span>{c.flag}</span><span>{c.name}</span>
+                <span key={c.code}>{c.flag}</span><span>{c.name}</span>
                 {selectedCountry === c.code && <svg className="w-3.5 h-3.5 ml-auto text-orange-500" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" /></svg>}
               </button>
             ))}

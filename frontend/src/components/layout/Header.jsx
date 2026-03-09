@@ -314,7 +314,7 @@ export default function Header({ onCartClick, editMode = false, editState = {}, 
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{color:'#9ca3af',flexShrink:0}}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" /></svg>
                     <span className="deliver-label">Deliver to</span>
-                    <span className="country-flag">{currentCountry.flag}</span>
+                    <span className="country-flag" key={currentCountry.code}>{currentCountry.flag}</span>
                     <span className="country-name">{currentCountry.name}</span>
                     <svg className={`country-arrow ${isCountryOpen ? 'open' : ''}`} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M6 9l6 6 6-6" />
@@ -328,7 +328,7 @@ export default function Header({ onCartClick, editMode = false, editState = {}, 
                           className={`country-option ${selectedCountry === country.code ? 'active' : ''}`}
                           onClick={() => handleCountryChange(country)}
                         >
-                          <span className="country-flag">{country.flag}</span>
+                          <span className="country-flag" key={country.code}>{country.flag}</span>
                           <span className="country-name">{country.name}</span>
                           {selectedCountry === country.code && (
                             <svg className="check-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">

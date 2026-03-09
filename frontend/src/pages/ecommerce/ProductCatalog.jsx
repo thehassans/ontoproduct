@@ -1075,14 +1075,14 @@ export default function ProductCatalog() {
           <button onClick={() => setMobileCountryOpen(!mobileCountryOpen)} className="flex items-center gap-1.5 text-[12px] text-gray-500">
             <svg className="w-3.5 h-3.5 text-orange-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" /></svg>
             <span>Deliver to</span>
-            <span className="font-semibold text-gray-800">{currentFlag} {currentCountryName}</span>
+            <span className="font-semibold text-gray-800"><span key={selectedCountry}>{currentFlag}</span> {currentCountryName}</span>
             <svg className={`w-3 h-3 text-gray-400 transition-transform ${mobileCountryOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" /></svg>
           </button>
           {mobileCountryOpen && (
             <div className="absolute left-2 right-2 top-full mt-1 max-h-64 overflow-y-auto bg-white rounded-2xl shadow-[0_12px_48px_rgba(0,0,0,0.15)] border border-gray-100 py-1 z-50">
               {COUNTRY_LIST_LOCAL.map(c => (
                 <button key={c.code} onClick={() => { setSelectedCountry(c.code); setMobileCountryOpen(false); try { localStorage.setItem('selected_country', c.code) } catch {}; window.dispatchEvent(new CustomEvent('countryChanged', { detail: { code: c.code } })) }} className={`w-full px-4 py-2.5 flex items-center gap-2.5 text-left text-sm transition-colors ${selectedCountry === c.code ? 'bg-orange-50 text-orange-600 font-semibold' : 'text-gray-700 hover:bg-gray-50'}`}>
-                  <span>{c.flag}</span><span>{c.name}</span>
+                  <span key={c.code}>{c.flag}</span><span>{c.name}</span>
                   {selectedCountry === c.code && <svg className="w-3.5 h-3.5 ml-auto text-orange-500" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" /></svg>}
                 </button>
               ))}
