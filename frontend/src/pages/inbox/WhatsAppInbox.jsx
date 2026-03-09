@@ -548,8 +548,29 @@ export default function WhatsAppInbox() {
   }, [])
   // Availability is managed on the Me page; the inbox UI does not expose controls
 
-  // Availability is loaded and updated on Me page; no-op here
-  useEffect(() => {}, [myRole])
+  // Global interaction listener to safely initialize AudioContext without Autoplay warnings
+  useEffect(() => {
+    const handleInteraction = () => {
+      userInteractedRef.current = true
+      if (!ringCtxRef.current) {
+        try {
+          const Ctx = window.AudioContext || window.webkitAudioContext
+          if (Ctx) ringCtxRef.current = new Ctx()
+        } catch {}
+      }
+      window.removeEventListener('click', handleInteraction)
+      window.removeEventListener('keydown', handleInteraction)
+      window.removeEventListener('touchstart', handleInteraction)
+    }
+    window.addEventListener('click', handleInteraction, { once: true })
+    window.addEventListener('keydown', handleInteraction, { once: true })
+    window.addEventListener('touchstart', handleInteraction, { once: true })
+    return () => {
+      window.removeEventListener('click', handleInteraction)
+      window.removeEventListener('keydown', handleInteraction)
+      window.removeEventListener('touchstart', handleInteraction)
+    }
+  }, [])
 
   // Chat menu and modals
   const [showChatMenu, setShowChatMenu] = useState(false)
@@ -2533,7 +2554,7 @@ export default function WhatsAppInbox() {
           }
           const audioBuf = await ctx.decodeAudioData(buf)
           const ch = audioBuf.numberOfChannels > 0 ? audioBuf.getChannelData(0) : new Float32Array()
-          const len = 60 // number of bars, WhatsApp-like compact waveform
+          const len = 34 // number of bars, exact match to WhatsApp layout size
           const block = Math.floor(ch.length / len) || 1
           const peaksArr = new Array(len).fill(0).map((_, i) => {
             let sum = 0
