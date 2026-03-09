@@ -161,27 +161,7 @@ let __ringCtx = null;
       </svg>
     )
   }
-  function LocationBubble({ content }) {
-    try {
-      const loc = content?.locationMessage || {}
-      const lat = Number(loc.degreesLatitude)
-      const lon = Number(loc.degreesLongitude)
-      const name = loc.name || loc.address || 'Location'
-      const q = `${lat},${lon}`
-      const url = `https://www.google.com/maps?q=${encodeURIComponent(q)}`
-      return (
-        <div className="wa-location">
-          <div className="wa-location-title">{name}</div>
-          <div className="wa-location-geo">{Number.isFinite(lat) && Number.isFinite(lon) ? `${lat.toFixed(5)}, ${lon.toFixed(5)}` : ''}</div>
-          <a href={url} target="_blank" rel="noreferrer" className="btn secondary" style={{ marginTop: 6 }}>
-            Open in Google Maps
-          </a>
-        </div>
-      )
-    } catch {
-      return <div style={{ opacity: 0.8 }}>[Location]</div>
-    }
-  }
+
   function UnreadIcon() {
     return (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
