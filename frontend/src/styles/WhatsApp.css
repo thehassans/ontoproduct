@@ -1066,12 +1066,35 @@
 .wa-react-bar .emoji {
   background: none; border: none;
   font-size: 22px; cursor: pointer;
-  width: 36px; height: 36px;
+  width: 40px; height: 40px;
   border-radius: 50%;
   display: grid; place-items: center;
-  transition: background 0.1s, transform 0.1s;
+  transition: background 0.12s, transform 0.15s;
+  padding: 0;
 }
-.wa-react-bar .emoji:hover { background: var(--wa-search-bg); transform: scale(1.25); }
+.wa-react-bar .emoji img.emoji {
+  width: 26px !important;
+  height: 26px !important;
+  pointer-events: none;
+}
+.wa-react-bar .emoji:hover { background: rgba(0,0,0,0.08); transform: scale(1.30); }
+.wa-react-bar .emoji:active { transform: scale(1.1); }
+
+/* Twemoji in reaction chips below messages */
+.wa-reactions .wa-reaction-chip img.emoji {
+  width: 16px !important; height: 16px !important; vertical-align: -3px;
+}
+/* Twemoji in chat messages (normal inline text) */
+.wa-message-bubble img.emoji {
+  width: 1.1em !important; height: 1.1em !important;
+  vertical-align: -0.15em;
+  pointer-events: none;
+}
+/* Twemoji for big emoji messages */
+.wa-emoji-only img.emoji {
+  width: 52px !important; height: 52px !important;
+  vertical-align: middle;
+}
 
 /* ── Recording badge ────────────────────────────────────── */
 .wa-recording {
@@ -1243,6 +1266,12 @@
 .wa-message-bubble:has(video),
 .wa-message-bubble:has(img) {
   padding-bottom: 22px;
+}
+
+/* ── Animation for quote scroll highlighting ────────────── */
+@keyframes wa-highlight-flash {
+  0% { filter: brightness(0.8) contrast(1.2); box-shadow: 0 0 10px rgba(0,0,0,0.2); }
+  100% { filter: none; box-shadow: none; }
 }
 
 

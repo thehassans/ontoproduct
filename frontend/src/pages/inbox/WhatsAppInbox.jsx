@@ -1566,9 +1566,17 @@ export default function WhatsAppInbox() {
       }
       if (showChatMenu && chatMenuRef.current && !chatMenuRef.current.contains(e.target))
         setShowChatMenu(false)
+        
+      if (!e.target.closest('.wa-react-bar')) {
+        setReactingTo(null)
+      }
     }
-    document.addEventListener('mousedown', onDocClick)
-    return () => document.removeEventListener('mousedown', onDocClick)
+    document.addEventListener('mousedown', onDocClick, { capture: true })
+    document.addEventListener('touchstart', onDocClick, { capture: true, passive: true })
+    return () => {
+      document.removeEventListener('mousedown', onDocClick, { capture: true })
+      document.removeEventListener('touchstart', onDocClick, { capture: true })
+    }
   }, [showEmoji, showAttach, showChatMenu])
 
   // Filter agents during Assign modal (debounced)
@@ -1938,15 +1946,9 @@ export default function WhatsAppInbox() {
       
       if (isImageOrVideo) {
         // Show preview modal for images/videos
-        const previews = await Promise.all(
-          files.map(f => {
-            return new Promise((resolve) => {
-              const reader = new FileReader()
-              reader.onload = (ev) => resolve({ url: ev.target.result, file: f, type: f.type })
-              reader.readAsDataURL(f)
-            })
-          })
-        )
+        const previews = files.map(f => {
+          return { url: URL.createObjectURL(f), file: f, type: f.type }
+        })
         setImagePreview({ files: files, previews: previews, caption: '' })
         setSelectedImageIndex(0)
       } else {
@@ -3420,10 +3422,11 @@ export default function WhatsAppInbox() {
                         <div className="wa-date-sep">{dateSepLabel(tsMs)}</div>
                       )}
                       <div
+                        id={m?.key?.id}
                         className={`wa-message-bubble ${isMe ? 'me' : 'them'}${samePrev ? ' continued' : ''}${sameNext ? ' no-tail' : ''}`}
                         style={{ marginTop: samePrev ? 1 : 6 }}
-                        onContextMenu={e => { e.preventDefault(); setReactingTo(m?.key?.id || null) }}
-                        onDoubleClick={() => setReactingTo(m?.key?.id || null)}
+                        onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setReactingTo(m?.key?.id || null) }}
+                        onDoubleClick={() => startReply(m)}
                         onTouchStart={e => {
                           const id = m?.key?.id || null; if (!id) return
                           const touch = e.touches && e.touches[0]
@@ -3462,7 +3465,17 @@ export default function WhatsAppInbox() {
                             const author = q?.author || null
                             const text = q?.preview || q?.text || q?.conversation || q?.extendedTextMessage?.text || '[Quoted]'
                             return (
-                              <div className="wa-quote">
+                              <div className="wa-quote" onClick={() => {
+                                if (q.id) {
+                                  const el = document.getElementById(q.id)
+                                  if (el) {
+                                    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                                    el.style.animation = 'none'
+                                    void el.offsetWidth
+                                    el.style.animation = 'wa-highlight-flash 1.5s ease-out'
+                                  }
+                                }
+                              }} style={{ cursor: q.id ? 'pointer' : 'default' }}>
                                 {author ? <div className="wa-quote-author">{author}</div> : null}
                                 <div className="wa-quote-text">{text}</div>
                               </div>
@@ -3511,16 +3524,11 @@ export default function WhatsAppInbox() {
                             )
                           } catch { return null }
                         })()}
-                        {/* Hover actions */}
-                        <div className="wa-msg-actions">
-                          <button className="link" onClick={() => startReply(m)}>Reply</button>
-                          <button className="link" onClick={() => setReactingTo(m?.key?.id || null)}>React</button>
-                        </div>
                         {/* Reaction picker */}
                         {reactingTo === (m?.key?.id || null) && (
-                          <div className="wa-react-bar" role="menu" onMouseLeave={() => setReactingTo(null)}>
+                          <div className="wa-react-bar" role="menu">
                             {['❤️','👍','😂','😮','😢','🙏'].map(em => (
-                              <button key={em} className="emoji" onClick={() => { setReactingTo(null); sendReaction(m?.key?.id, em) }}>{em}</button>
+                              <button key={em} className="emoji" onClick={(e) => { e.stopPropagation(); setReactingTo(null); sendReaction(m?.key?.id, em) }}>{em}</button>
                             ))}
                           </div>
                         )}

@@ -47,6 +47,21 @@
     <!-- OTTO SEO by SearchAtlas – dynamic optimization pixel -->
     <script nowprocket nitro-exclude type="text/javascript" id="sa-dynamic-optimization" data-uuid="4bc859d5-2c61-406a-a412-a0a6a847089a" src="data:text/javascript;base64,dmFyIHNjcmlwdCA9IGRvY3VtZW50LmNyZWF0ZUVsZW1lbnQoInNjcmlwdCIpO3NjcmlwdC5zZXRBdHRyaWJ1dGUoIm5vd3Byb2NrZXQiLCAiIik7c2NyaXB0LnNldEF0dHJpYnV0ZSgibml0cm8tZXhjbHVkZSIsICIiKTtzY3JpcHQuc3JjID0gImh0dHBzOi8vZGFzaGJvYXJkLnNlYXJjaGF0bGFzLmNvbS9zY3JpcHRzL2R5bmFtaWNfb3B0aW1pemF0aW9uLmpzIjtzY3JpcHQuZGF0YXNldC51dWlkID0gIjRiYzg1OWQ1LTJjNjEtNDA2YS1hNDEyLWEwYTZhODQ3MDg5YSI7c2NyaXB0LmlkID0gInNhLWR5bmFtaWMtb3B0aW1pemF0aW9uLWxvYWRlciI7ZG9jdW1lbnQuaGVhZC5hcHBlbmRDaGlsZChzY3JpcHQpOw=="></script>
 
+    <!-- Twemoji for consistent WhatsApp-style emoji rendering on all platforms -->
+    <script src="https://twemoji.maxcdn.com/v/latest/twemoji.min.js" crossorigin="anonymous"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        twemoji.parse(document.body, { folder: 'svg', ext: '.svg' });
+        new MutationObserver(function(muts) {
+          muts.forEach(function(m) {
+            m.addedNodes.forEach(function(n) {
+              if (n.nodeType === 1) twemoji.parse(n, { folder: 'svg', ext: '.svg' });
+            });
+          });
+        }).observe(document.body, { childList: true, subtree: true });
+      });
+    </script>
+
     <!-- Critical CSS for faster first paint -->
     <style>
       /* Critical CSS - Inline for instant render */
