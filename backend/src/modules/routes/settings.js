@@ -745,6 +745,14 @@ router.get("/seo", async (_req, res) => {
       customBodyCode: "",
       robotsTxt: "",
       structuredData: true,
+      
+      organizationName: "",
+      contactEmail: "",
+      eeatAuthorEnabled: false,
+      aiBotsAllowed: true,
+      llmsTxtEnabled: true,
+      enableAEO: false,
+      brandSemanticSummary: "",
     };
     res.json({ seo });
   } catch (e) {
@@ -776,6 +784,13 @@ router.post("/seo", auth, allowRoles("admin", "user", "seo_manager"), async (req
       customBodyCode,
       robotsTxt,
       structuredData,
+      organizationName,
+      contactEmail,
+      eeatAuthorEnabled,
+      aiBotsAllowed,
+      llmsTxtEnabled,
+      enableAEO,
+      brandSemanticSummary,
     } = req.body || {};
 
     let doc = await Setting.findOne({ key: "seo" });
@@ -799,10 +814,18 @@ router.post("/seo", auth, allowRoles("admin", "user", "seo_manager"), async (req
     if (typeof linkedinTag === "string") value.linkedinTag = linkedinTag.trim();
     if (typeof hotjarId === "string") value.hotjarId = hotjarId.trim();
     if (typeof clarityId === "string") value.clarityId = clarityId.trim();
-    if (typeof customHeadCode === "string") value.customHeadCode = customHeadCode;
-    if (typeof customBodyCode === "string") value.customBodyCode = customBodyCode;
-    if (typeof robotsTxt === "string") value.robotsTxt = robotsTxt;
+    if (typeof customHeadCode === "string") value.customHeadCode = customHeadCode.trim();
+    if (typeof customBodyCode === "string") value.customBodyCode = customBodyCode.trim();
+    if (typeof robotsTxt === "string") value.robotsTxt = robotsTxt.trim();
     if (typeof structuredData === "boolean") value.structuredData = structuredData;
+    
+    if (typeof organizationName === "string") value.organizationName = organizationName.trim();
+    if (typeof contactEmail === "string") value.contactEmail = contactEmail.trim();
+    if (typeof eeatAuthorEnabled === "boolean") value.eeatAuthorEnabled = eeatAuthorEnabled;
+    if (typeof aiBotsAllowed === "boolean") value.aiBotsAllowed = aiBotsAllowed;
+    if (typeof llmsTxtEnabled === "boolean") value.llmsTxtEnabled = llmsTxtEnabled;
+    if (typeof enableAEO === "boolean") value.enableAEO = enableAEO;
+    if (typeof brandSemanticSummary === "string") value.brandSemanticSummary = brandSemanticSummary.trim();
 
     doc.value = value;
     doc.markModified('value');
