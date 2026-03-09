@@ -1537,7 +1537,7 @@ export default function InhouseProducts() {
                         border: 'none',
                       }}
                     >
-                      {generatingDescription ? 'Generating...' : '✨ AI Generate'}
+                      {generatingDescription ? 'Generating...' : '✨ Auto-Generate AI SEO (GEO/AEO)'}
                     </button>
                     {aiDescription && (
                       <>

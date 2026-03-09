@@ -77,20 +77,20 @@ class GeminiService {
   async generateProductDescription(productName, category, additionalInfo = '') {
     try {
       const prompt = `
-        You are an expert e-commerce copywriter. Create premium, optimistic, and sales-driving content for a product based on the following details:
+        You are an Elite SEO and GEO Content Strategist and Technical Writer. You operate strictly on the advanced architectural patterns for Answer Engine Optimization.
         
         Product Name: ${productName}
         Category: ${category}
         Additional Information: ${additionalInfo}
         
-        Generate the following sections in JSON format:
-        1. "shortDescription": A catchy, premium, and optimistic short description (2-3 sentences).
-        2. "overview": A detailed and engaging product overview highlighting benefits and lifestyle appeal (2 paragraphs).
-        3. "specifications": A clean, formatted list of technical specifications or key product details (e.g., Material, Size, Usage). Format as a single string with newlines.
+        Generate the following sections for this e-commerce product in JSON format:
+        1. "shortDescription": A highly dense, bulleted "AI Summary" or "Key Takeaways" section specifically formatted for llms.txt compatibility. Outline the core entities, benefits, and specifications instantly.
+        2. "overview": Write authoritative, declarative content. You MUST format the most important definitive claims, benefits, and arguments into highly readable, standalone passages of EXACTLY 134 to 167 words. Treat brand mentions and semantic entity proximity as critical. Naturally weave the target brand, statistics, and highly related semantic entities throughout the text without keyword stuffing. Use heavily markdown-formatted elements (e.g. bolding for core entities).
+        3. "specifications": A clean, formatted list of technical specifications. Output as a markdown table or heavily bulleted list, as Answer Engines heavily favor markdown tabulatures.
         4. "attributes": An array of objects with "label" and "value" for key product attributes (e.g., [{"label": "Material", "value": "Cotton"}, ...]).
-        5. "keyFeatures": An array of 4-6 strong selling points.
+        5. "keyFeatures": An array of 4-6 strong, definitive selling points.
         
-        Ensure the tone is "premium" and "optimistic".
+        Zero tolerance for doorway page tactics, fluff, or sensationalized clickbait. Ensure deep E-E-A-T (Experience, Expertise, Authoritativeness, Trustworthiness).
         
         Return ONLY valid JSON.
       `;
@@ -179,7 +179,7 @@ class GeminiService {
 
   async generateProductSEO(productName, category, description = '', availableCountries = [], baseUrl = 'https://buysial.com') {
     const countriesList = availableCountries.length > 0 ? availableCountries.join(', ') : 'UAE, KSA, UK, US';
-    const prompt = `You are a world-class e-commerce SEO strategist specialising in fast-ranking (2-8 weeks) Google results for online stores. Your strategies are based on Google's E-E-A-T, BERT, and Shopping Graph algorithms.
+    const prompt = `You are a world-class Elite SEO and GEO Content Strategist specialising in fast-ranking Google results AND Answer Engine Optimization (ChatGPT, Perplexity, Google AI Overviews).
 
 PRODUCT DETAILS:
 - Name: ${productName}
@@ -188,46 +188,36 @@ PRODUCT DETAILS:
 - Target Markets: ${countriesList}
 - Store URL: ${baseUrl}
 
-STRATEGY: Optimise for FAST RANKINGS (2-8 weeks) using:
-1. Long-tail keywords (3-5 words) with low competition but clear buying intent
-2. Geo-targeted keywords ("buy X in Dubai", "best X UAE delivery")
-3. Question-based keywords for featured snippets ("best X for Y", "where to buy X")
-4. Transactional modifiers: buy, order, cheap, best, review, discount, free shipping
-5. Competitor gap keywords: under-served variations with commercial intent
+STRATEGY: Optimise for FAST RANKINGS using deep E-E-A-T triggers, and NO DEPRECATED SCHEMAS. 
 
 Return ONLY a valid JSON object (no markdown, no explanation):
 
 {
-  "seoTitle": "50-60 chars max — primary long-tail keyword first, then product name, optionally brand",
-  "slug": "3-5-word-hyphenated-primary-keyword-slug",
-  "seoDescription": "145-158 chars — lead with primary keyword, state top benefit, include buying signal (Shop Now / Order Today / Free Delivery), end with trust signal",
-  "seoKeywords": "12-15 comma-separated keywords: 3 short-head (1-2 words), 5 medium-tail (3 words), 4 long-tail buying-intent (4+ words), 3 geo-targeted (city/country + keyword)",
+  "seoTitle": "50-60 chars max — primary keyword first, brand entity second",
+  "slug": "3-5-word-hyphenated-slug",
+  "seoDescription": "145-158 chars — lead with primary keyword, state top benefit, include buying signal, end with trust signal",
+  "seoKeywords": "12-15 comma-separated core entities and latent semantic keywords",
   "ogTitle": "Emotionally compelling social title — benefit-first, 55-70 chars",
   "ogDescription": "Social sharing hook — open curiosity loop, mention key benefit, 100-125 chars",
   "canonicalUrl": "${baseUrl}/products/SLUG_HERE",
   "countrySeo": {
     "CountryName": {
-      "metaTitle": "50-60 chars — localised long-tail keyword + product, e.g. 'Buy [Product] in [City] | Free Delivery'",
-      "metaDescription": "145-158 chars — buying intent for this market, mention local delivery/price advantage",
-      "keywords": "8-10 geo-targeted keywords for this specific market in English",
-      "hreflang": "en-AE / en-SA / en-GB / en-US / en-QA / en-KW / en-OM / en-BH"
+      "metaTitle": "50-60 chars — localised long-tail keyword + product",
+      "metaDescription": "145-158 chars — buying intent for this market",
+      "keywords": "8-10 geo-targeted entities",
+      "hreflang": "en-AE"
     }
   },
   "backlinks": [
-    { "url": "https://REAL_DOMAIN.com/KNOWN_SECTION_PATH", "anchor": "long-tail keyword anchor", "type": "dofollow", "status": "pending", "domainAuthority": "high", "notes": "Outreach target: explain exactly what content to pitch to this site" },
-    { "url": "https://REAL_DOMAIN.com/KNOWN_SECTION_PATH", "anchor": "brand + keyword", "type": "dofollow", "status": "pending", "domainAuthority": "high", "notes": "Outreach target: content pitch idea" },
-    { "url": "https://REAL_DOMAIN.com/KNOWN_SECTION_PATH", "anchor": "product category keyword", "type": "dofollow", "status": "pending", "domainAuthority": "medium", "notes": "Outreach target: content pitch idea" },
-    { "url": "https://reddit.com/r/RELEVANT_SUBREDDIT", "anchor": "question-based anchor", "type": "nofollow", "status": "pending", "domainAuthority": "high", "notes": "Community engagement: post helpful answer with product mention" },
-    { "url": "https://www.trustpilot.com/review/buysial.com", "anchor": "buysial.com reviews", "type": "nofollow", "status": "pending", "domainAuthority": "high", "notes": "Review platform: encourage customer reviews to build brand authority" }
+    { "url": "https://REAL_DOMAIN.com/KNOWN_SECTION_PATH", "anchor": "long-tail keyword anchor", "type": "dofollow", "status": "pending", "domainAuthority": "high", "notes": "Brand entity co-occurrence focus" }
   ],
   "siteUrl": "${baseUrl}"
 }
 
 STRICT RULES — follow every rule or the output is wrong:
 
-SEO TITLE: Primary long-tail BUYING keyword must be first word(s). Example: "Japan Sakura Cream UAE – Luminous Skin | Buysial". Never start with brand name. Max 60 chars.
-
-SLUG: 3-5 words, primary keyword first, all lowercase, hyphens only. No brand name in slug unless part of keyword.
+SEO TITLE: Must be < 60 characters. Primary long-tail BUYING keyword or Answer Engine prompt question first.
+SLUG: 3-5 words, primary keyword first, all lowercase, hyphens only.
 
 META DESCRIPTION: Count characters carefully. Must be 145-158 chars. First clause = primary keyword + benefit. Second clause = CTA ("Order now", "Shop today", "Free delivery UAE"). Third clause = trust signal ("Genuine product", "Fast shipping").
 
