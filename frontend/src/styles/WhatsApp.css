@@ -534,23 +534,28 @@
 /* ── Input / Compose bar ───────────────────────────────── */
 .wa-composer {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   gap: 8px;
-  padding: 8px 10px;
-  padding-bottom: max(8px, env(safe-area-inset-bottom, 8px));
+  padding: 6px 8px;
+  padding-bottom: max(6px, env(safe-area-inset-bottom, 6px));
   background: var(--wa-msg-bg);
   flex-shrink: 0;
+  /* critical: lock height so auto-resize doesn't shake the screen */
+  min-height: 62px;
 }
 .wa-composer-inner {
   display: flex;
-  align-items: flex-end;
-  gap: 6px;
+  align-items: center;
+  gap: 4px;
   flex: 1;
   background: #fff;
   border-radius: 24px;
-  padding: 6px 10px 6px 14px;
+  padding: 4px 8px 4px 12px;
   min-height: 46px;
+  max-height: 120px;
+  align-self: stretch;
   box-shadow: 0 1px 2px rgba(11,20,26,0.08);
+  overflow: hidden;
 }
 .wa-composer-icon-btn {
   display: flex;
@@ -576,12 +581,16 @@
   font-size: 15px;
   line-height: 1.4;
   resize: none;
-  max-height: 120px;
+  max-height: 100px;
   min-height: 22px;
   color: var(--wa-in-text);
   caret-color: var(--wa-green);
   align-self: center;
   font-family: inherit;
+  overflow-y: hidden;
+  will-change: height;
+  /* prevent any visual jump while height is computed */
+  transition: height 0.05s ease;
 }
 .wa-composer-textarea::placeholder { color: #8696a0; }
 .wa-send-btn {

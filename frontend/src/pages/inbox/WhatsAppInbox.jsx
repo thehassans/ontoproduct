@@ -955,19 +955,16 @@ export default function WhatsAppInbox() {
   useEffect(() => {
     const token = localStorage.getItem('token') || ''
     const socket = io(API_BASE || undefined, {
-      transports: ['polling'],
-      upgrade: false,
-      withCredentials: true,
       path: '/socket.io',
+      transports: ['websocket', 'polling'],
+      withCredentials: true,
       auth: { token },
       reconnection: true,
       reconnectionAttempts: Infinity,
-      reconnectionDelay: 1000, // Start with 1s delay
-      reconnectionDelayMax: 10000, // Max 10s between attempts
-      timeout: 20000, // Connection timeout
-      forceNew: false,
-      // Add randomization to avoid thundering herd
+      reconnectionDelay: 2000,
+      reconnectionDelayMax: 30000,
       randomizationFactor: 0.5,
+      timeout: 20000,
     })
 
     socket.on('connect', () => {
@@ -3551,7 +3548,25 @@ export default function WhatsAppInbox() {
                       </button>
                     </div>
                     {/* Text input */}
-                    <textarea className="wa-composer-textarea" ref={inputRef} value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }} placeholder={canSend ? 'Type a message' : 'Chat not assigned to you'} rows={1} style={{ opacity: canSend ? 1 : 0.65, pointerEvents: canSend ? 'auto' : 'none' }} disabled={!canSend} />
+                    <textarea
+                      className="wa-composer-textarea"
+                      ref={inputRef}
+                      value={text}
+                      onChange={e => setText(e.target.value)}
+                      onInput={e => {
+                        requestAnimationFrame(() => {
+                          const el = e.target
+                          if (!el) return
+                          el.style.height = 'auto'
+                          el.style.height = Math.min(el.scrollHeight, 100) + 'px'
+                        })
+                      }}
+                      onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
+                      placeholder={canSend ? 'Type a message' : 'Chat not assigned to you'}
+                      rows={1}
+                      style={{ opacity: canSend ? 1 : 0.65, pointerEvents: canSend ? 'auto' : 'none' }}
+                      disabled={!canSend}
+                    />
                   </div>
                   {/* Send / Mic */}
                   {text ? (
