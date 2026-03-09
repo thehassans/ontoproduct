@@ -3480,13 +3480,7 @@ export default function WhatsAppInbox() {
                 <div ref={endRef} />
               </div>
 
-              {/* Recording indicator */}
-              {recording && (
-                <div className="wa-recording badge danger" aria-live="polite">
-                  <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 999, background: '#ef4444', marginRight: 6, animation: 'pulse 1s infinite' }} />
-                  {secondsToMMSS(recSeconds)} — slide left to cancel
-                </div>
-              )}
+              {/* Recording indicator handled inside composer */}
             </div>
 
             {/* ── Composer ── */}
@@ -3501,45 +3495,59 @@ export default function WhatsAppInbox() {
                   <button className="wa-reply-strip-close" onClick={() => setReplyTo(null)} aria-label="Cancel reply">×</button>
                 </div>
               )}
-              {/* Emoji */}
-              <div ref={emojiRef} style={{ position: 'relative' }}>
-                <button className="wa-icon-btn" onClick={() => setShowEmoji(s => !s)} disabled={!activeJid} aria-label="Emoji" style={{ color: '#54656f' }}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9" strokeWidth="2.5"/><line x1="15" y1="9" x2="15.01" y2="9" strokeWidth="2.5"/></svg>
-                </button>
-                {showEmoji && (
-                  <div style={{ position: 'absolute', bottom: '100%', left: 0, marginBottom: 8, display: 'flex', flexWrap: 'wrap', gap: 4, width: 248, padding: 10, background: 'var(--wa-list-bg)', borderRadius: 14, boxShadow: '0 4px 20px rgba(0,0,0,0.18)', border: '1px solid #e9edef', zIndex: 100 }}>
-                    {EMOJIS.map(e => <button key={e} onClick={() => addEmoji(e)} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', width: 36, height: 36, borderRadius: 8, display: 'grid', placeItems: 'center' }}>{e}</button>)}
+              
+              {recording ? (
+                <div className="wa-rec-overlay">
+                  <div className="wa-rec-dot" />
+                  <div className="wa-rec-timer">{secondsToMMSS(recSeconds)}</div>
+                  <div className="wa-rec-cancel-hint">
+                    <button className="wa-icon-btn" onClick={() => stopRecording(true)} aria-label="Cancel recording" title="Cancel recording" style={{ color: '#f15c6d', width: 40, height: 40 }}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                    </button>
                   </div>
-                )}
-              </div>
-              {/* Attach */}
-              <div ref={attachRef} style={{ position: 'relative' }}>
-                <button className="wa-icon-btn" onClick={() => { setShowAttach(s => !s); try { if (isMobile) inputRef.current?.blur() } catch {} }} disabled={!canSend || uploading} aria-label={uploading ? 'Uploading…' : 'Attach'} style={{ color: '#54656f' }}>
-                  {uploading ? <span className="spinner" /> : <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>}
-                </button>
-              </div>
-              {/* Text input */}
-              <div className="wa-composer-input-wrap">
-                <textarea ref={inputRef} value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }} placeholder={canSend ? 'Type a message' : 'Chat not assigned to you'} rows={1} style={{ opacity: (recording ? 0.6 : 1) * (canSend ? 1 : 0.65), pointerEvents: recording || !canSend ? 'none' : 'auto' }} disabled={!canSend} />
-              </div>
-              {/* Send / Mic / Record */}
-              {text ? (
-                <button className="wa-send-btn" onClick={send} aria-label="Send" disabled={!canSend}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-                </button>
-              ) : recording ? (
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <button className="wa-send-btn" onClick={() => stopRecording(true)} style={{ background: '#ef4444' }} aria-label="Cancel recording"><XIcon size={18} /></button>
-                  <button className="wa-send-btn" onClick={() => stopRecording(false)} aria-label="Send voice"><StopIcon size={18} /></button>
+                  <button className="wa-send-btn" onClick={() => stopRecording(false)} aria-label="Send voice">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                  </button>
                 </div>
               ) : (
-                <button className="wa-send-btn" onPointerDown={startRecording} aria-label="Hold to record" style={{ opacity: canSend ? 1 : 0.5, cursor: canSend ? 'pointer' : 'not-allowed', touchAction: 'none' }} disabled={!canSend}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/></svg>
-                </button>
+                <>
+                  <div className="wa-composer-inner">
+                    {/* Emoji */}
+                    <div ref={emojiRef} style={{ position: 'relative' }}>
+                      <button className="wa-icon-btn wa-composer-icon-btn" onClick={() => setShowEmoji(s => !s)} disabled={!activeJid} aria-label="Emoji" style={{ color: '#54656f' }}>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9" strokeWidth="2.5"/><line x1="15" y1="9" x2="15.01" y2="9" strokeWidth="2.5"/></svg>
+                      </button>
+                      {showEmoji && (
+                        <div style={{ position: 'absolute', bottom: '100%', left: 0, marginBottom: 8, display: 'flex', flexWrap: 'wrap', gap: 4, width: 248, padding: 10, background: 'var(--wa-list-bg)', borderRadius: 14, boxShadow: '0 4px 20px rgba(0,0,0,0.18)', border: '1px solid #e9edef', zIndex: 100 }}>
+                          {EMOJIS.map(e => <button key={e} onClick={() => addEmoji(e)} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', width: 36, height: 36, borderRadius: 8, display: 'grid', placeItems: 'center' }}>{e}</button>)}
+                        </div>
+                      )}
+                    </div>
+                    {/* Attach */}
+                    <div ref={attachRef} style={{ position: 'relative' }}>
+                      <button className="wa-icon-btn wa-composer-icon-btn" onClick={() => { setShowAttach(s => !s); try { if (isMobile) inputRef.current?.blur() } catch {} }} disabled={!canSend || uploading} aria-label={uploading ? 'Uploading…' : 'Attach'} style={{ color: '#54656f' }}>
+                        {uploading ? <span className="wa-spinner" style={{borderColor:'rgba(84,101,111,0.3)',borderTopColor:'#54656f'}} /> : <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>}
+                      </button>
+                    </div>
+                    {/* Text input */}
+                    <textarea className="wa-composer-textarea" ref={inputRef} value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }} placeholder={canSend ? 'Type a message' : 'Chat not assigned to you'} rows={1} style={{ opacity: canSend ? 1 : 0.65, pointerEvents: canSend ? 'auto' : 'none' }} disabled={!canSend} />
+                  </div>
+                  {/* Send / Mic */}
+                  {text ? (
+                    <button className="wa-send-btn" onClick={send} aria-label="Send" disabled={!canSend}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                    </button>
+                  ) : (
+                    <button className="wa-send-btn" onPointerDown={startRecording} onTouchStart={startRecording} aria-label="Hold to record" style={{ opacity: canSend ? 1 : 0.5, cursor: canSend ? 'pointer' : 'not-allowed', touchAction: 'none' }} disabled={!canSend}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/></svg>
+                    </button>
+                  )}
+                </>
               )}
               {myRole === 'user' && (
-                <button className="wa-icon-btn" onClick={clearAllChats} title="Clear all chats" aria-label="Clear all chats" style={{ color: '#ef4444', opacity: 0.7 }}><TrashIcon /></button>
+                <button className="wa-icon-btn" onClick={clearAllChats} title="Clear all chats" aria-label="Clear all chats" style={{ color: '#ef4444', opacity: 0.7, padding: 8, marginLeft: 8 }}><TrashIcon /></button>
               )}
+
             </div>
           </>
         )}
@@ -3549,21 +3557,22 @@ export default function WhatsAppInbox() {
       {showAttach && (
         <>
           <div onClick={() => setShowAttach(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 9998 }} />
-          <div ref={attachSheetRef} style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 9999, background: 'var(--wa-list-bg)', borderTopLeftRadius: 18, borderTopRightRadius: 18, padding: '10px 16px calc(16px + env(safe-area-inset-bottom)) 16px', boxShadow: '0 -8px 30px rgba(0,0,0,0.2)' }}>
-            <div style={{ width: 36, height: 4, background: '#e9edef', borderRadius: 999, margin: '0 auto 14px' }} />
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-              {[
-                { label: 'Photo', bg: '#e8f5e9', fg: '#2e7d32', icon: <PhotoIcon size={22} />, act: () => { setShowAttach(false); try { const i = photoInputRef.current||document.getElementById('wa-photo-input'); if(i){i.value='';i.click()} } catch {} } },
-                { label: 'Video', bg: '#fce4ec', fg: '#c62828', icon: <VideoIcon size={22} />, act: () => { setShowAttach(false); try { const i = videoInputRef.current||document.getElementById('wa-video-input'); if(i){i.value='';i.click()} } catch {} } },
-                { label: 'Document', bg: '#e3f2fd', fg: '#1565c0', icon: <FileIcon size={22} />, act: () => { setShowAttach(false); try { const i = docInputRef.current||document.getElementById('wa-doc-input'); if(i){i.value='';i.click()} } catch {} } },
-                { label: 'Audio', bg: '#ede7f6', fg: '#6a1b9a', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>, act: () => { setShowAttach(false); try { const i = audioInputRef.current||document.getElementById('wa-audio-input'); if(i){i.value='';i.click()} } catch {} } },
-              ].map(({ label, bg, fg, icon, act }) => (
-                <div key={label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '8px 4px', borderRadius: 12 }} onClick={act}>
-                  <div style={{ width: 56, height: 56, borderRadius: 16, background: bg, display: 'grid', placeItems: 'center', color: fg }}>{icon}</div>
-                  <span style={{ fontSize: 13, color: '#111b21', fontWeight: 500 }}>{label}</span>
-                </div>
-              ))}
-            </div>
+          <div ref={attachSheetRef} className="wa-attach-sheet">
+            {[
+              { label: 'Photos', fg: '#007af5', icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>, act: () => { setShowAttach(false); try { const i = photoInputRef.current||document.getElementById('wa-photo-input'); if(i){i.value='';i.click()} } catch {} } },
+              { label: 'Video', fg: '#ea4335', icon: <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>, act: () => { setShowAttach(false); try { const i = videoInputRef.current||document.getElementById('wa-video-input'); if(i){i.value='';i.click()} } catch {} } },
+              { label: 'Document', fg: '#007af5', icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1 7V3.5L18.5 9H13z"/></svg>, act: () => { setShowAttach(false); try { const i = docInputRef.current||document.getElementById('wa-doc-input'); if(i){i.value='';i.click()} } catch {} } },
+              { label: 'Audio', fg: '#ffb020', icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>, act: () => { setShowAttach(false); try { const i = audioInputRef.current||document.getElementById('wa-audio-input'); if(i){i.value='';i.click()} } catch {} } },
+              { label: 'Location', fg: '#00a884', icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 010-5 2.5 2.5 0 010 5z"/></svg>, act: () => { setShowAttach(false); } },
+              { label: 'Contact', fg: '#8696a0', icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>, act: () => { setShowAttach(false); } },
+              { label: 'Catalog', fg: '#8696a0', icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4v2h16V4zm1 10v-2l-1-5H4l-1 5v2h1v6h10v-6h4v6h2v-6h1zm-9 4H6v-4h6v4z"/></svg>, act: () => { setShowAttach(false); } },
+              { label: 'Poll', fg: '#ffb020', icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-2h2v2zm0-4H7v-2h2v2zm0-4H7V7h2v2zm8 8h-6v-2h6v2zm0-4h-6v-2h6v2zm0-4h-6V7h6v2z"/></svg>, act: () => { setShowAttach(false); } },
+            ].map(({ label, fg, icon, act }) => (
+              <button key={label} className="wa-attach-item" onClick={act}>
+                <div className="wa-attach-icon" style={{ background: '#233138', color: fg }}>{icon}</div>
+                <span className="wa-attach-label">{label}</span>
+              </button>
+            ))}
           </div>
         </>
       )}
