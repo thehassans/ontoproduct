@@ -1,5 +1,14 @@
 @import 'tailwindcss';
 
+/* Global Twemoji fix so SVGs don't render massive */
+img.emoji {
+  height: 1.2em;
+  width: 1.2em;
+  margin: 0 .05em 0 .1em;
+  vertical-align: -0.1em;
+  display: inline-block;
+}
+
 /* Theme variables */
 :root {
   --bg: #f4f4f4;
