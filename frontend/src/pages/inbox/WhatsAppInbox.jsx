@@ -612,7 +612,9 @@ export default function WhatsAppInbox() {
 
   function VideoBubble({ jid, msg, content, ensureMediaUrl }) {
     const [url, setUrl] = useState(null)
+    const [playing, setPlaying] = useState(false)
     const caption = content?.videoMessage?.caption || ''
+    const showCaption = caption && !/\.(mp4|mkv|webm|mov|avi)$/i.test(caption)
     useEffect(() => {
       let alive = true
       const load = async () => {
@@ -620,31 +622,56 @@ export default function WhatsAppInbox() {
         if (alive) setUrl(u)
       }
       load()
-      return () => {
-        alive = false
-      }
+      return () => { alive = false }
     }, [jid, msg?.key?.id])
     return (
-      <div style={{ display: 'grid', gap: 6 }}>
+      <div style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', minWidth: 120, maxWidth: 280 }}>
         {url ? (
-          <video
-            src={url}
-            controls
-            preload="metadata"
-            className="wa-media-video"
-          />
+          playing ? (
+            <video
+              src={url}
+              controls
+              autoPlay
+              preload="auto"
+              style={{ display: 'block', width: '100%', maxHeight: 300, borderRadius: 8, background: '#000' }}
+            />
+          ) : (
+            <div
+              style={{ position: 'relative', cursor: 'pointer', borderRadius: 8, overflow: 'hidden' }}
+              onClick={() => setPlaying(true)}
+            >
+              <video
+                src={url}
+                preload="metadata"
+                style={{ display: 'block', width: '100%', maxHeight: 300, borderRadius: 8, background: '#111' }}
+              />
+              {/* Play overlay */}
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.25)' }}>
+                <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><polygon points="5,3 19,12 5,21"/></svg>
+                </div>
+              </div>
+            </div>
+          )
         ) : (
-          <span style={{ opacity: 0.7 }}>[video]</span>
+          <div style={{ width: 200, height: 140, background: '#222', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="1.5"><polygon points="5,3 19,12 5,21"/></svg>
+          </div>
         )}
-        {caption && <div style={{ opacity: 0.9 }}>{caption}</div>}
+        {showCaption && (
+          <div style={{ padding: '4px 6px 2px', fontSize: 13.5, color: 'var(--wa-in-text)', lineHeight: 1.4 }}>{caption}</div>
+        )}
       </div>
     )
   }
 
+
   function DocumentBubble({ jid, msg, content, ensureMediaUrl }) {
     const [url, setUrl] = useState(null)
-    const name = content?.documentMessage?.fileName || 'document'
-    const size = content?.documentMessage?.fileLength
+    const doc = content?.documentMessage || {}
+    const name = doc.fileName || 'document'
+    const size = doc.fileLength
+    const ext = name.split('.').pop()?.toLowerCase() || 'doc'
     useEffect(() => {
       let alive = true
       const load = async () => {
@@ -652,31 +679,39 @@ export default function WhatsAppInbox() {
         if (alive) setUrl(u)
       }
       load()
-      return () => {
-        alive = false
-      }
+      return () => { alive = false }
     }, [jid, msg?.key?.id])
     function fmtSize(n) {
       if (!n) return ''
       const i = Math.floor(Math.log(n) / Math.log(1024))
-      const num = (n / Math.pow(1024, i)).toFixed(1)
-      const unit = ['B', 'KB', 'MB', 'GB', 'TB'][i] || 'B'
-      return `${num} ${unit}`
+      return `${(n / Math.pow(1024, i)).toFixed(1)} ${['B','KB','MB','GB'][i] || 'B'}`
     }
+    const extColors = { pdf: '#e53935', doc: '#1565c0', docx: '#1565c0', xls: '#2e7d32', xlsx: '#2e7d32', ppt: '#e65100', pptx: '#e65100', zip: '#6a1b9a', rar: '#6a1b9a' }
+    const extColor = extColors[ext] || '#546e7a'
     return (
-      <div style={{ display: 'grid', gap: 6 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 200, maxWidth: 300, padding: '2px 0 2px' }}>
+        {/* File icon */}
+        <div style={{ width: 44, height: 52, borderRadius: 6, background: extColor, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0, position: 'relative' }}>
+          <svg width="22" height="26" viewBox="0 0 22 26" fill="none">
+            <rect x="1" y="1" width="20" height="24" rx="2" fill="rgba(255,255,255,0.25)" stroke="rgba(255,255,255,0.4)" strokeWidth="1"/>
+            <path d="M6 8h10M6 12h10M6 16h6" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
+          <span style={{ position: 'absolute', bottom: 3, fontSize: 7, color: '#fff', fontWeight: 700, letterSpacing: '0.02em', textTransform: 'uppercase' }}>{ext}</span>
+        </div>
+        {/* File info */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: 500, fontSize: 13, color: 'var(--wa-in-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 200 }}>{name}</div>
+          <div style={{ fontSize: 11, color: 'var(--wa-meta)', marginTop: 2 }}>{fmtSize(size)}</div>
+        </div>
+        {/* Download */}
         {url ? (
-          <a
-            href={url}
-            target="_blank"
-            rel="noreferrer"
-            className="btn secondary"
-            style={{ justifySelf: 'start' }}
-          >
-            📄 {name} {size ? `(${fmtSize(size)})` : ''}
+          <a href={url} download={name} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: '50%', background: 'rgba(0,168,132,0.1)', flexShrink: 0, color: 'var(--wa-green)' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 18l7 7 7-7"/></svg>
           </a>
         ) : (
-          <span style={{ opacity: 0.7 }}>[file] {name}</span>
+          <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2z"/><path d="M12 8v4l3 2"/></svg>
+          </div>
         )}
       </div>
     )
@@ -2368,52 +2403,43 @@ export default function WhatsAppInbox() {
 
   function Ticks({ isMe, status }) {
     if (!isMe) return null
-    // normalize status: some backends may use 'seen' instead of 'read'
     const st = (status === 'seen' ? 'read' : status) || 'sent'
-    const Blue = '#34B7F1' // WhatsApp-like blue for read ticks
-    const Grey = '#8696A0' // WhatsApp-like grey for sent/delivered
+    const GREY = '#8696a0'
+    const BLUE = '#53bdeb'  // exact WhatsApp blue tick colour
 
-    // Special case: show a small clock for 'sending'
+    // Sending: show clock icon
     if (st === 'sending') {
       return (
-        <span style={{ marginLeft: 6, display: 'inline-flex', alignItems: 'center' }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
-            <circle cx="12" cy="12" r="9" stroke={Grey} strokeWidth="2" />
-            <path d="M12 7v5l3 2" stroke={Grey} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <span style={{ marginLeft: 3, display: 'inline-flex', alignItems: 'center', verticalAlign: 'middle' }}>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-label="Sending">
+            <circle cx="7" cy="7" r="6" stroke={GREY} strokeWidth="1.5" />
+            <path d="M7 4v3l2 1.5" stroke={GREY} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </span>
       )
     }
 
-    // Draw curved WhatsApp-style ticks. For single tick, render only the front path.
-    function DoubleTick({ color, both = true }){
+    // Single check: sent (reached WhatsApp server)
+    if (st === 'sent') {
       return (
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-          {both && (
-            <path
-              d="M16.4 7.6l-6.9 6.9-2.9-2.9"
-              stroke={color}
-              strokeWidth="2.2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          )}
-          <path
-            d="M20.2 7.6l-6.9 6.9-2.9-2.9"
-            stroke={color}
-            strokeWidth="2.2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
+        <span style={{ marginLeft: 3, display: 'inline-flex', alignItems: 'center', verticalAlign: 'middle' }}>
+          <svg width="18" height="11" viewBox="0 0 18 11" fill="none" aria-label="Sent">
+            <path d="M1.5 5.5L5.5 9.5L16.5 1.5" stroke={GREY} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </span>
       )
     }
 
+    // Double check: delivered = grey, read = blue
+    const color = st === 'read' ? BLUE : GREY
     return (
-      <span style={{ marginLeft: 6, display: 'inline-flex', alignItems: 'center' }}>
-        {st === 'sent' && <DoubleTick color={Grey} both={false} />}
-        {st === 'delivered' && <DoubleTick color={Grey} both={true} />}
-        {st === 'read' && <DoubleTick color={Blue} both={true} />}
+      <span style={{ marginLeft: 3, display: 'inline-flex', alignItems: 'center', verticalAlign: 'middle' }}>
+        <svg width="18" height="11" viewBox="0 0 18 11" fill="none" aria-label={st === 'read' ? 'Read' : 'Delivered'}>
+          {/* Back check (the left one, offset left) */}
+          <path d="M1 5.5L5 9.5L11.5 1.5" stroke={color} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+          {/* Front check (the right one) */}
+          <path d="M5 5.5L9 9.5L17 1.5" stroke={color} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
       </span>
     )
   }
@@ -2725,44 +2751,40 @@ export default function WhatsAppInbox() {
 
   function ImageBubble({ jid, msg, content, ensureMediaUrl }) {
     const [url, setUrl] = useState(null)
+    const [loaded, setLoaded] = useState(false)
     const caption = content?.imageMessage?.caption || ''
     useEffect(() => {
       let alive = true
+      const local = content?.imageMessage?.localUrl
+      if (local) { setUrl(local); return () => { alive = false } }
       const load = async () => {
         const u = await ensureMediaUrl(jid, msg?.key?.id)
         if (alive) setUrl(u)
       }
       load()
-      return () => {
-        alive = false
-      }
+      return () => { alive = false }
     }, [jid, msg?.key?.id])
-    function isFileNameLike(s) {
-      try {
-        const t = String(s || '').trim()
-        if (!t) return false
-        if (/\.(jpe?g|png|gif|bmp|webp|heic|heif|tiff|svg)$/i.test(t)) return true
-        if (/^(img[-_]?|image[-_]?|photo[-_]?|screenshot[-_]?)/i.test(t)) return true
-        return false
-      } catch {
-        return false
-      }
-    }
-    const showCaption = caption && !isFileNameLike(caption)
+    const showCaption = caption && !/\.(jpe?g|png|gif|bmp|webp)$/i.test(caption)
     return (
-      <div style={{ display: 'grid', gap: 6 }}>
+      <div style={{ position: 'relative', borderRadius: 6, overflow: 'hidden', minWidth: 120, maxWidth: 280 }}>
         {url ? (
-          <a href={url} target="_blank" rel="noreferrer">
+          <a href={url} target="_blank" rel="noreferrer" style={{ display: 'block' }}>
             <img
               src={url}
-              alt="image"
-              className="wa-media-img"
+              alt="photo"
+              onLoad={() => setLoaded(true)}
+              style={{ display: 'block', width: '100%', maxHeight: 320, objectFit: 'cover', borderRadius: 6, background: '#e0e0e0', transition: 'opacity 0.2s', opacity: loaded ? 1 : 0 }}
             />
+            {!loaded && <div style={{ position: 'absolute', inset: 0, background: '#e8e8e8', borderRadius: 6, minHeight: 120, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></div>}
           </a>
         ) : (
-          <span style={{ opacity: 0.7 }}>[image]</span>
+          <div style={{ width: 200, height: 140, background: '#e8e8e8', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+          </div>
         )}
-        {showCaption && <div style={{ opacity: 0.9 }}>{caption}</div>}
+        {showCaption && (
+          <div style={{ padding: '4px 6px 2px', fontSize: 13.5, color: 'var(--wa-in-text)', background: 'rgba(0,0,0,0.02)', lineHeight: 1.4 }}>{caption}</div>
+        )}
       </div>
     )
   }

@@ -598,8 +598,8 @@ export default function AgentLayout() {
       <div
         className={`main ${!isMobile && closed ? 'full' : ''} ${hideSidebar ? 'full-mobile' : ''} ${tabsVisible ? 'with-mobile-tabs' : ''}`}
       >
-        {/* Professional topbar matching driver panel */}
-        {isMobile && (
+        {/* Professional topbar matching driver panel — hidden on WhatsApp inbox */}
+        {isMobile && !isInboxRoute && (
           <div
             className="topbar"
             style={{
