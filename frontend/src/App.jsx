@@ -173,7 +173,7 @@ const DropshipperShopifyConnect = lazy(() => import('./pages/dropshipper/Shopify
 const DropshipSignup = lazy(() => import('./pages/dropship/DropshipSignup.jsx'))
 
 // SEO Next-Gen AI Panel pages
-const SEODashboardLayout = lazy(() => import('./pages/seo/DashboardLayout.jsx'))
+const SEODashboard = lazy(() => import('./pages/seo/Dashboard.jsx'))
 const AeoPage = lazy(() => import('./pages/seo/AeoPage.jsx'))
 const GeoPage = lazy(() => import('./pages/seo/GeoPage.jsx'))
 const TrafficPage = lazy(() => import('./pages/seo/TrafficPage.jsx'))
@@ -862,18 +862,29 @@ export default function App() {
               <Route path="shopify-connected" element={<DropshipperShopifyConnect />} />
             </Route>
 
-            {/* Next-Gen AI SEO Manager Panel */}
+            {/* SEO Manager Panel with Next-Gen AI Dashboard */}
             <Route
               path="/seo"
               element={
                 <RequireAuth>
                   <RequireRole roles={['seo_manager', 'admin', 'user']}>
-                    <SEODashboardLayout />
+                    <SEOManagerLayout />
                   </RequireRole>
                 </RequireAuth>
               }
             >
-              <Route index element={<Navigate to="/seo/aeo" replace />} />
+              {/* Legacy SEO Dashboard Tabs */}
+              <Route index element={<SEODashboard />} />
+              <Route path="dashboard" element={<SEODashboard />} />
+              <Route path="pixels" element={<SEODashboard />} />
+              <Route path="meta-tags" element={<SEODashboard />} />
+              <Route path="analytics" element={<SEODashboard />} />
+              <Route path="countries" element={<SEODashboard />} />
+              <Route path="products" element={<SEODashboard />} />
+              <Route path="schema" element={<SEODashboard />} />
+              <Route path="advanced" element={<SEODashboard />} />
+
+              {/* Next-Gen AI SEO Routes */}
               <Route path="aeo" element={<AeoPage />} />
               <Route path="geo" element={<GeoPage />} />
               <Route path="traffic" element={<TrafficPage />} />

@@ -40,7 +40,7 @@ export default function TrafficPage() {
   const maxImpressions = gscData ? Math.max(...gscData.timeline.map(d => d.impressions)) : 100;
 
   return (
-    <div className="animate-fade-in">
+    <div className="animate-fade-in p-6 sm:p-10 max-w-[1400px] mx-auto">
       <div className="mb-8">
         <h1 className="text-3xl font-black text-gray-900 tracking-tight">Real-World Traffic & Analytics</h1>
         <p className="mt-2 text-gray-500 text-sm leading-relaxed max-w-2xl">

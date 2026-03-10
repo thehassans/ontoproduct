@@ -33,7 +33,7 @@ export default function OptimizationPage() {
   const currentData = deviceMap[activeDevice];
 
   return (
-    <div className="animate-fade-in">
+    <div className="animate-fade-in p-6 sm:p-10 max-w-[1400px] mx-auto">
       <div className="mb-8 flex flex-col xl:flex-row justify-between items-start xl:items-end gap-4">
         <div>
           <h1 className="text-3xl font-black text-gray-900 tracking-tight">Core Web Vitals & Optimization</h1>
