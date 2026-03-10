@@ -15,6 +15,31 @@ import { getProductRating, getProductReviews, getStarArray } from '../../utils/a
 
 const SITE_URL = 'https://buysial.com'
 
+const PremiumText = ({ content, className = '' }) => {
+  if (!content) return null;
+  const parts = String(content).split(/(\*\*.*?\*\*)/g);
+  return (
+    <div className={`whitespace-pre-wrap ${className}`}>
+      {parts.map((part, i) => {
+        if (part.startsWith('**') && part.endsWith('**')) {
+          let inner = part.slice(2, -2).replace(/:$/, '').trim();
+          return (
+            <span key={i} className="inline-flex items-center mt-1.5 mb-1.5 font-bold text-gray-800 bg-orange-50 px-2.5 py-1 rounded-md border border-orange-100 shadow-sm text-xs tracking-wider uppercase mr-1.5 ml-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-orange-400 mr-2 opacity-80"></span>
+              {inner}
+            </span>
+          );
+        }
+        let text = part;
+        if (i > 0 && parts[i-1].startsWith('**')) text = text.replace(/^[\s:]+/, ' ');
+        text = text.replace(/[-\s]+$/, ' ');
+        if (i === 0) text = text.replace(/^[-\s]+/, '');
+        return <span key={i} className="leading-relaxed inline">{text}</span>;
+      })}
+    </div>
+  );
+};
+
 const ProductDetail = () => {
   const { id, slug } = useParams()
   const location = useLocation()
@@ -575,9 +600,9 @@ const ProductDetail = () => {
       </div>
       {activeTab === 'description' && (
         <div className="space-y-4">
-          {product.descriptionBlocks?.length > 0 && <div className="grid grid-cols-2 gap-2">{product.descriptionBlocks.map((b, i) => <div key={i} className="bg-white rounded-2xl p-3 shadow-sm"><p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">{b.label}</p><p className="text-gray-900 font-semibold text-sm">{b.value}</p></div>)}</div>}
-          {product.overview && <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-2xl p-5"><p className="text-gray-700 leading-relaxed text-sm whitespace-pre-line">{product.overview}</p></div>}
-          {product.specifications && <div className="bg-white rounded-2xl p-5 shadow-sm"><p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Specifications</p><p className="text-gray-600 text-sm whitespace-pre-line leading-relaxed">{product.specifications}</p></div>}
+          {product.descriptionBlocks?.length > 0 && <div className="grid grid-cols-2 gap-2">{product.descriptionBlocks.map((b, i) => <div key={i} className="bg-white rounded-2xl p-3 shadow-sm"><p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">{b.label}</p><PremiumText className="text-gray-900 font-semibold text-sm" content={b.value} /></div>)}</div>}
+          {product.overview && <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-2xl p-5"><PremiumText content={product.overview} className="text-gray-700 leading-relaxed text-sm" /></div>}
+          {product.specifications && <div className="bg-white rounded-2xl p-5 shadow-sm"><p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Specifications</p><PremiumText content={product.specifications} className="text-gray-600 text-sm leading-relaxed" /></div>}
           {!product.description && !product.overview && !product.specifications && !product.descriptionBlocks?.length && <div className="text-center py-12 text-gray-400">No description available</div>}
           {/* ── Media Gallery – full-width one-by-one carousel ── */}
           {(images.length > 0 || hasVideo) && (
@@ -781,7 +806,7 @@ const ProductDetail = () => {
             <span className="text-sm font-semibold text-gray-700">{displayRating.toFixed(1)}</span>
             <span className="text-xs text-gray-400">({displayReviewCount})</span>
           </div>
-          {product.description && <p className="text-gray-500 text-sm leading-relaxed mb-4">{product.description}</p>}
+          {product.description && <PremiumText content={product.description} className="text-gray-500 text-sm leading-relaxed mb-4" />}
           <div className="mb-5"><VariantSelector excludeColor /></div>
 
 
@@ -871,7 +896,7 @@ const ProductDetail = () => {
                 {origPriceConverted && <span className="text-lg text-gray-400 line-through mb-1"><FormattedPrice amount={origPriceConverted} currency={dispCcy} size={14} /></span>}
                 {hasActiveSale && <span className="text-sm font-bold text-red-500 mb-1">-{discountPercentage}%</span>}
               </div>
-              {product.description && <p className="text-gray-500 leading-relaxed mb-8 text-base line-clamp-4">{product.description}</p>}
+              {product.description && <PremiumText content={product.description} className="text-gray-500 leading-relaxed mb-8 text-base line-clamp-4 overflow-hidden" />}
 
               <div className="mb-8"><VariantSelector /></div>
 

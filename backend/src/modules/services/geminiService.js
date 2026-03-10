@@ -83,12 +83,14 @@ class GeminiService {
         Category: ${category}
         Additional Information: ${additionalInfo}
         
-        Generate the following sections for this e-commerce product in JSON format:
-        1. "shortDescription": A highly dense, bulleted "AI Summary" or "Key Takeaways" section specifically formatted for llms.txt compatibility. Outline the core entities, benefits, and specifications instantly.
-        2. "overview": Write authoritative, declarative content. You MUST format the most important definitive claims, benefits, and arguments into highly readable, standalone passages of EXACTLY 134 to 167 words. Treat brand mentions and semantic entity proximity as critical. Naturally weave the target brand, statistics, and highly related semantic entities throughout the text without keyword stuffing. Use heavily markdown-formatted elements (e.g. bolding for core entities).
-        3. "specifications": A clean, formatted list of technical specifications. Output as a markdown table or heavily bulleted list, as Answer Engines heavily favor markdown tabulatures.
-        4. "attributes": An array of objects with "label" and "value" for key product attributes (e.g., [{"label": "Material", "value": "Cotton"}, ...]).
-        5. "keyFeatures": An array of 4-6 strong, definitive selling points.
+        Generate the following sections for this e-commerce product in JSON format.
+        CRITICAL RULE: The frontend uses plain text areas. DO NOT use ANY Markdown formatting (NO **bold**, NO # headings, NO * italics). Use standard text, capitalization, and standard text bullet points (e.g., "• ") only.
+        
+        1. "shortDescription": A highly dense, bulleted "AI Summary" or "Key Takeaways" section. Outline the core entities, benefits, and specifications instantly using plain text bullets.
+        2. "overview": Write authoritative, declarative content. You MUST format the most important definitive claims, benefits, and arguments into highly readable, standalone passages of EXACTLY 134 to 167 words. Treat brand mentions and semantic entity proximity as critical. Naturally weave the target brand, statistics, and highly related semantic entities throughout the plain text without keyword stuffing.
+        3. "specifications": A clean, formatted list of technical specifications. Output as a clean plain-text list using "• " bullets.
+        4. "attributes": An array of objects with "label" and "value" for key product attributes (e.g., [{"label": "Material", "value": "Cotton"}, ...]). Keep the values brief (1-4 words).
+        5. "keyFeatures": An array of 4-6 strong, definitive selling points as plain text strings.
         
         Zero tolerance for doorway page tactics, fluff, or sensationalized clickbait. Ensure deep E-E-A-T (Experience, Expertise, Authoritativeness, Trustworthiness).
         
@@ -228,17 +230,17 @@ COUNTRY SEO: Generate entry for EVERY country in [${countriesList}]. ALL text in
 CANONICAL URL: Replace SLUG_HERE with the actual generated slug.
 
 BACKLINKS — THIS IS AN OUTREACH TARGET LIST, NOT FAKE LINKS:
-Use ONLY real, well-known domains that exist. Use ONLY their known section/category URLs — do NOT invent specific article paths or fake IDs.
+Use ONLY real, well-known domains that exist. Use ONLY their ROOT DOMAIN URL (e.g., https://www.allure.com). DO NOT append category paths (like /beauty or /skin), article paths, or fake IDs to guarantee no 404 errors.
 Niche examples:
-- Beauty/Skincare: allure.com/beauty, byrdie.com/skin, healthline.com/beauty, cosmopolitan.com/beauty, self.com/beauty, vogue.com/beauty
-- Fashion/Style: whowhatwear.com, harpersbazaar.com/beauty
-- Tech: techradar.com/reviews, cnet.com/reviews, tomsguide.com/reviews  
-- Home/Lifestyle: houzz.com/ideabooks, apartmenttherapy.com
-- Health/Fitness: menshealth.com/nutrition, womenshealthmag.com
-- Q&A/Community: reddit.com/r/SkincareAddiction, reddit.com/r/AsianBeauty, quora.com/topic/Skin-Care
-- UAE/KSA Authority: gulfnews.com/lifestyle, khaleejtimes.com/lifestyle, arabianbusiness.com
-- Review/Directory: trustpilot.com/review/buysial.com, google.com/maps (Google Business)
-Use the section/category URL as the target — the "notes" field explains what content to pitch/create for that site.
+- Beauty/Skincare: https://www.allure.com, https://www.byrdie.com, https://www.healthline.com, https://www.cosmopolitan.com, https://www.self.com, https://www.vogue.com
+- Fashion/Style: https://www.whowhatwear.com, https://www.harpersbazaar.com
+- Tech: https://www.techradar.com, https://www.cnet.com, https://www.tomsguide.com  
+- Home/Lifestyle: https://www.houzz.com, https://www.apartmenttherapy.com
+- Health/Fitness: https://www.menshealth.com, https://www.womenshealthmag.com
+- Q&A/Community: https://www.reddit.com, https://www.quora.com
+- UAE/KSA Authority: https://gulfnews.com, https://www.khaleejtimes.com, https://www.arabianbusiness.com
+- Review/Directory: https://www.trustpilot.com, https://www.google.com/maps
+Use the root domain URL as the target — the "notes" field explains what content to pitch/create for that site.
 Generate 5 backlinks, first 3 dofollow from niche authorities, last 2 nofollow from communities/directories.`;
 
     const text = await this.generateContent(prompt);

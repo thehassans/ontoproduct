@@ -172,8 +172,12 @@ const DropshipperFinances = lazy(() => import('./pages/dropshipper/Finances.jsx'
 const DropshipperShopifyConnect = lazy(() => import('./pages/dropshipper/ShopifyConnect.jsx'))
 const DropshipSignup = lazy(() => import('./pages/dropship/DropshipSignup.jsx'))
 
-// SEO pages
-const SEODashboard = lazy(() => import('./pages/seo/Dashboard.jsx'))
+// SEO Next-Gen AI Panel pages
+const SEODashboardLayout = lazy(() => import('./pages/seo/DashboardLayout.jsx'))
+const AeoPage = lazy(() => import('./pages/seo/AeoPage.jsx'))
+const GeoPage = lazy(() => import('./pages/seo/GeoPage.jsx'))
+const TrafficPage = lazy(() => import('./pages/seo/TrafficPage.jsx'))
+const OptimizationPage = lazy(() => import('./pages/seo/OptimizationPage.jsx'))
 
 // Customer pages
 const CustomerDashboard = lazy(() => import('./pages/customer/Dashboard.jsx'))
@@ -858,26 +862,22 @@ export default function App() {
               <Route path="shopify-connected" element={<DropshipperShopifyConnect />} />
             </Route>
 
-            {/* SEO Manager Panel */}
+            {/* Next-Gen AI SEO Manager Panel */}
             <Route
               path="/seo"
               element={
                 <RequireAuth>
                   <RequireRole roles={['seo_manager', 'admin', 'user']}>
-                    <SEOManagerLayout />
+                    <SEODashboardLayout />
                   </RequireRole>
                 </RequireAuth>
               }
             >
-              <Route index element={<SEODashboard />} />
-              <Route path="dashboard" element={<SEODashboard />} />
-              <Route path="pixels" element={<SEODashboard />} />
-              <Route path="meta-tags" element={<SEODashboard />} />
-              <Route path="analytics" element={<SEODashboard />} />
-              <Route path="countries" element={<SEODashboard />} />
-              <Route path="products" element={<SEODashboard />} />
-              <Route path="schema" element={<SEODashboard />} />
-              <Route path="advanced" element={<SEODashboard />} />
+              <Route index element={<Navigate to="/seo/aeo" replace />} />
+              <Route path="aeo" element={<AeoPage />} />
+              <Route path="geo" element={<GeoPage />} />
+              <Route path="traffic" element={<TrafficPage />} />
+              <Route path="optimization" element={<OptimizationPage />} />
             </Route>
 
             <Route
