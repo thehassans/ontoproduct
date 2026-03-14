@@ -249,6 +249,8 @@ function StatsAndCategories({ categoryCount = 0, categoryCounts = {}, selectedCa
 }
 
 export default function ProductCatalog() {
+  const location = useLocation()
+  const navigate = useNavigate()
   const lastScrollY = useRef(0)
   const urlSyncReadyRef = useRef(false)
   const initialLoadDoneRef = useRef(false)
