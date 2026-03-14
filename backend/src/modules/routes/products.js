@@ -53,6 +53,212 @@ function normalizePublicCountryValue(input) {
   return null
 }
 
+function escapeRegex(value) {
+  return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function normalizeMatchText(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function singularizeSearchToken(token) {
+  const value = normalizeMatchText(token)
+  if (!value || value.length <= 3) return value
+  if (value.endsWith('ies') && value.length > 4) return `${value.slice(0, -3)}y`
+  if (value.endsWith('es') && value.length > 4) return value.slice(0, -2)
+  if (value.endsWith('s') && !value.endsWith('ss') && value.length > 4) return value.slice(0, -1)
+  return value
+}
+
+const SEARCH_TOKEN_STOP_WORDS = new Set([
+  'a', 'an', 'and', 'as', 'at', 'by', 'for', 'from', 'in', 'into', 'of', 'on', 'or', 'the', 'to', 'with',
+  'item', 'product', 'products', 'design', 'style', 'thing',
+])
+
+function tokenizeSearchText(value) {
+  const normalized = normalizeMatchText(value)
+  if (!normalized) return []
+  const out = []
+  const seen = new Set()
+  const parts = normalized.split(' ').filter(Boolean)
+  for (const part of parts) {
+    const token = normalizeMatchText(part)
+    const singular = singularizeSearchToken(token)
+    for (const next of [token, singular]) {
+      if (!next || next.length < 3 || SEARCH_TOKEN_STOP_WORDS.has(next) || seen.has(next)) continue
+      seen.add(next)
+      out.push(next)
+    }
+  }
+  return out
+}
+
+function buildSearchFieldClauses(input) {
+  const values = Array.isArray(input) ? input : [input]
+  const phrases = []
+  const seen = new Set()
+  const pushPhrase = (value) => {
+    const normalized = normalizeMatchText(value)
+    if (!normalized || seen.has(normalized)) return
+    seen.add(normalized)
+    phrases.push(normalized)
+  }
+  for (const entry of values) {
+    const raw = String(entry || '').trim()
+    if (!raw) continue
+    pushPhrase(raw)
+    const tokens = tokenizeSearchText(raw)
+    tokens.forEach(pushPhrase)
+    for (let i = 0; i < tokens.length - 1; i += 1) {
+      pushPhrase(`${tokens[i]} ${tokens[i + 1]}`)
+    }
+    for (let i = 0; i < tokens.length - 2; i += 1) {
+      pushPhrase(`${tokens[i]} ${tokens[i + 1]} ${tokens[i + 2]}`)
+    }
+  }
+  const fields = [
+    'name',
+    'description',
+    'brand',
+    'category',
+    'subcategory',
+    'tags',
+    'overview',
+    'specifications',
+    'seoKeywords',
+    'slug',
+    'descriptionBlocks.label',
+    'descriptionBlocks.value',
+  ]
+  return phrases.slice(0, 18).flatMap((phrase) => {
+    const regex = new RegExp(escapeRegex(phrase), 'i')
+    return fields.map((field) => ({ [field]: regex }))
+  })
+}
+
+function buildVisualSearchTerms(intent = {}) {
+  const rawTerms = normalizeStringList([
+    intent?.query,
+    intent?.brand,
+    intent?.category,
+    ...(Array.isArray(intent?.attributes) ? intent.attributes : []),
+    ...(Array.isArray(intent?.suggestions) ? intent.suggestions : []),
+  ])
+  const phrases = []
+  const seen = new Set()
+  const pushPhrase = (value) => {
+    const normalized = normalizeMatchText(value)
+    if (!normalized || seen.has(normalized)) return
+    seen.add(normalized)
+    phrases.push(normalized)
+  }
+  rawTerms.forEach(pushPhrase)
+  rawTerms.forEach((entry) => {
+    const tokens = tokenizeSearchText(entry)
+    tokens.forEach(pushPhrase)
+    for (let size = Math.min(3, tokens.length); size >= 2; size -= 1) {
+      for (let index = 0; index + size <= tokens.length; index += 1) {
+        pushPhrase(tokens.slice(index, index + size).join(' '))
+      }
+    }
+  })
+  return phrases.slice(0, 24)
+}
+
+function scoreVisualSearchProduct(product, intent = {}, terms = []) {
+  const name = normalizeMatchText(product?.name)
+  const brand = normalizeMatchText(product?.brand)
+  const category = normalizeMatchText(product?.category)
+  const subcategory = normalizeMatchText(product?.subcategory)
+  const tags = normalizeMatchText(Array.isArray(product?.tags) ? product.tags.join(' ') : '')
+  const extraBlocks = Array.isArray(product?.descriptionBlocks)
+    ? product.descriptionBlocks.map((entry) => `${entry?.label || ''} ${entry?.value || ''}`).join(' ')
+    : ''
+  const detail = normalizeMatchText([
+    product?.description,
+    product?.overview,
+    product?.specifications,
+    product?.seoKeywords,
+    product?.slug,
+    extraBlocks,
+  ].filter(Boolean).join(' '))
+  const combined = [name, brand, category, subcategory, tags, detail].filter(Boolean).join(' ')
+  const matched = new Set()
+  let score = 0
+
+  for (const phrase of terms) {
+    if (!phrase) continue
+    let hit = false
+    if (name === phrase) {
+      score += 80
+      hit = true
+    } else if (name.includes(phrase)) {
+      score += phrase.includes(' ') ? 48 : 20
+      hit = true
+    } else if (brand === phrase || brand.includes(phrase)) {
+      score += 28
+      hit = true
+    } else if (category === phrase || subcategory === phrase) {
+      score += 24
+      hit = true
+    } else if (category.includes(phrase) || subcategory.includes(phrase)) {
+      score += 16
+      hit = true
+    } else if (tags.includes(phrase)) {
+      score += 14
+      hit = true
+    } else if (detail.includes(phrase)) {
+      score += phrase.includes(' ') ? 12 : 7
+      hit = true
+    } else if (combined.includes(phrase)) {
+      score += 4
+      hit = true
+    }
+    if (hit) matched.add(phrase)
+  }
+
+  const primaryQuery = normalizeMatchText(intent?.query)
+  if (primaryQuery) {
+    if (name === primaryQuery) score += 42
+    else if (name.includes(primaryQuery)) score += 24
+    else if (combined.includes(primaryQuery)) score += 10
+  }
+
+  const brandHint = normalizeMatchText(intent?.brand)
+  if (brandHint && brand.includes(brandHint)) score += 16
+
+  const categoryHint = normalizeMatchText(intent?.category)
+  if (categoryHint && (category.includes(categoryHint) || subcategory.includes(categoryHint))) score += 10
+
+  const tokenHits = new Set()
+  for (const token of terms.flatMap((entry) => tokenizeSearchText(entry)).slice(0, 18)) {
+    if (!token) continue
+    if (name.includes(token)) {
+      score += 8
+      tokenHits.add(token)
+    } else if (brand.includes(token)) {
+      score += 6
+      tokenHits.add(token)
+    } else if (category.includes(token) || subcategory.includes(token)) {
+      score += 4
+      tokenHits.add(token)
+    } else if (tags.includes(token) || detail.includes(token)) {
+      score += 3
+      tokenHits.add(token)
+    }
+  }
+
+  score += Math.min(30, matched.size * 4)
+  score += Math.min(18, tokenHits.size * 2)
+  if (product?.isFeatured) score += 2
+  if (product?.isTrending) score += 1
+  return score
+}
+
 function buildPublicProductQuery({ country, category, subcategory, search, filter } = {}) {
   const stockCountry = normalizePublicCountryValue(country)
   const and = [
@@ -89,14 +295,8 @@ function buildPublicProductQuery({ country, category, subcategory, search, filte
   if (category && category !== 'all') query.category = category
   if (subcategory && String(subcategory).trim()) query.subcategory = String(subcategory).trim()
   if (search && String(search).trim()) {
-    const searchRegex = new RegExp(String(search).trim(), 'i')
-    query.$or = [
-      { name: searchRegex },
-      { description: searchRegex },
-      { brand: searchRegex },
-      { category: searchRegex },
-      { subcategory: searchRegex }
-    ]
+    const clauses = buildSearchFieldClauses(search)
+    if (clauses.length) query.$or = clauses
   }
   return query
 }
@@ -905,26 +1105,34 @@ router.post('/public/visual-search', uploadMemory.single('image'), async (req, r
       intent.brand,
       intent.category,
       ...(Array.isArray(intent.attributes) ? intent.attributes : []),
+      ...(Array.isArray(intent.suggestions) ? intent.suggestions : []),
     ]
       .map((value) => String(value || '').trim())
       .filter(Boolean)
     const searchPhrase = searchTerms.slice(0, 4).join(' ').trim()
     const countryRaw = req.query?.country || req.headers['x-country'] || ''
-    const query = buildPublicProductQuery({
-      country: countryRaw,
-      category: intent.category || '',
-      search: searchPhrase || intent.query || '',
-    })
-    let products = await Product.find(query)
+    const visualTerms = buildVisualSearchTerms(intent)
+    const candidateQuery = buildPublicProductQuery({ country: countryRaw })
+    const candidateClauses = buildSearchFieldClauses(visualTerms)
+    if (candidateClauses.length) candidateQuery.$or = candidateClauses
+    let candidateProducts = await Product.find(candidateQuery)
       .sort({ isFeatured: -1, isTrending: -1, createdAt: -1 })
-      .limit(24)
+      .limit(120)
       .select('-createdBy -updatedAt -__v')
-    if (!products.length && intent.query) {
-      products = await Product.find(buildPublicProductQuery({ country: countryRaw, search: intent.query }))
+    if (!candidateProducts.length && intent.query) {
+      candidateProducts = await Product.find(buildPublicProductQuery({ country: countryRaw, search: intent.query }))
         .sort({ isFeatured: -1, isTrending: -1, createdAt: -1 })
-        .limit(24)
+        .limit(80)
         .select('-createdBy -updatedAt -__v')
     }
+    const rankedProducts = candidateProducts
+      .map((product) => ({
+        product,
+        score: scoreVisualSearchProduct(product, intent, visualTerms),
+      }))
+      .filter((entry) => entry.score > 0)
+      .sort((a, b) => b.score - a.score || Number(b.product?.isFeatured || 0) - Number(a.product?.isFeatured || 0) || Number(b.product?.isTrending || 0) - Number(a.product?.isTrending || 0))
+    const products = (rankedProducts.length ? rankedProducts.map((entry) => entry.product) : candidateProducts).slice(0, 24)
     const enriched = enrichPublicProducts(products)
     return res.json({
       query: intent.query || searchPhrase,

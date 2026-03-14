@@ -262,7 +262,10 @@ Generate 5 backlinks, first 3 dofollow from niche authorities, last 2 nofollow f
     }
     const modelName = await this.getModelName()
     const prompt = `You are an e-commerce product search expert.
-Analyze the uploaded image and return ONLY valid JSON with this shape:
+Analyze the uploaded image and identify the actual purchasable product shown.
+Prioritize the product type and use-case over colors, visual theme, or decorative style.
+If the image shows a novelty item, school item, toy, accessory, kitchen item, beauty item, or similar, name the concrete object a customer would search for in a store.
+Return ONLY valid JSON with this shape:
 {
   "query": "short product search query",
   "category": "best matching store category",
@@ -272,8 +275,13 @@ Analyze the uploaded image and return ONLY valid JSON with this shape:
   "confidence": 0.0
 }
 Rules:
-- query must be 2 to 6 words
+- query must be 2 to 8 words
+- query must describe the real product object, not only a pattern or aesthetic
+- include the strongest object noun in the query when possible
+- prefer search terms like "pencil topper", "chewable pencil topper", "silicone pencil topper", "lego-style pencil topper" over vague terms like "building block design"
+- category should be a likely shopping category, but it may be generic if uncertain
 - suggestions must be concise shopping search terms
+- suggestions should include close shopping alternatives and synonyms a customer might use
 - confidence must be between 0 and 1
 - if unsure, still provide the closest shopping-oriented query
 - do not include markdown or explanation`

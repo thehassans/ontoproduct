@@ -249,15 +249,10 @@ function StatsAndCategories({ categoryCount = 0, categoryCounts = {}, selectedCa
 }
 
 export default function ProductCatalog() {
-  const toast = useToast()
-  const location = useLocation()
-  const navigate = useNavigate()
-  const [products, setProducts] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 })
-  const [categoryCounts, setCategoryCounts] = useState({})
-
+  const lastScrollY = useRef(0)
+  const urlSyncReadyRef = useRef(false)
+  const initialLoadDoneRef = useRef(false)
+  const discoverOrderRef = useRef([])
   const defaultCatalogHeadlineSlides = useRef([
     {
       title: 'noon one day',
@@ -300,6 +295,7 @@ export default function ProductCatalog() {
   const [catalogHeadlinePrevIdx, setCatalogHeadlinePrevIdx] = useState(-1)
   const [catalogHeadlinePrevVisible, setCatalogHeadlinePrevVisible] = useState(false)
   const catalogHeadlinePrevTimerRef = useRef(null)
+  const skipNextCatalogReloadRef = useRef(false)
   
   // Edit mode
   const [editMode, setEditMode] = useState(false)
@@ -454,6 +450,7 @@ export default function ProductCatalog() {
     )
 
     if (query) {
+      if (matchedProducts.length) skipNextCatalogReloadRef.current = true
       setSearchQuery(query)
       try {
         trackSearch(query, matchedProducts.length)
@@ -765,6 +762,11 @@ export default function ProductCatalog() {
   }
   // Load products when filters change
   useEffect(() => {
+    if (skipNextCatalogReloadRef.current) {
+      skipNextCatalogReloadRef.current = false
+      trackPageView('/products', 'Product Catalog')
+      return
+    }
     setHasMore(true)
     setCurrentPage(1)
     loadProducts(1, true)
