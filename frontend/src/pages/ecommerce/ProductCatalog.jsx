@@ -314,7 +314,9 @@ export default function ProductCatalog() {
     const sp = new URLSearchParams(window.location.search)
     return sp.get('subcategory') || 'all'
   })
+  const [categoryCounts, setCategoryCounts] = useState({})
   const [subcategoryCounts, setSubcategoryCounts] = useState({})
+  const [error, setError] = useState('')
   const [searchQuery, setSearchQuery] = useState(() => {
     const sp = new URLSearchParams(window.location.search)
     return sp.get('search') || ''
@@ -343,6 +345,8 @@ export default function ProductCatalog() {
   // Pagination
   const [currentPage, setCurrentPage] = useState(1)
   const productsPerPage = 12
+  const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 })
+  const [loading, setLoading] = useState(false)
   const [products, setProducts] = useState([])
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [displayedProducts, setDisplayedProducts] = useState([])
