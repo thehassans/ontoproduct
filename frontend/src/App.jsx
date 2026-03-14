@@ -393,16 +393,51 @@ function RequireManagerPerm({ perm, children }) {
 
 // Custom Domain context for sharing state
 const CustomDomainContext = React.createContext(false)
+const CUSTOM_DOMAIN_CACHE_KEY = '__custom_domain_check__'
 
 // Hook to check if on custom domain
 export function useIsCustomDomain() {
   return React.useContext(CustomDomainContext)
 }
 
+function readCustomDomainCache(hostname) {
+  try {
+    const raw = sessionStorage.getItem(`${CUSTOM_DOMAIN_CACHE_KEY}:${hostname}`)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (String(parsed?.hostname || '') !== hostname) return null
+    if (typeof parsed?.isCustomDomain !== 'boolean') return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+function writeCustomDomainCache(hostname, isCustomDomain) {
+  try {
+    sessionStorage.setItem(`${CUSTOM_DOMAIN_CACHE_KEY}:${hostname}`, JSON.stringify({
+      hostname,
+      isCustomDomain: !!isCustomDomain,
+      ts: Date.now(),
+    }))
+  } catch {}
+}
+
 // Custom Domain Router - handles routing for custom domains
 function CustomDomainRouter({ children }) {
-  const [isCustomDomain, setIsCustomDomain] = useState(null)
-  const [checking, setChecking] = useState(true)
+  const initialDomainState = (() => {
+    try {
+      const hostname = window.location.hostname.toLowerCase()
+      if (hostname === 'buysial.com' || hostname === 'localhost' || hostname === '127.0.0.1') {
+        return { isCustomDomain: false, checking: false }
+      }
+      const cached = readCustomDomainCache(hostname)
+      if (cached) return { isCustomDomain: cached.isCustomDomain, checking: false }
+    } catch {}
+    return { isCustomDomain: null, checking: true }
+  })()
+  const [isCustomDomain, setIsCustomDomain] = useState(initialDomainState.isCustomDomain)
+  const [checking, setChecking] = useState(initialDomainState.checking)
 
   useEffect(() => {
     let alive = true
@@ -416,6 +451,7 @@ function CustomDomainRouter({ children }) {
           hostname === 'localhost' ||
           hostname === '127.0.0.1'
         ) {
+          writeCustomDomainCache(hostname, false)
           if (alive) {
             setIsCustomDomain(false)
             setChecking(false)
@@ -427,14 +463,15 @@ function CustomDomainRouter({ children }) {
         try {
           const response = await apiGet(`/api/users/by-domain/${hostname}`)
           if (alive && response?.userId) {
+            writeCustomDomainCache(hostname, true)
             setIsCustomDomain(true)
-            // Store the store info for later use
             sessionStorage.setItem('customDomainStore', JSON.stringify(response))
           } else {
+            writeCustomDomainCache(hostname, false)
             setIsCustomDomain(false)
           }
         } catch (err) {
-          // Domain not found in database, proceed normally
+          writeCustomDomainCache(hostname, false)
           setIsCustomDomain(false)
         }
       } catch (err) {

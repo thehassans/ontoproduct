@@ -11,6 +11,7 @@ import { detectCountryCode } from '../../utils/geo'
 import CategoryFilter from '../../components/ecommerce/CategoryFilter'
 import MobileBottomNav from '../../components/ecommerce/MobileBottomNav'
 import DiscoverSearchSurface from '../../components/ecommerce/DiscoverSearchSurface'
+import { getCachedCurrencyConfig, getCurrencyConfig } from '../../util/currency'
 
 function safeParseCatalogHeadlineSlides(raw, fallback) {
   try {
@@ -354,6 +355,7 @@ export default function ProductCatalog() {
   const [cartCount, setCartCount] = useState(() => { try { const c = JSON.parse(localStorage.getItem('shopping_cart') || '[]'); return c.reduce((s, i) => s + (i.quantity || 1), 0) } catch { return 0 } })
   const [annBar, setAnnBar] = useState(null)
   const [visualSearchResult, setVisualSearchResult] = useState(null)
+  const [currencyConfig, setCurrencyConfig] = useState(() => getCachedCurrencyConfig())
   const COUNTRY_LIST_LOCAL = [
     { code: 'GB', name: 'UK', flag: '🇬🇧' }, { code: 'US', name: 'USA', flag: '🇺🇸' },
     { code: 'AE', name: 'UAE', flag: '🇦🇪' }, { code: 'SA', name: 'KSA', flag: '🇸🇦' },
@@ -417,6 +419,16 @@ export default function ProductCatalog() {
     const update = () => { try { const c = JSON.parse(localStorage.getItem('shopping_cart') || '[]'); setCartCount(c.reduce((s, i) => s + (i.quantity || 1), 0)) } catch { setCartCount(0) } }
     window.addEventListener('cartUpdated', update); window.addEventListener('storage', update)
     return () => { window.removeEventListener('cartUpdated', update); window.removeEventListener('storage', update) }
+  }, [])
+
+  useEffect(() => {
+    let alive = true
+    getCurrencyConfig().then((cfg) => {
+      if (alive && cfg) setCurrencyConfig(cfg)
+    }).catch(() => {})
+    return () => {
+      alive = false
+    }
   }, [])
 
   useEffect(() => {
@@ -915,6 +927,7 @@ export default function ProductCatalog() {
                   product={product}
                   selectedCountry={selectedCountry}
                   showVideo={true}
+                  currencyConfig={currencyConfig}
                 />
               </div>
             ))}
@@ -1442,6 +1455,7 @@ export default function ProductCatalog() {
                             selectedCountry={selectedCountry}
                             showVideo={false}
                             showActions={false}
+                            currencyConfig={currencyConfig}
                           />
                         ))}
                       </div>
