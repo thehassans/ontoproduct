@@ -249,6 +249,7 @@ function StatsAndCategories({ categoryCount = 0, categoryCounts = {}, selectedCa
 }
 
 export default function ProductCatalog() {
+  const toast = useToast()
   const location = useLocation()
   const navigate = useNavigate()
   const lastScrollY = useRef(0)
