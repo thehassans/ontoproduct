@@ -163,13 +163,16 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder, mi
     // When another component loaded the script with &loading=async, importLibrary must be called
     // before window.google.maps.Map is available. This ensures classes are populated first.
     async function readyUp() {
-      if (window.google?.maps?.importLibrary) {
+      if (typeof window.google?.maps?.importLibrary === 'function') {
         try {
           await window.google.maps.importLibrary('maps')
           await window.google.maps.importLibrary('marker').catch(() => null)
         } catch {}
       }
-      setMapLoaded(true)
+      if (window.google?.maps) {
+        setError(null)
+        setMapLoaded(true)
+      }
     }
 
     const existingScript = document.getElementById(GOOGLE_MAPS_SCRIPT_ID)
@@ -216,15 +219,19 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder, mi
       try {
         if (cancelled || !mapRef.current) return
 
-        // With loading=async the Map class must be obtained from importLibrary – window.google.maps.Map stays a stub
-        const mapsLib = await window.google.maps.importLibrary('maps')
-        const MapConstructor = mapsLib?.Map
+        const hasDynamicLibraryImport = typeof window.google?.maps?.importLibrary === 'function'
+        const mapsLib = hasDynamicLibraryImport
+          ? await window.google.maps.importLibrary('maps').catch(() => null)
+          : null
+        const MapConstructor = mapsLib?.Map || window.google?.maps?.Map
         if (!MapConstructor) {
           setError('Google Maps failed to load. Please refresh.')
           return
         }
 
-        const markerLib = await window.google.maps.importLibrary('marker').catch(() => null)
+        const markerLib = hasDynamicLibraryImport
+          ? await window.google.maps.importLibrary('marker').catch(() => null)
+          : null
         if (markerLib?.AdvancedMarkerElement) {
           if (!window.google.maps.marker) window.google.maps.marker = {}
           window.google.maps.marker.AdvancedMarkerElement = markerLib.AdvancedMarkerElement
@@ -439,7 +446,7 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder, mi
       let routeDuration = 0
       let rendered = false
 
-      const routesLib = window.google.maps.importLibrary
+      const routesLib = typeof window.google?.maps?.importLibrary === 'function'
         ? await window.google.maps.importLibrary('routes').catch(() => null)
         : null
       const RouteClass = routesLib?.Route || window.google.maps?.routes?.Route
@@ -475,6 +482,33 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder, mi
           } else {
             routeDuration = Number(legDuration?.seconds || 0) * 1000
           }
+          rendered = true
+        }
+      } else if (window.google.maps.DirectionsService) {
+        const directionsService = new window.google.maps.DirectionsService()
+        const response = await directionsService.route({
+          origin,
+          destination,
+          travelMode: window.google.maps.TravelMode.DRIVING,
+          provideRouteAlternatives: false,
+        })
+        const route = response?.routes?.[0]
+        if (route) {
+          const path = Array.isArray(route.overview_path) ? route.overview_path : []
+          if (path.length) {
+            const polyline = new window.google.maps.Polyline({
+              map: mapInstanceRef.current,
+              path,
+              strokeColor: '#10b981',
+              strokeWeight: minimal ? 6 : 5,
+              strokeOpacity: 0.88,
+              zIndex: 5,
+            })
+            routePolylinesRef.current = [polyline]
+          }
+          const leg = route.legs?.[0]
+          routeDistance = Number(leg?.distance?.value || 0)
+          routeDuration = Number(leg?.duration?.value || 0) * 1000
           rendered = true
         }
       }

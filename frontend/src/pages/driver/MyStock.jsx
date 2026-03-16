@@ -118,15 +118,17 @@ function StockOrderCard({ order, submittingId, onSubmit }) {
     <div
       className="card"
       style={{
-        padding: 16,
+        padding: 14,
         display: 'grid',
         gap: 12,
-        borderRadius: 18,
+        borderRadius: 22,
         border: '1px solid rgba(148, 163, 184, 0.18)',
         background: 'linear-gradient(180deg, rgba(255,255,255,0.04), rgba(148,163,184,0.04))',
+        boxShadow: '0 14px 32px rgba(15,23,42,0.08)',
+        overflow: 'hidden',
       }}
     >
-      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '72px minmax(0, 1fr)', gap: 12, alignItems: 'start' }}>
         {productImage ? (
           <img
             src={mediaUrl(productImage)}
@@ -139,39 +141,39 @@ function StockOrderCard({ order, submittingId, onSubmit }) {
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
           </div>
         )}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <div style={{ fontWeight: 900, fontSize: 15 }}>{getInvoiceLabel(order)}</div>
+        <div style={{ minWidth: 0, display: 'grid', gap: 6 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', minWidth: 0 }}>
+              <div style={{ fontWeight: 900, fontSize: 15, whiteSpace: 'nowrap' }}>{getInvoiceLabel(order)}</div>
               <span className="badge" style={{ ...statusStyle, textTransform: 'capitalize' }}>{formatStatusLabel(status)}</span>
               {isSubmitted ? (
                 <span className="badge" style={{ background: 'rgba(59,130,246,0.12)', color: '#1d4ed8', border: '1px solid rgba(59,130,246,0.18)' }}>Submitted</span>
               ) : null}
             </div>
-            <div style={{ textAlign: 'right', flexShrink: 0 }}>
-              <div style={{ fontSize: 11, color: 'var(--muted)' }}>Units</div>
-              <div style={{ fontSize: 20, fontWeight: 900, lineHeight: 1 }}>{getOrderQuantity(order)}</div>
+            <div style={{ flexShrink: 0, padding: '6px 8px', borderRadius: 12, background: 'rgba(15,23,42,0.04)', border: '1px solid rgba(148,163,184,0.14)', textAlign: 'center' }}>
+              <div style={{ fontSize: 10, color: 'var(--muted)', lineHeight: 1 }}>Units</div>
+              <div style={{ fontSize: 16, fontWeight: 900, lineHeight: 1.1, marginTop: 2 }}>{getOrderQuantity(order)}</div>
             </div>
           </div>
-          <div style={{ fontSize: 14, fontWeight: 800, lineHeight: 1.3, marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{getProductLabel(order)}</div>
-          <div className="helper" style={{ marginBottom: 2 }}>{order?.customerName || 'Customer'} • {order?.customerPhone || 'No phone'}</div>
-          <div className="helper">{order?.customerAddress || order?.customerLocation || 'No address'}</div>
-          <div className="helper" style={{ marginTop: 2 }}>{order?.orderCountry || '—'}{order?.city ? ` • ${order.city}` : ''}</div>
+          <div style={{ fontSize: 15, fontWeight: 800, lineHeight: 1.32, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflowWrap: 'anywhere' }}>{getProductLabel(order)}</div>
+          <div className="helper" style={{ marginBottom: 1, overflowWrap: 'anywhere' }}>{order?.customerName || 'Customer'} • {order?.customerPhone || 'No phone'}</div>
+          <div className="helper" style={{ overflowWrap: 'anywhere' }}>{order?.customerAddress || order?.customerLocation || 'No address'}</div>
+          <div className="helper" style={{ marginTop: 1, overflowWrap: 'anywhere' }}>{order?.orderCountry || '—'}{order?.city ? ` • ${order.city}` : ''}</div>
         </div>
       </div>
 
       <div style={{ display: 'grid', gap: 4 }}>
-        {order?.returnReason ? <div className="helper"><strong>Reason:</strong> {order.returnReason}</div> : null}
-        <div className="helper"><strong>Updated:</strong> {formatDate(order?.updatedAt || order?.createdAt)}</div>
-        {isSubmitted ? <div className="helper"><strong>Submitted:</strong> {formatDate(order?.returnSubmittedAt)}</div> : null}
+        {order?.returnReason ? <div className="helper" style={{ overflowWrap: 'anywhere' }}><strong>Reason:</strong> {order.returnReason}</div> : null}
+        <div className="helper" style={{ overflowWrap: 'anywhere' }}><strong>Updated:</strong> {formatDate(order?.updatedAt || order?.createdAt)}</div>
+        {isSubmitted ? <div className="helper" style={{ overflowWrap: 'anywhere' }}><strong>Submitted:</strong> {formatDate(order?.returnSubmittedAt)}</div> : null}
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-        <div className="helper">
+      <div style={{ display: 'grid', gap: 8 }}>
+        <div className="helper" style={{ overflowWrap: 'anywhere' }}>
           {isSubmitted ? 'Waiting for company verification.' : 'Ready to submit to company.'}
         </div>
         {!isSubmitted ? (
-          <button className="btn" type="button" onClick={() => onSubmit(order)} disabled={isSubmitting} style={{ fontWeight: 700 }}>
+          <button className="btn" type="button" onClick={() => onSubmit(order)} disabled={isSubmitting} style={{ width: '100%', minHeight: 42, fontWeight: 800, borderRadius: 14 }}>
             {isSubmitting ? 'Submitting...' : 'Submit to Company'}
           </button>
         ) : null}
