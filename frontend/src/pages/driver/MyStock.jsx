@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { apiGet, apiPost } from '../../api'
+import { apiGet, apiPost, mediaUrl } from '../../api'
 import { useToast } from '../../ui/Toast.jsx'
 
 function getOrderId(order) {
@@ -88,6 +88,22 @@ function SummaryCard({ label, value, accent, helper }) {
   )
 }
 
+function getProductImage(order) {
+  const tryImages = (productId) => {
+    if (!productId) return null
+    if (Array.isArray(productId.images) && productId.images.length) return productId.images[0]
+    if (productId.image) return productId.image
+    return null
+  }
+  if (Array.isArray(order?.items) && order.items.length) {
+    for (const item of order.items) {
+      const img = tryImages(item?.productId)
+      if (img) return img
+    }
+  }
+  return tryImages(order?.productId)
+}
+
 function StockOrderCard({ order, submittingId, onSubmit }) {
   const orderId = getOrderId(order)
   const isSubmitting = submittingId === orderId
@@ -96,6 +112,7 @@ function StockOrderCard({ order, submittingId, onSubmit }) {
   const statusStyle = status === 'cancelled'
     ? { background: 'rgba(239,68,68,0.12)', color: '#b91c1c', border: '1px solid rgba(239,68,68,0.18)' }
     : { background: 'rgba(245,158,11,0.12)', color: '#b45309', border: '1px solid rgba(245,158,11,0.18)' }
+  const productImage = getProductImage(order)
 
   return (
     <div
@@ -109,25 +126,37 @@ function StockOrderCard({ order, submittingId, onSubmit }) {
         background: 'linear-gradient(180deg, rgba(255,255,255,0.04), rgba(148,163,184,0.04))',
       }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
-        <div style={{ display: 'grid', gap: 6, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <div style={{ fontWeight: 900, fontSize: 16 }}>{getInvoiceLabel(order)}</div>
-            <span className="badge" style={{ ...statusStyle, textTransform: 'capitalize' }}>{formatStatusLabel(status)}</span>
-            {isSubmitted ? (
-              <span className="badge" style={{ background: 'rgba(59,130,246,0.12)', color: '#1d4ed8', border: '1px solid rgba(59,130,246,0.18)' }}>
-                Submitted to Company
-              </span>
-            ) : null}
+      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+        {productImage ? (
+          <img
+            src={mediaUrl(productImage)}
+            alt="Product"
+            style={{ width: 72, height: 72, borderRadius: 12, objectFit: 'cover', flexShrink: 0, border: '1px solid var(--border)' }}
+            onError={(e) => { e.target.style.display = 'none' }}
+          />
+        ) : (
+          <div style={{ width: 72, height: 72, borderRadius: 12, background: 'rgba(148,163,184,0.12)', flexShrink: 0, display: 'grid', placeItems: 'center', border: '1px solid var(--border)' }}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
           </div>
-          <div style={{ fontSize: 17, fontWeight: 800, lineHeight: 1.3 }}>{getProductLabel(order)}</div>
-          <div className="helper">{order?.customerName || 'Customer'} • {order?.customerPhone || 'No phone'}</div>
+        )}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <div style={{ fontWeight: 900, fontSize: 15 }}>{getInvoiceLabel(order)}</div>
+              <span className="badge" style={{ ...statusStyle, textTransform: 'capitalize' }}>{formatStatusLabel(status)}</span>
+              {isSubmitted ? (
+                <span className="badge" style={{ background: 'rgba(59,130,246,0.12)', color: '#1d4ed8', border: '1px solid rgba(59,130,246,0.18)' }}>Submitted</span>
+              ) : null}
+            </div>
+            <div style={{ textAlign: 'right', flexShrink: 0 }}>
+              <div style={{ fontSize: 11, color: 'var(--muted)' }}>Units</div>
+              <div style={{ fontSize: 20, fontWeight: 900, lineHeight: 1 }}>{getOrderQuantity(order)}</div>
+            </div>
+          </div>
+          <div style={{ fontSize: 14, fontWeight: 800, lineHeight: 1.3, marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{getProductLabel(order)}</div>
+          <div className="helper" style={{ marginBottom: 2 }}>{order?.customerName || 'Customer'} • {order?.customerPhone || 'No phone'}</div>
           <div className="helper">{order?.customerAddress || order?.customerLocation || 'No address'}</div>
-        </div>
-        <div style={{ textAlign: 'right', minWidth: 140, display: 'grid', gap: 6 }}>
-          <div style={{ fontSize: 13, color: 'var(--muted)' }}>Units</div>
-          <div style={{ fontSize: 24, fontWeight: 900 }}>{getOrderQuantity(order)}</div>
-          <div className="helper">{order?.orderCountry || '—'}{order?.city ? ` • ${order.city}` : ''}</div>
+          <div className="helper" style={{ marginTop: 2 }}>{order?.orderCountry || '—'}{order?.city ? ` • ${order.city}` : ''}</div>
         </div>
       </div>
 

@@ -194,13 +194,13 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder, mi
       return
     }
 
-    // Load without &loading=async so all window.google.maps.* classes are available after onload
+    // Use loading=async for best performance; readyUp() ensures importLibrary runs before setMapLoaded
     const script = document.createElement('script')
     script.id = GOOGLE_MAPS_SCRIPT_ID
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&v=weekly&libraries=geometry,marker`
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&v=weekly&libraries=geometry,marker&loading=async`
     script.async = true
     script.defer = true
-    script.onload = () => setMapLoaded(true)
+    script.onload = () => readyUp()
     script.onerror = () => setError('Failed to load Google Maps. Check your API key.')
     document.head.appendChild(script)
     return () => {}
@@ -415,12 +415,8 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder, mi
 
       if (RouteClass?.computeRoutes) {
         const response = await RouteClass.computeRoutes({
-          origin: {
-            location: { latLng: { latitude: origin.lat, longitude: origin.lng } },
-          },
-          destination: {
-            location: { latLng: { latitude: destination.lat, longitude: destination.lng } },
-          },
+          origin: { location: origin },
+          destination: { location: destination },
           travelMode: 'DRIVE',
           computeAlternativeRoutes: false,
         })

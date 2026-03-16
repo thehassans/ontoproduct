@@ -647,12 +647,23 @@ export default function DriverLayout() {
         </div>
       </div>
       {tabsVisible && (
-        <nav className="mobile-tabs" role="navigation" aria-label="Primary" style={{
-          gap: 2,
-          display: 'flex',
-          flexWrap: 'nowrap',
-          justifyContent: 'space-around'
-        }}>
+        <nav
+          className="mobile-tabs"
+          role="navigation"
+          aria-label="Primary"
+          style={{
+            display: 'flex',
+            flexWrap: 'nowrap',
+            overflowX: 'auto',
+            overflowY: 'hidden',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+            WebkitOverflowScrolling: 'touch',
+            gap: 0,
+            justifyContent: 'flex-start',
+          }}
+        >
+          <style>{'.mobile-tabs::-webkit-scrollbar{display:none}'}</style>
           {mobileTabs.map((tab) => {
             const isMe = tab.to.endsWith('/me')
             const meBadge = isMe && levelIdx > 1 ? `L${levelIdx}` : ''
@@ -664,9 +675,10 @@ export default function DriverLayout() {
                 className={({ isActive }) => `tab ${isActive ? 'active' : ''}`}
                 style={{
                   padding: '6px 4px',
-                  flex: '1 1 0',
-                  minWidth: 0,
-                  maxWidth: '16.66%'
+                  flex: '0 0 auto',
+                  minWidth: 58,
+                  maxWidth: 80,
+                  width: `${100 / Math.min(mobileTabs.length, 6)}vw`,
                 }}
               >
                 <span className="icon" style={{position:'relative'}}>
