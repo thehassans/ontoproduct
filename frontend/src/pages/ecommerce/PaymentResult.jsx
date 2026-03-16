@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useToast } from '../../ui/Toast'
 import Header from '../../components/layout/Header'
 import { apiGet } from '../../api'
+import { clearCartItems } from '../../utils/cartStorage'
 
 export default function PaymentResult() {
   const [searchParams] = useSearchParams()
@@ -32,10 +33,7 @@ export default function PaymentResult() {
           toast.success('Payment successful!')
           
           // Clear cart
-          localStorage.removeItem('shopping_cart')
-          localStorage.removeItem('checkout_cart')
-          localStorage.removeItem('cart')
-          window.dispatchEvent(new CustomEvent('cartUpdated'))
+          clearCartItems()
         } else {
           setStatus('failed')
           toast.error(result.source?.message || message || 'Payment failed')

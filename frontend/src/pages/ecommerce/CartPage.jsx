@@ -9,12 +9,11 @@ import Header from '../../components/layout/Header'
 import MobileBottomNav from '../../components/ecommerce/MobileBottomNav'
 import { COUNTRY_LIST, COUNTRY_TO_CURRENCY } from '../../utils/constants'
 import { resolveWarehouse } from '../../utils/warehouse'
-import { readCartItems, writeCartItems, clearCartItems } from '../../utils/cartStorage'
+import { readCartItems, writeCartItems, clearCartItems, areCartItemsEqual } from '../../utils/cartStorage'
 
 export default function CartPage() {
   const [cartItems, setCartItems] = useState(() => readCartItems())
   const [cartLoaded, setCartLoaded] = useState(false)
-  const [cartKey, setCartKey] = useState(0) // Force re-render key
   const [annBar, setAnnBar] = useState(() => {
     try { return JSON.parse(localStorage.getItem('_ann_bar') || 'null') } catch { return null }
   })
@@ -631,7 +630,7 @@ export default function CartPage() {
       if (norm.changed) {
         writeCartItems(norm.items, { dispatchEvent: false })
       }
-      setCartItems(norm.items)
+      setCartItems(prev => (areCartItemsEqual(prev, norm.items) ? prev : norm.items))
     } catch(err) { console.error('Error loading cart:', err) }
   }
 
@@ -644,8 +643,7 @@ export default function CartPage() {
         if (norm.changed) {
           writeCartItems(norm.items, { dispatchEvent: false })
         }
-        setCartItems(norm.items)
-        setCartKey(k => k + 1)
+        setCartItems(prev => (areCartItemsEqual(prev, norm.items) ? prev : norm.items))
         setCartLoaded(true)
       } catch { 
         setCartItems([]) 
@@ -747,7 +745,7 @@ export default function CartPage() {
           writeCartItems(norm.items, { dispatchEvent: false })
         }
         if (norm.items.length > 0 || !parsed.length) {
-          setCartItems(norm.items)
+          setCartItems(prev => (areCartItemsEqual(prev, norm.items) ? prev : norm.items))
         }
       } catch(err) { console.error('Error loading cart:', err) /* preserve existing cart */ }
     }

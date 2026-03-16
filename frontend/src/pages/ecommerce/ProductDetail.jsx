@@ -421,7 +421,7 @@ const ProductDetail = () => {
       } else { cartItems.push(cartItem) }
       writeCartItems(cartItems)
       try { localStorage.setItem('last_added_product', String(product._id)) } catch {}
-      trackAddToCart(product._id, product.name, addQty, unitPrice)
+      trackAddToCart(product._id, product.name, unitPrice, addQty)
       setCartSuccessModal({
         image: selectedImagePath || (Array.isArray(product.images) && product.images.length > 0 ? product.images[0] : (product.imagePath || '')),
         name: product.name,

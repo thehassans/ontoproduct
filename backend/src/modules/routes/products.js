@@ -47,9 +47,19 @@ function normalizePublicCountryValue(input) {
   const raw = String(input || '').trim()
   if (!raw) return null
   const upper = raw.toUpperCase()
+  if (upper === 'SA' || upper === 'KSA' || upper === 'SAUDI ARABIA' || upper === 'SAUDI') return 'KSA'
   if (upper === 'UAE' || upper === 'UNITED ARAB EMIRATES' || upper === 'AE' || upper === 'ARE') return 'UAE'
-  if (upper === 'GB' || upper === 'UK' || upper === 'UNITED KINGDOM') return 'UK'
+  if (upper === 'OM' || upper === 'OMAN') return 'Oman'
+  if (upper === 'BH' || upper === 'BAHRAIN') return 'Bahrain'
+  if (upper === 'IN' || upper === 'INDIA') return 'India'
+  if (upper === 'KW' || upper === 'KUWAIT') return 'Kuwait'
+  if (upper === 'QA' || upper === 'QATAR') return 'Qatar'
   if (upper === 'PK' || upper === 'PAKISTAN') return 'Pakistan'
+  if (upper === 'JO' || upper === 'JORDAN') return 'Jordan'
+  if (upper === 'US' || upper === 'USA' || upper === 'UNITED STATES' || upper === 'UNITED STATES OF AMERICA') return 'USA'
+  if (upper === 'GB' || upper === 'UK' || upper === 'UNITED KINGDOM') return 'UK'
+  if (upper === 'CA' || upper === 'CANADA') return 'Canada'
+  if (upper === 'AU' || upper === 'AUSTRALIA') return 'Australia'
   return null
 }
 
@@ -1187,18 +1197,8 @@ router.get('/public', async (req, res) => {
   try {
     const { category, subcategory, search, sort, limit = 50, page = 1, filter, brand } = req.query
 
-    const normalizePublicCountry = (input) => {
-      const raw = String(input || '').trim()
-      if (!raw) return null
-      const upper = raw.toUpperCase()
-      if (upper === 'UAE' || upper === 'UNITED ARAB EMIRATES' || upper === 'AE' || upper === 'ARE') return 'UAE'
-      if (upper === 'GB' || upper === 'UK' || upper === 'UNITED KINGDOM') return 'UK'
-      if (upper === 'PK' || upper === 'PAKISTAN') return 'Pakistan'
-      return null
-    }
-
     const countryRaw = req.query?.country || req.headers['x-country'] || ''
-    const stockCountry = normalizePublicCountry(countryRaw)
+    const stockCountry = normalizePublicCountryValue(countryRaw)
 
     const and = [
       // Show products where displayOnWebsite is true OR not set

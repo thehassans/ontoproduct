@@ -3,7 +3,7 @@ import { apiGet } from '../../api'
 
 const GOOGLE_MAPS_SCRIPT_ID = 'google-maps-script'
 
-export default function LiveMap({ orders = [], driverLocation, onSelectOrder }) {
+export default function LiveMap({ orders = [], driverLocation, onSelectOrder, minimal = false, activeOrderId = '', mapHeight = 400 }) {
   const mapRef = useRef(null)
   const mapInstanceRef = useRef(null)
   const markersRef = useRef([])
@@ -70,34 +70,47 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder }) 
     
     mapInstanceRef.current = new window.google.maps.Map(mapRef.current, {
       center: defaultCenter,
-      zoom: 10,
+      zoom: minimal ? 11 : 10,
       minZoom: 3,
       maxZoom: 20,
       styles: getMapStyles(),
-      // Enable all standard Google Maps controls
-      mapTypeControl: true,
-      mapTypeControlOptions: {
-        style: window.google.maps.MapTypeControlStyle.HORIZONTAL_BAR,
-        position: window.google.maps.ControlPosition.TOP_LEFT,
-        mapTypeIds: ['roadmap', 'satellite', 'hybrid', 'terrain']
-      },
-      fullscreenControl: true,
-      fullscreenControlOptions: {
-        position: window.google.maps.ControlPosition.TOP_RIGHT
-      },
-      streetViewControl: true,
-      streetViewControlOptions: {
-        position: window.google.maps.ControlPosition.RIGHT_BOTTOM
-      },
-      zoomControl: true,
-      zoomControlOptions: {
-        position: window.google.maps.ControlPosition.RIGHT_CENTER
-      },
-      scaleControl: true,
-      rotateControl: true,
+      ...(minimal
+        ? {
+            disableDefaultUI: true,
+            zoomControl: false,
+            fullscreenControl: false,
+            streetViewControl: false,
+            mapTypeControl: false,
+            scaleControl: false,
+            rotateControl: false,
+            clickableIcons: false,
+            keyboardShortcuts: false,
+          }
+        : {
+            mapTypeControl: true,
+            mapTypeControlOptions: {
+              style: window.google.maps.MapTypeControlStyle.HORIZONTAL_BAR,
+              position: window.google.maps.ControlPosition.TOP_LEFT,
+              mapTypeIds: ['roadmap', 'satellite', 'hybrid', 'terrain']
+            },
+            fullscreenControl: true,
+            fullscreenControlOptions: {
+              position: window.google.maps.ControlPosition.TOP_RIGHT
+            },
+            streetViewControl: true,
+            streetViewControlOptions: {
+              position: window.google.maps.ControlPosition.RIGHT_BOTTOM
+            },
+            zoomControl: true,
+            zoomControlOptions: {
+              position: window.google.maps.ControlPosition.RIGHT_CENTER
+            },
+            scaleControl: true,
+            rotateControl: true,
+            clickableIcons: true,
+            keyboardShortcuts: true,
+          }),
       gestureHandling: 'greedy',
-      clickableIcons: true,
-      keyboardShortcuts: true
     })
     
     directionsRendererRef.current = new window.google.maps.DirectionsRenderer({
@@ -245,6 +258,22 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder }) 
     setRouteInfo(null)
   }, [])
 
+  useEffect(() => {
+    const targetId = String(activeOrderId || '').trim()
+    if (!targetId) {
+      if (selectedOrder || routeInfo) clearRoute()
+      return
+    }
+    const next = orders.find((order) => String(order?._id || order?.id || '') === targetId)
+    if (!next) {
+      clearRoute()
+      return
+    }
+    if (String(selectedOrder?._id || selectedOrder?.id || '') === targetId) return
+    setSelectedOrder(next)
+    showRoute(next)
+  }, [activeOrderId, clearRoute, orders, routeInfo, selectedOrder, showRoute])
+
   // Map styles (dark mode friendly)
   function getMapStyles() {
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark'
@@ -264,7 +293,7 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder }) 
   if (loading) {
     return (
       <div style={{
-        height: 400,
+        height: mapHeight,
         display: 'grid',
         placeItems: 'center',
         background: 'var(--panel)',
@@ -308,7 +337,7 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder }) 
           ref={mapRef} 
           style={{ 
             width: '100%', 
-            height: 400,
+            height: mapHeight,
             background: '#1e293b'
           }} 
         />
@@ -322,38 +351,40 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder }) 
         `}</style>
         
         {/* Buysial Logo Overlay */}
-        <div style={{
-          position: 'absolute',
-          bottom: 8,
-          left: 8,
-          background: 'rgba(0,0,0,0.4)',
-          backdropFilter: 'blur(8px)',
-          WebkitBackdropFilter: 'blur(8px)',
-          borderRadius: 8,
-          padding: '4px 10px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6
-        }}>
-          <img 
-            src="/buysiallogo.png" 
-            alt="Buysial" 
-            style={{ 
-              height: 16, 
-              opacity: 0.8,
-              filter: 'brightness(1.2)'
-            }} 
-            onError={(e) => { e.target.style.display = 'none' }}
-          />
-          <span style={{ 
-            fontSize: 10, 
-            color: 'rgba(255,255,255,0.6)',
-            fontWeight: 500,
-            letterSpacing: '0.5px'
+        {!minimal && (
+          <div style={{
+            position: 'absolute',
+            bottom: 8,
+            left: 8,
+            background: 'rgba(0,0,0,0.4)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            borderRadius: 8,
+            padding: '4px 10px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6
           }}>
-            Buysial
-          </span>
-        </div>
+            <img
+              src="/buysiallogo.png"
+              alt="Buysial"
+              style={{
+                height: 16,
+                opacity: 0.8,
+                filter: 'brightness(1.2)'
+              }}
+              onError={(e) => { e.target.style.display = 'none' }}
+            />
+            <span style={{
+              fontSize: 10,
+              color: 'rgba(255,255,255,0.6)',
+              fontWeight: 500,
+              letterSpacing: '0.5px'
+            }}>
+              Buysial
+            </span>
+          </div>
+        )}
         
         {/* Premium Center on Me Button */}
         <button
@@ -365,20 +396,20 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder }) 
           }}
           style={{
             position: 'absolute',
-            bottom: 8,
-            right: 50,
-            width: 40,
-            height: 40,
-            borderRadius: 10,
+            bottom: 12,
+            right: 12,
+            width: minimal ? 44 : 40,
+            height: minimal ? 44 : 40,
+            borderRadius: minimal ? 14 : 10,
             border: '1px solid rgba(59,130,246,0.3)',
-            background: 'linear-gradient(135deg, rgba(59,130,246,0.2), rgba(29,78,216,0.3))',
+            background: minimal ? 'rgba(255,255,255,0.92)' : 'linear-gradient(135deg, rgba(59,130,246,0.2), rgba(29,78,216,0.3))',
             backdropFilter: 'blur(12px)',
             WebkitBackdropFilter: 'blur(12px)',
-            color: '#3b82f6',
+            color: '#2563eb',
             cursor: 'pointer',
             display: 'grid',
             placeItems: 'center',
-            boxShadow: '0 4px 12px rgba(59,130,246,0.3)'
+            boxShadow: minimal ? '0 10px 24px rgba(15,23,42,0.18)' : '0 4px 12px rgba(59,130,246,0.3)'
           }}
           title="Center on Me"
         >
@@ -393,7 +424,7 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder }) 
       </div>
       
       {/* Ultra Premium Route Info Panel */}
-      {routeInfo && selectedOrder && (
+      {!minimal && routeInfo && selectedOrder && (
         <div style={{
           padding: '12px 16px',
           background: 'rgba(0,0,0,0.4)',
@@ -500,31 +531,33 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder }) 
       )}
       
       {/* Minimal Legend */}
-      <div style={{
-        padding: '8px 16px',
-        background: 'rgba(0,0,0,0.2)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 16,
-        fontSize: 11,
-        color: 'rgba(255,255,255,0.5)'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#3b82f6', boxShadow: '0 0 6px rgba(59,130,246,0.6)' }} />
-          <span>You</span>
+      {!minimal && (
+        <div style={{
+          padding: '8px 16px',
+          background: 'rgba(0,0,0,0.2)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 16,
+          fontSize: 11,
+          color: 'rgba(255,255,255,0.5)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#3b82f6', boxShadow: '0 0 6px rgba(59,130,246,0.6)' }} />
+            <span>You</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444' }} />
+            <span>Deliveries</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981' }} />
+            <span>Active</span>
+          </div>
+          <span style={{ marginLeft: 'auto', opacity: 0.6, fontSize: 10 }}>
+            {orders.length} • Tap to route
+          </span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444' }} />
-          <span>Deliveries</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981' }} />
-          <span>Active</span>
-        </div>
-        <span style={{ marginLeft: 'auto', opacity: 0.6, fontSize: 10 }}>
-          {orders.length} • Tap to route
-        </span>
-      </div>
+      )}
     </div>
   )
 }

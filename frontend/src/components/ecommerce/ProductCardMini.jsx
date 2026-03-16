@@ -5,6 +5,7 @@ import { getCachedCurrencyConfig, getCurrencyConfig, convert as fxConvert, curre
 import SarIcon from '../ui/SarIcon'
 import { readWishlistIds, toggleWishlist } from '../../util/wishlist'
 import { useToast } from '../../ui/Toast'
+import { trackAddToCart } from '../../utils/analytics'
 import { resolveWarehouse, getLocalStockByCountry } from '../../utils/warehouse'
 import { getProductRating, getStarArray } from '../../utils/autoReviews'
 import { readCartItems, writeCartItems } from '../../utils/cartStorage'
@@ -362,6 +363,7 @@ const ProductCardMini = memo(function ProductCardMini({ product, selectedCountry
 
       writeCartItems(cartItems)
       try { localStorage.setItem('last_added_product', String(product._id)) } catch {}
+      try { trackAddToCart(product._id, product.name, unitPrice, addQty) } catch {}
       toast.success('Added to Cart')
     } catch (err) {
       console.error('Error adding to cart:', err)

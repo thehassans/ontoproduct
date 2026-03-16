@@ -1,3 +1,5 @@
+import { readCartItems } from './cartStorage'
+
 // Analytics utility - fires events across ALL pixel platforms with prices
 // Platforms: Facebook/Meta, TikTok, Snapchat, Pinterest, Twitter/X, LinkedIn, Google Analytics
 
@@ -263,7 +265,7 @@ class Analytics {
     // TikTok - InitiateCheckout
     let _ttqCartContents = []
     try {
-      const _cart = JSON.parse(localStorage.getItem('shopping_cart') || '[]')
+      const _cart = readCartItems()
       _ttqCartContents = _cart.map(i => ({ content_id: String(i._id || i.productId || i.id || ''), content_type: 'product', content_name: i.name || i.productName || '', price: Number(i.price) || 0, quantity: Number(i.quantity) || 1 })).filter(c => c.content_id)
     } catch {}
     const _ttqCheckoutFirstId = _ttqCartContents.length ? _ttqCartContents[0].content_id : 'cart'
@@ -323,7 +325,7 @@ class Analytics {
     // TikTok - CompletePayment
     let _ttqOrderContents = []
     try {
-      const _cart2 = JSON.parse(localStorage.getItem('shopping_cart') || '[]')
+      const _cart2 = readCartItems()
       _ttqOrderContents = _cart2.map(i => ({ content_id: String(i._id || i.productId || i.id || ''), content_type: 'product', content_name: i.name || i.productName || '', price: Number(i.price) || 0, quantity: Number(i.quantity) || 1 })).filter(c => c.content_id)
     } catch {}
     const _ttqOrderFirstId = _ttqOrderContents.length ? _ttqOrderContents[0].content_id : String(orderId || '')
@@ -385,6 +387,64 @@ class Analytics {
   // Track sort usage
   trackSortUsage(sortBy) {
     this.trackEvent('sort_usage', { sort_by: sortBy, timestamp: Date.now() })
+  }
+
+  trackSectionView(sectionName, properties = {}) {
+    const section = String(sectionName || '').trim()
+    if (!section) return
+    const pagePath = String(properties.page || (typeof window !== 'undefined' ? window.location.pathname : '') || '')
+    const country = String(properties.country || '').trim()
+    const itemCount = Number(properties.item_count)
+
+    this.trackEvent('section_view', {
+      section_name: section,
+      page: pagePath,
+      country,
+      ...properties,
+      timestamp: Date.now(),
+      url: typeof window !== 'undefined' ? window.location.href : ''
+    })
+
+    const gaParams = {
+      section_name: section,
+      page_path: pagePath
+    }
+    if (country) gaParams.country = country
+    if (Number.isFinite(itemCount)) gaParams.item_count = itemCount
+    if (properties.variant) gaParams.section_variant = String(properties.variant)
+    gaTrack('section_view', gaParams)
+  }
+
+  trackSectionClick(sectionName, targetName = '', properties = {}) {
+    const section = String(sectionName || '').trim()
+    if (!section) return
+    const target = String(targetName || '').trim()
+    const pagePath = String(properties.page || (typeof window !== 'undefined' ? window.location.pathname : '') || '')
+    const country = String(properties.country || '').trim()
+
+    this.trackEvent('section_click', {
+      section_name: section,
+      target_name: target,
+      page: pagePath,
+      country,
+      ...properties,
+      timestamp: Date.now(),
+      url: typeof window !== 'undefined' ? window.location.href : ''
+    })
+
+    const gaParams = {
+      section_name: section,
+      target_name: target || 'interaction',
+      page_path: pagePath
+    }
+    if (country) gaParams.country = country
+    gaTrack('section_click', gaParams)
+    gaTrack('select_content', {
+      content_type: 'section',
+      item_id: target || section,
+      section_name: section,
+      page_path: pagePath
+    })
   }
 
   // Generic event tracking
@@ -521,3 +581,5 @@ export const trackCheckoutComplete = (orderId, cartValue, itemCount, paymentMeth
   analytics.trackCheckoutComplete(orderId, cartValue, itemCount, paymentMethod)
 export const trackFilterUsage = (filterType, filterValue) => analytics.trackFilterUsage(filterType, filterValue)
 export const trackSortUsage = (sortBy) => analytics.trackSortUsage(sortBy)
+export const trackSectionView = (sectionName, properties) => analytics.trackSectionView(sectionName, properties)
+export const trackSectionClick = (sectionName, targetName, properties) => analytics.trackSectionClick(sectionName, targetName, properties)
