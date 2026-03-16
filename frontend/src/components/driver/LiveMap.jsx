@@ -7,7 +7,7 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder, mi
   const mapRef = useRef(null)
   const mapInstanceRef = useRef(null)
   const markersRef = useRef([])
-  const routePolylineRef = useRef(null)
+  const routePolylinesRef = useRef([])
   const driverMarkerRef = useRef(null)
   const driverLocationRef = useRef(null)
   const hasCenteredOnDriverRef = useRef(false)
@@ -29,8 +29,20 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder, mi
   function getNumericPosition(value) {
     const lat = Number(value?.lat ?? value?.locationLat)
     const lng = Number(value?.lng ?? value?.locationLng)
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null
-    return { lat, lng }
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      return { lat, lng }
+    }
+
+    const coordinates = Array.isArray(value?.dropoffLocation?.coordinates)
+      ? value.dropoffLocation.coordinates
+      : Array.isArray(value?.coordinates)
+      ? value.coordinates
+      : []
+
+    const fallbackLng = Number(coordinates?.[0])
+    const fallbackLat = Number(coordinates?.[1])
+    if (!Number.isFinite(fallbackLat) || !Number.isFinite(fallbackLng)) return null
+    return { lat: fallbackLat, lng: fallbackLng }
   }
 
   function clearMapMarker(marker) {
@@ -147,18 +159,30 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder, mi
   // Load Google Maps script
   useEffect(() => {
     if (!apiKey) return
-    
-    // Check if script already exists
-    if (document.getElementById(GOOGLE_MAPS_SCRIPT_ID)) {
+
+    const existingScript = document.getElementById(GOOGLE_MAPS_SCRIPT_ID)
+    if (existingScript) {
       if (window.google && window.google.maps) {
         setMapLoaded(true)
       }
+      const onReady = () => setMapLoaded(true)
+      const onFailure = () => setError('Failed to load Google Maps. Check your API key.')
+      existingScript.addEventListener('load', onReady)
+      existingScript.addEventListener('error', onFailure)
+      return () => {
+        existingScript.removeEventListener('load', onReady)
+        existingScript.removeEventListener('error', onFailure)
+      }
+    }
+
+    if (window.google && window.google.maps) {
+      setMapLoaded(true)
       return
     }
 
     const script = document.createElement('script')
     script.id = GOOGLE_MAPS_SCRIPT_ID
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&v=weekly&libraries=places,geometry,marker`
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&v=weekly&libraries=geometry,marker&loading=async`
     script.async = true
     script.defer = true
     script.onload = () => setMapLoaded(true)
@@ -180,7 +204,10 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder, mi
       try {
         if (window.google.maps.importLibrary) {
           try {
-            await window.google.maps.importLibrary('marker')
+            await Promise.all([
+              window.google.maps.importLibrary('maps').catch(() => null),
+              window.google.maps.importLibrary('marker').catch(() => null),
+            ])
           } catch {}
         }
 
@@ -300,12 +327,14 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder, mi
   }, [mapLoaded, minimal])
 
   const clearRenderedRoute = useCallback(() => {
-    if (routePolylineRef.current) {
-      try {
-        routePolylineRef.current.setMap(null)
-      } catch {}
-      routePolylineRef.current = null
+    if (Array.isArray(routePolylinesRef.current) && routePolylinesRef.current.length) {
+      routePolylinesRef.current.forEach((polyline) => {
+        try {
+          polyline.setMap(null)
+        } catch {}
+      })
     }
+    routePolylinesRef.current = []
     setRouteInfo(null)
   }, [])
 
@@ -340,55 +369,126 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder, mi
     map.setZoom(minimal ? 15 : 13)
   }, [clampMapZoom, minimal])
 
+  function formatDistance(distanceMeters) {
+    const value = Number(distanceMeters || 0)
+    if (!Number.isFinite(value) || value <= 0) return '—'
+    if (value >= 1000) return `${(value / 1000).toFixed(value >= 10000 ? 0 : 1)} km`
+    return `${Math.round(value)} m`
+  }
+
+  function formatDuration(durationMillis) {
+    const totalMinutes = Math.round(Number(durationMillis || 0) / 60000)
+    if (!Number.isFinite(totalMinutes) || totalMinutes <= 0) return '—'
+    if (totalMinutes < 60) return `${totalMinutes} min`
+    const hours = Math.floor(totalMinutes / 60)
+    const minutes = totalMinutes % 60
+    return minutes ? `${hours} hr ${minutes} min` : `${hours} hr`
+  }
+
   const showRoute = useCallback(async (order) => {
     const origin = getNumericPosition(driverLocationRef.current)
     const destination = getNumericPosition(order)
     if (!mapInstanceRef.current || !origin || !destination || !window.google) {
       return
     }
-    
-    const directionsService = new window.google.maps.DirectionsService()
-    
+
     try {
       clearRenderedRoute()
-      const result = await directionsService.route({
-        origin,
-        destination,
-        travelMode: window.google.maps.TravelMode.DRIVING,
+
+      let routeDistance = 0
+      let routeDuration = 0
+      let rendered = false
+
+      if (window.google.maps.importLibrary) {
+        const routesLibrary = await window.google.maps.importLibrary('routes').catch(() => null)
+        const RouteClass =
+          routesLibrary?.Route ||
+          window.google.maps?.routes?.Route ||
+          window.google.maps?.Route
+
+        if (RouteClass?.computeRoutes) {
+          const response = await RouteClass.computeRoutes({
+            origin,
+            destination,
+            travelMode: 'DRIVING',
+            fields: ['path', 'distanceMeters', 'durationMillis'],
+          })
+
+          const route = response?.routes?.[0]
+          if (route) {
+            const polylines =
+              typeof route.createPolylines === 'function'
+                ? route.createPolylines()
+                : []
+
+            if (Array.isArray(polylines) && polylines.length) {
+              polylines.forEach((polyline) => {
+                try {
+                  polyline.setOptions({
+                    strokeColor: '#10b981',
+                    strokeWeight: minimal ? 6 : 5,
+                    strokeOpacity: 0.88,
+                    zIndex: 5,
+                  })
+                } catch {}
+                polyline.setMap(mapInstanceRef.current)
+              })
+              routePolylinesRef.current = polylines
+            }
+
+            routeDistance = Number(route.distanceMeters || 0)
+            routeDuration = Number(route.durationMillis || 0)
+            rendered = true
+          }
+        }
+      }
+
+      if (!rendered) {
+        const directionsService = new window.google.maps.DirectionsService()
+        const result = await directionsService.route({
+          origin,
+          destination,
+          travelMode: window.google.maps.TravelMode.DRIVING,
+        })
+        const route = result.routes?.[0]
+        const path = Array.isArray(route?.overview_path) ? route.overview_path : []
+        if (path.length) {
+          const polyline = new window.google.maps.Polyline({
+            map: mapInstanceRef.current,
+            path,
+            strokeColor: '#10b981',
+            strokeWeight: minimal ? 6 : 5,
+            strokeOpacity: 0.88,
+            zIndex: 5,
+          })
+          routePolylinesRef.current = [polyline]
+        }
+        const leg = route?.legs?.[0]
+        routeDistance = Number(leg?.distance?.value || 0)
+        routeDuration = Number(leg?.duration?.value || 0) * 1000
+      }
+
+      const bounds = new window.google.maps.LatLngBounds()
+      bounds.extend(origin)
+      bounds.extend(destination)
+      mapInstanceRef.current.fitBounds(bounds, minimal ? 60 : 72)
+      window.google.maps.event.addListenerOnce(mapInstanceRef.current, 'idle', () => {
+        clampMapZoom(minimal ? 10 : 5, minimal ? 16 : 15)
       })
 
-      const route = result.routes?.[0]
-      const path = Array.isArray(route?.overview_path) ? route.overview_path : []
-      if (path.length) {
-        routePolylineRef.current = new window.google.maps.Polyline({
-          map: mapInstanceRef.current,
-          path,
-          strokeColor: '#10b981',
-          strokeWeight: minimal ? 6 : 5,
-          strokeOpacity: 0.88,
-          zIndex: 5,
-        })
-      }
-
-      if (route?.bounds) {
-        mapInstanceRef.current.fitBounds(route.bounds, minimal ? 60 : 72)
-        window.google.maps.event.addListenerOnce(mapInstanceRef.current, 'idle', () => {
-          clampMapZoom(minimal ? 10 : 5, minimal ? 16 : 15)
-        })
-      } else {
-        recenterOnOrder(order)
-      }
-
-      const leg = route?.legs?.[0]
-      if (leg) {
-        setRouteInfo({
-          distance: leg.distance?.text || 'Unknown',
-          duration: leg.duration?.text || 'Unknown',
-          distanceValue: leg.distance?.value || 0,
-          durationValue: leg.duration?.value || 0
-        })
-      }
+      setRouteInfo({
+        distance: formatDistance(routeDistance),
+        duration: formatDuration(routeDuration),
+        distanceValue: routeDistance,
+        durationValue: routeDuration,
+      })
     } catch (err) {
+      const message = String(err?.message || '')
+      if (message.includes('ZERO_RESULTS') || message.includes('No route could be found')) {
+        clearRenderedRoute()
+        recenterOnOrder(order)
+        return
+      }
       console.error('Failed to get directions:', err)
       setRouteInfo(null)
     }
@@ -414,12 +514,18 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder, mi
         zIndex: String(selectedOrder?._id || selectedOrder?.id || '') === String(order?._id || order?.id || '') ? 25 : 10,
       })
       if (!marker) return
-      
-      marker.addListener?.('click', () => {
+
+      const handleSelect = () => {
         clearRenderedRoute()
         setSelectedOrder(order)
         onSelectOrder?.(order)
-      })
+      }
+
+      if (usesAdvancedMarkersRef.current && typeof marker.addEventListener === 'function') {
+        marker.addEventListener('gmp-click', handleSelect)
+      } else if (typeof marker.addListener === 'function') {
+        marker.addListener('click', handleSelect)
+      }
       
       markersRef.current.push(marker)
     })
@@ -429,10 +535,12 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder, mi
     if (!mapInstanceRef.current || !window.google) return
     if (String(activeOrderId || '').trim()) return
 
-    const mappableOrders = orders.filter((order) => Number.isFinite(Number(order?.locationLat)) && Number.isFinite(Number(order?.locationLng)))
+    const mappableOrders = orders
+      .map((order) => ({ order, position: getNumericPosition(order) }))
+      .filter((entry) => !!entry.position)
     const signature = [...mappableOrders]
-      .sort((a, b) => String(a?._id || a?.id || '').localeCompare(String(b?._id || b?.id || '')))
-      .map((order) => `${String(order?._id || order?.id || '')}:${Number(order.locationLat).toFixed(4)}:${Number(order.locationLng).toFixed(4)}`)
+      .sort((a, b) => String(a?.order?._id || a?.order?.id || '').localeCompare(String(b?.order?._id || b?.order?.id || '')))
+      .map((entry) => `${String(entry?.order?._id || entry?.order?.id || '')}:${Number(entry.position.lat).toFixed(4)}:${Number(entry.position.lng).toFixed(4)}`)
       .join('|')
 
     if (!signature && !driverLocation) return
@@ -450,8 +558,8 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder, mi
       const bounds = new window.google.maps.LatLngBounds()
       const shouldIncludeDriver = !!driverLocation && mappableOrders.length <= 8
       if (shouldIncludeDriver) bounds.extend(driverLocation)
-      mappableOrders.forEach((order) => {
-        bounds.extend({ lat: Number(order.locationLat), lng: Number(order.locationLng) })
+      mappableOrders.forEach((entry) => {
+        bounds.extend(entry.position)
       })
       mapInstanceRef.current.fitBounds(bounds, minimal ? 28 : 50)
       window.google.maps.event.addListenerOnce(mapInstanceRef.current, 'idle', () => {

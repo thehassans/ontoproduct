@@ -918,6 +918,18 @@ export default function DriverPanel() {
     )
   }, [filteredOrders])
 
+  const liveMapOrders = React.useMemo(() => {
+    return activeOrders.filter((order) => {
+      const lat = Number(order?.locationLat)
+      const lng = Number(order?.locationLng)
+      if (Number.isFinite(lat) && Number.isFinite(lng)) return true
+      const coordinates = Array.isArray(order?.dropoffLocation?.coordinates)
+        ? order.dropoffLocation.coordinates
+        : []
+      return Number.isFinite(Number(coordinates?.[1])) && Number.isFinite(Number(coordinates?.[0]))
+    })
+  }, [activeOrders])
+
   return (
     <div className="driver-panel">
       <div className="panel-header">
@@ -1003,7 +1015,7 @@ export default function DriverPanel() {
       {showMap && (
         <div style={{ marginBottom: 24 }}>
           <LiveMap 
-            orders={activeOrders.filter(o => o.locationLat && o.locationLng)} 
+            orders={liveMapOrders} 
             driverLocation={driverLocation}
             onSelectOrder={(order) => {
               // Could scroll to order card or highlight it

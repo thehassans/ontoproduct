@@ -409,365 +409,202 @@ export default function DriverDashboard() {
   ]
 
   return (
-    <div className="section" style={{ display: 'grid', gap: 16 }}>
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-        <div style={{ display: 'grid', gap: 6 }}>
-          <div className="page-title gradient heading-blue">Driver Dashboard</div>
-          <div className="page-subtitle">Pick up assigned orders, track COD collection, and send payment requests to your manager or company.</div>
+    <div className="section" style={{ display: 'grid', gap: 12 }}>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ display: 'grid', gap: 4 }}>
+          <div className="page-title gradient heading-blue">Dashboard</div>
+          <div className="helper">{driverName}</div>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button className="btn secondary" onClick={() => nav('/driver/live-map')}>Live Map</button>
-          <button className="btn secondary" onClick={() => nav('/driver/orders/assigned')}>Assigned Orders</button>
-          <button className="btn secondary" onClick={() => nav('/driver/orders/delivered')}>Delivered Orders</button>
-        </div>
-      </div>
-
-      <div
-        className="card"
-        style={{
-          padding: 18,
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-          gap: 16,
-          background: 'linear-gradient(135deg, rgba(15,23,42,0.98), rgba(30,41,59,0.94))',
-          color: 'white',
-          border: '1px solid rgba(59,130,246,0.2)',
-        }}
-      >
-        <div style={{ display: 'grid', gap: 12, alignContent: 'start' }}>
-          <div style={{ display: 'inline-flex', width: 'fit-content', padding: '6px 12px', borderRadius: 999, background: 'rgba(59,130,246,0.14)', border: '1px solid rgba(96,165,250,0.28)', fontSize: 12, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-            {driverName}
-          </div>
-          <div style={{ fontSize: 28, fontWeight: 900, lineHeight: 1.08, letterSpacing: '-0.03em' }}>
-            Pick up faster and settle company balances from one operational dashboard.
-          </div>
-          <div style={{ color: 'rgba(255,255,255,0.72)', maxWidth: 560, lineHeight: 1.6 }}>
-            The queue below is focused on orders that still need pickup confirmation, while the finance panel on the right shows exactly how much you collected and what is still pending to company.
-          </div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <span className="badge" style={{ background: 'rgba(255,255,255,0.08)', color: 'white', border: '1px solid rgba(255,255,255,0.12)' }}>
-              {readyToPickupOrders.length} ready now
-            </span>
-            <span className="badge" style={{ background: 'rgba(255,255,255,0.08)', color: 'white', border: '1px solid rgba(255,255,255,0.12)' }}>
-              {pickedUpOrders.length} already picked up
-            </span>
-            <span className="badge" style={{ background: 'rgba(251,146,60,0.14)', color: '#fed7aa', border: '1px solid rgba(251,146,60,0.18)' }}>
-              Pending {formatMoney(summary.currency || 'SAR', pendingToCompany)}
-            </span>
-          </div>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
-          {statTiles.map((tile) => (
-            <button
-              key={tile.key}
-              type="button"
-              className="tile"
-              onClick={tile.onClick}
-              style={{
-                display: 'grid',
-                gap: 6,
-                padding: 16,
-                textAlign: 'left',
-                borderRadius: 18,
-                border: '1px solid rgba(255,255,255,0.12)',
-                background: 'rgba(255,255,255,0.06)',
-                cursor: tile.onClick ? 'pointer' : 'default',
-              }}
-            >
-              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.62)' }}>{tile.label}</div>
-              <div style={{ fontSize: 24, fontWeight: 900, color: tile.accent }}>{loading ? '…' : tile.value}</div>
-            </button>
-          ))}
+          <button className="btn secondary" onClick={() => nav('/driver/live-map')}>Map</button>
+          <button className="btn secondary" onClick={() => nav('/driver/orders/assigned')}>Orders</button>
+          <button className="btn secondary" onClick={() => nav('/driver/my-stock')}>Stock</button>
         </div>
       </div>
 
       {loadError ? (
-        <div className="card" style={{ padding: 16, border: '1px solid rgba(220,38,38,0.18)', background: 'rgba(220,38,38,0.04)' }}>
-          <div style={{ fontWeight: 700, color: '#dc2626', marginBottom: 4 }}>Dashboard unavailable</div>
-          <div className="helper">{loadError}</div>
+        <div className="card" style={{ padding: 12, border: '1px solid rgba(220,38,38,0.18)', background: 'rgba(220,38,38,0.04)' }}>
+          <div className="helper" style={{ color: '#dc2626' }}>{loadError}</div>
         </div>
       ) : null}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16, alignItems: 'start' }}>
-        <div style={{ display: 'grid', gap: 16 }}>
-          <div className="card" style={{ padding: 16, display: 'grid', gap: 14 }}>
-            <div className="card-header" style={{ alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-              <div>
-                <div className="card-title">Pickup Queue</div>
-                <div className="card-subtitle">Assigned orders waiting for you to confirm pickup.</div>
-              </div>
-              <button className="btn secondary" onClick={() => nav('/driver/orders/assigned')}>Open Full Queue</button>
-            </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10 }}>
+        {statTiles.map((tile) => (
+          <button
+            key={tile.key}
+            type="button"
+            onClick={tile.onClick}
+            className="panel"
+            style={{
+              padding: 14,
+              display: 'grid',
+              gap: 4,
+              textAlign: 'left',
+              borderRadius: 16,
+              border: '1px solid rgba(15,23,42,0.08)',
+              background: 'linear-gradient(180deg, rgba(255,255,255,0.98), rgba(248,250,252,0.96))',
+              cursor: tile.onClick ? 'pointer' : 'default',
+            }}
+          >
+            <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{tile.label}</div>
+            <div style={{ fontSize: 22, fontWeight: 900, color: tile.accent, letterSpacing: '-0.03em' }}>{loading ? '…' : tile.value}</div>
+          </button>
+        ))}
+      </div>
 
-            {loading ? (
-              <div className="helper">Loading pickup orders...</div>
-            ) : readyToPickupOrders.length === 0 ? (
-              <div
-                className="panel"
-                style={{
-                  padding: 18,
-                  borderRadius: 18,
-                  display: 'grid',
-                  gap: 8,
-                  textAlign: 'center',
-                  background: 'linear-gradient(135deg, rgba(37,99,235,0.06), rgba(15,23,42,0.02))',
-                }}
-              >
-                <div style={{ fontSize: 18, fontWeight: 800 }}>No pickup orders waiting</div>
-                <div className="helper">All currently assigned orders are already picked up or completed.</div>
-              </div>
-            ) : (
-              <div style={{ display: 'grid', gap: 12 }}>
-                {readyToPickupOrders.map((order) => {
-                  const id = getOrderId(order)
-                  const busy = pickupBusyId === id
-                  return (
-                    <div
-                      key={id}
-                      className="panel"
-                      style={{
-                        padding: 16,
-                        borderRadius: 18,
-                        display: 'grid',
-                        gap: 12,
-                        border: '1px solid rgba(15,23,42,0.08)',
-                        background: 'linear-gradient(180deg, rgba(255,255,255,0.98), rgba(248,250,252,0.98))',
-                      }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                        <div style={{ display: 'grid', gap: 6, minWidth: 0 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                            <div style={{ fontWeight: 900, fontSize: 16, color: '#0f172a' }}>#{getInvoiceLabel(order)}</div>
-                            <StatusBadge meta={{ color: '#2563eb', background: 'rgba(37,99,235,0.12)', border: '1px solid rgba(37,99,235,0.2)' }} label={formatShipmentStatus(order?.shipmentStatus || order?.status)} />
-                          </div>
-                          <div style={{ fontSize: 16, fontWeight: 800, color: '#0f172a' }}>{getProductLabel(order)}</div>
-                          <div className="helper" style={{ lineHeight: 1.6 }}>
-                            {(order?.customerName || 'Customer')} • {getLocationLabel(order)}
-                          </div>
-                          {order?.address ? (
-                            <div className="helper" style={{ lineHeight: 1.5 }}>{order.address}</div>
-                          ) : null}
-                        </div>
-                        <div style={{ textAlign: 'right', minWidth: 120 }}>
-                          <div style={{ fontSize: 22, fontWeight: 900, color: '#2563eb' }}>{formatOrderMoney(order)}</div>
-                          <div className="helper">Expected collection</div>
-                        </div>
-                      </div>
-
-                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                          {order?.customerPhone ? (
-                            <a className="btn secondary" href={`tel:${order.customerPhone}`} style={{ textDecoration: 'none' }}>
-                              Call Customer
-                            </a>
-                          ) : null}
-                          <button className="btn secondary" type="button" onClick={() => nav('/driver/live-map')}>
-                            Open Live Map
-                          </button>
-                        </div>
-                        <button className="btn" type="button" disabled={busy} onClick={() => markPickedUp(order)}>
-                          {busy ? 'Updating...' : 'Mark Picked Up'}
-                        </button>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.1fr) minmax(300px, 0.9fr)', gap: 12, alignItems: 'start' }}>
+        <div className="card" style={{ padding: 14, display: 'grid', gap: 12 }}>
+          <div className="card-header" style={{ justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+            <div className="card-title">Pickup</div>
+            <button className="btn secondary" onClick={() => nav('/driver/orders/assigned')}>All</button>
           </div>
 
-          <div className="card" style={{ padding: 16, display: 'grid', gap: 14 }}>
-            <div className="card-header" style={{ alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-              <div>
-                <div className="card-title">Recent Payments to Company / Manager</div>
-                <div className="card-subtitle">Track your latest remittance requests and approvals.</div>
-              </div>
-            </div>
-
-            {loading ? (
-              <div className="helper">Loading remittance history...</div>
-            ) : remittances.length === 0 ? (
-              <div className="helper">No payment requests yet.</div>
-            ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
-                {remittances.map((item) => {
-                  const meta = getRemittanceStatusMeta(item?.status)
-                  const documentUrl = mediaUrl(item?.acceptedPdfPath || item?.pdfPath || '')
-                  const receiptUrl = mediaUrl(item?.receiptPath || '')
-                  return (
-                    <div
-                      key={String(item?._id || item?.id || `${item?.createdAt || ''}:${item?.amount || 0}`)}
-                      className="panel"
-                      style={{ padding: 14, borderRadius: 16, display: 'grid', gap: 10, border: '1px solid rgba(15,23,42,0.08)' }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'flex-start' }}>
-                        <div style={{ display: 'grid', gap: 4 }}>
-                          <div style={{ fontSize: 18, fontWeight: 900 }}>{formatMoney(item?.currency || summary.currency || 'SAR', item?.amount || 0)}</div>
-                          <div className="helper">{item?.createdAt ? new Date(item.createdAt).toLocaleString() : '—'}</div>
+          {loading ? (
+            <div className="helper">Loading...</div>
+          ) : readyToPickupOrders.length === 0 ? (
+            <div className="helper">No pickup queue.</div>
+          ) : (
+            <div style={{ display: 'grid', gap: 10 }}>
+              {readyToPickupOrders.slice(0, 4).map((order) => {
+                const id = getOrderId(order)
+                const busy = pickupBusyId === id
+                return (
+                  <div
+                    key={id}
+                    className="panel"
+                    style={{
+                      padding: 14,
+                      borderRadius: 16,
+                      display: 'grid',
+                      gap: 10,
+                      border: '1px solid rgba(15,23,42,0.08)',
+                      background: 'rgba(248,250,252,0.9)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap' }}>
+                      <div style={{ display: 'grid', gap: 4, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                          <div style={{ fontWeight: 900 }}>#{getInvoiceLabel(order)}</div>
+                          <StatusBadge meta={{ color: '#2563eb', background: 'rgba(37,99,235,0.12)', border: '1px solid rgba(37,99,235,0.2)' }} label={formatShipmentStatus(order?.shipmentStatus || order?.status)} />
                         </div>
-                        <StatusBadge meta={meta} label={meta.label} />
+                        <div style={{ fontWeight: 800, color: '#0f172a' }}>{getProductLabel(order)}</div>
+                        <div className="helper">{order?.customerName || 'Customer'} • {getLocationLabel(order)}</div>
                       </div>
-                      <KeyValue label="Method" value={String(item?.method || 'hand').toUpperCase()} />
-                      <KeyValue label="Approver" value={getRemittanceApproverLabel(item)} />
-                      {item?.note ? <KeyValue label="Note" value={item.note} /> : null}
-                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                        {documentUrl ? (
-                          <a className="btn secondary" href={documentUrl} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
-                            Download PDF
-                          </a>
-                        ) : null}
-                        {receiptUrl ? (
-                          <a className="btn secondary" href={receiptUrl} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
-                            View Proof
-                          </a>
-                        ) : null}
-                      </div>
+                      <div style={{ fontWeight: 900, color: '#2563eb', whiteSpace: 'nowrap' }}>{formatOrderMoney(order)}</div>
                     </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
+
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      {order?.customerPhone ? (
+                        <a className="btn secondary" href={`tel:${order.customerPhone}`} style={{ textDecoration: 'none' }}>
+                          Call
+                        </a>
+                      ) : null}
+                      <button className="btn secondary" type="button" onClick={() => nav('/driver/live-map')}>
+                        Map
+                      </button>
+                      <button className="btn" type="button" disabled={busy} onClick={() => markPickedUp(order)}>
+                        {busy ? '...' : 'Pick Up'}
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
 
-        <div style={{ display: 'grid', gap: 16 }}>
-          <div className="card" style={{ padding: 16, display: 'grid', gap: 12 }}>
-            <div className="card-header" style={{ alignItems: 'flex-start' }}>
-              <div>
-                <div className="card-title">Collection Summary</div>
-                <div className="card-subtitle">Your collected COD and current balance pending to company.</div>
-              </div>
+        <div style={{ display: 'grid', gap: 12 }}>
+          <div className="card" style={{ padding: 14, display: 'grid', gap: 12 }}>
+            <div className="card-header" style={{ justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+              <div className="card-title">Pay</div>
+              <div style={{ fontWeight: 900, color: '#f59e0b' }}>{formatMoney(summary.currency || 'SAR', pendingToCompany)}</div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10 }}>
-              <SummaryBox label="Collected Amount" value={formatMoney(summary.currency || 'SAR', summary.totalCollectedAmount)} accent="#0ea5e9" helper="Delivered COD total" />
-              <SummaryBox label="Pending to Company" value={formatMoney(summary.currency || 'SAR', pendingToCompany)} accent="#f59e0b" helper="Outstanding balance" />
-              <SummaryBox label="Paid to Company / Manager" value={formatMoney(summary.currency || 'SAR', summary.deliveredToCompany)} accent="#16a34a" helper="Accepted or settled" />
-              <SummaryBox label="Delivered Orders" value={summary.totalDeliveredOrders} accent="#2563eb" helper="Completed orders" />
-            </div>
+
             {pendingApprovalRemittance ? (
-              <div className="panel" style={{ padding: 14, borderRadius: 14, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.18)' }}>
-                <div style={{ fontWeight: 800, color: '#92400e', marginBottom: 4 }}>A payment request is pending approval</div>
-                <div className="helper">
-                  {formatMoney(pendingApprovalRemittance.currency || summary.currency || 'SAR', pendingApprovalRemittance.amount || 0)} sent on{' '}
-                  {pendingApprovalRemittance.createdAt ? new Date(pendingApprovalRemittance.createdAt).toLocaleString() : '—'}.
-                </div>
+              <div className="panel" style={{ padding: 12, borderRadius: 14, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.18)' }}>
+                <div style={{ fontWeight: 800, color: '#92400e' }}>Pending approval</div>
               </div>
             ) : null}
+
             {managerAcceptedRemittance ? (
-              <div className="panel" style={{ padding: 14, borderRadius: 14, background: 'rgba(37,99,235,0.08)', border: '1px solid rgba(37,99,235,0.18)' }}>
-                <div style={{ fontWeight: 800, color: '#1d4ed8', marginBottom: 4 }}>Manager accepted your last handover</div>
-                <div className="helper">
-                  {formatMoney(managerAcceptedRemittance.currency || summary.currency || 'SAR', managerAcceptedRemittance.amount || 0)} is now waiting for final company confirmation.
-                </div>
+              <div className="panel" style={{ padding: 12, borderRadius: 14, background: 'rgba(37,99,235,0.08)', border: '1px solid rgba(37,99,235,0.18)' }}>
+                <div style={{ fontWeight: 800, color: '#1d4ed8' }}>Manager accepted</div>
               </div>
             ) : null}
-          </div>
 
-          <div className="card" style={{ padding: 16, display: 'grid', gap: 14 }}>
-            <div className="card-header" style={{ alignItems: 'flex-start' }}>
-              <div>
-                <div className="card-title">Pay to Company / Manager</div>
-                <div className="card-subtitle">Send your pending collection balance directly from the dashboard.</div>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button
                 type="button"
                 className={`btn ${form.method === 'hand' ? '' : 'secondary'}`}
                 onClick={() => setForm((prev) => ({ ...prev, method: 'hand', file: null }))}
               >
-                Pay by Hand
+                Hand
               </button>
               <button
                 type="button"
                 className={`btn ${form.method === 'transfer' ? '' : 'secondary'}`}
                 onClick={() => setForm((prev) => ({ ...prev, method: 'transfer' }))}
               >
-                Transfer to Company
+                Transfer
               </button>
             </div>
 
-            <div style={{ display: 'grid', gap: 10 }}>
-              <SummaryBox
-                label="Amount to Send"
-                value={formatMoney(summary.currency || 'SAR', pendingToCompany)}
-                accent="#0f172a"
-                helper="This amount is fixed from your pending company balance."
-              />
+            <SummaryBox label="Amount" value={formatMoney(summary.currency || 'SAR', pendingToCompany)} accent="#0f172a" />
 
-              <div style={{ display: 'grid', gap: 8 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--muted)' }}>Approver</div>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  {managers.map((manager) => {
-                    const managerId = String(manager?._id || manager?.id || '').trim()
-                    const managerName = getManagerLabel(manager)
-                    const active = String(form?.paidToId || '').trim() === managerId
-                    return (
-                      <button
-                        key={managerId || managerName}
-                        type="button"
-                        className={`btn ${active ? '' : 'secondary'}`}
-                        onClick={() => setForm((prev) => ({ ...prev, paidToId: managerId, paidToName: managerName }))}
-                      >
-                        {managerName}
-                      </button>
-                    )
-                  })}
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {managers.map((manager) => {
+                const managerId = String(manager?._id || manager?.id || '').trim()
+                const managerName = getManagerLabel(manager)
+                const active = String(form?.paidToId || '').trim() === managerId
+                return (
                   <button
+                    key={managerId || managerName}
                     type="button"
-                    className={`btn ${String(form?.paidToId || '').trim() === '' ? '' : 'secondary'}`}
-                    onClick={() => setForm((prev) => ({ ...prev, paidToId: '', paidToName: ownerLabel }))}
+                    className={`btn ${active ? '' : 'secondary'}`}
+                    onClick={() => setForm((prev) => ({ ...prev, paidToId: managerId, paidToName: managerName }))}
                   >
-                    {ownerLabel}
+                    {managerName}
                   </button>
-                </div>
-              </div>
-
-              {form.method === 'transfer' ? (
-                <>
-                  <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
-                    <KeyValue label="Method" value={String(company?.method || 'bank').toUpperCase()} />
-                    <KeyValue label="Account Name" value={company?.accountName || '—'} />
-                    {String(company?.method || 'bank').toLowerCase() === 'bank' ? (
-                      <>
-                        <KeyValue label="Bank Name" value={company?.bankName || '—'} />
-                        <KeyValue label="IBAN / Account" value={company?.iban || company?.accountNumber || '—'} />
-                      </>
-                    ) : (
-                      <KeyValue label="Wallet Phone" value={company?.phoneNumber || '—'} />
-                    )}
-                  </div>
-                  <div>
-                    <label className="input-label">Upload Proof Image</label>
-                    <input
-                      className="input"
-                      type="file"
-                      accept="image/*"
-                      onChange={(event) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          file: (event.target.files && event.target.files[0]) || null,
-                        }))
-                      }
-                    />
-                    {form?.file ? <div className="helper" style={{ marginTop: 6 }}>{form.file.name}</div> : null}
-                  </div>
-                </>
-              ) : null}
-
-              <div>
-                <label className="input-label">Note</label>
-                <textarea
-                  className="input"
-                  rows={3}
-                  value={form.note}
-                  onChange={(event) => setForm((prev) => ({ ...prev, note: event.target.value }))}
-                  placeholder="Add any delivery, handover, or payment note"
-                />
-              </div>
+                )
+              })}
+              <button
+                type="button"
+                className={`btn ${String(form?.paidToId || '').trim() === '' ? '' : 'secondary'}`}
+                onClick={() => setForm((prev) => ({ ...prev, paidToId: '', paidToName: ownerLabel }))}
+              >
+                {ownerLabel}
+              </button>
             </div>
+
+            {form.method === 'transfer' ? (
+              <>
+                <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}>
+                  <KeyValue label="Method" value={String(company?.method || 'bank').toUpperCase()} />
+                  <KeyValue label="Account" value={company?.accountName || company?.phoneNumber || '—'} />
+                  <KeyValue label="Bank / IBAN" value={company?.bankName || company?.iban || company?.accountNumber || '—'} />
+                </div>
+                <input
+                  className="input"
+                  type="file"
+                  accept="image/*"
+                  onChange={(event) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      file: (event.target.files && event.target.files[0]) || null,
+                    }))
+                  }
+                />
+                {form?.file ? <div className="helper">{form.file.name}</div> : null}
+              </>
+            ) : null}
+
+            <textarea
+              className="input"
+              rows={2}
+              value={form.note}
+              onChange={(event) => setForm((prev) => ({ ...prev, note: event.target.value }))}
+              placeholder="Note"
+            />
 
             <button
               className="btn"
@@ -789,8 +626,48 @@ export default function DriverDashboard() {
                 setConfirmOpen(true)
               }}
             >
-              {submitting ? 'Sending...' : 'Send Payment Request'}
+              {submitting ? 'Sending...' : 'Send Payment'}
             </button>
+          </div>
+
+          <div className="card" style={{ padding: 14, display: 'grid', gap: 10 }}>
+            <div className="card-header" style={{ justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+              <div className="card-title">Recent</div>
+              <button className="btn secondary" onClick={() => nav('/driver/payout')}>Open</button>
+            </div>
+
+            {loading ? (
+              <div className="helper">Loading...</div>
+            ) : remittances.length === 0 ? (
+              <div className="helper">No payments yet.</div>
+            ) : (
+              <div style={{ display: 'grid', gap: 8 }}>
+                {remittances.slice(0, 4).map((item) => {
+                  const meta = getRemittanceStatusMeta(item?.status)
+                  return (
+                    <div
+                      key={String(item?._id || item?.id || `${item?.createdAt || ''}:${item?.amount || 0}`)}
+                      className="panel"
+                      style={{
+                        padding: 12,
+                        borderRadius: 14,
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        gap: 10,
+                        border: '1px solid rgba(15,23,42,0.08)',
+                      }}
+                    >
+                      <div style={{ display: 'grid', gap: 2 }}>
+                        <div style={{ fontWeight: 900 }}>{formatMoney(item?.currency || summary.currency || 'SAR', item?.amount || 0)}</div>
+                        <div className="helper">{item?.createdAt ? new Date(item.createdAt).toLocaleString() : '—'}</div>
+                      </div>
+                      <StatusBadge meta={meta} label={meta.label} />
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         </div>
       </div>

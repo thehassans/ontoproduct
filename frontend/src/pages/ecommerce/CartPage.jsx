@@ -413,7 +413,7 @@ export default function CartPage() {
     if (!mapsApiKey || mapLoaded) return
     if (window.google?.maps) { setMapLoaded(true); return }
     const script = document.createElement('script')
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${mapsApiKey}&libraries=places`
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${mapsApiKey}&libraries=places&loading=async`
     script.async = true
     script.onload = () => setMapLoaded(true)
     document.head.appendChild(script)

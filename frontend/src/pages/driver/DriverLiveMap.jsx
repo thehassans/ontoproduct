@@ -44,10 +44,7 @@ export default function DriverLiveMapPage() {
       const data = await apiGet('/api/orders/driver/assigned')
       
       const ordersWithLocation = (data.orders || []).filter(o => {
-        const lat = Number(o?.locationLat)
-        const lng = Number(o?.locationLng)
-        const hasLocation = Number.isFinite(lat) && Number.isFinite(lng)
-        return hasLocation && isPickedUpOrder(o)
+        return hasMappableLocation(o) && shouldShowOrderOnMap(o)
       })
       
       setOrders(ordersWithLocation)
@@ -165,10 +162,28 @@ export default function DriverLiveMapPage() {
     return normalizeShipmentStatus(order?.shipmentStatus || order?.status || '')
   }
 
-  function isPickedUpOrder(order) {
+  function hasMappableLocation(order) {
+    const lat = Number(order?.locationLat)
+    const lng = Number(order?.locationLng)
+    if (Number.isFinite(lat) && Number.isFinite(lng)) return true
+    const coordinates = Array.isArray(order?.dropoffLocation?.coordinates)
+      ? order.dropoffLocation.coordinates
+      : []
+    return Number.isFinite(Number(coordinates?.[1])) && Number.isFinite(Number(coordinates?.[0]))
+  }
+
+  function shouldShowOrderOnMap(order) {
     const shipmentStatus = getOrderStatusValue(order)
     const rawStatus = normalizeShipmentStatus(order?.status || '')
-    return shipmentStatus === 'picked_up' || rawStatus === 'picked_up'
+    const activeStatus = shipmentStatus || rawStatus
+    return [
+      'picked_up',
+      'out_for_delivery',
+      'in_transit',
+      'attempted',
+      'contacted',
+      'no_response',
+    ].includes(activeStatus)
   }
 
   function getCustomerLabel(order) {
@@ -207,8 +222,13 @@ export default function DriverLiveMapPage() {
   }
 
   function openExternalDirections(order) {
-    const lat = Number(order?.locationLat)
-    const lng = Number(order?.locationLng)
+    const directLat = Number(order?.locationLat)
+    const directLng = Number(order?.locationLng)
+    const coordinates = Array.isArray(order?.dropoffLocation?.coordinates)
+      ? order.dropoffLocation.coordinates
+      : []
+    const lat = Number.isFinite(directLat) ? directLat : Number(coordinates?.[1])
+    const lng = Number.isFinite(directLng) ? directLng : Number(coordinates?.[0])
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
       toast.warn('This order does not have a valid customer pin')
       return
@@ -302,7 +322,7 @@ export default function DriverLiveMapPage() {
         })
       }
 
-      const shouldRemainVisible = normalizeShipmentStatus(nextStatus) === 'picked_up'
+      const shouldRemainVisible = shouldShowOrderOnMap({ ...selectedOrder, shipmentStatus: nextStatus, status: nextStatus })
       setOrders((prev) => prev.flatMap((order) => {
         const currentId = String(order?._id || order?.id || '').trim()
         if (currentId !== orderId) return [order]
@@ -442,7 +462,7 @@ export default function DriverLiveMapPage() {
             boxShadow: '0 0 8px rgba(16,185,129,0.4)'
           }} />
           <span style={{ fontWeight: 700, color: '#0f172a' }}>{orders.length}</span>
-          <span style={{ color: '#64748b', fontSize: 13 }}>Picked Up Orders</span>
+          <span style={{ color: '#64748b', fontSize: 13 }}>Live Stops</span>
         </div>
         
         {driverLocation && (
@@ -797,8 +817,8 @@ export default function DriverLiveMapPage() {
           boxShadow: '0 18px 50px rgba(15,23,42,0.06)'
         }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>📍</div>
-          <div style={{ fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>No picked-up orders on the map</div>
-          <div style={{ fontSize: 14 }}>Orders with a picked up status and valid customer pins will appear here automatically.</div>
+          <div style={{ fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>No delivery stops on the map</div>
+          <div style={{ fontSize: 14 }}>Orders with active delivery status and valid customer pins will appear here automatically.</div>
         </div>
       )}
     </div>
