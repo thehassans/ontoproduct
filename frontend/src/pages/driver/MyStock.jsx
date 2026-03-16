@@ -271,72 +271,160 @@ export default function DriverMyStock() {
   }
 
   return (
-    <div className="section" style={{ display: 'grid', gap: 14 }}>
-      <div className="page-header" style={{ alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-        <button className="btn secondary" type="button" onClick={() => nav('/driver/panel')} style={{ minWidth: 44 }}>
-          ←
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 0, minHeight: '100%' }}>
+
+      {/* ── Header ─────────────────────────────────────────────────────── */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        padding: '14px 16px 10px',
+        background: 'var(--panel)',
+        borderBottom: '1px solid var(--border)',
+        position: 'sticky',
+        top: 0,
+        zIndex: 10,
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+      }}>
+        <button
+          type="button"
+          onClick={() => nav('/driver/panel')}
+          style={{
+            width: 38, height: 38, borderRadius: 12, flexShrink: 0,
+            border: '1px solid var(--border)', background: 'var(--panel)',
+            display: 'grid', placeItems: 'center', cursor: 'pointer',
+          }}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M15 18l-6-6 6-6"/>
+          </svg>
         </button>
-        <div style={{ flex: 1, minWidth: 220 }}>
-          <div className="page-title gradient heading-blue">My Stock</div>
-          <div className="page-subtitle">Cancelled and returned orders currently with you.</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 18, fontWeight: 900, letterSpacing: '-0.03em', lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>My Stock</div>
+          <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 1 }}>Cancelled &amp; returned orders with you</div>
         </div>
-        <button className="btn secondary" type="button" onClick={load} disabled={loading}>
-          Refresh
+        <button
+          type="button"
+          onClick={load}
+          disabled={loading}
+          style={{
+            width: 38, height: 38, borderRadius: 12, flexShrink: 0,
+            border: '1px solid var(--border)', background: 'var(--panel)',
+            display: 'grid', placeItems: 'center', cursor: 'pointer',
+            opacity: loading ? 0.5 : 1,
+          }}
+        >
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0115-6.7L21 8"/>
+            <path d="M3 22v-6h6"/><path d="M21 12a9 9 0 01-15 6.7L3 16"/>
+          </svg>
         </button>
       </div>
 
-      <div className="card" style={{ padding: 16, display: 'grid', gap: 14, borderRadius: 20, border: '1px solid var(--border)' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 10 }}>
-          <SummaryCard label="Stock Orders" value={summary.totalOrders} accent="#2563eb" helper="Current driver-held stock" />
-          <SummaryCard label="Ready to Submit" value={summary.readyOrders} accent="#f59e0b" helper="Need company submission" />
-          <SummaryCard label="Submitted" value={summary.submittedOrders} accent="#0ea5e9" helper="Awaiting verification" />
-          <SummaryCard label="Units" value={summary.totalUnits} accent="#16a34a" helper="Total item quantity" />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '14px 12px 24px' }}>
+
+        {/* ── Stats Grid ──────────────────────────────────────────────── */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          {[
+            { label: 'Stock Orders', value: summary.totalOrders, accent: '#2563eb', bg: 'rgba(37,99,235,0.08)', helper: 'Driver-held' },
+            { label: 'Ready to Submit', value: summary.readyOrders, accent: '#f59e0b', bg: 'rgba(245,158,11,0.08)', helper: 'Awaiting send' },
+            { label: 'Submitted', value: summary.submittedOrders, accent: '#0ea5e9', bg: 'rgba(14,165,233,0.08)', helper: 'Pending verify' },
+            { label: 'Total Units', value: summary.totalUnits, accent: '#16a34a', bg: 'rgba(22,163,74,0.08)', helper: 'Item quantity' },
+          ].map((s) => (
+            <div key={s.label} style={{
+              padding: '14px 12px',
+              borderRadius: 16,
+              background: s.bg,
+              border: `1px solid ${s.accent}28`,
+            }}>
+              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: s.accent, marginBottom: 4 }}>{s.label}</div>
+              <div style={{ fontSize: 30, fontWeight: 900, letterSpacing: '-0.04em', color: s.accent, lineHeight: 1 }}>{s.value}</div>
+              <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>{s.helper}</div>
+            </div>
+          ))}
         </div>
 
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-          <input
-            className="input"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search invoice, customer, product, city or reason"
-            style={{ flex: 1, minWidth: 220, padding: '12px 14px', borderRadius: 14 }}
-          />
-          <button className="btn" type="button" onClick={submitAll} disabled={submittingAll || summary.readyOrders === 0} style={{ fontWeight: 700 }}>
-            {submittingAll ? 'Submitting...' : 'Submit All'}
+        {/* ── Search + Submit All ──────────────────────────────────────── */}
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div style={{ flex: 1, position: 'relative', minWidth: 0 }}>
+            <svg style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+            </svg>
+            <input
+              className="input"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search invoice, customer, product…"
+              style={{ width: '100%', paddingLeft: 34, paddingRight: 12, paddingTop: 10, paddingBottom: 10, borderRadius: 14, boxSizing: 'border-box', fontSize: 13 }}
+            />
+          </div>
+          <button
+            type="button"
+            onClick={submitAll}
+            disabled={submittingAll || summary.readyOrders === 0}
+            style={{
+              flexShrink: 0,
+              height: 42,
+              padding: '0 16px',
+              borderRadius: 14,
+              border: 'none',
+              background: summary.readyOrders === 0 ? 'var(--border)' : 'linear-gradient(135deg, #0f172a, #1e3a5f)',
+              color: 'white',
+              fontWeight: 800,
+              fontSize: 12,
+              cursor: submittingAll || summary.readyOrders === 0 ? 'not-allowed' : 'pointer',
+              opacity: submittingAll ? 0.6 : 1,
+              whiteSpace: 'nowrap',
+              boxShadow: summary.readyOrders > 0 ? '0 8px 20px rgba(15,23,42,0.2)' : 'none',
+            }}
+          >
+            {submittingAll ? 'Sending…' : 'Submit All'}
           </button>
         </div>
-      </div>
 
-      <div className="card" style={{ padding: 16, display: 'grid', gap: 14, borderRadius: 20, border: '1px solid var(--border)' }}>
-        <div className="card-header" style={{ alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-          <div>
-            <div className="card-title">Ready to Submit</div>
-            <div className="card-subtitle">These orders are still with you and not yet submitted to the company.</div>
+        {/* ── Ready to Submit ──────────────────────────────────────────── */}
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 8 }}>
+            <div>
+              <div style={{ fontSize: 16, fontWeight: 800, letterSpacing: '-0.02em' }}>Ready to Submit</div>
+              <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>Still with you, not yet sent to company</div>
+            </div>
+            <span style={{
+              minWidth: 28, height: 28, borderRadius: 10,
+              background: 'rgba(245,158,11,0.12)', color: '#b45309',
+              fontSize: 13, fontWeight: 800,
+              display: 'grid', placeItems: 'center', padding: '0 8px',
+            }}>{readyOrders.length}</span>
           </div>
-          <span className="chip">{readyOrders.length}</span>
-        </div>
 
         {loading ? (
-          <div className="helper">Loading stock...</div>
+          <div style={{ padding: '20px 0', textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>Loading stock…</div>
         ) : readyOrders.length === 0 ? (
-          <div className="helper">No stock orders ready to submit.</div>
+          <div style={{ padding: '20px 12px', textAlign: 'center', color: 'var(--muted)', fontSize: 13, background: 'var(--panel)', borderRadius: 16, border: '1px solid var(--border)' }}>No stock orders ready to submit.</div>
         ) : (
-          <div style={{ display: 'grid', gap: 12 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {readyOrders.map((order) => (
               <StockOrderCard key={getOrderId(order)} order={order} submittingId={submittingId} onSubmit={submitOne} />
             ))}
           </div>
         )}
-      </div>
-
-      <div className="card" style={{ padding: 16, display: 'grid', gap: 14, borderRadius: 20, border: '1px solid var(--border)' }}>
-        <div className="card-header" style={{ alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-          <div>
-            <div className="card-title">Submitted to Company</div>
-            <div className="card-subtitle">These stock orders are waiting for company verification.</div>
-          </div>
-          <span className="chip">{submittedOrders.length}</span>
         </div>
+
+        {/* ── Submitted to Company ─────────────────────────────────────── */}
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 8 }}>
+            <div>
+              <div style={{ fontSize: 16, fontWeight: 800, letterSpacing: '-0.02em' }}>Submitted to Company</div>
+              <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>Waiting for company verification</div>
+            </div>
+            <span style={{
+              minWidth: 28, height: 28, borderRadius: 10,
+              background: 'rgba(14,165,233,0.12)', color: '#0369a1',
+              fontSize: 13, fontWeight: 800,
+              display: 'grid', placeItems: 'center', padding: '0 8px',
+            }}>{submittedOrders.length}</span>
+          </div>
 
         {loading ? (
           <div className="helper">Loading submitted stock...</div>
@@ -349,6 +437,8 @@ export default function DriverMyStock() {
             ))}
           </div>
         )}
+        </div>
+
       </div>
     </div>
   )

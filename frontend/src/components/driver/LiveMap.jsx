@@ -216,13 +216,22 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder, mi
       try {
         if (cancelled || !mapRef.current) return
 
-        const MapConstructor = window.google.maps.Map
+        // With loading=async the Map class must be obtained from importLibrary – window.google.maps.Map stays a stub
+        const mapsLib = await window.google.maps.importLibrary('maps')
+        const MapConstructor = mapsLib?.Map
         if (!MapConstructor) {
           setError('Google Maps failed to load. Please refresh.')
           return
         }
 
-        usesAdvancedMarkersRef.current = Boolean(window.google.maps.marker?.AdvancedMarkerElement)
+        const markerLib = await window.google.maps.importLibrary('marker').catch(() => null)
+        if (markerLib?.AdvancedMarkerElement) {
+          if (!window.google.maps.marker) window.google.maps.marker = {}
+          window.google.maps.marker.AdvancedMarkerElement = markerLib.AdvancedMarkerElement
+          window.google.maps.marker.PinElement = markerLib.PinElement
+        }
+
+        usesAdvancedMarkersRef.current = Boolean(markerLib?.AdvancedMarkerElement)
         const defaultCenter = driverLocation || { lat: 25.2048, lng: 55.2708 }
 
         mapInstanceRef.current = new MapConstructor(mapRef.current, {
