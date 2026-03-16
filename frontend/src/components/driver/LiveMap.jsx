@@ -7,12 +7,13 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder, mi
   const mapRef = useRef(null)
   const mapInstanceRef = useRef(null)
   const markersRef = useRef([])
-  const directionsRendererRef = useRef(null)
+  const routePolylineRef = useRef(null)
   const driverMarkerRef = useRef(null)
   const driverLocationRef = useRef(null)
   const hasCenteredOnDriverRef = useRef(false)
   const lastAutoViewportSignatureRef = useRef('')
   const lastHandledMapCommandRef = useRef('')
+  const usesAdvancedMarkersRef = useRef(false)
   
   const [apiKey, setApiKey] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -24,6 +25,105 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder, mi
   useEffect(() => {
     driverLocationRef.current = driverLocation || null
   }, [driverLocation])
+
+  function getNumericPosition(value) {
+    const lat = Number(value?.lat ?? value?.locationLat)
+    const lng = Number(value?.lng ?? value?.locationLng)
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null
+    return { lat, lng }
+  }
+
+  function clearMapMarker(marker) {
+    if (!marker) return
+    try {
+      if (typeof marker.setMap === 'function') marker.setMap(null)
+      else marker.map = null
+    } catch {}
+  }
+
+  function setMapMarkerPosition(marker, position) {
+    if (!marker || !position) return
+    try {
+      if (typeof marker.setPosition === 'function') marker.setPosition(position)
+      else marker.position = position
+    } catch {}
+  }
+
+  function createMarkerContent({ background, text, size, shadow }) {
+    const node = document.createElement('div')
+    node.style.width = `${size}px`
+    node.style.height = `${size}px`
+    node.style.borderRadius = '999px'
+    node.style.background = background
+    node.style.border = '2px solid #ffffff'
+    node.style.display = 'grid'
+    node.style.placeItems = 'center'
+    node.style.color = '#ffffff'
+    node.style.fontWeight = '800'
+    node.style.fontSize = size >= 32 ? '12px' : '11px'
+    node.style.lineHeight = '1'
+    node.style.boxShadow = shadow
+    node.textContent = text
+    return node
+  }
+
+  function createMapMarker({ position, title, color, labelText, zIndex = 1, driver = false }) {
+    if (!mapInstanceRef.current || !window.google || !position) return null
+
+    if (usesAdvancedMarkersRef.current && window.google.maps.marker?.AdvancedMarkerElement) {
+      return new window.google.maps.marker.AdvancedMarkerElement({
+        map: mapInstanceRef.current,
+        position,
+        title,
+        zIndex,
+        content: createMarkerContent({
+          background: color,
+          text: driver ? '•' : labelText,
+          size: driver ? 24 : 34,
+          shadow: driver ? '0 10px 24px rgba(37,99,235,0.28)' : '0 12px 26px rgba(15,23,42,0.18)',
+        }),
+      })
+    }
+
+    if (driver) {
+      return new window.google.maps.Marker({
+        position,
+        map: mapInstanceRef.current,
+        icon: {
+          path: window.google.maps.SymbolPath.CIRCLE,
+          scale: 12,
+          fillColor: color,
+          fillOpacity: 1,
+          strokeColor: '#ffffff',
+          strokeWeight: 3,
+        },
+        title,
+        zIndex,
+      })
+    }
+
+    return new window.google.maps.Marker({
+      position,
+      map: mapInstanceRef.current,
+      icon: {
+        path: 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z',
+        fillColor: color,
+        fillOpacity: 1,
+        strokeColor: '#ffffff',
+        strokeWeight: 2,
+        scale: 1.8,
+        anchor: new window.google.maps.Point(12, 22),
+      },
+      title,
+      label: {
+        text: labelText,
+        color: '#ffffff',
+        fontSize: '12px',
+        fontWeight: 'bold',
+      },
+      zIndex,
+    })
+  }
 
   // Load Google Maps API key from backend
   useEffect(() => {
@@ -58,7 +158,7 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder, mi
 
     const script = document.createElement('script')
     script.id = GOOGLE_MAPS_SCRIPT_ID
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry`
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&v=weekly&libraries=places,geometry,marker`
     script.async = true
     script.defer = true
     script.onload = () => setMapLoaded(true)
@@ -72,92 +172,103 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder, mi
 
   // Initialize map
   useEffect(() => {
-    if (!mapLoaded || !mapRef.current || !window.google) return
-    
-    const defaultCenter = driverLocation || { lat: 25.2048, lng: 55.2708 } // Dubai default
-    
-    mapInstanceRef.current = new window.google.maps.Map(mapRef.current, {
-      center: defaultCenter,
-      zoom: minimal ? 11 : 10,
-      minZoom: minimal ? 9 : 3,
-      maxZoom: 20,
-      styles: getMapStyles(),
-      ...(minimal
-        ? {
-            disableDefaultUI: true,
-            zoomControl: false,
-            fullscreenControl: false,
-            streetViewControl: false,
-            mapTypeControl: false,
-            scaleControl: false,
-            rotateControl: false,
-            clickableIcons: false,
-            keyboardShortcuts: false,
-          }
-        : {
-            mapTypeControl: true,
-            mapTypeControlOptions: {
-              style: window.google.maps.MapTypeControlStyle.HORIZONTAL_BAR,
-              position: window.google.maps.ControlPosition.TOP_LEFT,
-              mapTypeIds: ['roadmap', 'satellite', 'hybrid', 'terrain']
-            },
-            fullscreenControl: true,
-            fullscreenControlOptions: {
-              position: window.google.maps.ControlPosition.TOP_RIGHT
-            },
-            streetViewControl: true,
-            streetViewControlOptions: {
-              position: window.google.maps.ControlPosition.RIGHT_BOTTOM
-            },
-            zoomControl: true,
-            zoomControlOptions: {
-              position: window.google.maps.ControlPosition.RIGHT_CENTER
-            },
-            scaleControl: true,
-            rotateControl: true,
-            clickableIcons: true,
-            keyboardShortcuts: true,
-          }),
-      gestureHandling: 'greedy',
-    })
-    
-    directionsRendererRef.current = new window.google.maps.DirectionsRenderer({
-      map: mapInstanceRef.current,
-      suppressMarkers: true,
-      polylineOptions: {
-        strokeColor: '#10b981',
-        strokeWeight: 5,
-        strokeOpacity: 0.8
+    if (!mapLoaded || !mapRef.current || !window.google || mapInstanceRef.current) return
+
+    let cancelled = false
+
+    async function initMap() {
+      try {
+        if (window.google.maps.importLibrary) {
+          try {
+            await window.google.maps.importLibrary('marker')
+          } catch {}
+        }
+
+        if (cancelled) return
+
+        usesAdvancedMarkersRef.current = Boolean(window.google.maps.marker?.AdvancedMarkerElement)
+        const defaultCenter = driverLocation || { lat: 25.2048, lng: 55.2708 }
+
+        mapInstanceRef.current = new window.google.maps.Map(mapRef.current, {
+          center: defaultCenter,
+          zoom: minimal ? 11 : 10,
+          minZoom: minimal ? 9 : 3,
+          maxZoom: 20,
+          ...(usesAdvancedMarkersRef.current ? { mapId: 'DEMO_MAP_ID' } : { styles: getMapStyles() }),
+          ...(minimal
+            ? {
+                disableDefaultUI: true,
+                zoomControl: false,
+                fullscreenControl: false,
+                streetViewControl: false,
+                mapTypeControl: false,
+                scaleControl: false,
+                rotateControl: false,
+                clickableIcons: false,
+                keyboardShortcuts: false,
+              }
+            : {
+                mapTypeControl: true,
+                mapTypeControlOptions: {
+                  style: window.google.maps.MapTypeControlStyle.HORIZONTAL_BAR,
+                  position: window.google.maps.ControlPosition.TOP_LEFT,
+                  mapTypeIds: ['roadmap', 'satellite', 'hybrid', 'terrain']
+                },
+                fullscreenControl: true,
+                fullscreenControlOptions: {
+                  position: window.google.maps.ControlPosition.TOP_RIGHT
+                },
+                streetViewControl: true,
+                streetViewControlOptions: {
+                  position: window.google.maps.ControlPosition.RIGHT_BOTTOM
+                },
+                zoomControl: true,
+                zoomControlOptions: {
+                  position: window.google.maps.ControlPosition.RIGHT_CENTER
+                },
+                scaleControl: true,
+                rotateControl: true,
+                clickableIcons: true,
+                keyboardShortcuts: true,
+              }),
+          gestureHandling: 'greedy',
+        })
+      } catch (err) {
+        if (!cancelled) {
+          setError('Failed to initialize Google Maps')
+        }
       }
-    })
-    
-  }, [mapLoaded, minimal])
+    }
+
+    initMap()
+
+    return () => {
+      cancelled = true
+    }
+  }, [driverLocation, mapLoaded, minimal])
 
   // Add driver marker
   useEffect(() => {
-    if (!mapInstanceRef.current || !driverLocation || !window.google) return
-    
+    if (!mapInstanceRef.current || !window.google) return
+
+    const position = getNumericPosition(driverLocation)
+    if (!position) return
+
     if (driverMarkerRef.current) {
-      driverMarkerRef.current.setPosition(driverLocation)
+      setMapMarkerPosition(driverMarkerRef.current, position)
     } else {
-      driverMarkerRef.current = new window.google.maps.Marker({
-        position: driverLocation,
-        map: mapInstanceRef.current,
-        icon: {
-          path: window.google.maps.SymbolPath.CIRCLE,
-          scale: 12,
-          fillColor: '#3b82f6',
-          fillOpacity: 1,
-          strokeColor: '#ffffff',
-          strokeWeight: 3,
-        },
+      driverMarkerRef.current = createMapMarker({
+        position,
         title: 'Your Location',
-        zIndex: 1000
+        color: '#2563eb',
+        labelText: '•',
+        zIndex: 1000,
+        driver: true,
       })
     }
-    
+
     if (!hasCenteredOnDriverRef.current && orders.length === 0) {
-      mapInstanceRef.current.setCenter(driverLocation)
+      mapInstanceRef.current.setCenter(position)
       mapInstanceRef.current.setZoom(minimal ? 14 : 12)
       hasCenteredOnDriverRef.current = true
     }
@@ -189,26 +300,35 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder, mi
   }, [mapLoaded, minimal])
 
   const clearRenderedRoute = useCallback(() => {
-    if (directionsRendererRef.current) {
-      directionsRendererRef.current.setDirections({ routes: [] })
+    if (routePolylineRef.current) {
+      try {
+        routePolylineRef.current.setMap(null)
+      } catch {}
+      routePolylineRef.current = null
     }
     setRouteInfo(null)
   }, [])
 
+  const recenterOnDriver = useCallback(() => {
+    const position = getNumericPosition(driverLocationRef.current)
+    if (!mapInstanceRef.current || !position) return
+    mapInstanceRef.current.panTo(position)
+    mapInstanceRef.current.setZoom(minimal ? 15 : 13)
+  }, [minimal])
+
   const recenterOnOrder = useCallback((order) => {
     if (!mapInstanceRef.current || !window.google || !order) return
 
-    const lat = Number(order?.locationLat)
-    const lng = Number(order?.locationLng)
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return
+    const orderPosition = getNumericPosition(order)
+    if (!orderPosition) return
 
     const map = mapInstanceRef.current
-    const origin = driverLocationRef.current
+    const origin = getNumericPosition(driverLocationRef.current)
 
     if (origin) {
       const bounds = new window.google.maps.LatLngBounds()
       bounds.extend(origin)
-      bounds.extend({ lat, lng })
+      bounds.extend(orderPosition)
       map.fitBounds(bounds, minimal ? 72 : 96)
       window.google.maps.event.addListenerOnce(map, 'idle', () => {
         clampMapZoom(minimal ? 11 : 6, minimal ? 17 : 16)
@@ -216,13 +336,14 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder, mi
       return
     }
 
-    map.panTo({ lat, lng })
+    map.panTo(orderPosition)
     map.setZoom(minimal ? 15 : 13)
   }, [clampMapZoom, minimal])
 
   const showRoute = useCallback(async (order) => {
-    const origin = driverLocationRef.current
-    if (!mapInstanceRef.current || !origin || !order.locationLat || !order.locationLng || !window.google) {
+    const origin = getNumericPosition(driverLocationRef.current)
+    const destination = getNumericPosition(order)
+    if (!mapInstanceRef.current || !origin || !destination || !window.google) {
       return
     }
     
@@ -232,16 +353,33 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder, mi
       clearRenderedRoute()
       const result = await directionsService.route({
         origin,
-        destination: { lat: order.locationLat, lng: order.locationLng },
+        destination,
         travelMode: window.google.maps.TravelMode.DRIVING,
       })
-      
-      directionsRendererRef.current.setDirections(result)
-      window.google.maps.event.addListenerOnce(mapInstanceRef.current, 'idle', () => {
-        clampMapZoom(minimal ? 10 : 5, minimal ? 16 : 15)
-      })
-      
-      const leg = result.routes[0]?.legs[0]
+
+      const route = result.routes?.[0]
+      const path = Array.isArray(route?.overview_path) ? route.overview_path : []
+      if (path.length) {
+        routePolylineRef.current = new window.google.maps.Polyline({
+          map: mapInstanceRef.current,
+          path,
+          strokeColor: '#10b981',
+          strokeWeight: minimal ? 6 : 5,
+          strokeOpacity: 0.88,
+          zIndex: 5,
+        })
+      }
+
+      if (route?.bounds) {
+        mapInstanceRef.current.fitBounds(route.bounds, minimal ? 60 : 72)
+        window.google.maps.event.addListenerOnce(mapInstanceRef.current, 'idle', () => {
+          clampMapZoom(minimal ? 10 : 5, minimal ? 16 : 15)
+        })
+      } else {
+        recenterOnOrder(order)
+      }
+
+      const leg = route?.legs?.[0]
       if (leg) {
         setRouteInfo({
           distance: leg.distance?.text || 'Unknown',
@@ -254,43 +392,30 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder, mi
       console.error('Failed to get directions:', err)
       setRouteInfo(null)
     }
-  }, [clampMapZoom, clearRenderedRoute, minimal])
+  }, [clampMapZoom, clearRenderedRoute, minimal, recenterOnOrder])
 
   // Add order markers
   useEffect(() => {
     if (!mapInstanceRef.current || !window.google) return
     
     // Clear existing markers
-    markersRef.current.forEach(m => m.setMap(null))
+    markersRef.current.forEach(clearMapMarker)
     markersRef.current = []
     
     orders.forEach((order, index) => {
-      if (!order.locationLat || !order.locationLng) return
-      
-      const position = { lat: order.locationLat, lng: order.locationLng }
-      
-      const marker = new window.google.maps.Marker({
+      const position = getNumericPosition(order)
+      if (!position) return
+
+      const marker = createMapMarker({
         position,
-        map: mapInstanceRef.current,
-        icon: {
-          path: 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z',
-          fillColor: selectedOrder?._id === order._id ? '#10b981' : '#ef4444',
-          fillOpacity: 1,
-          strokeColor: '#ffffff',
-          strokeWeight: 2,
-          scale: 1.8,
-          anchor: new window.google.maps.Point(12, 22),
-        },
         title: order.customerName || `Order #${index + 1}`,
-        label: {
-          text: String(index + 1),
-          color: '#ffffff',
-          fontSize: '12px',
-          fontWeight: 'bold'
-        }
+        color: String(selectedOrder?._id || selectedOrder?.id || '') === String(order?._id || order?.id || '') ? '#10b981' : '#ef4444',
+        labelText: String(index + 1),
+        zIndex: String(selectedOrder?._id || selectedOrder?.id || '') === String(order?._id || order?.id || '') ? 25 : 10,
       })
+      if (!marker) return
       
-      marker.addListener('click', () => {
+      marker.addListener?.('click', () => {
         clearRenderedRoute()
         setSelectedOrder(order)
         onSelectOrder?.(order)
@@ -298,7 +423,7 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder, mi
       
       markersRef.current.push(marker)
     })
-  }, [clearRenderedRoute, orders, mapLoaded, onSelectOrder, selectedOrder])
+  }, [clearMapMarker, clearRenderedRoute, mapLoaded, onSelectOrder, orders, selectedOrder])
 
   useEffect(() => {
     if (!mapInstanceRef.current || !window.google) return
@@ -378,9 +503,8 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder, mi
     if (mapCommand.type === 'recenter') {
       if (targetOrder) {
         recenterOnOrder(targetOrder)
-      } else if (driverLocation) {
-        mapInstanceRef.current.panTo(driverLocation)
-        mapInstanceRef.current.setZoom(minimal ? 15 : 13)
+      } else {
+        recenterOnDriver()
       }
       return
     }
@@ -389,7 +513,7 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder, mi
       setSelectedOrder(targetOrder)
       showRoute(targetOrder)
     }
-  }, [driverLocation, mapCommand, minimal, orders, recenterOnOrder, showRoute])
+  }, [mapCommand, orders, recenterOnDriver, recenterOnOrder, showRoute])
 
   // Map styles (dark mode friendly)
   function getMapStyles() {
@@ -461,10 +585,9 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder, mi
         
         {/* CSS to hide Google branding */}
         <style>{`
-          .gm-style-cc, .gmnoprint, .gm-style a[href*="google"], 
-          .gm-style a[href*="terms"], .gm-style img[alt*="Google"],
-          .gm-style-cc + div { display: none !important; }
-          .gm-style > div:last-child { display: none !important; }
+          .gm-style img {
+            max-width: none !important;
+          }
         `}</style>
         
         {/* Buysial Logo Overlay */}
@@ -506,14 +629,16 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder, mi
         {/* Premium Center on Me Button */}
         <button
           onClick={() => {
-            if (mapInstanceRef.current && driverLocation) {
-              mapInstanceRef.current.panTo(driverLocation)
-              mapInstanceRef.current.setZoom(15)
+            if (selectedOrder) {
+              recenterOnOrder(selectedOrder)
+            } else {
+              recenterOnDriver()
             }
           }}
           style={{
             position: 'absolute',
-            bottom: 12,
+            top: minimal ? 12 : undefined,
+            bottom: minimal ? undefined : 12,
             right: 12,
             width: minimal ? 44 : 40,
             height: minimal ? 44 : 40,
@@ -528,7 +653,7 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder, mi
             placeItems: 'center',
             boxShadow: minimal ? '0 10px 24px rgba(15,23,42,0.18)' : '0 4px 12px rgba(59,130,246,0.3)'
           }}
-          title="Center on Me"
+          title={selectedOrder ? 'Recenter Map' : 'Center on Me'}
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="3" />

@@ -286,29 +286,40 @@ export default function DriverLiveMapPage() {
     setSavingStatus(true)
     try {
       const id = selectedOrder._id || selectedOrder.id
+      const orderId = String(id || '').trim()
+      const nextStatus = selectedStatus
       
-      if (selectedStatus === 'delivered') {
+      if (nextStatus === 'delivered') {
         const parsedAmount = Number(collectedAmount)
         const amount = Number.isFinite(parsedAmount) ? Math.max(0, parsedAmount) : Math.max(0, Number(getDefaultCollectedAmount(selectedOrder) || 0))
         await apiPost(`/api/orders/${id}/deliver`, { note: statusNote || '', collectedAmount: amount })
-      } else if (selectedStatus === 'cancelled') {
+      } else if (nextStatus === 'cancelled') {
         await apiPost(`/api/orders/${id}/cancel`, { reason: statusNote || '' })
       } else {
         await apiPost(`/api/orders/${id}/shipment/update`, {
-          shipmentStatus: selectedStatus,
+          shipmentStatus: nextStatus,
           deliveryNotes: statusNote || ''
         })
       }
-      
-      // Refresh orders after save
-      await loadOrders()
-      if (selectedStatus === 'delivered') toast.success('Order marked delivered')
-      else if (selectedStatus === 'cancelled') toast.warn('Order cancelled')
-      else toast.info(`Order marked ${formatStatusLabel(selectedStatus)}`)
+
+      const shouldRemainVisible = normalizeShipmentStatus(nextStatus) === 'picked_up'
+      setOrders((prev) => prev.flatMap((order) => {
+        const currentId = String(order?._id || order?.id || '').trim()
+        if (currentId !== orderId) return [order]
+        if (!shouldRemainVisible) return []
+        return [{ ...order, shipmentStatus: nextStatus, status: nextStatus }]
+      }))
+      setLastUpdated(new Date())
       setSelectedOrder(null)
       setSelectedStatus('')
       setStatusNote('')
       setCollectedAmount('')
+      
+      // Refresh orders after save
+      await loadOrders()
+      if (nextStatus === 'delivered') toast.success('Order marked delivered')
+      else if (nextStatus === 'cancelled') toast.warn('Order cancelled')
+      else toast.info(`Order marked ${formatStatusLabel(nextStatus)}`)
     } catch (err) {
       toast.error(err?.message || 'Failed to update status')
     } finally {
@@ -587,32 +598,6 @@ export default function DriverLiveMapPage() {
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8, marginBottom: 8 }}>
               <button
-                onClick={() => queueMapCommand('recenter', selectedOrder)}
-                style={{
-                  height: 42,
-                  borderRadius: 14,
-                  border: '1px solid rgba(148,163,184,0.18)',
-                  background: '#ffffff',
-                  color: '#0f172a',
-                  fontWeight: 800,
-                  fontSize: 12,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 7
-                }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="3" />
-                  <path d="M12 2v4" />
-                  <path d="M12 18v4" />
-                  <path d="M2 12h4" />
-                  <path d="M18 12h4" />
-                </svg>
-                Recenter
-              </button>
-              <button
                 onClick={() => queueMapCommand('show_route', selectedOrder)}
                 style={{
                   height: 42,
@@ -658,7 +643,7 @@ export default function DriverLiveMapPage() {
                   <path d="M21 14v7h-7" />
                   <path d="M3 10L14 21" />
                 </svg>
-                Open Maps
+                Open on Google Maps
               </button>
               <button
                 onClick={() => openWhatsApp(selectedOrder.customerPhone)}

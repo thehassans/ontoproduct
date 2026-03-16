@@ -106,6 +106,7 @@ const CurrencySettings = lazy(() => import('./pages/user/CurrencySettings.jsx'))
 const PaymentSettings = lazy(() => import('./pages/user/PaymentSettings.jsx'))
 const EmailSettings = lazy(() => import('./pages/user/EmailSettings.jsx'))
 const UserReturnedOrders = lazy(() => import('./pages/user/ReturnedOrders.jsx'))
+const UserDriverStock = lazy(() => import('./pages/user/DriverStock.jsx'))
 const ManagerSalary = lazy(() => import('./pages/user/ManagerSalary.jsx'))
 const UserProducts = lazy(() => import('./pages/user/Products.jsx'))
 const UserProductDetail = lazy(() => import('./pages/user/ProductDetail.jsx'))
@@ -153,6 +154,7 @@ const DriverPicked = lazy(() => import('./pages/driver/Picked.jsx'))
 const DriverDelivered = lazy(() => import('./pages/driver/Delivered.jsx'))
 const DriverCancelled = lazy(() => import('./pages/driver/Cancelled.jsx'))
 const DriverHistory = lazy(() => import('./pages/driver/History.jsx'))
+const DriverMyStock = lazy(() => import('./pages/driver/MyStock.jsx'))
 
 // Investor pages
 const InvestorDashboard = lazy(() => import('./pages/investor/Dashboard.jsx'))
@@ -782,6 +784,7 @@ export default function App() {
               <Route path="orders/delivered" element={<DriverDelivered />} />
               <Route path="orders/cancelled" element={<DriverCancelled />} />
               <Route path="orders/history" element={<DriverHistory />} />
+              <Route path="my-stock" element={<DriverMyStock />} />
               <Route path="me" element={<DriverMe />} />
               <Route path="profile" element={<DriverProfile />} />
               <Route path="payout" element={<DriverPayout />} />
@@ -857,6 +860,7 @@ export default function App() {
               <Route path="campaigns" element={<Campaign />} />
               <Route path="orders" element={<UserOrders />} />
               <Route path="orders/returned" element={<UserReturnedOrders />} />
+              <Route path="driver-stock" element={<UserDriverStock />} />
               <Route path="online-orders" element={<OnlineOrders />} />
               <Route path="coupons" element={<Coupons />} />
               <Route path="cashback-offers" element={<CashbackOffers />} />

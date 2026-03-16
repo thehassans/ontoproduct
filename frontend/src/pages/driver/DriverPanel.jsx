@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { API_BASE, apiGet, apiPost } from '../../api'
 import { io } from 'socket.io-client'
 import { useToast } from '../../ui/Toast.jsx'
@@ -6,6 +7,7 @@ import LiveMap from '../../components/driver/LiveMap'
 
 export default function DriverPanel() {
   const toast = useToast()
+  const navigate = useNavigate()
   const [assigned, setAssigned] = useState([])
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -456,9 +458,9 @@ export default function DriverPanel() {
             const code = order?.invoiceNumber
               ? `#${order.invoiceNumber}`
               : `#${String(id).slice(-5)}`
-            toast.warn(`Order cancelled (${code})`)
+            toast.warn(`Order cancelled (${code}) — check My Stock`)
           } catch {
-            toast.warn(`Order cancelled (#${String(id).slice(-5)})`)
+            toast.warn(`Order cancelled (#${String(id).slice(-5)}) — check My Stock`)
           }
         } else if (status === 'returned') {
           await apiPost(`/api/orders/${id}/return`, { reason: note || '' })
@@ -466,9 +468,9 @@ export default function DriverPanel() {
             const code = order?.invoiceNumber
               ? `#${order.invoiceNumber}`
               : `#${String(id).slice(-5)}`
-            toast.warn(`Order returned (${code})`)
+            toast.warn(`Order returned (${code}) — check My Stock`)
           } catch {
-            toast.warn(`Order returned (#${String(id).slice(-5)})`)
+            toast.warn(`Order returned (#${String(id).slice(-5)}) — check My Stock`)
           }
         } else if (
           status === 'no_response' ||
@@ -958,6 +960,25 @@ export default function DriverPanel() {
           {showMap ? 'Hide Live Map' : 'Show Live Map'}
         </button>
         
+        <button
+          onClick={() => navigate('/driver/my-stock')}
+          style={{
+            padding: '10px 16px',
+            borderRadius: 10,
+            border: '1px solid rgba(245,158,11,0.28)',
+            background: 'rgba(245,158,11,0.12)',
+            color: '#b45309',
+            fontWeight: 700,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            fontSize: 13
+          }}
+        >
+          📦 My Stock
+        </button>
+
         <button
           onClick={refreshLocation}
           style={{

@@ -487,6 +487,27 @@ export default function UserLayout() {
           ),
         },
         {
+          to: '/user/driver-stock',
+          label: 'Driver Stock',
+          icon: (
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M3 7h13v10H3z" />
+              <path d="M16 10h3l2 2.5V17h-5" />
+              <circle cx="7.5" cy="18.5" r="1.5" />
+              <circle cx="18.5" cy="18.5" r="1.5" />
+            </svg>
+          ),
+        },
+        {
           to: '/user/shops',
           label: 'Shops',
           icon: (

@@ -882,7 +882,7 @@ router.get(
           {
             $match: {
               driver: new M.Types.ObjectId(driverId),
-              status: "accepted",
+              status: { $in: ["accepted", "manager_accepted"] },
             },
           },
           {
@@ -1308,7 +1308,7 @@ router.post(
         {
           $match: {
             driver: new M.Types.ObjectId(req.user.id),
-            status: "accepted",
+            status: { $in: ["accepted", "manager_accepted"] },
           },
         },
         { $group: { _id: null, total: { $sum: { $ifNull: ["$amount", 0] } } } },
@@ -1398,7 +1398,7 @@ router.post(
         // Get orders for PDF - only pending orders (after last remittance)
         const acceptedRemittances = await Remittance.find({
           driver: req.user.id,
-          status: "accepted",
+          status: { $in: ["accepted", "manager_accepted"] },
         }).select("createdAt");
 
         const lastAcceptedDate =
@@ -1648,7 +1648,7 @@ router.post(
             {
               $match: {
                 driver: r.driver,
-                status: "accepted",
+                status: { $in: ["accepted", "manager_accepted"] },
               },
             },
             {
@@ -1855,7 +1855,7 @@ router.get(
         {
           $match: {
             driver: new M.Types.ObjectId(req.user.id),
-            status: "accepted",
+            status: { $in: ["accepted", "manager_accepted"] },
           },
         },
         { $group: { _id: null, total: { $sum: { $ifNull: ["$amount", 0] } } } },

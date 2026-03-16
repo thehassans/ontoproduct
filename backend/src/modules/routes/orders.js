@@ -184,6 +184,154 @@ async function resolveOrderOwnerId(order) {
   }
 }
 
+async function getWorkspaceCreatorIds(ownerId) {
+  const owner = String(ownerId || "").trim();
+  if (!owner) return [];
+  const [agents, managers] = await Promise.all([
+    User.find({ role: "agent", createdBy: owner }).select("_id").lean(),
+    User.find({ role: "manager", createdBy: owner }).select("_id").lean(),
+  ]);
+  return Array.from(
+    new Set([
+      owner,
+      ...agents.map((agent) => String(agent?._id || "")),
+      ...managers.map((manager) => String(manager?._id || "")),
+    ].filter(Boolean))
+  );
+}
+
+function buildCountryAccessSet(values = []) {
+  const set = new Set();
+  const list = Array.isArray(values) ? values : [values];
+  for (const rawValue of list) {
+    const value = String(rawValue || "").trim();
+    if (!value) continue;
+    const upper = value.toUpperCase();
+    if (upper === "KSA" || upper === "SAUDI ARABIA") {
+      set.add("KSA");
+      set.add("Saudi Arabia");
+      continue;
+    }
+    if (upper === "UAE" || upper === "UNITED ARAB EMIRATES") {
+      set.add("UAE");
+      set.add("United Arab Emirates");
+      continue;
+    }
+    set.add(value);
+  }
+  return set;
+}
+
+async function canManageReturnStock(user, order) {
+  if (!user || !order) return false;
+  const role = String(user.role || "");
+  if (role === "driver") {
+    return (
+      String(order.deliveryBoy?._id || order.deliveryBoy || "") ===
+      String(user.id || "")
+    );
+  }
+  const orderOwnerId = await resolveOrderOwnerId(order);
+  if (!orderOwnerId) return false;
+  if (role === "user") {
+    return orderOwnerId === String(user.id || "");
+  }
+  if (role === "manager") {
+    const me = await User.findById(user.id)
+      .select("createdBy assignedCountry assignedCountries")
+      .lean();
+    const ownerId = String(me?.createdBy || "");
+    if (!ownerId || orderOwnerId !== ownerId) return false;
+    const assignedCountries =
+      Array.isArray(me?.assignedCountries) && me.assignedCountries.length
+        ? me.assignedCountries
+        : me?.assignedCountry
+        ? [me.assignedCountry]
+        : [];
+    if (!assignedCountries.length) return true;
+    const allowedCountries = buildCountryAccessSet(assignedCountries);
+    return allowedCountries.has(String(order.orderCountry || ""));
+  }
+  return false;
+}
+
+function getReturnSubmissionError(order) {
+  const status = String(order?.shipmentStatus || "").toLowerCase();
+  if (!["cancelled", "returned"].includes(status)) {
+    return "Only cancelled or returned orders can be submitted";
+  }
+  if (order?.returnVerified) {
+    return "Order already verified";
+  }
+  if (order?.returnSubmittedToCompany) {
+    return "Order already submitted to company";
+  }
+  return "";
+}
+
+async function submitReturnOrderToCompany(order, actor) {
+  const status = String(order?.shipmentStatus || "").toLowerCase();
+  order.returnSubmittedToCompany = true;
+  order.returnSubmittedAt = new Date();
+  await order.save();
+
+  emitOrderChange(order, "return_submitted").catch(() => {});
+
+  try {
+    const io = getIO();
+    const targetId = await resolveOrderOwnerId(order);
+    if (targetId && String(targetId) !== String(actor?.id || "")) {
+      io.to(`user:${String(targetId)}`).emit("order.return_submitted", {
+        orderId: String(order._id),
+      });
+
+      const notificationType =
+        status === "cancelled" ? "order_cancelled" : "order_returned";
+      const actionText = status === "cancelled" ? "cancellation" : "return";
+      const driverName =
+        order?.deliveryBoy && typeof order.deliveryBoy === "object"
+          ? `${order.deliveryBoy.firstName || ""} ${
+              order.deliveryBoy.lastName || ""
+            }`.trim() || "Driver"
+          : "Driver";
+      const actorLabel =
+        String(actor?.role || "") === "driver"
+          ? driverName
+          : String(actor?.role || "") === "manager"
+          ? "Manager"
+          : "Owner";
+      const productName =
+        order.productId?.name ||
+        order.items?.[0]?.productId?.name ||
+        "Product";
+      await createNotification({
+        userId: targetId,
+        type: notificationType,
+        title: `Order ${
+          status === "cancelled" ? "Cancellation" : "Return"
+        } Submitted for Approval`,
+        message: `${actorLabel} has submitted order #${
+          order.invoiceNumber || String(order._id).slice(-6)
+        } (${productName}) ${actionText} request for verification. Reason: ${
+          order.returnReason || "Not specified"
+        }`,
+        relatedId: order._id,
+        relatedType: "Order",
+        triggeredBy: actor?.id,
+        triggeredByRole: actor?.role,
+        metadata: {
+          requiresApproval: true,
+          action: `verify_${actionText}`,
+        },
+      });
+    }
+  } catch (err) {
+    console.error("Failed to send notification:", err);
+  }
+
+  return order;
+}
+
 function getOrderProductIds(order) {
   const ids = [];
   if (order?.productId) ids.push(String(order.productId));
@@ -4344,6 +4492,71 @@ router.get(
   }
 );
 
+router.get("/driver/stock", auth, allowRoles("driver"), async (req, res) => {
+  try {
+    const orders = await Order.find({
+      deliveryBoy: req.user.id,
+      shipmentStatus: { $in: ["cancelled", "returned"] },
+      returnVerified: { $ne: true },
+    })
+      .sort({ updatedAt: -1 })
+      .populate("productId")
+      .populate("items.productId");
+    res.json({ orders });
+  } catch (err) {
+    res
+      .status(500)
+      .json({ message: err?.message || "Failed to load driver stock" });
+  }
+});
+
+router.get("/driver-stock", auth, allowRoles("user", "manager"), async (req, res) => {
+  try {
+    let creatorIds = [];
+    let countryFilter = [];
+
+    if (req.user.role === "user") {
+      creatorIds = await getWorkspaceCreatorIds(req.user.id);
+    } else {
+      const me = await User.findById(req.user.id)
+        .select("createdBy assignedCountry assignedCountries")
+        .lean();
+      const ownerId = String(me?.createdBy || "");
+      creatorIds = await getWorkspaceCreatorIds(ownerId);
+      const assignedCountries =
+        Array.isArray(me?.assignedCountries) && me.assignedCountries.length
+          ? me.assignedCountries
+          : me?.assignedCountry
+          ? [me.assignedCountry]
+          : [];
+      countryFilter = Array.from(buildCountryAccessSet(assignedCountries));
+    }
+
+    const match = {
+      createdBy: { $in: creatorIds },
+      deliveryBoy: { $exists: true, $ne: null },
+      shipmentStatus: { $in: ["cancelled", "returned"] },
+      returnVerified: { $ne: true },
+    };
+
+    if (countryFilter.length) {
+      match.orderCountry = { $in: countryFilter };
+    }
+
+    const orders = await Order.find(match)
+      .sort({ updatedAt: -1 })
+      .populate("productId")
+      .populate("items.productId")
+      .populate("deliveryBoy", "firstName lastName phone");
+
+    res.json({ orders });
+  } catch (err) {
+    res
+      .status(500)
+      .json({ message: err?.message || "Failed to load driver stock" });
+  }
+});
+
 // Driver: metrics across all time by shipmentStatus
 router.get("/driver/metrics", auth, allowRoles("driver"), async (req, res) => {
   try {
@@ -5633,7 +5846,7 @@ ${
 router.post(
   "/:id/return/submit",
   auth,
-  allowRoles("driver"),
+  allowRoles("driver", "user", "manager"),
   async (req, res) => {
     try {
       const { id } = req.params;
@@ -5644,85 +5857,17 @@ router.post(
 
       if (!order) return res.status(404).json({ message: "Order not found" });
 
-      // Verify driver owns this order
-      if (String(order.deliveryBoy?._id) !== String(req.user.id)) {
+      const allowed = await canManageReturnStock(req.user, order);
+      if (!allowed) {
         return res.status(403).json({ message: "Not allowed" });
       }
 
-      // Check if order is cancelled or returned
-      const status = String(order.shipmentStatus || "").toLowerCase();
-      if (!["cancelled", "returned"].includes(status)) {
-        return res
-          .status(400)
-          .json({
-            message: "Only cancelled or returned orders can be submitted",
-          });
+      const submissionError = getReturnSubmissionError(order);
+      if (submissionError) {
+        return res.status(400).json({ message: submissionError });
       }
 
-      // Check if already submitted
-      if (order.returnSubmittedToCompany) {
-        return res
-          .status(400)
-          .json({ message: "Order already submitted to company" });
-      }
-
-      // Mark as submitted
-      order.returnSubmittedToCompany = true;
-      order.returnSubmittedAt = new Date();
-      await order.save();
-
-      emitOrderChange(order, "return_submitted").catch(() => {});
-
-      // Notify owner/manager
-      try {
-        const io = getIO();
-        const ownerId = await User.findById(order.createdBy)
-          .select("createdBy role")
-          .lean();
-        const targetId =
-          ownerId?.role === "user"
-            ? String(ownerId._id)
-            : String(ownerId?.createdBy);
-        if (targetId) {
-          io.to(`user:${targetId}`).emit("order.return_submitted", {
-            orderId: String(order._id),
-          });
-
-          // Create persistent notification for the owner/manager
-          const notificationType =
-            status === "cancelled" ? "order_cancelled" : "order_returned";
-          const actionText = status === "cancelled" ? "cancellation" : "return";
-          const driverName = order.deliveryBoy
-            ? `${order.deliveryBoy.firstName} ${order.deliveryBoy.lastName}`
-            : "Driver";
-          const productName =
-            order.productId?.name ||
-            order.items?.[0]?.productId?.name ||
-            "Product";
-          await createNotification({
-            userId: targetId,
-            type: notificationType,
-            title: `Order ${
-              status === "cancelled" ? "Cancellation" : "Return"
-            } Submitted for Approval`,
-            message: `${driverName} has submitted order #${
-              order.invoiceNumber || String(order._id).slice(-6)
-            } (${productName}) ${actionText} request for verification. Reason: ${
-              order.returnReason || "Not specified"
-            }`,
-            relatedId: order._id,
-            relatedType: "Order",
-            triggeredBy: req.user.id,
-            triggeredByRole: "driver",
-            metadata: {
-              requiresApproval: true,
-              action: `verify_${actionText}`,
-            },
-          });
-        }
-      } catch (err) {
-        console.error("Failed to send notification:", err);
-      }
+      await submitReturnOrderToCompany(order, req.user);
 
       res.json({
         message: "Order submitted to company for verification",
@@ -5733,6 +5878,72 @@ router.post(
       res
         .status(500)
         .json({ message: "Failed to submit order", error: err?.message });
+    }
+  }
+);
+
+router.post(
+  "/returns/submit-bulk",
+  auth,
+  allowRoles("driver", "user", "manager"),
+  async (req, res) => {
+    try {
+      const orderIds = Array.isArray(req.body?.orderIds)
+        ? req.body.orderIds
+            .map((id) => String(id || "").trim())
+            .filter(Boolean)
+        : [];
+
+      if (!orderIds.length) {
+        return res.status(400).json({ message: "No orders selected" });
+      }
+
+      const orders = await Order.find({ _id: { $in: orderIds } })
+        .populate("deliveryBoy", "firstName lastName")
+        .populate("productId", "name")
+        .populate("items.productId", "name");
+
+      const byId = new Map(
+        orders.map((order) => [String(order?._id || ""), order])
+      );
+
+      const submitted = [];
+      const skipped = [];
+
+      for (const orderId of orderIds) {
+        const order = byId.get(String(orderId));
+        if (!order) {
+          skipped.push({ orderId, message: "Order not found" });
+          continue;
+        }
+
+        const allowed = await canManageReturnStock(req.user, order);
+        if (!allowed) {
+          skipped.push({ orderId, message: "Not allowed" });
+          continue;
+        }
+
+        const submissionError = getReturnSubmissionError(order);
+        if (submissionError) {
+          skipped.push({ orderId, message: submissionError });
+          continue;
+        }
+
+        await submitReturnOrderToCompany(order, req.user);
+        submitted.push(String(order._id));
+      }
+
+      res.json({
+        message: `${submitted.length} orders submitted to company`,
+        submitted,
+        skipped,
+        submittedCount: submitted.length,
+        skippedCount: skipped.length,
+      });
+    } catch (err) {
+      res
+        .status(500)
+        .json({ message: "Failed to submit orders", error: err?.message });
     }
   }
 );

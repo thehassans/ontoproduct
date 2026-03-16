@@ -1,0 +1,326 @@
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { apiGet, apiPost } from '../../api'
+import { useToast } from '../../ui/Toast.jsx'
+
+function getOrderId(order) {
+  return String(order?._id || order?.id || '')
+}
+
+function getInvoiceLabel(order) {
+  const invoice = String(order?.invoiceNumber || '').trim()
+  if (invoice) return `#${invoice}`
+  const id = getOrderId(order)
+  return id ? `#${id.slice(-6)}` : '#—'
+}
+
+function getProductLabel(order) {
+  if (Array.isArray(order?.items) && order.items.length > 0) {
+    const labels = order.items
+      .map((item) => {
+        const name = item?.productId?.name || ''
+        if (!name) return ''
+        const qty = Math.max(1, Number(item?.quantity || 1))
+        return `${name} × ${qty}`
+      })
+      .filter(Boolean)
+    if (labels.length) return labels.join(', ')
+  }
+  if (order?.productId?.name) return order.productId.name
+  return order?.details || 'Product'
+}
+
+function getOrderQuantity(order) {
+  if (Array.isArray(order?.items) && order.items.length > 0) {
+    return order.items.reduce((sum, item) => sum + Math.max(1, Number(item?.quantity || 1)), 0)
+  }
+  return Math.max(1, Number(order?.quantity || 1))
+}
+
+function formatDate(value) {
+  try {
+    return value ? new Date(value).toLocaleString() : '—'
+  } catch {
+    return '—'
+  }
+}
+
+function formatStatusLabel(value) {
+  const text = String(value || '').trim().toLowerCase()
+  if (!text) return 'Unknown'
+  return text.replace(/_/g, ' ')
+}
+
+function buildSearchText(order) {
+  return [
+    order?.invoiceNumber,
+    order?.customerName,
+    order?.customerPhone,
+    order?.customerAddress,
+    order?.customerLocation,
+    order?.city,
+    order?.orderCountry,
+    order?.returnReason,
+    getProductLabel(order),
+    formatStatusLabel(order?.shipmentStatus),
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase()
+}
+
+function SummaryCard({ label, value, accent, helper }) {
+  return (
+    <div
+      className="card"
+      style={{
+        padding: 14,
+        borderRadius: 18,
+        border: '1px solid rgba(148, 163, 184, 0.18)',
+        background: `linear-gradient(135deg, ${accent}18, rgba(255,255,255,0.02))`,
+        boxShadow: '0 14px 30px rgba(15, 23, 42, 0.06)',
+      }}
+    >
+      <div style={{ fontSize: 12, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--muted)' }}>{label}</div>
+      <div style={{ fontSize: 28, fontWeight: 900, marginTop: 6, letterSpacing: '-0.03em' }}>{value}</div>
+      <div className="helper" style={{ marginTop: 6 }}>{helper}</div>
+    </div>
+  )
+}
+
+function StockOrderCard({ order, submittingId, onSubmit }) {
+  const orderId = getOrderId(order)
+  const isSubmitting = submittingId === orderId
+  const isSubmitted = Boolean(order?.returnSubmittedToCompany)
+  const status = String(order?.shipmentStatus || '').toLowerCase()
+  const statusStyle = status === 'cancelled'
+    ? { background: 'rgba(239,68,68,0.12)', color: '#b91c1c', border: '1px solid rgba(239,68,68,0.18)' }
+    : { background: 'rgba(245,158,11,0.12)', color: '#b45309', border: '1px solid rgba(245,158,11,0.18)' }
+
+  return (
+    <div
+      className="card"
+      style={{
+        padding: 16,
+        display: 'grid',
+        gap: 12,
+        borderRadius: 18,
+        border: '1px solid rgba(148, 163, 184, 0.18)',
+        background: 'linear-gradient(180deg, rgba(255,255,255,0.04), rgba(148,163,184,0.04))',
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ display: 'grid', gap: 6, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <div style={{ fontWeight: 900, fontSize: 16 }}>{getInvoiceLabel(order)}</div>
+            <span className="badge" style={{ ...statusStyle, textTransform: 'capitalize' }}>{formatStatusLabel(status)}</span>
+            {isSubmitted ? (
+              <span className="badge" style={{ background: 'rgba(59,130,246,0.12)', color: '#1d4ed8', border: '1px solid rgba(59,130,246,0.18)' }}>
+                Submitted to Company
+              </span>
+            ) : null}
+          </div>
+          <div style={{ fontSize: 17, fontWeight: 800, lineHeight: 1.3 }}>{getProductLabel(order)}</div>
+          <div className="helper">{order?.customerName || 'Customer'} • {order?.customerPhone || 'No phone'}</div>
+          <div className="helper">{order?.customerAddress || order?.customerLocation || 'No address'}</div>
+        </div>
+        <div style={{ textAlign: 'right', minWidth: 140, display: 'grid', gap: 6 }}>
+          <div style={{ fontSize: 13, color: 'var(--muted)' }}>Units</div>
+          <div style={{ fontSize: 24, fontWeight: 900 }}>{getOrderQuantity(order)}</div>
+          <div className="helper">{order?.orderCountry || '—'}{order?.city ? ` • ${order.city}` : ''}</div>
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gap: 4 }}>
+        {order?.returnReason ? <div className="helper"><strong>Reason:</strong> {order.returnReason}</div> : null}
+        <div className="helper"><strong>Updated:</strong> {formatDate(order?.updatedAt || order?.createdAt)}</div>
+        {isSubmitted ? <div className="helper"><strong>Submitted:</strong> {formatDate(order?.returnSubmittedAt)}</div> : null}
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <div className="helper">
+          {isSubmitted ? 'Waiting for company verification.' : 'Ready to submit to company.'}
+        </div>
+        {!isSubmitted ? (
+          <button className="btn" type="button" onClick={() => onSubmit(order)} disabled={isSubmitting} style={{ fontWeight: 700 }}>
+            {isSubmitting ? 'Submitting...' : 'Submit to Company'}
+          </button>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+export default function DriverMyStock() {
+  const nav = useNavigate()
+  const toast = useToast()
+  const [orders, setOrders] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [q, setQ] = useState('')
+  const [submittingId, setSubmittingId] = useState('')
+  const [submittingAll, setSubmittingAll] = useState(false)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await apiGet('/api/orders/driver/stock')
+      setOrders(Array.isArray(res?.orders) ? res.orders : [])
+    } catch (err) {
+      setOrders([])
+      toast.error(err?.message || 'Failed to load stock')
+    } finally {
+      setLoading(false)
+    }
+  }, [toast])
+
+  useEffect(() => {
+    load()
+  }, [load])
+
+  const filteredOrders = useMemo(() => {
+    const query = String(q || '').trim().toLowerCase()
+    if (!query) return orders
+    return orders.filter((order) => buildSearchText(order).includes(query))
+  }, [orders, q])
+
+  const readyOrders = useMemo(() => filteredOrders.filter((order) => !order?.returnSubmittedToCompany), [filteredOrders])
+  const submittedOrders = useMemo(() => filteredOrders.filter((order) => order?.returnSubmittedToCompany), [filteredOrders])
+
+  const summary = useMemo(() => {
+    const allReady = orders.filter((order) => !order?.returnSubmittedToCompany)
+    const allSubmitted = orders.filter((order) => order?.returnSubmittedToCompany)
+    return {
+      totalOrders: orders.length,
+      readyOrders: allReady.length,
+      submittedOrders: allSubmitted.length,
+      totalUnits: orders.reduce((sum, order) => sum + getOrderQuantity(order), 0),
+    }
+  }, [orders])
+
+  async function submitOne(order) {
+    const orderId = getOrderId(order)
+    if (!orderId) return
+    setSubmittingId(orderId)
+    try {
+      await apiPost(`/api/orders/${orderId}/return/submit`, {})
+      toast.success(`${getInvoiceLabel(order)} submitted to company`)
+      await load()
+    } catch (err) {
+      toast.error(err?.message || 'Failed to submit order')
+    } finally {
+      setSubmittingId('')
+    }
+  }
+
+  async function submitAll() {
+    const orderIds = orders
+      .filter((order) => !order?.returnSubmittedToCompany)
+      .map((order) => getOrderId(order))
+      .filter(Boolean)
+
+    if (!orderIds.length) {
+      toast.info('All stock orders are already submitted')
+      return
+    }
+
+    setSubmittingAll(true)
+    try {
+      const res = await apiPost('/api/orders/returns/submit-bulk', { orderIds })
+      const submittedCount = Number(res?.submittedCount || 0)
+      const skippedCount = Number(res?.skippedCount || 0)
+      if (skippedCount > 0) {
+        toast.success(`${submittedCount} submitted and ${skippedCount} skipped`)
+      } else {
+        toast.success(`${submittedCount} orders submitted to company`)
+      }
+      await load()
+    } catch (err) {
+      toast.error(err?.message || 'Failed to submit all stock')
+    } finally {
+      setSubmittingAll(false)
+    }
+  }
+
+  return (
+    <div className="section" style={{ display: 'grid', gap: 14 }}>
+      <div className="page-header" style={{ alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <button className="btn secondary" type="button" onClick={() => nav('/driver/panel')} style={{ minWidth: 44 }}>
+          ←
+        </button>
+        <div style={{ flex: 1, minWidth: 220 }}>
+          <div className="page-title gradient heading-blue">My Stock</div>
+          <div className="page-subtitle">Cancelled and returned orders currently with you.</div>
+        </div>
+        <button className="btn secondary" type="button" onClick={load} disabled={loading}>
+          Refresh
+        </button>
+      </div>
+
+      <div className="card" style={{ padding: 16, display: 'grid', gap: 14, borderRadius: 20, border: '1px solid var(--border)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 10 }}>
+          <SummaryCard label="Stock Orders" value={summary.totalOrders} accent="#2563eb" helper="Current driver-held stock" />
+          <SummaryCard label="Ready to Submit" value={summary.readyOrders} accent="#f59e0b" helper="Need company submission" />
+          <SummaryCard label="Submitted" value={summary.submittedOrders} accent="#0ea5e9" helper="Awaiting verification" />
+          <SummaryCard label="Units" value={summary.totalUnits} accent="#16a34a" helper="Total item quantity" />
+        </div>
+
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+          <input
+            className="input"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search invoice, customer, product, city or reason"
+            style={{ flex: 1, minWidth: 220, padding: '12px 14px', borderRadius: 14 }}
+          />
+          <button className="btn" type="button" onClick={submitAll} disabled={submittingAll || summary.readyOrders === 0} style={{ fontWeight: 700 }}>
+            {submittingAll ? 'Submitting...' : 'Submit All'}
+          </button>
+        </div>
+      </div>
+
+      <div className="card" style={{ padding: 16, display: 'grid', gap: 14, borderRadius: 20, border: '1px solid var(--border)' }}>
+        <div className="card-header" style={{ alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+          <div>
+            <div className="card-title">Ready to Submit</div>
+            <div className="card-subtitle">These orders are still with you and not yet submitted to the company.</div>
+          </div>
+          <span className="chip">{readyOrders.length}</span>
+        </div>
+
+        {loading ? (
+          <div className="helper">Loading stock...</div>
+        ) : readyOrders.length === 0 ? (
+          <div className="helper">No stock orders ready to submit.</div>
+        ) : (
+          <div style={{ display: 'grid', gap: 12 }}>
+            {readyOrders.map((order) => (
+              <StockOrderCard key={getOrderId(order)} order={order} submittingId={submittingId} onSubmit={submitOne} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="card" style={{ padding: 16, display: 'grid', gap: 14, borderRadius: 20, border: '1px solid var(--border)' }}>
+        <div className="card-header" style={{ alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+          <div>
+            <div className="card-title">Submitted to Company</div>
+            <div className="card-subtitle">These stock orders are waiting for company verification.</div>
+          </div>
+          <span className="chip">{submittedOrders.length}</span>
+        </div>
+
+        {loading ? (
+          <div className="helper">Loading submitted stock...</div>
+        ) : submittedOrders.length === 0 ? (
+          <div className="helper">No submitted stock orders.</div>
+        ) : (
+          <div style={{ display: 'grid', gap: 12 }}>
+            {submittedOrders.map((order) => (
+              <StockOrderCard key={getOrderId(order)} order={order} submittingId={submittingId} onSubmit={submitOne} />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
