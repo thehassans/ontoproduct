@@ -399,73 +399,48 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder, mi
       let routeDuration = 0
       let rendered = false
 
-      if (window.google.maps.importLibrary) {
-        const routesLibrary = await window.google.maps.importLibrary('routes').catch(() => null)
-        const RouteClass =
-          routesLibrary?.Route ||
-          window.google.maps?.routes?.Route ||
-          window.google.maps?.Route
+      const routesLib = window.google.maps.importLibrary
+        ? await window.google.maps.importLibrary('routes').catch(() => null)
+        : null
+      const RouteClass = routesLib?.Route || window.google.maps?.routes?.Route
 
-        if (RouteClass?.computeRoutes) {
-          const response = await RouteClass.computeRoutes({
-            origin,
-            destination,
-            travelMode: 'DRIVING',
-            fields: ['path', 'distanceMeters', 'durationMillis'],
-          })
-
-          const route = response?.routes?.[0]
-          if (route) {
-            const polylines =
-              typeof route.createPolylines === 'function'
-                ? route.createPolylines()
-                : []
-
-            if (Array.isArray(polylines) && polylines.length) {
-              polylines.forEach((polyline) => {
-                try {
-                  polyline.setOptions({
-                    strokeColor: '#10b981',
-                    strokeWeight: minimal ? 6 : 5,
-                    strokeOpacity: 0.88,
-                    zIndex: 5,
-                  })
-                } catch {}
-                polyline.setMap(mapInstanceRef.current)
-              })
-              routePolylinesRef.current = polylines
-            }
-
-            routeDistance = Number(route.distanceMeters || 0)
-            routeDuration = Number(route.durationMillis || 0)
-            rendered = true
-          }
-        }
-      }
-
-      if (!rendered) {
-        const directionsService = new window.google.maps.DirectionsService()
-        const result = await directionsService.route({
-          origin,
-          destination,
-          travelMode: window.google.maps.TravelMode.DRIVING,
+      if (RouteClass?.computeRoutes) {
+        const response = await RouteClass.computeRoutes({
+          origin: {
+            location: { latLng: { latitude: origin.lat, longitude: origin.lng } },
+          },
+          destination: {
+            location: { latLng: { latitude: destination.lat, longitude: destination.lng } },
+          },
+          travelMode: 'DRIVE',
+          computeAlternativeRoutes: false,
         })
-        const route = result.routes?.[0]
-        const path = Array.isArray(route?.overview_path) ? route.overview_path : []
-        if (path.length) {
-          const polyline = new window.google.maps.Polyline({
-            map: mapInstanceRef.current,
-            path,
-            strokeColor: '#10b981',
-            strokeWeight: minimal ? 6 : 5,
-            strokeOpacity: 0.88,
-            zIndex: 5,
-          })
-          routePolylinesRef.current = [polyline]
+
+        const route = response?.routes?.[0]
+        if (route) {
+          const encodedPolyline = route.polyline?.encodedPolyline
+          if (encodedPolyline && window.google.maps.geometry?.encoding?.decodePath) {
+            const path = window.google.maps.geometry.encoding.decodePath(encodedPolyline)
+            const polyline = new window.google.maps.Polyline({
+              map: mapInstanceRef.current,
+              path,
+              strokeColor: '#10b981',
+              strokeWeight: minimal ? 6 : 5,
+              strokeOpacity: 0.88,
+              zIndex: 5,
+            })
+            routePolylinesRef.current = [polyline]
+          }
+          const leg = route.legs?.[0]
+          routeDistance = Number(leg?.distanceMeters || 0)
+          const legDuration = leg?.duration
+          if (typeof legDuration === 'string') {
+            routeDuration = (parseFloat(legDuration) || 0) * 1000
+          } else {
+            routeDuration = Number(legDuration?.seconds || 0) * 1000
+          }
+          rendered = true
         }
-        const leg = route?.legs?.[0]
-        routeDistance = Number(leg?.distance?.value || 0)
-        routeDuration = Number(leg?.duration?.value || 0) * 1000
       }
 
       const bounds = new window.google.maps.LatLngBounds()
@@ -476,12 +451,14 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder, mi
         clampMapZoom(minimal ? 10 : 5, minimal ? 16 : 15)
       })
 
-      setRouteInfo({
-        distance: formatDistance(routeDistance),
-        duration: formatDuration(routeDuration),
-        distanceValue: routeDistance,
-        durationValue: routeDuration,
-      })
+      if (rendered) {
+        setRouteInfo({
+          distance: formatDistance(routeDistance),
+          duration: formatDuration(routeDuration),
+          distanceValue: routeDistance,
+          durationValue: routeDuration,
+        })
+      }
     } catch (err) {
       const message = String(err?.message || '')
       if (message.includes('ZERO_RESULTS') || message.includes('No route could be found')) {
