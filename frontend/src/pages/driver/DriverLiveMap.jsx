@@ -8,6 +8,7 @@ export default function DriverLiveMapPage() {
   const [loading, setLoading] = useState(true)
   const [driverLocation, setDriverLocation] = useState(null)
   const [selectedOrder, setSelectedOrder] = useState(null)
+  const [mapCommand, setMapCommand] = useState(null)
   const [autoRefresh, setAutoRefresh] = useState(true)
   const [lastUpdated, setLastUpdated] = useState(null)
   
@@ -42,14 +43,11 @@ export default function DriverLiveMapPage() {
     try {
       const data = await apiGet('/api/orders/driver/assigned')
       
-      // Filter: must have location AND shipmentStatus not delivered/cancelled/returned
-      const excludedShipmentStatuses = ['delivered', 'cancelled', 'returned']
       const ordersWithLocation = (data.orders || []).filter(o => {
         const lat = Number(o?.locationLat)
         const lng = Number(o?.locationLng)
         const hasLocation = Number.isFinite(lat) && Number.isFinite(lng)
-        const notExcluded = !excludedShipmentStatuses.includes(String(o?.shipmentStatus || '').toLowerCase())
-        return hasLocation && notExcluded
+        return hasLocation && isPickedUpOrder(o)
       })
       
       setOrders(ordersWithLocation)
@@ -153,6 +151,35 @@ export default function DriverLiveMapPage() {
     return order?.customerAddress || order?.customerLocation || [order?.city, order?.orderCountry].filter(Boolean).join(', ') || 'No address'
   }
 
+  function normalizeShipmentStatus(status) {
+    const raw = String(status || '').trim().toLowerCase()
+    if (!raw) return ''
+    if (raw === 'open') return 'pending'
+    if (raw === 'shipped') return 'in_transit'
+    if (raw === 'attempted' || raw === 'contacted') return 'in_transit'
+    if (raw === 'picked' || raw === 'pickedup') return 'picked_up'
+    return raw
+  }
+
+  function getOrderStatusValue(order) {
+    return normalizeShipmentStatus(order?.shipmentStatus || order?.status || '')
+  }
+
+  function isPickedUpOrder(order) {
+    const shipmentStatus = getOrderStatusValue(order)
+    const rawStatus = normalizeShipmentStatus(order?.status || '')
+    return shipmentStatus === 'picked_up' || rawStatus === 'picked_up'
+  }
+
+  function getCustomerLabel(order) {
+    const name = String(order?.customerName || '').trim()
+    if (name) return name
+    const invoice = String(order?.invoiceNumber || '').trim()
+    if (invoice) return `Customer ${invoice}`
+    const fallback = String(order?._id || order?.id || '').trim()
+    return fallback ? `Customer ${fallback.slice(-5)}` : 'Customer'
+  }
+
   function formatStatusLabel(status) {
     const raw = String(status || '').trim().toLowerCase()
     if (!raw) return 'Pending'
@@ -168,6 +195,41 @@ export default function DriverLiveMapPage() {
   function callPhone(phone) {
     if (!phone) return
     window.location.href = `tel:${phone}`
+  }
+
+  function queueMapCommand(type, order = null) {
+    const orderId = String(order?._id || order?.id || '').trim()
+    setMapCommand({
+      type,
+      orderId,
+      requestId: `${type}:${orderId || 'driver'}:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`
+    })
+  }
+
+  function openExternalDirections(order) {
+    const lat = Number(order?.locationLat)
+    const lng = Number(order?.locationLng)
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      toast.warn('This order does not have a valid customer pin')
+      return
+    }
+
+    const originLat = Number(driverLocation?.lat)
+    const originLng = Number(driverLocation?.lng)
+    const hasOrigin = Number.isFinite(originLat) && Number.isFinite(originLng)
+
+    const params = new URLSearchParams({
+      api: '1',
+      destination: `${lat},${lng}`,
+      travelmode: 'driving',
+      dir_action: 'navigate',
+    })
+
+    if (hasOrigin) {
+      params.set('origin', `${originLat},${originLng}`)
+    }
+
+    window.open(`https://www.google.com/maps/dir/?${params.toString()}`, '_blank', 'noopener,noreferrer')
   }
 
   // Initial load
@@ -207,7 +269,7 @@ export default function DriverLiveMapPage() {
   // When order is selected, set its current status
   useEffect(() => {
     if (selectedOrder) {
-      setSelectedStatus(String(selectedOrder.shipmentStatus || '').toLowerCase())
+      setSelectedStatus(getOrderStatusValue(selectedOrder))
       setStatusNote('')
       setCollectedAmount(String(getDefaultCollectedAmount(selectedOrder) || ''))
     } else {
@@ -281,12 +343,15 @@ export default function DriverLiveMapPage() {
     )
   }
 
-  const activeOrderId = String(selectedOrder?._id || selectedOrder?.id || '')
   const quickActions = [
     { value: 'delivered', label: 'Delivered', bg: '#dcfce7', color: '#166534' },
     { value: 'no_response', label: 'No Response', bg: '#fef3c7', color: '#92400e' },
     { value: 'cancelled', label: 'Cancelled', bg: '#fee2e2', color: '#b91c1c' },
   ]
+  const activeOrderId = String(selectedOrder?._id || selectedOrder?.id || '')
+  const selectedOrderStatus = getOrderStatusValue(selectedOrder)
+  const isQuickActionSelected = quickActions.some((action) => action.value === selectedStatus)
+  const mapViewportHeight = 'clamp(420px, calc(100vh - 300px), 72vh)'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingBottom: 16 }}>
@@ -303,7 +368,7 @@ export default function DriverLiveMapPage() {
             Driver Live Map
           </h1>
           <p style={{ color: '#64748b', margin: '4px 0 0', fontSize: 14 }}>
-            Tap any stop to open a compact order sheet
+            Tap any picked-up stop to open actions and directions
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -366,7 +431,7 @@ export default function DriverLiveMapPage() {
             boxShadow: '0 0 8px rgba(16,185,129,0.4)'
           }} />
           <span style={{ fontWeight: 700, color: '#0f172a' }}>{orders.length}</span>
-          <span style={{ color: '#64748b', fontSize: 13 }}>Active Orders</span>
+          <span style={{ color: '#64748b', fontSize: 13 }}>Picked Up Orders</span>
         </div>
         
         {driverLocation && (
@@ -434,7 +499,7 @@ export default function DriverLiveMapPage() {
                   {getOrderTitle(order)}
                 </div>
                 <div style={{ fontSize: 12, color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {order.customerName || 'Customer'} · {formatStatusLabel(order.shipmentStatus)}
+                  {order.customerName || 'Customer'} · {formatStatusLabel(getOrderStatusValue(order))}
                 </div>
               </button>
             )
@@ -445,7 +510,7 @@ export default function DriverLiveMapPage() {
       {/* Full Size Map */}
       <div style={{ 
         flex: 1,
-        minHeight: 'calc(100vh - 300px)',
+        minHeight: mapViewportHeight,
         borderRadius: 28,
         overflow: 'hidden',
         position: 'relative',
@@ -458,70 +523,162 @@ export default function DriverLiveMapPage() {
           onSelectOrder={(order) => setSelectedOrder(order)}
           minimal={true}
           activeOrderId={activeOrderId}
-          mapHeight="calc(100vh - 300px)"
+          mapHeight={mapViewportHeight}
+          mapCommand={mapCommand}
         />
 
         {selectedOrder && (
           <div style={{
             position: 'absolute',
-            left: 16,
-            right: 16,
-            bottom: 16,
-            padding: 16,
-            borderRadius: 24,
-            background: 'rgba(255,255,255,0.96)',
-            backdropFilter: 'blur(18px)',
-            WebkitBackdropFilter: 'blur(18px)',
-            boxShadow: '0 24px 70px rgba(15,23,42,0.18)',
-            border: '1px solid rgba(148,163,184,0.16)'
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: 'min(430px, calc(100% - 24px))',
+            bottom: 12,
+            padding: 14,
+            borderRadius: 22,
+            background: 'rgba(255,255,255,0.88)',
+            backdropFilter: 'blur(24px)',
+            WebkitBackdropFilter: 'blur(24px)',
+            boxShadow: '0 18px 48px rgba(15,23,42,0.16)',
+            border: '1px solid rgba(255,255,255,0.72)'
           }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
-                  <span style={{ padding: '6px 10px', borderRadius: 999, background: '#eff6ff', color: '#1d4ed8', fontSize: 11, fontWeight: 800 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 10 }}>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+                  <span style={{ padding: '5px 9px', borderRadius: 999, background: '#eff6ff', color: '#1d4ed8', fontSize: 10, fontWeight: 800, letterSpacing: '0.02em' }}>
                     {getOrderCode(selectedOrder)}
                   </span>
-                  <span style={{ padding: '6px 10px', borderRadius: 999, background: '#f8fafc', color: '#475569', fontSize: 11, fontWeight: 700 }}>
-                    {formatStatusLabel(selectedOrder.shipmentStatus)}
+                  <span style={{ padding: '5px 9px', borderRadius: 999, background: '#f8fafc', color: '#475569', fontSize: 10, fontWeight: 700 }}>
+                    {formatStatusLabel(selectedOrderStatus)}
                   </span>
                 </div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.03em', marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <div style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.03em', marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {getOrderTitle(selectedOrder)}
                 </div>
-                <div style={{ fontSize: 13, color: '#64748b', marginBottom: 6 }}>
-                  {selectedOrder.customerName || 'Customer'}
+                <div style={{ fontSize: 12, color: '#64748b', marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {getCustomerLabel(selectedOrder)}
                 </div>
-                <div style={{ fontSize: 12, color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <div style={{ fontSize: 11, color: '#94a3b8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {getAddressLine(selectedOrder)}
                 </div>
               </div>
-              <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 700, marginBottom: 4 }}>Amount</div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a' }}>
+              <div style={{ textAlign: 'right', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
+                <button
+                  onClick={() => setSelectedOrder(null)}
+                  style={{
+                    width: 30,
+                    height: 30,
+                    borderRadius: 999,
+                    border: '1px solid rgba(148,163,184,0.18)',
+                    background: 'rgba(248,250,252,0.92)',
+                    color: '#64748b',
+                    fontSize: 16,
+                    lineHeight: 1,
+                    cursor: 'pointer'
+                  }}
+                >
+                  ×
+                </button>
+                <div style={{ fontSize: 18, fontWeight: 900, color: '#0f172a', letterSpacing: '-0.03em' }}>
                   {formatOrderAmount(selectedOrder)}
                 </div>
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8, marginBottom: 8 }}>
               <button
-                onClick={() => openWhatsApp(selectedOrder.customerPhone)}
+                onClick={() => queueMapCommand('recenter', selectedOrder)}
                 style={{
-                  flex: 1,
-                  height: 46,
-                  borderRadius: 16,
-                  border: 'none',
-                  background: '#25d366',
-                  color: 'white',
-                  fontWeight: 700,
+                  height: 42,
+                  borderRadius: 14,
+                  border: '1px solid rgba(148,163,184,0.18)',
+                  background: '#ffffff',
+                  color: '#0f172a',
+                  fontWeight: 800,
+                  fontSize: 12,
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: 8
+                  gap: 7
                 }}
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="3" />
+                  <path d="M12 2v4" />
+                  <path d="M12 18v4" />
+                  <path d="M2 12h4" />
+                  <path d="M18 12h4" />
+                </svg>
+                Recenter
+              </button>
+              <button
+                onClick={() => queueMapCommand('show_route', selectedOrder)}
+                style={{
+                  height: 42,
+                  borderRadius: 14,
+                  border: 'none',
+                  background: '#0f172a',
+                  color: 'white',
+                  fontWeight: 800,
+                  fontSize: 12,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 7
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 18l6-6-6-6" />
+                  <path d="M5 12h10" />
+                </svg>
+                Get Direction
+              </button>
+              <button
+                onClick={() => openExternalDirections(selectedOrder)}
+                style={{
+                  height: 42,
+                  borderRadius: 14,
+                  border: '1px solid rgba(37,99,235,0.16)',
+                  background: '#eff6ff',
+                  color: '#1d4ed8',
+                  fontWeight: 800,
+                  fontSize: 12,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 7
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 3h7v7" />
+                  <path d="M10 14L21 3" />
+                  <path d="M21 14v7h-7" />
+                  <path d="M3 10L14 21" />
+                </svg>
+                Open Maps
+              </button>
+              <button
+                onClick={() => openWhatsApp(selectedOrder.customerPhone)}
+                style={{
+                  height: 42,
+                  borderRadius: 15,
+                  border: 'none',
+                  background: '#25d366',
+                  color: 'white',
+                  fontWeight: 800,
+                  fontSize: 12,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 7,
+                  boxShadow: '0 10px 22px rgba(37,211,102,0.22)'
+                }}
+              >
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
                 </svg>
                 WhatsApp
@@ -529,18 +686,18 @@ export default function DriverLiveMapPage() {
               <button
                 onClick={() => callPhone(selectedOrder.customerPhone)}
                 style={{
-                  flex: 1,
-                  height: 46,
-                  borderRadius: 16,
+                  height: 42,
+                  borderRadius: 15,
                   border: '1px solid rgba(37,99,235,0.16)',
                   background: '#eff6ff',
                   color: '#1d4ed8',
-                  fontWeight: 700,
+                  fontWeight: 800,
+                  fontSize: 12,
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: 8
+                  gap: 7
                 }}
               >
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
@@ -550,7 +707,7 @@ export default function DriverLiveMapPage() {
               </button>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8, marginBottom: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8, marginBottom: isQuickActionSelected ? 10 : 0, marginTop: 2 }}>
               {quickActions.map((action) => {
                 const active = selectedStatus === action.value
                 return (
@@ -558,13 +715,13 @@ export default function DriverLiveMapPage() {
                     key={action.value}
                     onClick={() => setSelectedStatus(action.value)}
                     style={{
-                      height: 42,
-                      borderRadius: 14,
+                      height: 40,
+                      borderRadius: 13,
                       border: active ? '1px solid transparent' : '1px solid rgba(148,163,184,0.22)',
                       background: active ? action.bg : '#ffffff',
                       color: active ? action.color : '#334155',
                       fontWeight: 800,
-                      fontSize: 12,
+                      fontSize: 11,
                       cursor: 'pointer'
                     }}
                   >
@@ -574,79 +731,71 @@ export default function DriverLiveMapPage() {
               })}
             </div>
 
-            {selectedStatus === 'delivered' && (
-              <div style={{ marginBottom: 10 }}>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  min="0"
-                  step="0.01"
-                  value={collectedAmount}
-                  onChange={(e) => setCollectedAmount(e.target.value)}
-                  placeholder="Collected amount"
+            {isQuickActionSelected && (
+              <>
+                {selectedStatus === 'delivered' && (
+                  <div style={{ marginTop: 10, marginBottom: 8 }}>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      min="0"
+                      step="0.01"
+                      value={collectedAmount}
+                      onChange={(e) => setCollectedAmount(e.target.value)}
+                      placeholder="Collected amount"
+                      style={{
+                        width: '100%',
+                        height: 42,
+                        padding: '0 13px',
+                        borderRadius: 13,
+                        border: '1px solid rgba(148,163,184,0.18)',
+                        fontSize: 13,
+                        boxSizing: 'border-box',
+                        background: 'rgba(248,250,252,0.84)'
+                      }}
+                    />
+                  </div>
+                )}
+
+                <div style={{ marginBottom: 8 }}>
+                  <input
+                    type="text"
+                    value={statusNote}
+                    onChange={(e) => setStatusNote(e.target.value)}
+                    placeholder={selectedStatus === 'cancelled' ? 'Cancellation reason' : selectedStatus === 'no_response' ? 'Why no response?' : 'Delivery note'}
+                    style={{
+                      width: '100%',
+                      height: 42,
+                      padding: '0 13px',
+                      borderRadius: 13,
+                      border: '1px solid rgba(148,163,184,0.18)',
+                      fontSize: 13,
+                      boxSizing: 'border-box',
+                      background: 'rgba(248,250,252,0.84)'
+                    }}
+                  />
+                </div>
+
+                <button
+                  onClick={saveStatus}
+                  disabled={!isQuickActionSelected || savingStatus}
                   style={{
                     width: '100%',
-                    padding: '12px 14px',
-                    borderRadius: 14,
-                    border: '1px solid rgba(148,163,184,0.22)',
-                    fontSize: 14,
-                    boxSizing: 'border-box'
+                    height: 44,
+                    borderRadius: 15,
+                    border: 'none',
+                    background: '#0f172a',
+                    color: 'white',
+                    fontWeight: 800,
+                    fontSize: 13,
+                    cursor: savingStatus ? 'wait' : 'pointer',
+                    opacity: savingStatus ? 0.72 : 1
                   }}
-                />
-              </div>
+                >
+                  {savingStatus ? 'Saving...' : `Mark ${formatStatusLabel(selectedStatus)}`}
+                </button>
+              </>
             )}
-
-            <div style={{ marginBottom: 12 }}>
-              <input
-                type="text"
-                value={statusNote}
-                onChange={(e) => setStatusNote(e.target.value)}
-                placeholder={selectedStatus === 'cancelled' ? 'Reason for cancellation' : selectedStatus === 'no_response' ? 'Why no response?' : 'Delivery note (optional)'}
-                style={{
-                  width: '100%',
-                  padding: '12px 14px',
-                  borderRadius: 14,
-                  border: '1px solid rgba(148,163,184,0.22)',
-                  fontSize: 14,
-                  boxSizing: 'border-box'
-                }}
-              />
-            </div>
-
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button
-                onClick={() => setSelectedOrder(null)}
-                style={{
-                  flex: 1,
-                  height: 46,
-                  borderRadius: 16,
-                  border: '1px solid rgba(148,163,184,0.22)',
-                  background: '#ffffff',
-                  color: '#334155',
-                  fontWeight: 700,
-                  cursor: 'pointer'
-                }}
-              >
-                Close
-              </button>
-              <button
-                onClick={saveStatus}
-                disabled={!quickActions.some((action) => action.value === selectedStatus) || savingStatus}
-                style={{
-                  flex: 1.2,
-                  height: 46,
-                  borderRadius: 16,
-                  border: 'none',
-                  background: !quickActions.some((action) => action.value === selectedStatus) ? '#cbd5e1' : '#0f172a',
-                  color: 'white',
-                  fontWeight: 800,
-                  cursor: !quickActions.some((action) => action.value === selectedStatus) ? 'not-allowed' : 'pointer',
-                  opacity: savingStatus ? 0.7 : 1
-                }}
-              >
-                {savingStatus ? 'Saving...' : 'Save Status'}
-              </button>
-            </div>
           </div>
         )}
       </div>
@@ -663,8 +812,8 @@ export default function DriverLiveMapPage() {
           boxShadow: '0 18px 50px rgba(15,23,42,0.06)'
         }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>📍</div>
-          <div style={{ fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>No live orders on the map</div>
-          <div style={{ fontSize: 14 }}>Assigned orders with customer location pins will appear here automatically.</div>
+          <div style={{ fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>No picked-up orders on the map</div>
+          <div style={{ fontSize: 14 }}>Orders with a picked up status and valid customer pins will appear here automatically.</div>
         </div>
       )}
     </div>

@@ -3,12 +3,16 @@ import { apiGet } from '../../api'
 
 const GOOGLE_MAPS_SCRIPT_ID = 'google-maps-script'
 
-export default function LiveMap({ orders = [], driverLocation, onSelectOrder, minimal = false, activeOrderId = '', mapHeight = 400 }) {
+export default function LiveMap({ orders = [], driverLocation, onSelectOrder, minimal = false, activeOrderId = '', mapHeight = 400, mapCommand = null }) {
   const mapRef = useRef(null)
   const mapInstanceRef = useRef(null)
   const markersRef = useRef([])
   const directionsRendererRef = useRef(null)
   const driverMarkerRef = useRef(null)
+  const driverLocationRef = useRef(null)
+  const hasCenteredOnDriverRef = useRef(false)
+  const lastAutoViewportSignatureRef = useRef('')
+  const lastHandledMapCommandRef = useRef('')
   
   const [apiKey, setApiKey] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -16,6 +20,10 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder, mi
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [routeInfo, setRouteInfo] = useState(null) // distance, duration
   const [mapLoaded, setMapLoaded] = useState(false)
+
+  useEffect(() => {
+    driverLocationRef.current = driverLocation || null
+  }, [driverLocation])
 
   // Load Google Maps API key from backend
   useEffect(() => {
@@ -71,7 +79,7 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder, mi
     mapInstanceRef.current = new window.google.maps.Map(mapRef.current, {
       center: defaultCenter,
       zoom: minimal ? 11 : 10,
-      minZoom: 3,
+      minZoom: minimal ? 9 : 3,
       maxZoom: 20,
       styles: getMapStyles(),
       ...(minimal
@@ -123,7 +131,7 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder, mi
       }
     })
     
-  }, [mapLoaded, driverLocation])
+  }, [mapLoaded, minimal])
 
   // Add driver marker
   useEffect(() => {
@@ -148,9 +156,105 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder, mi
       })
     }
     
-    // Center map on driver
-    mapInstanceRef.current.panTo(driverLocation)
-  }, [driverLocation, mapLoaded])
+    if (!hasCenteredOnDriverRef.current && orders.length === 0) {
+      mapInstanceRef.current.setCenter(driverLocation)
+      mapInstanceRef.current.setZoom(minimal ? 14 : 12)
+      hasCenteredOnDriverRef.current = true
+    }
+  }, [driverLocation, mapLoaded, minimal, orders.length])
+
+  const clampMapZoom = useCallback((minZoom, maxZoom) => {
+    const map = mapInstanceRef.current
+    if (!map) return
+    const currentZoom = Number(map.getZoom())
+    if (!Number.isFinite(currentZoom)) return
+    if (currentZoom < minZoom) map.setZoom(minZoom)
+    else if (currentZoom > maxZoom) map.setZoom(maxZoom)
+  }, [])
+
+  useEffect(() => {
+    if (!mapInstanceRef.current || !window.google) return
+    const map = mapInstanceRef.current
+    const minResponsiveZoom = minimal ? 9 : 3
+    const listener = map.addListener('zoom_changed', () => {
+      const currentZoom = Number(map.getZoom())
+      if (!Number.isFinite(currentZoom)) return
+      if (currentZoom < minResponsiveZoom) {
+        map.setZoom(minResponsiveZoom)
+      }
+    })
+    return () => {
+      try { window.google.maps.event.removeListener(listener) } catch {}
+    }
+  }, [mapLoaded, minimal])
+
+  const clearRenderedRoute = useCallback(() => {
+    if (directionsRendererRef.current) {
+      directionsRendererRef.current.setDirections({ routes: [] })
+    }
+    setRouteInfo(null)
+  }, [])
+
+  const recenterOnOrder = useCallback((order) => {
+    if (!mapInstanceRef.current || !window.google || !order) return
+
+    const lat = Number(order?.locationLat)
+    const lng = Number(order?.locationLng)
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return
+
+    const map = mapInstanceRef.current
+    const origin = driverLocationRef.current
+
+    if (origin) {
+      const bounds = new window.google.maps.LatLngBounds()
+      bounds.extend(origin)
+      bounds.extend({ lat, lng })
+      map.fitBounds(bounds, minimal ? 72 : 96)
+      window.google.maps.event.addListenerOnce(map, 'idle', () => {
+        clampMapZoom(minimal ? 11 : 6, minimal ? 17 : 16)
+      })
+      return
+    }
+
+    map.panTo({ lat, lng })
+    map.setZoom(minimal ? 15 : 13)
+  }, [clampMapZoom, minimal])
+
+  const showRoute = useCallback(async (order) => {
+    const origin = driverLocationRef.current
+    if (!mapInstanceRef.current || !origin || !order.locationLat || !order.locationLng || !window.google) {
+      return
+    }
+    
+    const directionsService = new window.google.maps.DirectionsService()
+    
+    try {
+      clearRenderedRoute()
+      const result = await directionsService.route({
+        origin,
+        destination: { lat: order.locationLat, lng: order.locationLng },
+        travelMode: window.google.maps.TravelMode.DRIVING,
+      })
+      
+      directionsRendererRef.current.setDirections(result)
+      window.google.maps.event.addListenerOnce(mapInstanceRef.current, 'idle', () => {
+        clampMapZoom(minimal ? 10 : 5, minimal ? 16 : 15)
+      })
+      
+      const leg = result.routes[0]?.legs[0]
+      if (leg) {
+        setRouteInfo({
+          distance: leg.distance?.text || 'Unknown',
+          duration: leg.duration?.text || 'Unknown',
+          distanceValue: leg.distance?.value || 0,
+          durationValue: leg.duration?.value || 0
+        })
+      }
+    } catch (err) {
+      console.error('Failed to get directions:', err)
+      setRouteInfo(null)
+    }
+  }, [clampMapZoom, clearRenderedRoute, minimal])
 
   // Add order markers
   useEffect(() => {
@@ -160,16 +264,10 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder, mi
     markersRef.current.forEach(m => m.setMap(null))
     markersRef.current = []
     
-    const bounds = new window.google.maps.LatLngBounds()
-    if (driverLocation) {
-      bounds.extend(driverLocation)
-    }
-    
     orders.forEach((order, index) => {
       if (!order.locationLat || !order.locationLng) return
       
       const position = { lat: order.locationLat, lng: order.locationLng }
-      bounds.extend(position)
       
       const marker = new window.google.maps.Marker({
         position,
@@ -193,75 +291,63 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder, mi
       })
       
       marker.addListener('click', () => {
+        clearRenderedRoute()
         setSelectedOrder(order)
         onSelectOrder?.(order)
-        showRoute(order)
       })
       
       markersRef.current.push(marker)
     })
-    
-    // Fit bounds if we have markers
-    if (orders.length > 0 || driverLocation) {
-      try {
-        mapInstanceRef.current.fitBounds(bounds, { padding: 50 })
-        // Prevent too much zoom in
-        const listener = mapInstanceRef.current.addListener('idle', () => {
-          if (mapInstanceRef.current.getZoom() > 15) {
-            mapInstanceRef.current.setZoom(15)
-          }
-          window.google.maps.event.removeListener(listener)
-        })
-      } catch {}
-    }
-  }, [orders, driverLocation, mapLoaded, selectedOrder])
+  }, [clearRenderedRoute, orders, mapLoaded, onSelectOrder, selectedOrder])
 
-  // Show route to selected order
-  const showRoute = useCallback(async (order) => {
-    if (!mapInstanceRef.current || !driverLocation || !order.locationLat || !order.locationLng || !window.google) {
+  useEffect(() => {
+    if (!mapInstanceRef.current || !window.google) return
+    if (String(activeOrderId || '').trim()) return
+
+    const mappableOrders = orders.filter((order) => Number.isFinite(Number(order?.locationLat)) && Number.isFinite(Number(order?.locationLng)))
+    const signature = [...mappableOrders]
+      .sort((a, b) => String(a?._id || a?.id || '').localeCompare(String(b?._id || b?.id || '')))
+      .map((order) => `${String(order?._id || order?.id || '')}:${Number(order.locationLat).toFixed(4)}:${Number(order.locationLng).toFixed(4)}`)
+      .join('|')
+
+    if (!signature && !driverLocation) return
+    if (signature === lastAutoViewportSignatureRef.current && mappableOrders.length > 0) return
+
+    if (mappableOrders.length === 0 && driverLocation) {
+      mapInstanceRef.current.setCenter(driverLocation)
+      mapInstanceRef.current.setZoom(minimal ? 14 : 12)
+      lastAutoViewportSignatureRef.current = '__driver_only__'
+      hasCenteredOnDriverRef.current = true
       return
     }
-    
-    const directionsService = new window.google.maps.DirectionsService()
-    
+
     try {
-      const result = await directionsService.route({
-        origin: driverLocation,
-        destination: { lat: order.locationLat, lng: order.locationLng },
-        travelMode: window.google.maps.TravelMode.DRIVING,
+      const bounds = new window.google.maps.LatLngBounds()
+      const shouldIncludeDriver = !!driverLocation && mappableOrders.length <= 8
+      if (shouldIncludeDriver) bounds.extend(driverLocation)
+      mappableOrders.forEach((order) => {
+        bounds.extend({ lat: Number(order.locationLat), lng: Number(order.locationLng) })
       })
-      
-      directionsRendererRef.current.setDirections(result)
-      
-      // Extract route info
-      const leg = result.routes[0]?.legs[0]
-      if (leg) {
-        setRouteInfo({
-          distance: leg.distance?.text || 'Unknown',
-          duration: leg.duration?.text || 'Unknown',
-          distanceValue: leg.distance?.value || 0,
-          durationValue: leg.duration?.value || 0
-        })
-      }
-    } catch (err) {
-      console.error('Failed to get directions:', err)
-      setRouteInfo(null)
-    }
-  }, [driverLocation])
+      mapInstanceRef.current.fitBounds(bounds, minimal ? 28 : 50)
+      window.google.maps.event.addListenerOnce(mapInstanceRef.current, 'idle', () => {
+        clampMapZoom(minimal ? 9 : 5, minimal ? 16 : 15)
+      })
+      lastAutoViewportSignatureRef.current = signature
+    } catch {}
+  }, [activeOrderId, clampMapZoom, driverLocation, mapLoaded, minimal, orders])
 
   // Clear route
   const clearRoute = useCallback(() => {
-    if (directionsRendererRef.current) {
-      directionsRendererRef.current.setDirections({ routes: [] })
-    }
+    clearRenderedRoute()
     setSelectedOrder(null)
-    setRouteInfo(null)
-  }, [])
+    lastAutoViewportSignatureRef.current = ''
+  }, [clearRenderedRoute])
 
   useEffect(() => {
     const targetId = String(activeOrderId || '').trim()
     if (!targetId) {
-      if (selectedOrder || routeInfo) clearRoute()
+      if (selectedOrder) setSelectedOrder(null)
+      if (routeInfo) clearRenderedRoute()
       return
     }
     const next = orders.find((order) => String(order?._id || order?.id || '') === targetId)
@@ -270,9 +356,40 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder, mi
       return
     }
     if (String(selectedOrder?._id || selectedOrder?.id || '') === targetId) return
+    clearRenderedRoute()
     setSelectedOrder(next)
-    showRoute(next)
-  }, [activeOrderId, clearRoute, orders, routeInfo, selectedOrder, showRoute])
+  }, [activeOrderId, clearRenderedRoute, clearRoute, orders, routeInfo, selectedOrder])
+
+  useEffect(() => {
+    if (!mapCommand || !mapInstanceRef.current || !window.google) return
+
+    const requestId = String(mapCommand?.requestId || '').trim()
+    if (requestId && requestId === lastHandledMapCommandRef.current) return
+
+    const targetId = String(mapCommand?.orderId || '').trim()
+    const targetOrder = targetId
+      ? orders.find((order) => String(order?._id || order?.id || '') === targetId)
+      : null
+
+    if (requestId) {
+      lastHandledMapCommandRef.current = requestId
+    }
+
+    if (mapCommand.type === 'recenter') {
+      if (targetOrder) {
+        recenterOnOrder(targetOrder)
+      } else if (driverLocation) {
+        mapInstanceRef.current.panTo(driverLocation)
+        mapInstanceRef.current.setZoom(minimal ? 15 : 13)
+      }
+      return
+    }
+
+    if (mapCommand.type === 'show_route' && targetOrder) {
+      setSelectedOrder(targetOrder)
+      showRoute(targetOrder)
+    }
+  }, [driverLocation, mapCommand, minimal, orders, recenterOnOrder, showRoute])
 
   // Map styles (dark mode friendly)
   function getMapStyles() {
