@@ -69,6 +69,9 @@ function ReportLine({ title, fields }) {
 
 function CountryBlock({ row, summary = false }) {
   const moneyCode = row?.currency || 'AED'
+  const netProfit = Number(row?.netProfitAmount || 0)
+  const totalCost = Number(row?.totalCostAmount || 0)
+  const isLoss = netProfit < 0
   return (
     <div className="card" style={{ display: 'grid', gap: 2, padding: 18, borderRadius: 18, border: summary ? '1px solid rgba(15,23,42,0.18)' : '1px solid rgba(148,163,184,0.18)', background: '#ffffff', boxShadow: 'none' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
@@ -148,6 +151,25 @@ function CountryBlock({ row, summary = false }) {
         title="Expense"
         fields={[
           { label: 'Total Expense', value: formatMoney(row?.totalExpense, moneyCode) },
+        ]}
+      />
+
+      <ReportLine
+        title="Purchasing"
+        fields={[
+          { label: 'Total Stock Purchased Amount', value: formatMoney(row?.totalStockPurchasedAmount, moneyCode) },
+          { label: 'Stock Purchase Quantity', value: formatCount(row?.totalStockPurchasedQty) },
+          { label: 'Current Stock Quantity', value: formatCount(row?.totalStockQuantity) },
+          { label: 'Stock Delivered', value: formatCount(row?.stockDeliveredQty) },
+        ]}
+      />
+
+      <ReportLine
+        title="Net Profit / Loss"
+        fields={[
+          { label: 'Delivered Amount', value: formatMoney(row?.deliveredAmount, moneyCode) },
+          { label: 'Total Cost', value: formatMoney(totalCost, moneyCode) },
+          { label: isLoss ? 'Net Loss' : 'Net Profit', value: formatMoney(Math.abs(netProfit), moneyCode) },
         ]}
       />
     </div>
@@ -255,8 +277,12 @@ export default function TotalAmounts() {
       driverPaidCommission: 0,
       totalExpense: 0,
       dropshipperPaidCommission: 0,
+      totalStockPurchasedAmount: 0,
+      netProfitAmount: 0,
+      totalCostAmount: 0,
     }
     const agentBalance = Math.max(0, Number(src.agentTotalCommission || 0) - Number(src.agentPaidCommission || 0))
+    const netProfit = Number(src.netProfitAmount || 0)
     return [
       { label: 'Total Amount', value: formatMoney(src.totalAmount, 'AED') },
       { label: 'Delivered Amount', value: formatMoney(src.deliveredAmount, 'AED') },
@@ -268,6 +294,9 @@ export default function TotalAmounts() {
       { label: 'Dropshipper Paid', value: formatMoney(src.dropshipperPaidCommission, 'AED') },
       { label: 'Driver Paid Commission', value: formatMoney(src.driverPaidCommission, 'AED') },
       { label: 'Total Expense', value: formatMoney(src.totalExpense, 'AED') },
+      { label: 'Purchasing', value: formatMoney(src.totalStockPurchasedAmount, 'AED') },
+      { label: 'Total Cost', value: formatMoney(src.totalCostAmount, 'AED') },
+      { label: netProfit < 0 ? 'Net Loss' : 'Net Profit', value: formatMoney(Math.abs(netProfit), 'AED') },
     ]
   }, [summary])
 

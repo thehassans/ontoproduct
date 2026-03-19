@@ -319,6 +319,12 @@ function buildCountryCanonExpr(fieldPath = "$orderCountry") {
       driverTotalCommission: 0,
       driverPaidCommission: 0,
       totalExpense: 0,
+      totalStockPurchasedAmount: 0,
+      totalStockPurchasedQty: 0,
+      totalStockQuantity: 0,
+      stockDeliveredQty: 0,
+      totalCostAmount: 0,
+      netProfitAmount: 0,
     };
   }
 
@@ -340,6 +346,12 @@ function buildCountryCanonExpr(fieldPath = "$orderCountry") {
       "driverTotalCommission",
       "driverPaidCommission",
       "totalExpense",
+      "totalStockPurchasedAmount",
+      "totalStockPurchasedQty",
+      "totalStockQuantity",
+      "stockDeliveredQty",
+      "totalCostAmount",
+      "netProfitAmount",
     ];
     return requiredKeys.every((key) => Object.prototype.hasOwnProperty.call(value, key));
   }
@@ -360,7 +372,7 @@ function buildCountryCanonExpr(fieldPath = "$orderCountry") {
       User.find({ role: "manager", createdBy: ownerId }, { _id: 1 }).lean(),
       User.find({ role: "dropshipper", createdBy: ownerId }, { _id: 1, country: 1 }).lean(),
       User.find({ role: "driver", createdBy: ownerId }, { _id: 1, country: 1, driverProfile: 1 }).lean(),
-      Product.find({ createdBy: ownerId }).select("_id").lean(),
+      Product.find({ createdBy: ownerId }).select("_id purchasePrice baseCurrency stockQty stockByCountry").lean(),
     ]);
 
     const agentIds = agents.map((row) => row._id).filter(Boolean);
@@ -395,10 +407,21 @@ function buildCountryCanonExpr(fieldPath = "$orderCountry") {
     );
     const creatorIds = creatorIdStrings.map((id) => new mongoose.Types.ObjectId(id));
     const ownedProductIds = products.map((p) => p._id).filter(Boolean);
+    const productMetaById = new Map(
+      products.map((product) => [
+        String(product?._id || ""),
+        {
+          purchasePrice: Number(product?.purchasePrice || 0),
+          baseCurrency: String(product?.baseCurrency || "SAR").toUpperCase(),
+          stockQty: Number(product?.stockQty || 0),
+          stockByCountry: product?.stockByCountry || {},
+        },
+      ])
+    );
     const WebOrder = (await import("../models/WebOrder.js")).default;
     const rateConfig = await getPerAEDConfig();
 
-    const [internalRows, webRows, deliveredCommissionRows, agentPaidRows, driverPaidRows, dropshipperPaidRows, expenseRows] = await Promise.all([
+    const [internalRows, webRows, deliveredCommissionRows, agentPaidRows, driverPaidRows, dropshipperPaidRows, expenseRows, deliveredItemRows] = await Promise.all([
       Order.aggregate([
         {
           $match: {
@@ -660,6 +683,23 @@ function buildCountryCanonExpr(fieldPath = "$orderCountry") {
           },
         },
       ]),
+      Order.aggregate([
+        {
+          $match: {
+            createdBy: { $in: creatorIds },
+            shipmentStatus: "delivered",
+            deliveredAt: { $gte: start, $lt: end },
+          },
+        },
+        {
+          $project: {
+            orderCountryCanon: buildCountryCanonExpr("$orderCountry"),
+            items: 1,
+            productId: 1,
+            quantity: { $ifNull: ["$quantity", 1] },
+          },
+        },
+      ]),
     ]);
 
     const countryOrder = ["KSA", "UAE", "Oman", "Bahrain", "India", "Kuwait", "Qatar", "Pakistan", "Jordan", "USA", "UK", "Canada", "Australia", "Other"];
@@ -686,6 +726,65 @@ function buildCountryCanonExpr(fieldPath = "$orderCountry") {
     };
     const agentEarnedByCountry = new Map();
     const driverEarnedByCountry = new Map();
+    const deliveredQtyByCountryAndProduct = new Map();
+
+    for (const row of deliveredItemRows || []) {
+      const country = canonicalCountryName(row?.orderCountryCanon || "Other");
+      const items = Array.isArray(row?.items) && row.items.length
+        ? row.items
+        : row?.productId
+        ? [{ productId: row.productId, quantity: row.quantity || 1 }]
+        : [];
+      for (const item of items) {
+        const productId = String(item?.productId || "");
+        if (!productId || !productMetaById.has(productId)) continue;
+        if (!deliveredQtyByCountryAndProduct.has(country)) deliveredQtyByCountryAndProduct.set(country, new Map());
+        const productMap = deliveredQtyByCountryAndProduct.get(country);
+        productMap.set(productId, Number(productMap.get(productId) || 0) + Number(item?.quantity || 0));
+      }
+    }
+
+    const supportedCountries = ["KSA", "UAE", "Oman", "Bahrain", "India", "Kuwait", "Qatar", "Pakistan", "Jordan", "USA", "UK", "Canada", "Australia"];
+    for (const [productId, meta] of productMetaById.entries()) {
+      const purchasePrice = Number(meta?.purchasePrice || 0);
+      const baseCurrency = String(meta?.baseCurrency || "SAR").toUpperCase();
+      const stockByCountry = meta?.stockByCountry || {};
+      let touchedCountry = false;
+      for (const country of supportedCountries) {
+        const deliveredQty = Number(deliveredQtyByCountryAndProduct.get(country)?.get(productId) || 0);
+        const remainingQty = Number(stockByCountry?.[country] || 0);
+        const purchasedQty = remainingQty + deliveredQty;
+        if (!(purchasedQty > 0) && !(remainingQty > 0) && !(deliveredQty > 0)) continue;
+        touchedCountry = true;
+        const entry = ensureRow(country);
+        entry.totalStockPurchasedQty += purchasedQty;
+        entry.totalStockQuantity += remainingQty;
+        entry.stockDeliveredQty += deliveredQty;
+        entry.totalStockPurchasedAmount += fromAED(
+          toAED(purchasedQty * purchasePrice, baseCurrency, rateConfig),
+          entry.currency || "AED",
+          rateConfig
+        );
+      }
+      if (!touchedCountry) {
+        const deliveredQty = Array.from(deliveredQtyByCountryAndProduct.values()).reduce(
+          (sum, productMap) => sum + Number(productMap.get(productId) || 0),
+          0
+        );
+        const remainingQty = Number(meta?.stockQty || 0);
+        const purchasedQty = remainingQty + deliveredQty;
+        if (!(purchasedQty > 0) && !(remainingQty > 0) && !(deliveredQty > 0)) continue;
+        const entry = ensureRow("Other");
+        entry.totalStockPurchasedQty += purchasedQty;
+        entry.totalStockQuantity += remainingQty;
+        entry.stockDeliveredQty += deliveredQty;
+        entry.totalStockPurchasedAmount += fromAED(
+          toAED(purchasedQty * purchasePrice, baseCurrency, rateConfig),
+          entry.currency || "AED",
+          rateConfig
+        );
+      }
+    }
 
     for (const row of internalRows || []) {
       const entry = ensureRow(row?._id || "Other");
@@ -826,8 +925,18 @@ function buildCountryCanonExpr(fieldPath = "$orderCountry") {
       );
     }
 
-    const amountKeys = ["totalAmount", "deliveredAmount", "agentAmount", "agentDeliveredAmount", "dropshipperAmount", "dropshipperDeliveredAmount", "driverTotalAmount", "driverDeliveredAmount", "onlineOrderAmount", "onlineOrderDeliveredAmount", "agentTotalCommission", "agentPaidCommission", "dropshipperTotalCommission", "dropshipperPaidCommission", "driverTotalCommission", "driverPaidCommission", "totalExpense"];
+    const amountKeys = ["totalAmount", "deliveredAmount", "agentAmount", "agentDeliveredAmount", "dropshipperAmount", "dropshipperDeliveredAmount", "driverTotalAmount", "driverDeliveredAmount", "onlineOrderAmount", "onlineOrderDeliveredAmount", "agentTotalCommission", "agentPaidCommission", "dropshipperTotalCommission", "dropshipperPaidCommission", "driverTotalCommission", "driverPaidCommission", "totalExpense", "totalStockPurchasedAmount", "totalCostAmount", "netProfitAmount"];
     const countKeys = ["totalOrders", "deliveredOrders", "cancelledOrders", "agentTotalOrders", "agentDeliveredOrders", "agentCancelledOrders", "dropshipperTotalOrders", "dropshipperDeliveredOrders", "dropshipperCancelledOrders", "driverTotalOrders", "driverDeliveredOrders", "driverCancelledOrders", "onlineTotalOrders", "onlinePaidOrders", "onlineDeliveredOrders", "onlineCancelledOrders"];
+
+    for (const row of rowMap.values()) {
+      row.totalCostAmount =
+        Number(row.agentTotalCommission || 0) +
+        Number(row.dropshipperTotalCommission || 0) +
+        Number(row.driverTotalCommission || 0) +
+        Number(row.totalStockPurchasedAmount || 0) +
+        Number(row.totalExpense || 0);
+      row.netProfitAmount = Number(row.deliveredAmount || 0) - Number(row.totalCostAmount || 0);
+    }
 
     const countries = Array.from(rowMap.values())
       .map((row) => {
