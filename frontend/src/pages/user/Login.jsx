@@ -19,6 +19,7 @@ export default function UserLogin() {
     if (role === 'admin') location.href = '/admin'
     else if (role === 'agent') location.href = '/agent'
     else if (role === 'manager') location.href = '/manager'
+    else if (role === 'partner') location.href = '/partner'
     else if (role === 'investor') location.href = '/investor'
     else if (role === 'commissioner') location.href = '/commissioner/dashboard'
     else if (role === 'confirmer') location.href = '/confirmer'
@@ -104,7 +105,7 @@ export default function UserLogin() {
       if (status === 429) {
         toast.info('Too many requests. Please wait a few seconds and try again.')
       } else if (status === 400 || /invalid|incorrect|credentials|password|email/i.test(msg)) {
-        toast.error('Incorrect email or password')
+        toast.error('Incorrect phone, email, or password')
       } else {
         toast.error(msg || 'Login failed')
       }
@@ -151,20 +152,20 @@ export default function UserLogin() {
             <p className="pl-subtitle">{loginMode === 'shop' ? 'Access the premium shop operations console' : 'Sign in to your Buysial workspace'}</p>
           </div>
 
-          <label className="pl-label">{loginMode === 'shop' ? 'Username or Email' : 'Email'}</label>
+          <label className="pl-label">{loginMode === 'shop' ? 'Username or Email' : 'Email or Phone'}</label>
           <div className={`pl-field ${emailFocus ? 'pl-field--focus' : ''}`}>
             <svg className="pl-field-icon" width="18" height="18" viewBox="0 0 24 24" fill="none">
               <rect x="2" y="4" width="20" height="16" rx="3" stroke="currentColor" strokeWidth="1.6"/>
               <path d="M2 7l10 6 10-6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
             </svg>
             <input
-              type={loginMode === 'shop' ? 'text' : 'email'}
+              type="text"
               value={email}
               onChange={e => setEmail(e.target.value)}
               onFocus={() => setEmailFocus(true)}
               onBlur={() => setEmailFocus(false)}
-              placeholder={loginMode === 'shop' ? 'shop-login or shop@company.com' : 'you@company.com'}
-              autoComplete={loginMode === 'shop' ? 'username' : 'email'}
+              placeholder={loginMode === 'shop' ? 'shop-login or shop@company.com' : 'you@company.com or +9665xxxxxxx'}
+              autoComplete={loginMode === 'shop' ? 'username' : 'username'}
               required
               className="pl-input"
             />

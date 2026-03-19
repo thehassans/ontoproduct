@@ -39,6 +39,7 @@ const UserSchema = new mongoose.Schema(
         "user",
         "agent",
         "manager",
+        "partner",
         "investor",
         "driver",
         "customer",
@@ -190,6 +191,12 @@ const UserSchema = new mongoose.Schema(
         default: "idle",
       },
       commissionPerOrder: { type: Number, default: 0 },
+      paymentModel: {
+        type: String,
+        enum: ["per_order", "salary"],
+        default: "per_order",
+      },
+      salaryAmount: { type: Number, default: 0 },
       commissionCurrency: {
         type: String,
         enum: [

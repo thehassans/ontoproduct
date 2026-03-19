@@ -77,24 +77,32 @@ router.post(
   rateLimit({ windowMs: 60000, max: 20 }),
   async (req, res) => {
     try {
-      let { email, password, loginType } = req.body || {};
-      const e = String(email || "")
-        .trim()
-        .toLowerCase();
+      let { email, phone, password, loginType } = req.body || {};
+      const identifierRaw = String(email || phone || req.body?.identifier || "").trim();
+      const e = identifierRaw.toLowerCase();
+      const phoneDigits = identifierRaw.replace(/\D/g, "");
       const p = String(password || "").trim();
       if (!e || !p)
         return res.status(400).json({ message: "Invalid credentials" });
 
-      // Primary: normalized lookup
-      let user = await User.findOne({ email: e });
-      // Fallback: case-insensitive exact match (helps legacy data where email wasn't normalized)
-      if (!user) {
-        try {
-          const esc = e.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-          user = await User.findOne({
-            email: new RegExp("^" + esc + "$", "i"),
-          });
-        } catch {}
+      let user = null;
+      if (e.includes("@")) {
+        user = await User.findOne({ email: e });
+        if (!user) {
+          try {
+            const esc = e.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            user = await User.findOne({
+              email: new RegExp("^" + esc + "$", "i"),
+            });
+          } catch {}
+        }
+      }
+      if (!user && phoneDigits) {
+        const candidates = await User.find({ phone: { $exists: true, $ne: "" } });
+        user = candidates.find(
+          (candidate) =>
+            String(candidate?.phone || "").replace(/\D/g, "") === phoneDigits
+        ) || null;
       }
       if (!user)
         return res.status(400).json({ message: "Invalid credentials" });
@@ -140,6 +148,8 @@ router.post(
           firstName: user.firstName,
           lastName: user.lastName,
           email: user.email,
+          phone: user.phone,
+          ...(user.role === 'partner' ? { assignedCountry: user.assignedCountry, assignedCountries: user.assignedCountries } : {}),
           ...(user.role === 'seo_manager' && Array.isArray(user.seoCountries) ? { seoCountries: user.seoCountries } : {}),
           ...(user.role === 'manager' && user.managerPermissions ? { managerPermissions: user.managerPermissions } : {}),
         },

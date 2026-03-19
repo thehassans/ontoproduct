@@ -61,6 +61,15 @@ export default function ProductDetail() {
   const [managerStockDraft, setManagerStockDraft] = useState({})
   const [managerStockSearch, setManagerStockSearch] = useState('')
 
+  // Partner Purchasing modal state
+  const [showPartnerPurchasing, setShowPartnerPurchasing] = useState(false)
+  const [partners, setPartners] = useState([])
+  const [partnerPurchasing, setPartnerPurchasing] = useState([])
+  const [loadingPartnerPurchasing, setLoadingPartnerPurchasing] = useState(false)
+  const [settingPartnerPurchasing, setSettingPartnerPurchasing] = useState({})
+  const [partnerPurchasingDraft, setPartnerPurchasingDraft] = useState({})
+  const [partnerPurchasingSearch, setPartnerPurchasingSearch] = useState('')
+
   const normalizeStockCountryKey = (country) => {
     const c = String(country || '').trim()
     const u = c.toUpperCase()
@@ -1039,6 +1048,17 @@ export default function ProductDetail() {
             Manager Stock
           </button>
           <button
+            className="btn secondary"
+            onClick={() => {
+              setShowPartnerPurchasing(true)
+              setPartnerPurchasingSearch('')
+              loadPartnerPurchasing()
+            }}
+            style={{ padding: '10px 20px', background: '#111827', color: 'white', border: 'none', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }}
+          >
+            Partner Purchasing
+          </button>
+          <button
             className="btn"
             onClick={openEditModal}
             style={{ padding: '10px 20px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }}
@@ -1270,7 +1290,7 @@ export default function ProductDetail() {
                 </div>
               )}
               <div>
-                <div style={{ fontSize: 13, opacity: 0.6, marginBottom: 4 }}>
+                <div style={{ fontSize: 13, opacity: 0.6, marginBottom: 8 }}>
                   Prices (Stock Available)
                 </div>
                 <div style={{ fontSize: 12, lineHeight: 1.6 }}>
@@ -1444,8 +1464,8 @@ export default function ProductDetail() {
           className="card"
           style={{ padding: 20, background: '#faf5ff', border: '1px solid #e9d5ff' }}
         >
-          <div style={{ fontSize: 13, color: '#7e22ce', marginBottom: 4 }}>Total Revenue (AED)</div>
-          <div style={{ fontSize: 28, fontWeight: 800, color: '#581c87' }}>
+          <div style={{ fontSize: 13, color: '#1e40af', marginBottom: 4 }}>Total Revenue (AED)</div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: '#1e3a8a' }}>
             AED {stats.totalRevenueAED.toFixed(0)}
           </div>
         </div>
@@ -1454,10 +1474,10 @@ export default function ProductDetail() {
           className="card"
           style={{ padding: 20, background: '#eff6ff', border: '1px solid #bfdbfe' }}
         >
-          <div style={{ fontSize: 13, color: '#1e40af', marginBottom: 4 }}>
+          <div style={{ fontSize: 13, color: '#15803d', marginBottom: 4 }}>
             Total Sell Price (AED)
           </div>
-          <div style={{ fontSize: 24, fontWeight: 800, color: '#1e3a8a' }}>
+          <div style={{ fontSize: 24, fontWeight: 800, color: '#14532d' }}>
             AED {stats.totalPotentialSellPriceAED.toFixed(0)}
           </div>
           <div style={{ fontSize: 11, opacity: 0.7, marginTop: 4 }}>
@@ -3114,7 +3134,7 @@ export default function ProductDetail() {
                               {managerName}
                             </div>
                             <div style={{ fontSize: 12, opacity: 0.65, marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              {String(manager.email || '').trim()}
+                              {manager?.email || ''} · {managerCountriesRaw.length ? normalizedCountries.length : 'All'}
                             </div>
                           </div>
                           <div style={{ textAlign: 'right' }}>
@@ -3161,7 +3181,7 @@ export default function ProductDetail() {
                                   }}
                                 >
                                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center' }}>
-                                    <div style={{ fontWeight: 950, fontSize: 13 }}>{normalizedCountry}</div>
+                                    <div style={{ fontWeight: 600 }}>{normalizedCountry}</div>
                                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                                       <span className="chip" style={{ background: 'rgba(15, 23, 42, 0.04)', border: '1px solid rgba(15, 23, 42, 0.08)' }}>
                                         <strong>Available</strong>

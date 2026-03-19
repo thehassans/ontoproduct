@@ -230,8 +230,8 @@ export default function UserLayout() {
           ),
         },
         {
-          to: '/user/seo-managers',
-          label: 'SEO Managers',
+          to: '/user/partners',
+          label: 'Partners',
           icon: (
             <svg
               width="18"
@@ -243,28 +243,10 @@ export default function UserLayout() {
               strokeLinecap="round"
               strokeLinejoin="round"
             >
-              <circle cx="11" cy="11" r="8" />
-              <path d="M21 21l-4.35-4.35" />
-              <path d="M11 8v6" />
-              <path d="M8 11h6" />
-            </svg>
-          ),
-        },
-        {
-          to: '/user/google-oauth',
-          label: 'Google OAuth',
-          icon: (
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+              <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="8.5" cy="7" r="4" />
+              <path d="M20 8v6" />
+              <path d="M23 11h-6" />
             </svg>
           ),
         },

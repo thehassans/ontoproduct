@@ -41,9 +41,9 @@ const lazyWithRetry = (importer) => {
 const AdminLayout = lazy(() => import('./layout/AdminLayout.jsx'))
 const UserLayout = lazy(() => import('./layout/UserLayout.jsx'))
 const AgentLayout = lazy(() => import('./layout/AgentLayout.jsx'))
-const ManagerLayout = lazy(() => import('./layout/ManagerLayout.jsx'))
 const DriverLayout = lazy(() => import('./layout/DriverLayout.jsx'))
 const InvestorLayout = lazy(() => import('./layout/InvestorLayout.jsx'))
+const PartnerLayout = lazy(() => import('./layout/PartnerLayout.jsx'))
 const CommissionerLayout = lazy(() => import('./layout/CommissionerLayout.jsx'))
 const ConfirmerLayout = lazy(() => import('./layout/ConfirmerLayout.jsx'))
 const DropshipperLayout = lazy(() => import('./layout/DropshipperLayout.jsx'))
@@ -71,6 +71,7 @@ const UserDashboard = lazy(() => import('./pages/user/Dashboard.jsx'))
 const Campaign = lazy(() => import('./pages/user/Campaign.jsx'))
 const Agents = lazy(() => import('./pages/user/Agents.jsx'))
 const Managers = lazy(() => import('./pages/user/Managers.jsx'))
+const Partners = lazy(() => import('./pages/user/Partners.jsx'))
 const Drivers = lazy(() => import('./pages/user/Drivers.jsx'))
 const Dropshippers = lazy(() => import('./pages/user/Dropshippers.jsx'))
 const DropshipperEarnings = lazy(() => import('./pages/user/DropshipperEarnings.jsx'))
@@ -246,6 +247,15 @@ const Returns = lazy(() => import('./pages/site/Returns.jsx'))
 const AnalyticsDashboard = lazy(() => import('./components/analytics/AnalyticsDashboard'))
 const LiveTrackingView = lazy(() => import('./components/analytics/LiveTrackingView'))
 
+// Partner pages
+const PartnerDashboard = lazy(() => import('./pages/partner/Dashboard.jsx'))
+const PartnerOrders = lazy(() => import('./pages/partner/Orders.jsx'))
+const PartnerTotalAmounts = lazy(() => import('./pages/partner/TotalAmounts.jsx'))
+const PartnerPurchasing = lazy(() => import('./pages/partner/Purchasing.jsx'))
+const PartnerDrivers = lazy(() => import('./pages/partner/Drivers.jsx'))
+const PartnerDriverAmounts = lazy(() => import('./pages/partner/DriverAmounts.jsx'))
+const PartnerTrack = lazy(() => import('./pages/partner/Track.jsx'))
+
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props)
@@ -356,6 +366,7 @@ function RequireRole({ roles = [], children }) {
     if (role === 'shop_vendor') return <Navigate to="/shop" replace />
     if (role === 'seo_manager') return <Navigate to="/seo" replace />
     if (role === 'admin' || role === 'user') return <Navigate to="/user" replace />
+    if (role === 'partner') return <Navigate to="/partner" replace />
     return <Navigate to="/login" replace />
   }
   return children
@@ -794,7 +805,24 @@ export default function App() {
               <Route path="payout" element={<DriverPayout />} />
             </Route>
 
-
+            <Route
+              path="/partner"
+              element={
+                <RequireAuth>
+                  <RequireRole roles={['partner']}>
+                    <PartnerLayout />
+                  </RequireRole>
+                </RequireAuth>
+              }
+            >
+              <Route index element={<PartnerDashboard />} />
+              <Route path="orders" element={<PartnerOrders />} />
+              <Route path="total-amounts" element={<PartnerTotalAmounts />} />
+              <Route path="purchasing" element={<PartnerPurchasing />} />
+              <Route path="drivers" element={<PartnerDrivers />} />
+              <Route path="driver-amounts" element={<PartnerDriverAmounts />} />
+              <Route path="track" element={<PartnerTrack />} />
+            </Route>
 
             <Route
               path="/manager"
@@ -850,6 +878,7 @@ export default function App() {
               <Route path="inbox/whatsapp" element={<WhatsAppInbox />} />
               <Route path="agents" element={<Agents />} />
               <Route path="managers" element={<Managers />} />
+              <Route path="partners" element={<Partners />} />
               <Route path="seo-managers" element={<SEOManagers />} />
               <Route path="google-oauth" element={<GoogleOAuthSettings />} />
 

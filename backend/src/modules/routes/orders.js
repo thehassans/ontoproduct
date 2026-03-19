@@ -3853,7 +3853,7 @@ router.get(
     } catch (err) {
       res
         .status(500)
-        .json({ message: "Failed to load options", error: err?.message });
+        .json({ message: "Failed to load order options", error: err?.message });
     }
   }
 );
@@ -3862,7 +3862,7 @@ router.get(
 router.get(
   "/view/:id",
   auth,
-  allowRoles("admin", "user", "agent", "manager", "dropshipper"),
+  allowRoles("admin", "user", "agent", "manager", "dropshipper", "partner"),
   async (req, res) => {
     const { id } = req.params;
     console.log('[View Order] Request received:', { id, userId: req.user?.id, role: req.user?.role });
@@ -3970,6 +3970,56 @@ router.get(
       );
       if (assignedManagerId && assignedManagerId !== String(req.user.id)) {
         return res.status(403).json({ message: "Not allowed" });
+      }
+    } else if (req.user.role === "partner") {
+      const partner = await User.findById(req.user.id)
+        .select("createdBy assignedCountry assignedCountries country")
+        .lean();
+      const ownerId = String(partner?.createdBy || "");
+      if (!ownerId) return res.status(403).json({ message: "Not allowed" });
+      const agents = await User.find(
+        { role: "agent", createdBy: ownerId },
+        { _id: 1 }
+      ).lean();
+      const managers = await User.find(
+        { role: "manager", createdBy: ownerId },
+        { _id: 1 }
+      ).lean();
+      const dropshippers = await User.find(
+        { role: "dropshipper", createdBy: ownerId },
+        { _id: 1 }
+      ).lean();
+      const allowed = new Set([
+        ownerId,
+        ...agents.map((a) => String(a._id)),
+        ...managers.map((m) => String(m._id)),
+        ...dropshippers.map((d) => String(d._id)),
+      ]);
+      if (!allowed.has(creatorId)) {
+        return res.status(403).json({ message: "Not allowed" });
+      }
+      const arr =
+        Array.isArray(partner?.assignedCountries) && partner.assignedCountries.length
+          ? partner.assignedCountries
+          : partner?.assignedCountry
+          ? [partner.assignedCountry]
+          : partner?.country
+          ? [partner.country]
+          : [];
+      if (arr.length) {
+        const expand = (c) =>
+          c === "KSA" || c === "Saudi Arabia"
+            ? ["KSA", "Saudi Arabia"]
+            : c === "UAE" || c === "United Arab Emirates"
+            ? ["UAE", "United Arab Emirates"]
+            : [c];
+        const set = new Set();
+        for (const c of arr) {
+          for (const x of expand(c)) set.add(x);
+        }
+        if (!set.has(String(ord.orderCountry || ""))) {
+          return res.status(403).json({ message: "Not allowed" });
+        }
       }
     } else if (req.user.role === "agent") {
       if (creatorId !== String(req.user.id))

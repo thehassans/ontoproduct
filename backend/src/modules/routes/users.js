@@ -34,7 +34,7 @@ import mongoose from "mongoose";
 import { createNotification } from "../routes/notifications.js";
 
 const router = Router();
-const TOTAL_AMOUNT_SNAPSHOT_VERSION = 3;
+const TOTAL_AMOUNT_SNAPSHOT_VERSION = 4;
 
 function defaultPerAED() {
   return {
@@ -560,7 +560,13 @@ function buildCountryCanonExpr(fieldPath = "$orderCountry") {
                 status: 1,
                 agent: 1,
                 currency: { $ifNull: ["$currency", "PKR"] },
-                amount: { $ifNull: ["$amount", 0] },
+                amount: {
+                  $cond: [
+                    { $eq: [{ $type: "$baseCommissionAmount" }, "missing"] },
+                    { $ifNull: ["$amount", 0] },
+                    { $ifNull: ["$baseCommissionAmount", { $ifNull: ["$amount", 0] }] },
+                  ],
+                },
                 paidAt: { $ifNull: ["$sentAt", "$createdAt"] },
               },
             },

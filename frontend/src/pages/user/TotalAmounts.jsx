@@ -250,17 +250,21 @@ export default function TotalAmounts() {
       deliveredAmount: 0,
       totalOrders: 0,
       cancelledOrders: 0,
+      agentTotalCommission: 0,
       agentPaidCommission: 0,
       driverPaidCommission: 0,
       totalExpense: 0,
       dropshipperPaidCommission: 0,
     }
+    const agentBalance = Math.max(0, Number(src.agentTotalCommission || 0) - Number(src.agentPaidCommission || 0))
     return [
       { label: 'Total Amount', value: formatMoney(src.totalAmount, 'AED') },
       { label: 'Delivered Amount', value: formatMoney(src.deliveredAmount, 'AED') },
       { label: 'Total Orders', value: formatCount(src.totalOrders) },
       { label: 'Cancelled Orders', value: formatCount(src.cancelledOrders) },
+      { label: 'Agent Commission Earned', value: formatMoney(src.agentTotalCommission, 'AED') },
       { label: 'Agent Paid Commission', value: formatMoney(src.agentPaidCommission, 'AED') },
+      { label: 'Agent Commission Balance', value: formatMoney(agentBalance, 'AED') },
       { label: 'Dropshipper Paid', value: formatMoney(src.dropshipperPaidCommission, 'AED') },
       { label: 'Driver Paid Commission', value: formatMoney(src.driverPaidCommission, 'AED') },
       { label: 'Total Expense', value: formatMoney(src.totalExpense, 'AED') },
