@@ -1,6 +1,7 @@
 import React from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { PANEL_SIDEBAR_LINKS } from '../pages/partner/shared.jsx'
+import SarIcon from '../components/ui/SarIcon.jsx'
 
 export default function PartnerLayout() {
   const me = (() => {
@@ -10,25 +11,30 @@ export default function PartnerLayout() {
       return {}
     }
   })()
+  const logoSrc = `${import.meta.env.BASE_URL}BSBackgroundremoved.png`
   const navItems = PANEL_SIDEBAR_LINKS.map((link) => ({
     ...link,
-    shortLabel: link.label === 'Total Amounts'
+    shortLabel: link.label === 'Dashboard'
+      ? 'Home'
+      : link.label === 'Total Amounts'
       ? 'Amounts'
+      : link.label === 'Purchasing'
+      ? 'Stock'
       : link.label === 'Driver Amounts'
-      ? 'Drivers ₹'
+      ? 'Driver'
       : link.label,
     icon: link.to === '/partner'
       ? '⌂'
       : link.to === '/partner/orders'
       ? '≣'
       : link.to === '/partner/total-amounts'
-      ? '₹'
+      ? 'sar'
       : link.to === '/partner/purchasing'
       ? '◫'
       : link.to === '/partner/drivers'
       ? '◉'
       : link.to === '/partner/driver-amounts'
-      ? '◎'
+      ? 'sar'
       : '⌖',
   }))
   const partnerName = `${me?.firstName || ''} ${me?.lastName || ''}`.trim() || 'Partner'
@@ -38,7 +44,9 @@ export default function PartnerLayout() {
     <div className="partner-shell">
       <div className="partner-mobile-header">
         <div className="partner-mobile-header__brand">
-          <div className="partner-mobile-header__logo">B</div>
+          <div className="partner-mobile-header__logo-box">
+            <img src={logoSrc} alt="BuySial" className="partner-mobile-header__logo" />
+          </div>
           <div className="partner-mobile-header__text">
             <div className="partner-mobile-header__eyebrow">Partner Panel</div>
             <div className="partner-mobile-header__name">{partnerName}</div>
@@ -84,7 +92,7 @@ export default function PartnerLayout() {
             end={link.to === '/partner'}
             className={({ isActive }) => `partner-bottom-nav__item${isActive ? ' is-active' : ''}`}
           >
-            <span className="partner-bottom-nav__icon">{link.icon}</span>
+            <span className="partner-bottom-nav__icon">{link.icon === 'sar' ? <SarIcon size={15} /> : link.icon}</span>
             <span className="partner-bottom-nav__label">{link.shortLabel}</span>
           </NavLink>
         ))}
@@ -94,17 +102,23 @@ export default function PartnerLayout() {
         .partner-shell {
           min-height: 100vh;
           background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+          width: 100%;
+          overflow-x: hidden;
         }
         .partner-shell__inner {
           max-width: 1540px;
           margin: 0 auto;
           padding: 20px clamp(14px, 2vw, 24px) 28px;
+          width: 100%;
+          min-width: 0;
+          overflow-x: hidden;
         }
         .partner-grid-shell {
           display: grid;
           gap: 18px;
           grid-template-columns: minmax(240px, 280px) minmax(0, 1fr);
           align-items: start;
+          min-width: 0;
         }
         .partner-sidebar {
           align-self: start;
@@ -161,6 +175,8 @@ export default function PartnerLayout() {
         }
         .partner-main {
           min-width: 0;
+          width: 100%;
+          overflow-x: hidden;
         }
         .partner-mobile-header {
           display: none;
@@ -171,7 +187,8 @@ export default function PartnerLayout() {
         @media (max-width: 980px) {
           .partner-grid-shell { grid-template-columns: 1fr; }
           .partner-shell__inner {
-            padding: 12px 12px 98px;
+            max-width: 100%;
+            padding: 10px 10px 88px;
           }
           .partner-sidebar {
             display: none;
@@ -181,8 +198,8 @@ export default function PartnerLayout() {
             top: 0;
             z-index: 20;
             display: grid;
-            gap: 10px;
-            padding: 12px;
+            gap: 8px;
+            padding: 10px 10px 8px;
             background: linear-gradient(180deg, rgba(248,250,252,0.98), rgba(238,242,255,0.94));
             backdrop-filter: blur(14px);
             border-bottom: 1px solid rgba(148,163,184,0.16);
@@ -190,25 +207,30 @@ export default function PartnerLayout() {
           .partner-mobile-header__brand {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
             min-width: 0;
           }
-          .partner-mobile-header__logo {
-            width: 42px;
-            height: 42px;
+          .partner-mobile-header__logo-box {
+            width: 44px;
+            height: 44px;
             border-radius: 14px;
             display: grid;
             place-items: center;
-            background: linear-gradient(135deg, #0f172a, #334155);
-            color: #fff;
-            font-weight: 900;
+            background: #fff;
+            border: 1px solid rgba(148,163,184,0.18);
             box-shadow: 0 14px 30px rgba(15,23,42,0.18);
             flex: 0 0 auto;
+          }
+          .partner-mobile-header__logo {
+            width: 30px;
+            height: 30px;
+            object-fit: contain;
+            display: block;
           }
           .partner-mobile-header__text {
             min-width: 0;
             display: grid;
-            gap: 2px;
+            gap: 1px;
           }
           .partner-mobile-header__eyebrow {
             font-size: 11px;
@@ -217,7 +239,7 @@ export default function PartnerLayout() {
             color: #64748b;
           }
           .partner-mobile-header__name {
-            font-size: 18px;
+            font-size: 17px;
             font-weight: 900;
             letter-spacing: -0.03em;
             color: #0f172a;
@@ -226,81 +248,94 @@ export default function PartnerLayout() {
             text-overflow: ellipsis;
           }
           .partner-mobile-header__country {
-            padding: 10px 12px;
-            border-radius: 16px;
+            padding: 9px 12px;
+            border-radius: 14px;
             background: rgba(15,23,42,0.06);
             border: 1px solid rgba(148,163,184,0.16);
             color: #334155;
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 700;
+            line-height: 1.2;
           }
           .partner-bottom-nav {
             position: fixed;
-            left: 12px;
-            right: 12px;
-            bottom: max(12px, env(safe-area-inset-bottom));
+            left: 10px;
+            right: 10px;
+            bottom: max(10px, env(safe-area-inset-bottom));
             z-index: 30;
-            display: grid;
-            grid-auto-flow: column;
-            grid-auto-columns: minmax(72px, 1fr);
-            gap: 8px;
-            overflow-x: auto;
-            padding: 10px;
-            border-radius: 24px;
+            display: flex;
+            gap: 4px;
+            overflow: hidden;
+            padding: 6px;
+            border-radius: 20px;
             background: rgba(15,23,42,0.94);
             border: 1px solid rgba(255,255,255,0.08);
             box-shadow: 0 24px 60px rgba(15,23,42,0.26);
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-          }
-          .partner-bottom-nav::-webkit-scrollbar {
-            display: none;
           }
           .partner-bottom-nav__item {
-            min-width: 72px;
+            flex: 1 1 0;
+            min-width: 0;
             text-decoration: none;
             display: grid;
             justify-items: center;
-            gap: 4px;
-            padding: 9px 8px;
-            border-radius: 18px;
+            gap: 3px;
+            padding: 8px 2px;
+            border-radius: 16px;
             color: rgba(226,232,240,0.84);
             transition: all 160ms ease;
+            text-align: center;
           }
           .partner-bottom-nav__item.is-active {
             background: linear-gradient(135deg, #ffffff, #e2e8f0);
             color: #0f172a;
           }
           .partner-bottom-nav__icon {
-            font-size: 16px;
+            font-size: 14px;
             line-height: 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 14px;
           }
           .partner-bottom-nav__label {
-            font-size: 11px;
+            font-size: 9px;
             font-weight: 800;
-            white-space: nowrap;
+            line-height: 1.15;
+            white-space: normal;
+            word-break: keep-all;
           }
           .partner-main {
             width: 100%;
           }
           .partner-main > * {
             min-width: 0;
+            width: 100%;
+            max-width: 100%;
+            overflow-x: hidden;
           }
         }
         @media (max-width: 480px) {
           .partner-shell__inner {
-            padding-left: 10px;
-            padding-right: 10px;
-            padding-bottom: 96px;
+            padding-left: 8px;
+            padding-right: 8px;
+            padding-bottom: 86px;
           }
           .partner-mobile-header {
-            padding: 10px;
+            padding: 8px 8px 6px;
           }
           .partner-bottom-nav {
-            left: 10px;
-            right: 10px;
-            bottom: max(10px, env(safe-area-inset-bottom));
-            border-radius: 20px;
+            left: 8px;
+            right: 8px;
+            bottom: max(8px, env(safe-area-inset-bottom));
+            border-radius: 18px;
+            gap: 2px;
+            padding: 5px;
+          }
+          .partner-bottom-nav__item {
+            padding: 8px 1px;
+          }
+          .partner-bottom-nav__label {
+            font-size: 8.5px;
           }
         }
       `}</style>
