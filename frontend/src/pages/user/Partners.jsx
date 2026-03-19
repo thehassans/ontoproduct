@@ -4,6 +4,7 @@ import { countries } from '../partner/shared.jsx'
 
 const emptyForm = {
   name: '',
+  email: '',
   phone: '',
   password: '',
   assignedCountry: 'Saudi Arabia',
@@ -85,6 +86,7 @@ export default function Partners() {
     setEditingId(String(row?._id || row?.id || ''))
     setEditForm({
       name: `${row?.firstName || ''} ${row?.lastName || ''}`.trim(),
+      email: row?.email || '',
       phone: row?.phone || '',
       password: '',
       assignedCountry: row?.assignedCountry || row?.country || 'Saudi Arabia',
@@ -131,6 +133,10 @@ export default function Partners() {
             <input className="input" style={inputStyle()} value={form.name} onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))} required />
           </div>
           <div>
+            <div className="label">Login email</div>
+            <input className="input" type="email" style={inputStyle()} value={form.email} onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))} placeholder="partner@company.com" required />
+          </div>
+          <div>
             <div className="label">Phone number</div>
             <input className="input" style={inputStyle()} value={form.phone} onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))} required />
           </div>
@@ -166,6 +172,7 @@ export default function Partners() {
                     <>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
                         <input className="input" style={inputStyle()} value={editForm.name} onChange={(e) => setEditForm((prev) => ({ ...prev, name: e.target.value }))} placeholder="Name" />
+                        <input className="input" type="email" style={inputStyle()} value={editForm.email} onChange={(e) => setEditForm((prev) => ({ ...prev, email: e.target.value }))} placeholder="Login email" />
                         <input className="input" style={inputStyle()} value={editForm.phone} onChange={(e) => setEditForm((prev) => ({ ...prev, phone: e.target.value }))} placeholder="Phone" />
                         <input className="input" style={inputStyle()} type="password" value={editForm.password} onChange={(e) => setEditForm((prev) => ({ ...prev, password: e.target.value }))} placeholder="New password" />
                         <select className="input" style={inputStyle()} value={editForm.assignedCountry} onChange={(e) => setEditForm((prev) => ({ ...prev, assignedCountry: e.target.value }))}>
@@ -184,6 +191,7 @@ export default function Partners() {
                       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
                         <div style={{ display: 'grid', gap: 6 }}>
                           <div style={{ fontSize: 17, fontWeight: 900, color: '#0f172a' }}>{`${row?.firstName || ''} ${row?.lastName || ''}`.trim() || 'Partner'}</div>
+                          <div style={{ color: '#475569', fontSize: 14 }}>{row?.email || '-'}</div>
                           <div style={{ color: '#475569', fontSize: 14 }}>{row?.phone || '-'}</div>
                         </div>
                         <div style={{ borderRadius: 999, padding: '8px 12px', background: '#0f172a', color: '#fff', fontSize: 12, fontWeight: 800 }}>

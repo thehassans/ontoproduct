@@ -64,6 +64,10 @@ function splitName(name) {
   };
 }
 
+function normalizeEmail(email) {
+  return String(email || "").trim().toLowerCase();
+}
+
 async function buildHiddenEmail(prefix, phone) {
   const digits = String(phone || "").replace(/\D/g, "") || String(Date.now());
   let attempt = 0;
@@ -185,9 +189,9 @@ router.get("/admin/list", auth, allowRoles("admin", "user"), async (req, res) =>
     const base = { role: "partner", createdBy: ownerId };
     if (q) {
       const rx = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
-      base.$or = [{ firstName: rx }, { lastName: rx }, { phone: rx }, { assignedCountry: rx }];
+      base.$or = [{ firstName: rx }, { lastName: rx }, { email: rx }, { phone: rx }, { assignedCountry: rx }];
     }
-    const users = await User.find(base, "firstName lastName phone assignedCountry country createdAt")
+    const users = await User.find(base, "firstName lastName email phone assignedCountry country createdAt")
       .sort({ createdAt: -1 })
       .lean();
     res.json({ users });
@@ -201,6 +205,7 @@ router.post("/admin", auth, allowRoles("admin", "user"), async (req, res) => {
     const ownerId = parseOwnerId(req);
     if (!ownerId) return res.status(400).json({ message: "ownerId required" });
     const rawName = String(req.body?.name || [req.body?.firstName, req.body?.lastName].filter(Boolean).join(" ")).trim();
+    const emailInput = normalizeEmail(req.body?.email);
     const password = String(req.body?.password || "").trim();
     const phone = String(req.body?.phone || "").trim();
     const assignedCountry = normalizeCountryKey(req.body?.assignedCountry || req.body?.country);
@@ -208,10 +213,17 @@ router.post("/admin", auth, allowRoles("admin", "user"), async (req, res) => {
       return res.status(400).json({ message: "Name, password, phone, and partnership country are required" });
     }
     if (password.length < 6) return res.status(400).json({ message: "Password must be at least 6 characters" });
+    if (emailInput && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInput)) {
+      return res.status(400).json({ message: "Enter a valid email address" });
+    }
     const existingPhone = await User.findOne({ phone }).select("_id").lean();
     if (existingPhone) return res.status(400).json({ message: "Phone already in use" });
+    if (emailInput) {
+      const existingEmail = await User.findOne({ email: new RegExp(`^${emailInput.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i") }).select("_id").lean();
+      if (existingEmail) return res.status(400).json({ message: "Email already in use" });
+    }
     const { firstName, lastName } = splitName(rawName);
-    const email = await buildHiddenEmail("partner", phone);
+    const email = emailInput || await buildHiddenEmail("partner", phone);
     const doc = new User({
       firstName,
       lastName,
@@ -235,6 +247,7 @@ router.post("/admin", auth, allowRoles("admin", "user"), async (req, res) => {
         _id: doc._id,
         firstName: doc.firstName,
         lastName: doc.lastName,
+        email: doc.email,
         phone: doc.phone,
         assignedCountry: doc.assignedCountry,
         role: doc.role,
@@ -252,6 +265,7 @@ router.patch("/admin/:id", auth, allowRoles("admin", "user"), async (req, res) =
     const partner = await User.findOne({ _id: req.params.id, role: "partner", createdBy: ownerId });
     if (!partner) return res.status(404).json({ message: "Partner not found" });
     const rawName = String(req.body?.name || "").trim();
+    const email = req.body?.email != null ? normalizeEmail(req.body.email) : null;
     const phone = req.body?.phone != null ? String(req.body.phone || "").trim() : null;
     const assignedCountry = req.body?.assignedCountry != null ? normalizeCountryKey(req.body.assignedCountry) : null;
     if (rawName) {
@@ -259,7 +273,20 @@ router.patch("/admin/:id", auth, allowRoles("admin", "user"), async (req, res) =
       partner.firstName = firstName;
       partner.lastName = lastName;
     }
+    if (email != null) {
+      if (!email) return res.status(400).json({ message: "Email is required" });
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return res.status(400).json({ message: "Enter a valid email address" });
+      }
+      const existingEmail = await User.findOne({
+        email: new RegExp(`^${email.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i"),
+        _id: { $ne: partner._id },
+      }).select("_id").lean();
+      if (existingEmail) return res.status(400).json({ message: "Email already in use" });
+      partner.email = email;
+    }
     if (phone != null) {
+      if (!phone) return res.status(400).json({ message: "Phone is required" });
       const existingPhone = await User.findOne({ phone, _id: { $ne: partner._id } }).select("_id").lean();
       if (existingPhone) return res.status(400).json({ message: "Phone already in use" });
       partner.phone = phone;
