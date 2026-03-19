@@ -102,7 +102,7 @@ async function getWorkspaceCreatorIds(ownerId) {
 
 async function getPartnerScope(partnerId) {
   const partner = await User.findById(partnerId)
-    .select("_id role createdBy firstName lastName phone country assignedCountry assignedCountries")
+    .select("_id role createdBy firstName lastName phone country assignedCountry assignedCountries createdAt")
     .lean();
   if (!partner || partner.role !== "partner") return null;
   const ownerId = String(partner.createdBy || "");
@@ -127,17 +127,44 @@ async function getPartnerScope(partnerId) {
   };
 }
 
+function parseDateInput(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+  const date = new Date(raw);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function buildPartnerCreatedAtMatch(scope, reqQuery = {}, existingRange = null) {
+  const range = existingRange && typeof existingRange === "object" ? { ...existingRange } : {};
+  const partnerCreatedAt = parseDateInput(scope?.partner?.createdAt);
+  if (partnerCreatedAt) {
+    const currentMin = parseDateInput(range.$gte);
+    range.$gte = currentMin ? new Date(Math.max(currentMin.getTime(), partnerCreatedAt.getTime())) : partnerCreatedAt;
+  }
+  const from = parseDateInput(reqQuery?.from);
+  if (from) {
+    const currentMin = parseDateInput(range.$gte);
+    range.$gte = currentMin ? new Date(Math.max(currentMin.getTime(), from.getTime())) : from;
+  }
+  const to = parseDateInput(reqQuery?.to);
+  if (to) range.$lte = to;
+  return Object.keys(range).length ? range : null;
+}
+
 async function ensurePartnerOrderScope(req, orderId) {
   const scope = await getPartnerScope(req.user.id);
   if (!scope) return { error: { code: 403, message: "Partner not found" } };
   const creatorObjectIds = scope.creatorIds
     .filter((id) => mongoose.Types.ObjectId.isValid(id))
     .map((id) => new mongoose.Types.ObjectId(id));
-  const order = await Order.findOne({
+  const orderMatch = {
     _id: orderId,
     createdBy: { $in: creatorObjectIds },
     orderCountry: { $in: scope.countries },
-  })
+  };
+  const createdAt = buildPartnerCreatedAtMatch(scope);
+  if (createdAt) orderMatch.createdAt = createdAt;
+  const order = await Order.findOne(orderMatch)
     .populate("productId")
     .populate("items.productId")
     .populate("deliveryBoy", "firstName lastName email phone country")
@@ -147,7 +174,7 @@ async function ensurePartnerOrderScope(req, orderId) {
   return { order, scope };
 }
 
-function buildOrderFilters(reqQuery, base) {
+function buildOrderFilters(reqQuery, base, scope = null) {
   const match = { ...base };
   const q = String(reqQuery.q || "").trim();
   const city = String(reqQuery.city || "").trim();
@@ -161,11 +188,6 @@ function buildOrderFilters(reqQuery, base) {
   if (driverId && mongoose.Types.ObjectId.isValid(driverId)) match.deliveryBoy = driverId;
   if (onlyAssigned) match.deliveryBoy = { $ne: null };
   if (onlyUnassigned) match.deliveryBoy = { $in: [null, undefined] };
-  if (reqQuery.from || reqQuery.to) {
-    match.createdAt = {};
-    if (reqQuery.from) match.createdAt.$gte = new Date(reqQuery.from);
-    if (reqQuery.to) match.createdAt.$lte = new Date(reqQuery.to);
-  }
   if (q) {
     const rx = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
     match.$or = [
@@ -174,10 +196,12 @@ function buildOrderFilters(reqQuery, base) {
       { customerPhone: rx },
       { details: rx },
       { city: rx },
-      { customerAddress: rx },
       { customerArea: rx },
+      { city: rx },
     ];
   }
+  const createdAt = buildPartnerCreatedAtMatch(scope, reqQuery, match.createdAt);
+  if (createdAt) match.createdAt = createdAt;
   return match;
 }
 
@@ -383,12 +407,15 @@ router.get("/me/dashboard", auth, allowRoles("partner"), async (req, res) => {
     const scope = await getPartnerScope(req.user.id);
     if (!scope) return res.status(404).json({ message: "Partner not found" });
     const creatorObjectIds = scope.creatorIds.map((id) => new mongoose.Types.ObjectId(id));
+    const createdAt = buildPartnerCreatedAtMatch(scope, req.query);
+    const match = {
+      createdBy: { $in: creatorObjectIds },
+      orderCountry: { $in: scope.countries },
+    };
+    if (createdAt) match.createdAt = createdAt;
     const rows = await Order.aggregate([
       {
-        $match: {
-          createdBy: { $in: creatorObjectIds },
-          orderCountry: { $in: scope.countries },
-        },
+        $match: match,
       },
       {
         $group: {
@@ -431,7 +458,7 @@ router.get("/me/orders", auth, allowRoles("partner"), async (req, res) => {
     const match = buildOrderFilters(req.query, {
       createdBy: { $in: creatorObjectIds },
       orderCountry: { $in: scope.countries },
-    });
+    }, scope);
     const total = await Order.countDocuments(match);
     const orders = await Order.find(match)
       .sort({ createdAt: -1 })
@@ -456,7 +483,7 @@ router.get("/me/orders/summary", auth, allowRoles("partner"), async (req, res) =
     const match = buildOrderFilters(req.query, {
       createdBy: { $in: creatorObjectIds },
       orderCountry: { $in: scope.countries },
-    });
+    }, scope);
     const rows = await Order.aggregate([
       { $match: match },
       {
@@ -470,7 +497,7 @@ router.get("/me/orders/summary", auth, allowRoles("partner"), async (req, res) =
         },
       },
     ]);
-    res.json({ summary: rows[0] || { totalOrders: 0, totalAmount: 0, deliveredOrders: 0, deliveredAmount: 0, cancelledOrders: 0 } });
+    res.json({ summary: { ...(rows[0] || { totalOrders: 0, totalAmount: 0, deliveredOrders: 0, deliveredAmount: 0, cancelledOrders: 0 }), currency: currencyFromCountry(scope.assignedCountry), country: scope.assignedCountry } });
   } catch (error) {
     res.status(500).json({ message: "Failed to load order summary", error: error.message });
   }
@@ -531,11 +558,8 @@ router.get("/me/total-amounts", auth, allowRoles("partner"), async (req, res) =>
       createdBy: { $in: creatorObjectIds },
       orderCountry: { $in: scope.countries },
     };
-    if (req.query.from || req.query.to) {
-      baseMatch.createdAt = {};
-      if (req.query.from) baseMatch.createdAt.$gte = new Date(req.query.from);
-      if (req.query.to) baseMatch.createdAt.$lte = new Date(req.query.to);
-    }
+    const createdAt = buildPartnerCreatedAtMatch(scope, req.query, baseMatch.createdAt);
+    if (createdAt) baseMatch.createdAt = createdAt;
     const summaryRows = await Order.aggregate([
       { $match: baseMatch },
       {
@@ -612,8 +636,8 @@ router.post("/me/drivers", auth, allowRoles("partner"), async (req, res) => {
     if (existingPhone) return res.status(400).json({ message: "Phone already in use" });
     const { firstName, lastName } = splitName(rawName);
     const paymentModel = String(req.body?.paymentModel || "per_order") === "salary" ? "salary" : "per_order";
-    const salaryAmount = Math.max(0, Number(req.body?.salaryAmount || 0));
-    const commissionPerOrder = Math.max(0, Number(req.body?.commissionPerOrder || 0));
+    const salaryAmount = paymentModel === "salary" ? Math.max(0, Number(req.body?.salaryAmount || 0)) : 0;
+    const commissionPerOrder = paymentModel === "per_order" ? Math.max(0, Number(req.body?.commissionPerOrder || 0)) : 0;
     const email = await buildHiddenEmail("driver", phone);
     const driver = new User({
       firstName,
@@ -628,7 +652,7 @@ router.post("/me/drivers", auth, allowRoles("partner"), async (req, res) => {
       driverProfile: {
         commissionPerOrder,
         commissionCurrency: currencyFromCountry(scope.assignedCountry),
-        commissionRate: Number(req.body?.commissionRate || 8) || 8,
+        commissionRate: 0,
         paymentModel,
         salaryAmount,
         totalCommission: 0,
@@ -664,13 +688,16 @@ router.patch("/me/drivers/:id", auth, allowRoles("partner"), async (req, res) =>
       if (password) driver.password = password;
     }
     if (req.body?.city != null) driver.city = String(req.body.city || "").trim();
+    const paymentModel = String(req.body?.paymentModel || driver.driverProfile?.paymentModel || "per_order") === "salary" ? "salary" : "per_order";
+    const salaryAmount = req.body?.salaryAmount != null ? Math.max(0, Number(req.body.salaryAmount || 0)) : Number(driver.driverProfile?.salaryAmount || 0);
+    const commissionPerOrder = req.body?.commissionPerOrder != null ? Math.max(0, Number(req.body.commissionPerOrder || 0)) : Number(driver.driverProfile?.commissionPerOrder || 0);
     driver.driverProfile = {
       ...(driver.driverProfile?.toObject?.() || driver.driverProfile || {}),
-      paymentModel: String(req.body?.paymentModel || driver.driverProfile?.paymentModel || "per_order") === "salary" ? "salary" : "per_order",
-      salaryAmount: req.body?.salaryAmount != null ? Math.max(0, Number(req.body.salaryAmount || 0)) : Number(driver.driverProfile?.salaryAmount || 0),
-      commissionPerOrder: req.body?.commissionPerOrder != null ? Math.max(0, Number(req.body.commissionPerOrder || 0)) : Number(driver.driverProfile?.commissionPerOrder || 0),
+      paymentModel,
+      salaryAmount: paymentModel === "salary" ? salaryAmount : 0,
+      commissionPerOrder: paymentModel === "per_order" ? commissionPerOrder : 0,
       commissionCurrency: driver.driverProfile?.commissionCurrency || currencyFromCountry(driver.country),
-      commissionRate: req.body?.commissionRate != null ? Number(req.body.commissionRate || 8) || 8 : Number(driver.driverProfile?.commissionRate || 8),
+      commissionRate: 0,
       totalCommission: Number(driver.driverProfile?.totalCommission || 0),
       paidCommission: Number(driver.driverProfile?.paidCommission || 0),
     };
@@ -704,11 +731,8 @@ router.get("/me/driver-amounts", auth, allowRoles("partner"), async (req, res) =
       deliveryBoy: { $in: driverIds },
       orderCountry: { $in: scope.countries },
     };
-    if (req.query.from || req.query.to) {
-      orderMatch.createdAt = {};
-      if (req.query.from) orderMatch.createdAt.$gte = new Date(req.query.from);
-      if (req.query.to) orderMatch.createdAt.$lte = new Date(req.query.to);
-    }
+    const createdAt = buildPartnerCreatedAtMatch(scope, req.query, orderMatch.createdAt);
+    if (createdAt) orderMatch.createdAt = createdAt;
     const orders = await Order.find(orderMatch, "deliveryBoy shipmentStatus total driverCommission createdAt").lean();
     const paymentMatch = { partnerId: req.user.id, driverId: { $in: driverIds } };
     if (req.query.month && req.query.year) {
@@ -750,7 +774,9 @@ router.get("/me/driver-amounts", auth, allowRoles("partner"), async (req, res) =
       if (String(order.shipmentStatus || "") === "delivered") {
         row.totalDelivered += 1;
         row.deliveredAmount += Number(order.total || 0);
-        row.earnedAmount += Number(order.driverCommission || 0) > 0 ? Number(order.driverCommission || 0) : Number(row.commissionPerOrder || 0);
+        if (row.paymentModel === "per_order") {
+          row.earnedAmount += Number(order.driverCommission || 0) > 0 ? Number(order.driverCommission || 0) : Number(row.commissionPerOrder || 0);
+        }
       }
     }
     const out = Array.from(stats.values()).map((row) => {
@@ -849,11 +875,14 @@ router.get("/me/tracking/orders", auth, allowRoles("partner"), async (req, res) 
     const scope = await getPartnerScope(req.user.id);
     if (!scope) return res.status(404).json({ message: "Partner not found" });
     const creatorObjectIds = scope.creatorIds.map((id) => new mongoose.Types.ObjectId(id));
+    const orderMatch = {
+      createdBy: { $in: creatorObjectIds },
+      orderCountry: { $in: scope.countries },
+    };
+    const createdAt = buildPartnerCreatedAtMatch(scope, req.query, orderMatch.createdAt);
+    if (createdAt) orderMatch.createdAt = createdAt;
     const orders = await Order.find(
-      {
-        createdBy: { $in: creatorObjectIds },
-        orderCountry: { $in: scope.countries },
-      },
+      orderMatch,
       "invoiceNumber customerName customerPhone customerAddress customerArea city orderCountry locationLat locationLng customerLocation shipmentStatus logisticsPhase deliveryBoy driverTracking createdAt"
     )
       .limit(Math.min(2000, Math.max(1, Number(req.query.limit || 500))))

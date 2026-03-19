@@ -10,7 +10,6 @@ const emptyForm = {
   paymentModel: 'per_order',
   salaryAmount: '',
   commissionPerOrder: '',
-  commissionRate: '8',
 }
 
 export default function PartnerDrivers() {
@@ -59,7 +58,6 @@ export default function PartnerDrivers() {
       paymentModel: row?.driverProfile?.paymentModel || 'per_order',
       salaryAmount: row?.driverProfile?.salaryAmount || '',
       commissionPerOrder: row?.driverProfile?.commissionPerOrder || '',
-      commissionRate: row?.driverProfile?.commissionRate || '8',
     })
   }
 
@@ -88,7 +86,20 @@ export default function PartnerDrivers() {
           <input className="input" style={inputStyle()} value={form.phone} onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))} placeholder="Phone" required />
           <input className="input" style={inputStyle()} type="password" value={form.password} onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))} placeholder={editingId ? 'New password (optional)' : 'Password'} required={!editingId} />
           <input className="input" style={inputStyle()} value={form.city} onChange={(e) => setForm((prev) => ({ ...prev, city: e.target.value }))} placeholder="City" />
-          <select className="input" style={inputStyle()} value={form.paymentModel} onChange={(e) => setForm((prev) => ({ ...prev, paymentModel: e.target.value }))}>
+          <select
+            className="input"
+            style={inputStyle()}
+            value={form.paymentModel}
+            onChange={(e) => {
+              const paymentModel = e.target.value
+              setForm((prev) => ({
+                ...prev,
+                paymentModel,
+                salaryAmount: paymentModel === 'salary' ? prev.salaryAmount : '',
+                commissionPerOrder: paymentModel === 'per_order' ? prev.commissionPerOrder : '',
+              }))
+            }}
+          >
             <option value="per_order">Per Order</option>
             <option value="salary">Salary</option>
           </select>
@@ -97,7 +108,6 @@ export default function PartnerDrivers() {
           ) : (
             <input className="input" style={inputStyle()} value={form.commissionPerOrder} onChange={(e) => setForm((prev) => ({ ...prev, commissionPerOrder: e.target.value }))} placeholder="Commission per order" />
           )}
-          <input className="input" style={inputStyle()} value={form.commissionRate} onChange={(e) => setForm((prev) => ({ ...prev, commissionRate: e.target.value }))} placeholder="Commission rate" />
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <button className="btn" style={primaryButtonStyle()} disabled={loading}>{loading ? 'Saving…' : editingId ? 'Update Driver' : 'Create Driver'}</button>
             {editingId ? <button type="button" className="btn secondary" style={secondaryButtonStyle()} onClick={() => { setEditingId(''); setForm(emptyForm) }}>Cancel</button> : null}
@@ -116,9 +126,16 @@ export default function PartnerDrivers() {
                 <div style={{ borderRadius: 999, background: 'rgba(15,23,42,0.06)', color: '#0f172a', padding: '8px 12px', fontSize: 12, fontWeight: 800 }}>{row?.driverProfile?.paymentModel === 'salary' ? 'Salary' : 'Per Order'}</div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
-                <div><div style={{ color: '#64748b', fontSize: 12, fontWeight: 700 }}>Salary</div><div style={{ marginTop: 6, fontWeight: 900, color: '#0f172a' }}>{Number(row?.driverProfile?.salaryAmount || 0)}</div></div>
-                <div><div style={{ color: '#64748b', fontSize: 12, fontWeight: 700 }}>Per Order</div><div style={{ marginTop: 6, fontWeight: 900, color: '#0f172a' }}>{Number(row?.driverProfile?.commissionPerOrder || 0)}</div></div>
-                <div><div style={{ color: '#64748b', fontSize: 12, fontWeight: 700 }}>Commission Rate</div><div style={{ marginTop: 6, fontWeight: 900, color: '#0f172a' }}>{Number(row?.driverProfile?.commissionRate || 0)}%</div></div>
+                <div>
+                  <div style={{ color: '#64748b', fontSize: 12, fontWeight: 700 }}>{row?.driverProfile?.paymentModel === 'salary' ? 'Salary Amount' : 'Commission Per Order'}</div>
+                  <div style={{ marginTop: 6, fontWeight: 900, color: '#0f172a' }}>
+                    {Number(row?.driverProfile?.paymentModel === 'salary' ? row?.driverProfile?.salaryAmount || 0 : row?.driverProfile?.commissionPerOrder || 0)}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ color: '#64748b', fontSize: 12, fontWeight: 700 }}>Compensation Type</div>
+                  <div style={{ marginTop: 6, fontWeight: 900, color: '#0f172a' }}>{row?.driverProfile?.paymentModel === 'salary' ? 'Fixed salary' : 'Paid per delivered order'}</div>
+                </div>
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
                 <button className="btn secondary" style={secondaryButtonStyle()} onClick={() => startEdit(row)}>Edit</button>

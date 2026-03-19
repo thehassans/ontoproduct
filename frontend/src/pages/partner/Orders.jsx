@@ -75,7 +75,7 @@ export default function PartnerOrders() {
     }
   }
 
-  const currency = 'SAR'
+  const currency = summary?.currency || 'SAR'
 
   return (
     <div style={pageWrapStyle()}>
