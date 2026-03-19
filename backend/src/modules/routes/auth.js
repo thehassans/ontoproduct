@@ -11,6 +11,34 @@ import { OAuth2Client } from "google-auth-library";
 // Use a default secret in development so the app works without .env
 const SECRET = process.env.JWT_SECRET || "devsecret-change-me";
 
+function normalizePhoneDigits(value) {
+  return String(value || "").replace(/\D/g, "");
+}
+
+function buildPhoneVariants(value) {
+  const digits = normalizePhoneDigits(value);
+  const variants = new Set();
+  if (!digits) return [];
+  variants.add(digits);
+  variants.add(digits.replace(/^0+/, ""));
+  if (digits.length > 10) variants.add(digits.slice(-10));
+  if (digits.length > 9) variants.add(digits.slice(-9));
+  return Array.from(variants).filter((item) => item && item.length >= 7);
+}
+
+function phoneMatches(input, stored) {
+  const inputVariants = buildPhoneVariants(input);
+  const storedVariants = buildPhoneVariants(stored);
+  return inputVariants.some((left) =>
+    storedVariants.some(
+      (right) =>
+        left === right ||
+        (left.length >= 7 && right.endsWith(left)) ||
+        (right.length >= 7 && left.endsWith(right))
+    )
+  );
+}
+
 const router = Router();
 
 // Seed an initial admin if none exists (dev helper)
@@ -80,7 +108,7 @@ router.post(
       let { email, phone, password, loginType } = req.body || {};
       const identifierRaw = String(email || phone || req.body?.identifier || "").trim();
       const e = identifierRaw.toLowerCase();
-      const phoneDigits = identifierRaw.replace(/\D/g, "");
+      const phoneDigits = normalizePhoneDigits(identifierRaw);
       const p = String(password || "").trim();
       if (!e || !p)
         return res.status(400).json({ message: "Invalid credentials" });
@@ -100,8 +128,7 @@ router.post(
       if (!user && phoneDigits) {
         const candidates = await User.find({ phone: { $exists: true, $ne: "" } });
         user = candidates.find(
-          (candidate) =>
-            String(candidate?.phone || "").replace(/\D/g, "") === phoneDigits
+          (candidate) => phoneMatches(identifierRaw, candidate?.phone || "")
         ) || null;
       }
       if (!user)
