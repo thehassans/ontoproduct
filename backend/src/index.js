@@ -167,36 +167,47 @@ app.get("/api/health", (_req, res) => {
   });
 });
 
-app.use("/api/auth", authRoutes);
-app.use("/api/users", userRoutes);
-app.use("/api/orders", ordersRoutes);
-app.use("/api/manager-stock", managerStockRoutes);
-app.use("/api/products", productsRoutes);
-app.use("/api/warehouse", warehouseRoutes);
-app.use("/api/finance", financeRoutes);
-app.use("/api/support", supportRoutes);
-app.use("/api/settings", settingsRoutes);
-app.use("/api/notifications", notificationsRoutes);
-app.use("/api/reports", reportsRoutes);
-app.use("/api/geocode", geocodeRoutes);
-app.use("/api/partners", partnerRoutes);
-app.use("/api/ecommerce", ecommerceRoutes);
-app.use("/api/shopify", shopifyRoutes);
-app.use("/api/settings/shopify", settingsShopifyRoutes);
-app.use("/api/settings/shopify", shopifyOAuthRoutes); // OAuth app config routes
-app.use("/api/settings/website", websiteSettingsRoutes);
-app.use("/api/shops", shopsRoutes);
-app.use("/api/dropshippers", dropshipperRoutes);
-app.use("/api/dropshippers/shopify", dropshipperShopifyRoutes);
-app.use("/api/shopify", shopifyOAuthRoutes);
-app.use("/api/reviews", reviewsRoutes);
-app.use("/api/commissioners", commissionersRoutes);
-app.use("/api/confirmer", confirmersRoutes);
-app.use("/api/coupons", couponsRoutes);
-app.use("/api/references", referencesRoutes);
-app.use("/api/moyasar", moyasarRoutes);
-app.use("/api/categories", categoriesRoutes);
-app.use("/api/brands", brandsRoutes);
+function requireDbReady(req, res, next) {
+  const db = getDbConnectionMeta();
+  if (db.ready) return next();
+  res.setHeader("Retry-After", "5");
+  return res.status(503).json({
+    error: db.label === "connecting" ? "Server is starting. Please try again in a few seconds." : "Database unavailable. Please try again shortly.",
+    code: "DB_NOT_READY",
+    db,
+  });
+}
+
+app.use("/api/auth", requireDbReady, authRoutes);
+app.use("/api/users", requireDbReady, userRoutes);
+app.use("/api/orders", requireDbReady, ordersRoutes);
+app.use("/api/manager-stock", requireDbReady, managerStockRoutes);
+app.use("/api/products", requireDbReady, productsRoutes);
+app.use("/api/warehouse", requireDbReady, warehouseRoutes);
+app.use("/api/finance", requireDbReady, financeRoutes);
+app.use("/api/support", requireDbReady, supportRoutes);
+app.use("/api/settings", requireDbReady, settingsRoutes);
+app.use("/api/notifications", requireDbReady, notificationsRoutes);
+app.use("/api/reports", requireDbReady, reportsRoutes);
+app.use("/api/geocode", requireDbReady, geocodeRoutes);
+app.use("/api/partners", requireDbReady, partnerRoutes);
+app.use("/api/ecommerce", requireDbReady, ecommerceRoutes);
+app.use("/api/shopify", requireDbReady, shopifyRoutes);
+app.use("/api/settings/shopify", requireDbReady, settingsShopifyRoutes);
+app.use("/api/settings/shopify", requireDbReady, shopifyOAuthRoutes); // OAuth app config routes
+app.use("/api/settings/website", requireDbReady, websiteSettingsRoutes);
+app.use("/api/shops", requireDbReady, shopsRoutes);
+app.use("/api/dropshippers", requireDbReady, dropshipperRoutes);
+app.use("/api/dropshippers/shopify", requireDbReady, dropshipperShopifyRoutes);
+app.use("/api/shopify", requireDbReady, shopifyOAuthRoutes);
+app.use("/api/reviews", requireDbReady, reviewsRoutes);
+app.use("/api/commissioners", requireDbReady, commissionersRoutes);
+app.use("/api/confirmer", requireDbReady, confirmersRoutes);
+app.use("/api/coupons", requireDbReady, couponsRoutes);
+app.use("/api/references", requireDbReady, referencesRoutes);
+app.use("/api/moyasar", requireDbReady, moyasarRoutes);
+app.use("/api/categories", requireDbReady, categoriesRoutes);
+app.use("/api/brands", requireDbReady, brandsRoutes);
 app.use("/api/explore-more", exploreMoreRoutes);
 app.use("/api/wa", waRoutes);
 

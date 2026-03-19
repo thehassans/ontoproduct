@@ -87,6 +87,10 @@ export default function UserLogin() {
 
   async function login(e) {
     e.preventDefault()
+    if (health.checked && !health.ready) {
+      toast.info(!health.reachable ? 'Connection issue. Please retry in a moment.' : 'Server is still starting. Please wait a few seconds and try again.')
+      return
+    }
     setLoading(true)
     try {
       const isShop = loginMode === 'shop'
@@ -104,6 +108,8 @@ export default function UserLogin() {
       const msg = String(e?.message || '')
       if (status === 429) {
         toast.info('Too many requests. Please wait a few seconds and try again.')
+      } else if (status === 503 || /server is starting|database unavailable|db_not_ready/i.test(msg)) {
+        toast.info(msg || 'Server is still starting. Please try again in a few seconds.')
       } else if (status === 400 || /invalid|incorrect|credentials|password|email/i.test(msg)) {
         toast.error('Incorrect phone, email, or password')
       } else {
@@ -120,6 +126,7 @@ export default function UserLogin() {
   const healthBad = (() => {
     return Boolean(health.checked && (!health.reachable || !health.ready))
   })()
+  const loginBlocked = Boolean(loading || (health.checked && !health.ready))
   const healthMessage = !health.reachable
     ? 'Connection issue — tap to retry'
     : 'Server is starting — tap to retry'
@@ -208,9 +215,16 @@ export default function UserLogin() {
           </div>
 
           {/* Submit */}
-          <button type="submit" className="pl-btn" disabled={loading}>
+          <button
+            type="submit"
+            className="pl-submit"
+            disabled={loginBlocked}
+            aria-busy={loading}
+          >
             {loading ? (
               <><span className="pl-spinner" /> Signing in...</>
+            ) : loginBlocked ? (
+              <>Server is starting...</>
             ) : (
               <>Sign In</>
             )}
