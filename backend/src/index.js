@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import morgan from "morgan";
 import http from "http";
-import { connectDB } from "./modules/config/db.js";
+import { connectDB, getDbConnectionMeta } from "./modules/config/db.js";
 import mongoose from "mongoose";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -148,13 +148,7 @@ app.use((req, res, next) => {
 });
 
 app.get("/api/health", (_req, res) => {
-  const dbState = mongoose.connection?.readyState ?? 0; // 0=disconnected,1=connected,2=connecting,3=disconnecting
-  const stateMap = {
-    0: "disconnected",
-    1: "connected",
-    2: "connecting",
-    3: "disconnecting",
-  };
+  const db = getDbConnectionMeta();
   const io = getIO();
   const socketHealth = io
     ? {
@@ -163,12 +157,11 @@ app.get("/api/health", (_req, res) => {
         status: "ok",
       }
     : { status: "not_initialized" };
-  const ready = dbState === 1;
   res.json({
     name: "BuySial Commerce API",
     status: "ok",
-    ready,
-    db: { state: dbState, label: stateMap[dbState] || String(dbState), ready },
+    ready: db.ready,
+    db,
     websocket: socketHealth,
     timestamp: new Date().toISOString(),
   });
