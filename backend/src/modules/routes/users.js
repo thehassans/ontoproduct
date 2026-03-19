@@ -34,6 +34,7 @@ import mongoose from "mongoose";
 import { createNotification } from "../routes/notifications.js";
 
 const router = Router();
+const TOTAL_AMOUNT_SNAPSHOT_VERSION = 2;
 
 function defaultPerAED() {
   return {
@@ -327,6 +328,20 @@ function buildCountryCanonExpr(fieldPath = "$orderCountry") {
       country: "All Countries",
       currency: "AED",
     };
+  }
+
+  function hasCommissionSnapshotFields(value) {
+    if (!value || typeof value !== "object") return false;
+    const requiredKeys = [
+      "agentTotalCommission",
+      "agentPaidCommission",
+      "dropshipperTotalCommission",
+      "dropshipperPaidCommission",
+      "driverTotalCommission",
+      "driverPaidCommission",
+      "totalExpense",
+    ];
+    return requiredKeys.every((key) => Object.prototype.hasOwnProperty.call(value, key));
   }
 
   async function buildTotalAmountSnapshot({ ownerId, monthKey }) {
@@ -4107,8 +4122,32 @@ router.post("/:id/impersonate", auth, allowRoles("admin", "user"), async (req, r
         .lean();
 
       if (!live) {
-        const closedDoc = await TotalAmountClosing.findOne({ ownerId, monthKey }).lean();
+        let closedDoc = await TotalAmountClosing.findOne({ ownerId, monthKey }).lean();
         if (closedDoc) {
+          const firstCountry = Array.isArray(closedDoc.countries) ? closedDoc.countries[0] : null;
+          const needsRefresh =
+            Number(closedDoc.snapshotVersion || 0) < TOTAL_AMOUNT_SNAPSHOT_VERSION ||
+            !hasCommissionSnapshotFields(closedDoc.summary) ||
+            (firstCountry ? !hasCommissionSnapshotFields(firstCountry) : false);
+
+          if (needsRefresh) {
+            const snapshot = await buildTotalAmountSnapshot({ ownerId, monthKey });
+            closedDoc = await TotalAmountClosing.findOneAndUpdate(
+              { ownerId, monthKey },
+              {
+                $set: {
+                  monthLabel: snapshot.monthLabel,
+                  rangeStart: snapshot.rangeStart,
+                  rangeEnd: snapshot.rangeEnd,
+                  summary: snapshot.summary,
+                  countries: snapshot.countries,
+                  snapshotVersion: TOTAL_AMOUNT_SNAPSHOT_VERSION,
+                },
+              },
+              { new: true }
+            ).lean();
+          }
+
           return res.json({
             monthKey: closedDoc.monthKey,
             monthLabel: closedDoc.monthLabel || formatMonthLabel(closedDoc.monthKey),
@@ -4197,6 +4236,7 @@ router.post("/:id/impersonate", auth, allowRoles("admin", "user"), async (req, r
               note,
               summary: snapshot.summary,
               countries: snapshot.countries,
+              snapshotVersion: TOTAL_AMOUNT_SNAPSHOT_VERSION,
               closedAt: new Date(),
               closedBy: req.user.id,
             },

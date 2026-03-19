@@ -39,6 +39,10 @@ const TotalAmountClosingSchema = new mongoose.Schema(
       type: [mongoose.Schema.Types.Mixed],
       default: [],
     },
+    snapshotVersion: {
+      type: Number,
+      default: 1,
+    },
     closedAt: {
       type: Date,
       default: Date.now,
