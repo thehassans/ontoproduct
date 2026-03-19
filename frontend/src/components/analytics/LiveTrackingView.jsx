@@ -158,9 +158,39 @@ const premiumStyles = {
   }),
 }
 
+ function isGoogleMapsReady() {
+  const maps = window.google?.maps
+  return Boolean(
+    maps && (
+      typeof maps.importLibrary === 'function' ||
+      typeof maps.Map === 'function'
+    )
+  )
+ }
+
+ async function waitForGoogleMapsReady(timeoutMs = 10000) {
+  if (isGoogleMapsReady()) return true
+  const startedAt = Date.now()
+  return await new Promise((resolve) => {
+    const tick = () => {
+      if (isGoogleMapsReady()) {
+        resolve(true)
+        return
+      }
+      if (Date.now() - startedAt >= timeoutMs) {
+        resolve(false)
+        return
+      }
+      window.setTimeout(tick, 60)
+    }
+    tick()
+  })
+ }
+
 const LiveTrackingView = () => {
   const [loading, setLoading] = useState(true)
   const [mapLoaded, setMapLoaded] = useState(false)
+  const [error, setError] = useState(null)
   const [apiKey, setApiKey] = useState(null)
   const [drivers, setDrivers] = useState([])
   const [orders, setOrders] = useState([])
@@ -195,34 +225,104 @@ const LiveTrackingView = () => {
   // Load Google Maps script
   useEffect(() => {
     if (!apiKey) return
-    if (document.getElementById(GOOGLE_MAPS_SCRIPT_ID)) {
-      if (window.google?.maps) setMapLoaded(true)
-      return
+    let active = true
+
+    async function readyUp() {
+      if (typeof window.google?.maps?.importLibrary === 'function') {
+        try {
+          await window.google.maps.importLibrary('maps')
+          await window.google.maps.importLibrary('marker').catch(() => null)
+        } catch {}
+      }
+      const ready = await waitForGoogleMapsReady()
+      if (!active) return
+      if (ready) {
+        setError(null)
+        setMapLoaded(true)
+      } else {
+        setMapLoaded(false)
+        setError('Failed to load Google Maps. Check your API key and network.')
+      }
+    }
+
+    const existingScript = document.getElementById(GOOGLE_MAPS_SCRIPT_ID)
+      || document.querySelector('script[src*="maps.googleapis.com/maps/api/js"]')
+
+    if (existingScript) {
+      if (isGoogleMapsReady() || window.google?.maps) {
+        readyUp()
+      } else {
+        const onReady = () => readyUp()
+        const onFailure = () => {
+          if (!active) return
+          setError('Failed to load Google Maps. Check your API key and network.')
+        }
+        existingScript.addEventListener('load', onReady)
+        existingScript.addEventListener('error', onFailure)
+        return () => {
+          active = false
+          existingScript.removeEventListener('load', onReady)
+          existingScript.removeEventListener('error', onFailure)
+        }
+      }
+      return () => { active = false }
+    }
+
+    if (isGoogleMapsReady() || window.google?.maps) {
+      readyUp()
+      return () => { active = false }
     }
 
     const script = document.createElement('script')
     script.id = GOOGLE_MAPS_SCRIPT_ID
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry`
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&v=weekly&libraries=places,geometry,marker&loading=async`
     script.async = true
     script.defer = true
-    script.onload = () => setMapLoaded(true)
-    script.onerror = () => console.error('Failed to load Google Maps')
+    script.onload = () => readyUp()
+    script.onerror = () => {
+      if (!active) return
+      setError('Failed to load Google Maps. Check your API key and network.')
+    }
     document.head.appendChild(script)
+
+    return () => { active = false }
   }, [apiKey])
 
   // Initialize map
   useEffect(() => {
     if (!mapLoaded || !mapRef.current || mapInstanceRef.current) return
 
-    const center = COUNTRY_CENTERS[selectedCountry] || COUNTRY_CENTERS['All']
-    mapInstanceRef.current = new window.google.maps.Map(mapRef.current, {
-      center: { lat: center.lat, lng: center.lng },
-      zoom: center.zoom,
-      styles: getMapStyles(),
-      mapTypeControl: false,
-      streetViewControl: false,
-      fullscreenControl: true,
-    })
+    let cancelled = false
+
+    const initMap = async () => {
+      try {
+        const ready = await waitForGoogleMapsReady(8000)
+        if (!ready || typeof window.google?.maps?.Map !== 'function') {
+          if (!cancelled) setError('Google Maps failed to load. Please refresh.')
+          return
+        }
+        const center = COUNTRY_CENTERS[selectedCountry] || COUNTRY_CENTERS['All']
+        mapInstanceRef.current = new window.google.maps.Map(mapRef.current, {
+          center: { lat: center.lat, lng: center.lng },
+          zoom: center.zoom,
+          styles: getMapStyles(),
+          mapTypeControl: false,
+          streetViewControl: false,
+          fullscreenControl: true,
+        })
+        if (!cancelled) setError(null)
+      } catch (err) {
+        if (!cancelled) {
+          setError(err?.message || 'Google Maps failed to initialize.')
+        }
+      }
+    }
+
+    initMap()
+
+    return () => {
+      cancelled = true
+    }
   }, [mapLoaded])
 
   // Update map center when country changes

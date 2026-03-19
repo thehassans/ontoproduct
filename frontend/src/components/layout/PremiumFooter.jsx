@@ -7,8 +7,8 @@ const SECTIONS = [
     title: 'Shop with us',
     links: [
       { to: '/catalog', label: 'All Products' },
-      { to: '/catalog?sort=newest', label: 'New Arrivals' },
-      { to: '/catalog?sort=popular', label: 'Best Sellers' },
+      { to: '/catalog?filter=newArrival', label: 'New Arrivals' },
+      { to: '/catalog?filter=bestSelling', label: 'Best Sellers' },
       { to: '/categories', label: 'Categories' },
     ],
   },

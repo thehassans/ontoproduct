@@ -12,6 +12,9 @@ import HomeMiniBanner from '../../components/ecommerce/HomeMiniBanner'
 import BrandBrowser from '../../components/ecommerce/BrandBrowser'
 import ExploreMoreBlock from '../../components/ecommerce/ExploreMoreBlock'
 import PromoBlock from '../../components/ecommerce/PromoBlock'
+import ProductCardMini from '../../components/ecommerce/ProductCardMini'
+import { readCartItems } from '../../utils/cartStorage'
+import { trackPageView, trackSectionView, trackSectionClick } from '../../utils/analytics'
 
 export default function Home(){
   const navigate = useNavigate()
@@ -24,9 +27,12 @@ export default function Home(){
   const [categoryNames, setCategoryNames] = useState(['products', 'deals', 'trending'])
   const [placeholderIdx, setPlaceholderIdx] = useState(0)
   const [placeholderAnim, setPlaceholderAnim] = useState(false)
-  const [cartCount, setCartCount] = useState(() => { try { const c = JSON.parse(localStorage.getItem('shopping_cart') || '[]'); return c.reduce((s, i) => s + (i.quantity || 1), 0) } catch { return 0 } })
+  const sectionRefs = useRef({})
+  const viewedSectionsRef = useRef(new Set())
+  const [cartCount, setCartCount] = useState(() => { try { const c = readCartItems(); return c.reduce((s, i) => s + (i.quantity || 1), 0) } catch { return 0 } })
   const [catNav, setCatNav] = useState({ enabled: false, categories: [] })
   const [activeCat, setActiveCat] = useState('All')
+  const [newArrivals, setNewArrivals] = useState([])
   const [annBar, setAnnBar] = useState(() => {
     try { return JSON.parse(localStorage.getItem('_ann_bar') || 'null') } catch { return null }
   })
@@ -176,6 +182,75 @@ export default function Home(){
     })()
   }, [selectedCountry])
 
+  useEffect(() => {
+    let alive = true
+    ;(async () => {
+      try {
+        const res = await apiGet(`/api/products/public?country=${encodeURIComponent(selectedCountry)}&filter=newArrival&sort=newest&limit=8`)
+        if (!alive) return
+        setNewArrivals(Array.isArray(res?.products) ? res.products : [])
+      } catch {
+        if (alive) setNewArrivals([])
+      }
+    })()
+    return () => { alive = false }
+  }, [selectedCountry])
+
+  const setSectionRef = useCallback((name) => (node) => {
+    if (node) sectionRefs.current[name] = node
+    else delete sectionRefs.current[name]
+  }, [])
+
+  const trackHomeSectionClick = useCallback((sectionName, targetName, extra = {}) => {
+    trackSectionClick(sectionName, targetName, { page: '/', country: selectedCountry, ...extra })
+  }, [selectedCountry])
+
+  const createSectionClickCapture = useCallback((sectionName, extra = {}) => (event) => {
+    const target = event?.target?.closest?.('a,button,[data-analytics-label]')
+    if (!target) return
+    const rawLabel =
+      target.getAttribute?.('data-analytics-label') ||
+      target.getAttribute?.('aria-label') ||
+      target.textContent ||
+      target.getAttribute?.('href') ||
+      target.tagName
+    const label = String(rawLabel || '').trim().replace(/\s+/g, ' ').slice(0, 80)
+    if (!label) return
+    trackHomeSectionClick(sectionName, label, extra)
+  }, [trackHomeSectionClick])
+
+  useEffect(() => {
+    trackPageView('/', 'Home')
+  }, [])
+
+  useEffect(() => {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return
+        const sectionName = entry.target?.getAttribute('data-analytics-section')
+        if (!sectionName) return
+        const viewKey = `${sectionName}|${selectedCountry}`
+        if (viewedSectionsRef.current.has(viewKey)) return
+        viewedSectionsRef.current.add(viewKey)
+        const itemCountRaw = entry.target?.getAttribute('data-analytics-count')
+        const itemCount = Number(itemCountRaw)
+        const variant = entry.target?.getAttribute('data-analytics-variant') || ''
+        trackSectionView(sectionName, {
+          page: '/',
+          country: selectedCountry,
+          item_count: Number.isFinite(itemCount) ? itemCount : undefined,
+          variant: variant || undefined,
+        })
+      })
+    }, { threshold: 0.35 })
+
+    Object.values(sectionRefs.current).forEach((node) => {
+      if (node) observer.observe(node)
+    })
+
+    return () => observer.disconnect()
+  }, [newArrivals.length, selectedCountry])
+
   // Cycle through category names for placeholder with slide-up
   useEffect(() => {
     if (categoryNames.length <= 1) return
@@ -197,7 +272,7 @@ export default function Home(){
 
   // Track cart count updates
   useEffect(() => {
-    const update = () => { try { const c = JSON.parse(localStorage.getItem('shopping_cart') || '[]'); setCartCount(c.reduce((s, i) => s + (i.quantity || 1), 0)) } catch { setCartCount(0) } }
+    const update = () => { try { const c = readCartItems(); setCartCount(c.reduce((s, i) => s + (i.quantity || 1), 0)) } catch { setCartCount(0) } }
     window.addEventListener('cartUpdated', update); window.addEventListener('storage', update)
     return () => { window.removeEventListener('cartUpdated', update); window.removeEventListener('storage', update) }
   }, [])
@@ -347,8 +422,8 @@ export default function Home(){
                 <button onClick={() => setMobileMenuOpen(false)} className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center"><svg className="w-4 h-4 text-white/80" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg></button>
               </div>
               {[
-                { to: '/catalog?sort=newest', label: 'NEW ARRIVALS' },
-                { to: '/catalog?sort=popular', label: 'BEST SELLERS' },
+                { to: '/catalog?filter=newArrival', label: 'NEW ARRIVALS' },
+                { to: '/catalog?filter=bestSelling', label: 'BEST SELLERS' },
                 { to: '/catalog', label: 'ALL PRODUCTS' },
               ].map(item => (
                 <Link key={item.to} to={item.to} onClick={() => setMobileMenuOpen(false)} className="block py-2 text-[13px] font-semibold text-white/90 tracking-wider hover:text-white transition-colors">
@@ -402,7 +477,7 @@ export default function Home(){
             <div className="mt-auto px-5 pb-6 pt-3 border-t border-gray-100">
               <div className="flex items-center gap-2 text-xs text-gray-400">
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" /></svg>
-                <span>{currentFlag} {currentCountryName}</span>
+                <span><span key={selectedCountry}>{currentFlag}</span> {currentCountryName}</span>
               </div>
             </div>
           </div>
@@ -412,7 +487,7 @@ export default function Home(){
 
       {/* Home headline ticker — above deliver-to */}
       {homeHeadline?.enabled ? (
-        <section className="max-w-7xl mx-auto px-1 sm:px-2 lg:px-4">
+        <section ref={setSectionRef('home_headline')} data-analytics-section="home_headline" data-analytics-variant="ticker" className="max-w-7xl mx-auto px-1 sm:px-2 lg:px-4">
           <div
             className="relative overflow-hidden rounded-2xl shadow-xl border border-white"
             style={{
@@ -444,7 +519,7 @@ export default function Home(){
                 </div>
               </div>
             </div>
-            <style jsx>{`
+            <style>{`
               .homeHeadlineMarqueeViewport {
                 overflow: hidden;
                 white-space: nowrap;
@@ -500,7 +575,7 @@ export default function Home(){
           <svg className="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" /></svg>
           <button onClick={() => setMobileCountryOpen(!mobileCountryOpen)} className="flex items-center gap-1.5 text-[13px] text-gray-600">
             <span className="font-medium">Deliver to</span>
-            <span className="font-bold text-gray-900">{currentFlag} {currentCountryName}</span>
+            <span className="font-bold text-gray-900"><span key={selectedCountry}>{currentFlag}</span> {currentCountryName}</span>
             <svg className={`w-3.5 h-3.5 text-gray-400 transition-transform ${mobileCountryOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" /></svg>
           </button>
         </div>
@@ -508,7 +583,7 @@ export default function Home(){
           <div className="absolute left-2 right-2 top-full -mt-1 max-h-64 overflow-y-auto bg-white rounded-2xl shadow-[0_12px_48px_rgba(0,0,0,0.15)] border border-gray-100 py-1 z-50">
             {COUNTRY_LIST_LOCAL.map(c => (
               <button key={c.code} onClick={() => handleMobileCountryChange(c.code)} className={`w-full px-4 py-2.5 flex items-center gap-2.5 text-left text-sm transition-colors ${selectedCountry === c.code ? 'bg-orange-50 text-orange-600 font-semibold' : 'text-gray-700 hover:bg-gray-50'}`}>
-                <span>{c.flag}</span><span>{c.name}</span>
+                <span key={c.code}>{c.flag}</span><span>{c.name}</span>
                 {selectedCountry === c.code && <svg className="w-3.5 h-3.5 ml-auto text-orange-500" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" /></svg>}
               </button>
             ))}
@@ -517,19 +592,52 @@ export default function Home(){
       </div>
 
       {/* Home Mini Banner — promotional block before categories */}
-      <HomeMiniBanner selectedCountry={selectedCountry} />
+      <section ref={setSectionRef('home_mini_banner')} data-analytics-section="home_mini_banner" onClickCapture={createSectionClickCapture('home_mini_banner')}>
+        <HomeMiniBanner selectedCountry={selectedCountry} />
+      </section>
 
-      {/* Category Browser — horizontal pills + horizontal product scroll */}
-      <CategoryBrowser selectedCountry={selectedCountry} />
+      <section ref={setSectionRef('category_browser')} data-analytics-section="category_browser" onClickCapture={createSectionClickCapture('category_browser')}>
+        <CategoryBrowser selectedCountry={selectedCountry} />
+      </section>
 
-      {/* Brand Browser — horizontal brand logos */}
-      <BrandBrowser />
+      {newArrivals.length > 0 && (
+        <section ref={setSectionRef('new_arrivals')} data-analytics-section="new_arrivals" data-analytics-count={String(newArrivals.length)} onClickCapture={createSectionClickCapture('new_arrivals', { item_count: newArrivals.length })} className="max-w-7xl mx-auto px-2 sm:px-3 lg:px-4 mt-4 mb-2">
+          <div className="flex items-center justify-between px-1 mb-3">
+            <div>
+              <div className="text-[11px] font-black uppercase tracking-[0.24em] text-emerald-500 mb-1">Fresh drops</div>
+              <h2 className="text-[18px] font-extrabold tracking-[-0.02em] text-slate-900">New Arrivals</h2>
+            </div>
+            <Link to="/catalog?filter=newArrival" onClick={() => trackHomeSectionClick('new_arrivals', 'view_all', { item_count: newArrivals.length })} className="inline-flex items-center gap-1 text-sm font-semibold text-slate-600 hover:text-slate-900">
+              View all
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-2 lg:grid-cols-4 sm:gap-4">
+            {newArrivals.map((product) => (
+              <div key={product._id} data-analytics-label={product?.name || product?._id || 'new_arrival_product'} onClickCapture={() => trackHomeSectionClick('new_arrivals_product', product?._id || product?.name || 'product', { item_id: product?._id || '', item_name: product?.name || '', item_count: newArrivals.length })}>
+                <ProductCardMini
+                  product={product}
+                  selectedCountry={selectedCountry}
+                  showVideo={false}
+                  showActions={false}
+                />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
-      {/* Explore More — promotional blocks */}
-      <ExploreMoreBlock />
+      <section ref={setSectionRef('brand_browser')} data-analytics-section="brand_browser" onClickCapture={createSectionClickCapture('brand_browser')}>
+        <BrandBrowser />
+      </section>
 
-      {/* Promo Block — cashback/shop/delivery */}
-      <PromoBlock />
+      <section ref={setSectionRef('explore_more')} data-analytics-section="explore_more" onClickCapture={createSectionClickCapture('explore_more')}>
+        <ExploreMoreBlock />
+      </section>
+
+      <section ref={setSectionRef('promo_block')} data-analytics-section="promo_block" onClickCapture={createSectionClickCapture('promo_block')}>
+        <PromoBlock />
+      </section>
 
       <PremiumFooter />
 

@@ -356,7 +356,7 @@ export default function ConfirmerDashboard() {
         </div>
       )}
 
-      <style jsx>{`
+      <style>{`
         .confirmer-dashboard {
           padding: 24px;
           max-width: 1400px;

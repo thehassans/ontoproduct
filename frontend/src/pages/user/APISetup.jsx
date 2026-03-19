@@ -13,6 +13,11 @@ export default function UserAPISetup() {
   const [savingGoogleOAuth, setSavingGoogleOAuth] = useState(false)
   const [googleOAuthStatus, setGoogleOAuthStatus] = useState(null)
   const [googleOAuthMsg, setGoogleOAuthMsg] = useState('')
+  const [gscKeyJson, setGscKeyJson] = useState('')
+  const [gscStatus, setGscStatus] = useState(null) // null | 'active' | 'inactive'
+  const [gscClientEmail, setGscClientEmail] = useState('')
+  const [savingGsc, setSavingGsc] = useState(false)
+  const [gscMsg, setGscMsg] = useState('')
   const [saving, setSaving] = useState(false)
   const [savingMaps, setSavingMaps] = useState(false)
   const [savingLocationIQ, setSavingLocationIQ] = useState(false)
@@ -83,6 +88,19 @@ export default function UserAPISetup() {
         }
       } catch {
         setGoogleOAuthStatus('inactive')
+      }
+      // Load GSC service account key status
+      try {
+        const gscRes = await apiGet('/api/settings/gsc-key')
+        if (!alive) return
+        if (gscRes?.configured) {
+          setGscStatus('active')
+          setGscClientEmail(gscRes.clientEmail || '')
+        } else {
+          setGscStatus('inactive')
+        }
+      } catch {
+        setGscStatus('inactive')
       }
     })()
     return () => {
@@ -262,6 +280,49 @@ export default function UserAPISetup() {
       setFbMsg('Facebook API test failed')
     } finally {
       setTimeout(() => setFbMsg(''), 2500)
+    }
+  }
+
+  async function saveGscKey(e) {
+    e.preventDefault()
+    const trimmed = gscKeyJson.trim()
+    if (!trimmed) { setGscMsg('❌ Paste the service account JSON key first'); return }
+    setSavingGsc(true)
+    setGscMsg('')
+    try {
+      const res = await apiPost('/api/settings/gsc-key', { serviceAccountKey: trimmed })
+      if (res?.success) {
+        setGscMsg('✅ GSC service account key saved')
+        setGscStatus('active')
+        setGscClientEmail(res.clientEmail || '')
+        setGscKeyJson('')
+        setTimeout(() => setGscMsg(''), 3000)
+      } else {
+        setGscMsg('❌ ' + (res?.error || 'Failed to save'))
+      }
+    } catch (err) {
+      setGscMsg('❌ ' + (err?.message || 'Failed to save'))
+    } finally {
+      setSavingGsc(false)
+    }
+  }
+
+  async function removeGscKey() {
+    if (!window.confirm('Remove the GSC service account key?')) return
+    setSavingGsc(true)
+    setGscMsg('')
+    try {
+      const res = await apiPost('/api/settings/gsc-key', { serviceAccountKey: '{}' })
+      // Use DELETE via apiPost workaround — call the delete route directly
+      await fetch('/api/settings/gsc-key', { method: 'DELETE', headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } })
+      setGscStatus('inactive')
+      setGscClientEmail('')
+      setGscMsg('✅ GSC key removed')
+      setTimeout(() => setGscMsg(''), 2000)
+    } catch (err) {
+      setGscMsg('❌ ' + (err?.message || 'Failed to remove'))
+    } finally {
+      setSavingGsc(false)
     }
   }
 
@@ -634,6 +695,87 @@ export default function UserAPISetup() {
               <li>Automatic city and area detection</li>
               <li>Complete address population from location data</li>
             </ul>
+          </div>
+        </form>
+      </div>
+
+      {/* Google Search Console Service Account */}
+      <div className="card" style={{ display: 'grid', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div className="card-title">
+            <span style={{ marginRight: 6 }}>🔍</span>Google Search Console (Indexing API)
+          </div>
+          {gscStatus && (
+            <div
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '6px 12px', borderRadius: 8,
+                background: gscStatus === 'active' ? '#f0fdf4' : '#fef2f2',
+                border: `2px dashed ${gscStatus === 'active' ? '#86efac' : '#fecaca'}`,
+                fontSize: 13, fontWeight: 600,
+                color: gscStatus === 'active' ? '#16a34a' : '#dc2626',
+              }}
+            >
+              <span style={{ fontSize: 16 }}>{gscStatus === 'active' ? '✓' : '○'}</span>
+              <span>{gscStatus === 'active' ? 'Key Configured' : 'Not Configured'}</span>
+            </div>
+          )}
+        </div>
+
+        {gscStatus === 'active' && gscClientEmail && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: '#f0fdf4', borderRadius: 8, border: '1px solid #bbf7d0', fontSize: 13 }}>
+            <span style={{ fontSize: 16 }}>✅</span>
+            <div>
+              <div style={{ fontWeight: 600, color: '#166534' }}>Service Account Active</div>
+              <div style={{ color: '#16a34a', wordBreak: 'break-all' }}>{gscClientEmail}</div>
+            </div>
+            <button
+              type="button"
+              onClick={removeGscKey}
+              disabled={savingGsc}
+              style={{ marginLeft: 'auto', padding: '6px 12px', borderRadius: 6, background: '#fee2e2', color: '#991b1b', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}
+            >
+              Remove Key
+            </button>
+          </div>
+        )}
+
+        <form onSubmit={saveGscKey} className="section" style={{ display: 'grid', gap: 12 }}>
+          <label className="field">
+            <div>Service Account JSON Key</div>
+            <textarea
+              className="input"
+              rows={8}
+              value={gscKeyJson}
+              onChange={(e) => setGscKeyJson(e.target.value)}
+              placeholder={'Paste the full contents of your service account JSON key file here...\n{\n  "type": "service_account",\n  "project_id": "...",\n  "client_email": "...",\n  "private_key": "-----BEGIN RSA PRIVATE KEY-----\\n..."\n}'}
+              style={{ fontFamily: 'monospace', fontSize: 12, minHeight: 160, resize: 'vertical' }}
+            />
+            <div className="helper">
+              The full JSON contents of the Google service account key file (.json). The key is stored securely on the server and never exposed to the browser again.
+            </div>
+          </label>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <button className="btn" type="submit" disabled={savingGsc || !gscKeyJson.trim()}>
+              {savingGsc ? 'Saving…' : 'Save GSC Key'}
+            </button>
+            {gscMsg && (
+              <div className="helper" style={{ fontWeight: 600, color: gscMsg.startsWith('✅') ? '#16a34a' : '#dc2626' }}>
+                {gscMsg}
+              </div>
+            )}
+          </div>
+          <div style={{ padding: 12, background: '#eff6ff', borderRadius: 8, border: '1px solid #bfdbfe', fontSize: 13, lineHeight: 1.7 }}>
+            <div style={{ fontWeight: 600, marginBottom: 8, color: '#1e40af' }}>📋 Setup Instructions</div>
+            <ol style={{ margin: 0, paddingLeft: 20, color: '#1e40af' }}>
+              <li>Go to <a href="https://console.cloud.google.com" target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb' }}>Google Cloud Console</a> and create or select a project</li>
+              <li>Enable the <strong>Web Search Indexing API</strong> for the project</li>
+              <li>Go to <strong>IAM &amp; Admin → Service Accounts</strong> → Create service account</li>
+              <li>Click the service account → <strong>Keys</strong> tab → <strong>Add Key → Create new key → JSON</strong></li>
+              <li>Download the .json file and paste its full contents above</li>
+              <li>In <a href="https://search.google.com/search-console" target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb' }}>Google Search Console</a>, go to <strong>Settings → Users and permissions</strong></li>
+              <li>Add the service account <code>client_email</code> as an <strong>Owner</strong></li>
+            </ol>
           </div>
         </form>
       </div>

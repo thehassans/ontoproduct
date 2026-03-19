@@ -50,23 +50,7 @@ export default function PremiumHeroBanner() {
   const slides = useMemo(() => {
     const list = Array.isArray(banners) ? banners : []
     if (!list.length) {
-      const fallback = ['/banners/banner1.jpg', '/banners/banner2.jpg', '/banners/banner3.jpg']
-      const gradients = [
-        'linear-gradient(135deg, #0b5ed7 0%, #f97316 100%)',
-        'linear-gradient(135deg, #111827 0%, #0b5ed7 100%)',
-        'linear-gradient(135deg, #f97316 0%, #111827 100%)',
-      ]
-      return fallback.map((src, idx) => {
-        const url = mediaUrl(src)
-        return {
-          bgImage: url,
-          desktopImage: url,
-          mobileImage: url,
-          fallbackGradient: gradients[idx % gradients.length],
-          link: '/catalog',
-          title: '',
-        }
-      })
+      return []
     }
 
     const gradients = [
@@ -238,7 +222,7 @@ export default function PremiumHeroBanner() {
         </>
       ) : null}
 
-      <style jsx>{`
+      <style>{`
         .premium-hero-banner {
           position: relative;
           width: 100%;

@@ -43,6 +43,319 @@ const publicProductsCache = {
   TTL: 30000 // 30 seconds cache
 }
 
+function normalizePublicCountryValue(input) {
+  const raw = String(input || '').trim()
+  if (!raw) return null
+  const upper = raw.toUpperCase()
+  if (upper === 'SA' || upper === 'KSA' || upper === 'SAUDI ARABIA' || upper === 'SAUDI') return 'KSA'
+  if (upper === 'UAE' || upper === 'UNITED ARAB EMIRATES' || upper === 'AE' || upper === 'ARE') return 'UAE'
+  if (upper === 'OM' || upper === 'OMAN') return 'Oman'
+  if (upper === 'BH' || upper === 'BAHRAIN') return 'Bahrain'
+  if (upper === 'IN' || upper === 'INDIA') return 'India'
+  if (upper === 'KW' || upper === 'KUWAIT') return 'Kuwait'
+  if (upper === 'QA' || upper === 'QATAR') return 'Qatar'
+  if (upper === 'PK' || upper === 'PAKISTAN') return 'Pakistan'
+  if (upper === 'JO' || upper === 'JORDAN') return 'Jordan'
+  if (upper === 'US' || upper === 'USA' || upper === 'UNITED STATES' || upper === 'UNITED STATES OF AMERICA') return 'USA'
+  if (upper === 'GB' || upper === 'UK' || upper === 'UNITED KINGDOM') return 'UK'
+  if (upper === 'CA' || upper === 'CANADA') return 'Canada'
+  if (upper === 'AU' || upper === 'AUSTRALIA') return 'Australia'
+  return null
+}
+
+function escapeRegex(value) {
+  return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function normalizeMatchText(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function singularizeSearchToken(token) {
+  const value = normalizeMatchText(token)
+  if (!value || value.length <= 3) return value
+  if (value.endsWith('ies') && value.length > 4) return `${value.slice(0, -3)}y`
+  if (value.endsWith('es') && value.length > 4) return value.slice(0, -2)
+  if (value.endsWith('s') && !value.endsWith('ss') && value.length > 4) return value.slice(0, -1)
+  return value
+}
+
+const SEARCH_TOKEN_STOP_WORDS = new Set([
+  'a', 'an', 'and', 'as', 'at', 'by', 'for', 'from', 'in', 'into', 'of', 'on', 'or', 'the', 'to', 'with',
+  'item', 'product', 'products', 'design', 'style', 'thing',
+])
+
+function tokenizeSearchText(value) {
+  const normalized = normalizeMatchText(value)
+  if (!normalized) return []
+  const out = []
+  const seen = new Set()
+  const parts = normalized.split(' ').filter(Boolean)
+  for (const part of parts) {
+    const token = normalizeMatchText(part)
+    const singular = singularizeSearchToken(token)
+    for (const next of [token, singular]) {
+      if (!next || next.length < 3 || SEARCH_TOKEN_STOP_WORDS.has(next) || seen.has(next)) continue
+      seen.add(next)
+      out.push(next)
+    }
+  }
+  return out
+}
+
+function buildSearchFieldClauses(input) {
+  const values = Array.isArray(input) ? input : [input]
+  const phrases = []
+  const seen = new Set()
+  const pushPhrase = (value) => {
+    const normalized = normalizeMatchText(value)
+    if (!normalized || seen.has(normalized)) return
+    seen.add(normalized)
+    phrases.push(normalized)
+  }
+  for (const entry of values) {
+    const raw = String(entry || '').trim()
+    if (!raw) continue
+    pushPhrase(raw)
+    const tokens = tokenizeSearchText(raw)
+    tokens.forEach(pushPhrase)
+    for (let i = 0; i < tokens.length - 1; i += 1) {
+      pushPhrase(`${tokens[i]} ${tokens[i + 1]}`)
+    }
+    for (let i = 0; i < tokens.length - 2; i += 1) {
+      pushPhrase(`${tokens[i]} ${tokens[i + 1]} ${tokens[i + 2]}`)
+    }
+  }
+  const fields = [
+    'name',
+    'description',
+    'brand',
+    'category',
+    'subcategory',
+    'tags',
+    'overview',
+    'specifications',
+    'seoKeywords',
+    'slug',
+    'descriptionBlocks.label',
+    'descriptionBlocks.value',
+  ]
+  return phrases.slice(0, 18).flatMap((phrase) => {
+    const regex = new RegExp(escapeRegex(phrase), 'i')
+    return fields.map((field) => ({ [field]: regex }))
+  })
+}
+
+function buildVisualSearchTerms(intent = {}) {
+  const rawTerms = normalizeStringList([
+    intent?.query,
+    intent?.brand,
+    intent?.category,
+    ...(Array.isArray(intent?.attributes) ? intent.attributes : []),
+    ...(Array.isArray(intent?.suggestions) ? intent.suggestions : []),
+  ])
+  const phrases = []
+  const seen = new Set()
+  const pushPhrase = (value) => {
+    const normalized = normalizeMatchText(value)
+    if (!normalized || seen.has(normalized)) return
+    seen.add(normalized)
+    phrases.push(normalized)
+  }
+  rawTerms.forEach(pushPhrase)
+  rawTerms.forEach((entry) => {
+    const tokens = tokenizeSearchText(entry)
+    tokens.forEach(pushPhrase)
+    for (let size = Math.min(3, tokens.length); size >= 2; size -= 1) {
+      for (let index = 0; index + size <= tokens.length; index += 1) {
+        pushPhrase(tokens.slice(index, index + size).join(' '))
+      }
+    }
+  })
+  return phrases.slice(0, 24)
+}
+
+function scoreVisualSearchProduct(product, intent = {}, terms = []) {
+  const name = normalizeMatchText(product?.name)
+  const brand = normalizeMatchText(product?.brand)
+  const category = normalizeMatchText(product?.category)
+  const subcategory = normalizeMatchText(product?.subcategory)
+  const tags = normalizeMatchText(Array.isArray(product?.tags) ? product.tags.join(' ') : '')
+  const extraBlocks = Array.isArray(product?.descriptionBlocks)
+    ? product.descriptionBlocks.map((entry) => `${entry?.label || ''} ${entry?.value || ''}`).join(' ')
+    : ''
+  const detail = normalizeMatchText([
+    product?.description,
+    product?.overview,
+    product?.specifications,
+    product?.seoKeywords,
+    product?.slug,
+    extraBlocks,
+  ].filter(Boolean).join(' '))
+  const combined = [name, brand, category, subcategory, tags, detail].filter(Boolean).join(' ')
+  const matched = new Set()
+  let score = 0
+
+  for (const phrase of terms) {
+    if (!phrase) continue
+    let hit = false
+    if (name === phrase) {
+      score += 80
+      hit = true
+    } else if (name.includes(phrase)) {
+      score += phrase.includes(' ') ? 48 : 20
+      hit = true
+    } else if (brand === phrase || brand.includes(phrase)) {
+      score += 28
+      hit = true
+    } else if (category === phrase || subcategory === phrase) {
+      score += 24
+      hit = true
+    } else if (category.includes(phrase) || subcategory.includes(phrase)) {
+      score += 16
+      hit = true
+    } else if (tags.includes(phrase)) {
+      score += 14
+      hit = true
+    } else if (detail.includes(phrase)) {
+      score += phrase.includes(' ') ? 12 : 7
+      hit = true
+    } else if (combined.includes(phrase)) {
+      score += 4
+      hit = true
+    }
+    if (hit) matched.add(phrase)
+  }
+
+  const primaryQuery = normalizeMatchText(intent?.query)
+  if (primaryQuery) {
+    if (name === primaryQuery) score += 42
+    else if (name.includes(primaryQuery)) score += 24
+    else if (combined.includes(primaryQuery)) score += 10
+  }
+
+  const brandHint = normalizeMatchText(intent?.brand)
+  if (brandHint && brand.includes(brandHint)) score += 16
+
+  const categoryHint = normalizeMatchText(intent?.category)
+  if (categoryHint && (category.includes(categoryHint) || subcategory.includes(categoryHint))) score += 10
+
+  const tokenHits = new Set()
+  for (const token of terms.flatMap((entry) => tokenizeSearchText(entry)).slice(0, 18)) {
+    if (!token) continue
+    if (name.includes(token)) {
+      score += 8
+      tokenHits.add(token)
+    } else if (brand.includes(token)) {
+      score += 6
+      tokenHits.add(token)
+    } else if (category.includes(token) || subcategory.includes(token)) {
+      score += 4
+      tokenHits.add(token)
+    } else if (tags.includes(token) || detail.includes(token)) {
+      score += 3
+      tokenHits.add(token)
+    }
+  }
+
+  score += Math.min(30, matched.size * 4)
+  score += Math.min(18, tokenHits.size * 2)
+  if (product?.isFeatured) score += 2
+  if (product?.isTrending) score += 1
+  return score
+}
+
+function buildPublicProductQuery({ country, category, subcategory, search, filter, brand } = {}) {
+  const stockCountry = normalizePublicCountryValue(country)
+  const and = [
+    { $or: [{ displayOnWebsite: true }, { displayOnWebsite: { $exists: false } }] },
+  ]
+  if (stockCountry) {
+    and.push({ [`stockByCountry.${stockCountry}`]: { $gt: 0 } })
+  } else {
+    and.push({
+      $or: [
+        { stockQty: { $gt: 0 } },
+        { stockQty: { $exists: false } },
+        { stockQty: null }
+      ]
+    })
+  }
+  const query = { $and: and }
+  if (filter) {
+    switch (filter) {
+      case 'bestSelling':
+        query.isBestSelling = true
+        break
+      case 'featured':
+        query.isFeatured = true
+        break
+      case 'trending':
+        query.isTrending = true
+        break
+      case 'recommended':
+        query.isRecommended = true
+        break
+      case 'newArrival':
+        query.isNewArrival = true
+        break
+    }
+  }
+  if (category && category !== 'all') query.category = category
+  if (subcategory && String(subcategory).trim()) query.subcategory = String(subcategory).trim()
+  if (brand && String(brand).trim()) query.brand = new RegExp(`^${escapeRegex(String(brand).trim())}$`, 'i')
+  if (search && String(search).trim()) {
+    const clauses = buildSearchFieldClauses(search)
+    if (clauses.length) query.$or = clauses
+  }
+  return query
+}
+
+function enrichPublicProducts(products) {
+  return (Array.isArray(products) ? products : []).map((p) => {
+    const prod = typeof p?.toObject === 'function' ? p.toObject() : { ...(p || {}) }
+    if (prod.totalPurchased == null || prod.totalPurchased === 0) {
+      let totalFromHistory = 0
+      if (Array.isArray(prod.stockHistory) && prod.stockHistory.length > 0) {
+        totalFromHistory = prod.stockHistory.reduce((sum, entry) => sum + (Number(entry.quantity) || 0), 0)
+      }
+      prod.totalPurchased = totalFromHistory > 0 ? totalFromHistory : (prod.stockQty || 0)
+    }
+    if (!prod.sku) prod.sku = fallbackSkuFromId(prod._id)
+    return prod
+  })
+}
+
+function parseShopAssignments(rawValue, assignedBy) {
+  try {
+    let raw = rawValue
+    if (typeof raw === 'string') raw = JSON.parse(raw)
+    if (!Array.isArray(raw)) return []
+    return raw
+      .map((entry) => {
+        if (!entry || typeof entry !== 'object') return null
+        const shopId = String(entry.shopId || entry._id || '').trim()
+        const shopBuyingPrice = Number(entry.shopBuyingPrice)
+        if (!mongoose.Types.ObjectId.isValid(shopId) || !Number.isFinite(shopBuyingPrice) || shopBuyingPrice < 0) {
+          return null
+        }
+        return {
+          shopId,
+          shopBuyingPrice,
+          assignedAt: entry.assignedAt ? new Date(entry.assignedAt) : new Date(),
+          assignedBy: entry.assignedBy || assignedBy,
+        }
+      })
+      .filter(Boolean)
+  } catch {
+    return []
+  }
+}
+
 async function getSubcategoriesSettingMap() {
   try {
     const doc = await Setting.findOne({ key: 'productSubcategoriesByCategory' }).select('value').lean()
@@ -300,18 +613,8 @@ const storage = multer.diskStorage({
 // Public: return category usage counts for visible products
 router.get('/public/categories-usage', async (req, res) => {
   try{
-    const normalizePublicCountry = (input) => {
-      const raw = String(input || '').trim()
-      if (!raw) return null
-      const upper = raw.toUpperCase()
-      if (upper === 'UAE' || upper === 'UNITED ARAB EMIRATES' || upper === 'AE' || upper === 'ARE') return 'UAE'
-      if (upper === 'GB' || upper === 'UK' || upper === 'UNITED KINGDOM') return 'UK'
-      if (upper === 'PK' || upper === 'PAKISTAN') return 'Pakistan'
-      return null
-    }
-
     const countryRaw = req.query?.country || req.headers['x-country'] || ''
-    const stockCountry = normalizePublicCountry(countryRaw)
+    const stockCountry = normalizePublicCountryValue(countryRaw)
 
     const and = [
       { $or: [{ displayOnWebsite: true }, { displayOnWebsite: { $exists: false } }] },
@@ -370,6 +673,10 @@ const upload = multer({
     fileSize: 100 * 1024 * 1024, // 100MB max per file
     files: 12 // Max files per request (10 images + 1 video + buffer)
   }
+})
+const uploadMemory = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024, files: 1 }
 })
 
 // Create product (admin; user; manager with permission)
@@ -567,6 +874,7 @@ router.post('/', auth, allowRoles('admin','user','manager'), upload.any(), async
     const baseCurrency = validCurrencies.includes(req.body?.baseCurrency) ? req.body.baseCurrency : 'SAR'
 
     const finalSku = String(sku || '').trim()
+    const parsedShopAssignments = parseShopAssignments(req.body?.shops, req.user.id)
     
     const doc = new Product({
       name: String(name).trim(),
@@ -599,6 +907,7 @@ router.post('/', auth, allowRoles('admin','user','manager'), upload.any(), async
       createdByRole: String(req.user.role||''),
       createdByActor: req.user.id,
       createdByActorName: actorName,
+      shops: parsedShopAssignments,
       // Premium E-commerce Features
       sellByBuysial: String(req.body?.sellByBuysial||'').toLowerCase() === 'true' || req.body?.sellByBuysial === true,
       salePrice: req.body?.salePrice ? Number(req.body.salePrice) : 0,
@@ -606,6 +915,7 @@ router.post('/', auth, allowRoles('admin','user','manager'), upload.any(), async
       isBestSelling: String(req.body?.isBestSelling||'').toLowerCase() === 'true' || req.body?.isBestSelling === true,
       isFeatured: String(req.body?.isFeatured||'').toLowerCase() === 'true' || req.body?.isFeatured === true,
       isTrending: String(req.body?.isTrending||'').toLowerCase() === 'true' || req.body?.isTrending === true,
+      isNewArrival: String(req.body?.isNewArrival||'').toLowerCase() === 'true' || req.body?.isNewArrival === true,
       isRecommended: String(req.body?.isRecommended||'').toLowerCase() === 'true' || req.body?.isRecommended === true,
       isLimitedStock: String(req.body?.isLimitedStock||'').toLowerCase() === 'true' || req.body?.isLimitedStock === true
     })
@@ -716,6 +1026,145 @@ router.get('/public/by-ids', async (req, res) => {
   }
 })
 
+// Get single product by slug (public endpoint for SEO-friendly URLs)
+router.get('/public/by-slug/:slug', async (req, res) => {
+  try {
+    const slug = String(req.params.slug || '').trim().toLowerCase()
+    if (!slug) return res.status(400).json({ message: 'Slug required' })
+    const product = await Product.findOne({ slug }).select('-createdBy -updatedAt -__v')
+    if (!product) return res.status(404).json({ message: 'Product not found' })
+    const prod = product.toObject()
+    if (!prod.sku) prod.sku = fallbackSkuFromId(prod._id)
+    res.json({ product: prod })
+  } catch (error) {
+    console.error('Get product by slug error:', error)
+    res.status(500).json({ message: 'Failed to fetch product' })
+  }
+})
+
+router.get('/public/search-suggestions', async (req, res) => {
+  try {
+    const rawQuery = String(req.query?.q || req.query?.search || '').trim()
+    const countryRaw = req.query?.country || req.headers['x-country'] || ''
+    const baseQuery = buildPublicProductQuery({ country: countryRaw })
+    let products = []
+    if (rawQuery) {
+      const suggestionQuery = buildPublicProductQuery({ country: countryRaw, search: rawQuery })
+      products = await Product.find(suggestionQuery)
+        .sort({ isFeatured: -1, isTrending: -1, createdAt: -1 })
+        .limit(10)
+        .select('name category subcategory brand imagePath images')
+        .lean()
+    } else {
+      products = await Product.find(baseQuery)
+        .sort({ isFeatured: -1, isTrending: -1, createdAt: -1 })
+        .limit(8)
+        .select('name category subcategory brand imagePath images')
+        .lean()
+    }
+    const seed = []
+    for (const product of products) {
+      if (product?.name) seed.push(String(product.name))
+      if (product?.brand && product?.name) seed.push(`${product.brand} ${product.name}`)
+      if (product?.subcategory && product?.category) seed.push(`${product.subcategory} ${product.category}`)
+      if (product?.category) seed.push(String(product.category))
+    }
+    const categories = await Product.distinct('category', rawQuery ? buildPublicProductQuery({ country: countryRaw, search: rawQuery }) : baseQuery)
+    categories.forEach((entry) => seed.push(String(entry || '').trim()))
+    const normalizedQuery = rawQuery.toLowerCase()
+    const seen = new Set()
+    const suggestions = seed
+      .map((entry) => String(entry || '').trim())
+      .filter(Boolean)
+      .filter((entry) => !normalizedQuery || entry.toLowerCase().includes(normalizedQuery))
+      .filter((entry) => {
+        const key = entry.toLowerCase()
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
+      .slice(0, 12)
+    return res.json({
+      suggestions,
+      products: products.map((product) => ({
+        _id: product._id,
+        name: product.name || '',
+        category: product.category || '',
+        subcategory: product.subcategory || '',
+        brand: product.brand || '',
+        image: product.imagePath || (Array.isArray(product.images) ? product.images[0] : '') || '',
+      })),
+      categories: Array.from(new Set(categories.map((entry) => String(entry || '').trim()).filter(Boolean))).slice(0, 12),
+    })
+  } catch (error) {
+    console.error('Public search suggestions error:', error)
+    return res.status(500).json({ message: 'Failed to load search suggestions' })
+  }
+})
+
+router.post('/public/visual-search', uploadMemory.single('image'), async (req, res) => {
+  try {
+    if (!req.file?.buffer) {
+      return res.status(400).json({ message: 'Image is required' })
+    }
+    if (!(await geminiService.ensureInitialized())) {
+      return res.status(503).json({ message: 'Visual search is not available. Configure Gemini API key first.' })
+    }
+    const optimized = await sharp(req.file.buffer)
+      .rotate()
+      .resize({ width: 1024, height: 1024, fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 82 })
+      .toBuffer()
+    const intent = await geminiService.extractVisualSearchIntent(optimized.toString('base64'), 'image/jpeg')
+    const searchTerms = [
+      intent.query,
+      intent.brand,
+      intent.category,
+      ...(Array.isArray(intent.attributes) ? intent.attributes : []),
+      ...(Array.isArray(intent.suggestions) ? intent.suggestions : []),
+    ]
+      .map((value) => String(value || '').trim())
+      .filter(Boolean)
+    const searchPhrase = searchTerms.slice(0, 4).join(' ').trim()
+    const countryRaw = req.query?.country || req.headers['x-country'] || ''
+    const visualTerms = buildVisualSearchTerms(intent)
+    const candidateQuery = buildPublicProductQuery({ country: countryRaw })
+    const candidateClauses = buildSearchFieldClauses(visualTerms)
+    if (candidateClauses.length) candidateQuery.$or = candidateClauses
+    let candidateProducts = await Product.find(candidateQuery)
+      .sort({ isFeatured: -1, isTrending: -1, createdAt: -1 })
+      .limit(120)
+      .select('-createdBy -updatedAt -__v')
+    if (!candidateProducts.length && intent.query) {
+      candidateProducts = await Product.find(buildPublicProductQuery({ country: countryRaw, search: intent.query }))
+        .sort({ isFeatured: -1, isTrending: -1, createdAt: -1 })
+        .limit(80)
+        .select('-createdBy -updatedAt -__v')
+    }
+    const rankedProducts = candidateProducts
+      .map((product) => ({
+        product,
+        score: scoreVisualSearchProduct(product, intent, visualTerms),
+      }))
+      .filter((entry) => entry.score > 0)
+      .sort((a, b) => b.score - a.score || Number(b.product?.isFeatured || 0) - Number(a.product?.isFeatured || 0) || Number(b.product?.isTrending || 0) - Number(a.product?.isTrending || 0))
+    const products = (rankedProducts.length ? rankedProducts.map((entry) => entry.product) : candidateProducts).slice(0, 24)
+    const enriched = enrichPublicProducts(products)
+    return res.json({
+      query: intent.query || searchPhrase,
+      category: intent.category || '',
+      brand: intent.brand || '',
+      attributes: intent.attributes || [],
+      suggestions: intent.suggestions || [],
+      confidence: intent.confidence || 0,
+      products: enriched,
+    })
+  } catch (error) {
+    console.error('Public visual search error:', error)
+    return res.status(500).json({ message: error?.message || 'Failed to process visual search' })
+  }
+})
+
 // Get single product by ID (public endpoint)
 router.get('/public/:id', async (req, res) => {
   try {
@@ -746,20 +1195,10 @@ router.get('/public/:id', async (req, res) => {
 })
 router.get('/public', async (req, res) => {
   try {
-    const { category, subcategory, search, sort, limit = 50, page = 1, filter } = req.query
-
-    const normalizePublicCountry = (input) => {
-      const raw = String(input || '').trim()
-      if (!raw) return null
-      const upper = raw.toUpperCase()
-      if (upper === 'UAE' || upper === 'UNITED ARAB EMIRATES' || upper === 'AE' || upper === 'ARE') return 'UAE'
-      if (upper === 'GB' || upper === 'UK' || upper === 'UNITED KINGDOM') return 'UK'
-      if (upper === 'PK' || upper === 'PAKISTAN') return 'Pakistan'
-      return null
-    }
+    const { category, subcategory, search, sort, limit = 50, page = 1, filter, brand } = req.query
 
     const countryRaw = req.query?.country || req.headers['x-country'] || ''
-    const stockCountry = normalizePublicCountry(countryRaw)
+    const stockCountry = normalizePublicCountryValue(countryRaw)
 
     const and = [
       // Show products where displayOnWebsite is true OR not set
@@ -795,6 +1234,9 @@ router.get('/public', async (req, res) => {
         case 'recommended':
           query.isRecommended = true
           break
+        case 'newArrival':
+          query.isNewArrival = true
+          break
       }
     }
     
@@ -807,10 +1249,14 @@ router.get('/public', async (req, res) => {
     if (subcategory && String(subcategory).trim()) {
       query.subcategory = String(subcategory).trim()
     }
+
+    if (brand && String(brand).trim()) {
+      query.brand = new RegExp(`^${escapeRegex(String(brand).trim())}$`, 'i')
+    }
     
     // Search filter
     if (search) {
-      const searchRegex = new RegExp(search, 'i')
+      const searchRegex = new RegExp(escapeRegex(search), 'i')
       query.$or = [
         { name: searchRegex },
         { description: searchRegex },
@@ -1260,7 +1706,7 @@ router.post('/:id/seo', auth, allowRoles('admin','user','manager','seo_manager')
       }
     }
     
-    const { seoTitle, seoDescription, seoKeywords, metaTitle, metaDescription, slug, canonicalUrl, noIndex } = req.body
+    const { seoTitle, seoDescription, seoKeywords, metaTitle, metaDescription, slug, canonicalUrl, noIndex, ogTitle, ogDescription, ogImage } = req.body
     
     if (seoTitle !== undefined) prod.seoTitle = String(seoTitle || '')
     if (seoDescription !== undefined) prod.seoDescription = String(seoDescription || '')
@@ -1270,6 +1716,9 @@ router.post('/:id/seo', auth, allowRoles('admin','user','manager','seo_manager')
     if (slug !== undefined) prod.slug = String(slug || '').toLowerCase().replace(/[^a-z0-9-]/g, '-')
     if (canonicalUrl !== undefined) prod.canonicalUrl = String(canonicalUrl || '')
     if (noIndex !== undefined) prod.noIndex = Boolean(noIndex)
+    if (ogTitle !== undefined) prod.ogTitle = String(ogTitle || '')
+    if (ogDescription !== undefined) prod.ogDescription = String(ogDescription || '')
+    if (ogImage !== undefined) prod.ogImage = String(ogImage || '')
     
     await prod.save()
     res.json({ success: true, product: prod })
@@ -1409,7 +1858,44 @@ router.patch('/:id', auth, allowRoles('admin','user','manager'), upload.any(), a
   if (req.body?.isBestSelling != null) prod.isBestSelling = (req.body.isBestSelling === true || String(req.body.isBestSelling).toLowerCase() === 'true')
   if (req.body?.isFeatured != null) prod.isFeatured = (req.body.isFeatured === true || String(req.body.isFeatured).toLowerCase() === 'true')
   if (req.body?.isTrending != null) prod.isTrending = (req.body.isTrending === true || String(req.body.isTrending).toLowerCase() === 'true')
+  if (req.body?.isNewArrival != null) prod.isNewArrival = (req.body.isNewArrival === true || String(req.body.isNewArrival).toLowerCase() === 'true')
   if (req.body?.isRecommended != null) prod.isRecommended = (req.body.isRecommended === true || String(req.body.isRecommended).toLowerCase() === 'true')
+  // SEO fields
+  if (req.body?.seoTitle != null) prod.seoTitle = String(req.body.seoTitle || '')
+  if (req.body?.seoDescription != null) prod.seoDescription = String(req.body.seoDescription || '')
+  if (req.body?.seoKeywords != null) prod.seoKeywords = String(req.body.seoKeywords || '')
+  if (req.body?.metaTitle != null) prod.metaTitle = String(req.body.metaTitle || '')
+  if (req.body?.metaDescription != null) prod.metaDescription = String(req.body.metaDescription || '')
+  if (req.body?.slug != null) prod.slug = String(req.body.slug || '').toLowerCase().replace(/[^a-z0-9-]/g, '-')
+  if (req.body?.canonicalUrl != null) prod.canonicalUrl = String(req.body.canonicalUrl || '')
+  if (req.body?.noIndex != null) prod.noIndex = (req.body.noIndex === true || String(req.body.noIndex).toLowerCase() === 'true')
+  if (req.body?.ogTitle != null) prod.ogTitle = String(req.body.ogTitle || '')
+  if (req.body?.ogDescription != null) prod.ogDescription = String(req.body.ogDescription || '')
+  if (req.body?.ogImage != null) prod.ogImage = String(req.body.ogImage || '')
+  if (req.body?.countrySeo != null) {
+    try {
+      let cs = req.body.countrySeo
+      if (typeof cs === 'string') cs = JSON.parse(cs)
+      if (cs && typeof cs === 'object') prod.countrySeo = cs
+    } catch (e) { console.error('Failed to parse countrySeo', e) }
+  }
+  if (req.body?.backlinks != null) {
+    try {
+      let bl = req.body.backlinks
+      if (typeof bl === 'string') bl = JSON.parse(bl)
+      if (Array.isArray(bl)) prod.backlinks = bl
+    } catch (e) { console.error('Failed to parse backlinks', e) }
+  }
+  if (req.body?.gscData != null) {
+    try {
+      let gsc = req.body.gscData
+      if (typeof gsc === 'string') gsc = JSON.parse(gsc)
+      if (gsc && typeof gsc === 'object') prod.gscData = { ...(prod.gscData?.toObject?.() || prod.gscData || {}), ...gsc }
+    } catch (e) { console.error('Failed to parse gscData', e) }
+  }
+  if (req.body?.shops != null) {
+    prod.shops = parseShopAssignments(req.body.shops, req.user.id)
+  }
   // Update availableCountries if provided
   if (req.body?.availableCountries != null){
     try{
@@ -1598,6 +2084,74 @@ router.post('/:id/images/ai', auth, allowRoles('admin','user','manager'), async 
   }
 })
 
+// Request Google Search Console URL indexing for a product
+router.post('/:id/seo/request-index', auth, allowRoles('admin','user','manager','seo_manager'), async (req, res) => {
+  try {
+    const { id } = req.params
+    const prod = await Product.findById(id)
+    if (!prod) return res.status(404).json({ message: 'Product not found' })
+
+    // Permission check
+    if (req.user.role !== 'admin' && req.user.role !== 'seo_manager') {
+      let ownerId = req.user.id
+      if (req.user.role === 'manager') {
+        const mgr = await User.findById(req.user.id).select('managerPermissions createdBy')
+        if (!mgr || !mgr.managerPermissions?.canManageProducts) return res.status(403).json({ message: 'Not allowed' })
+        ownerId = String(mgr.createdBy || req.user.id)
+      }
+      if (String(prod.createdBy) !== String(ownerId)) return res.status(403).json({ message: 'Not allowed' })
+    }
+
+    const baseUrl = String(req.body?.siteUrl || prod.gscData?.siteUrl || process.env.PUBLIC_BASE_URL || 'https://buysial.com').replace(/\/$/, '')
+    const slug = prod.slug || String(prod.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+    // Use the product's stored canonicalUrl first, then slug URL, then fall back to ID URL
+    const productUrl = prod.canonicalUrl || (slug ? `${baseUrl}/products/${slug}` : `${baseUrl}/product/${prod._id}`)
+
+    // Try GSC Indexing API via service account stored in Settings
+    let credentials = null
+    try {
+      const { default: Setting } = await import('../models/Setting.js')
+      const gscKeySetting = await Setting.findOne({ key: 'gscServiceAccountKey' }).lean()
+      if (gscKeySetting?.value && productUrl) {
+        const { GoogleAuth } = await import('google-auth-library')
+        credentials = typeof gscKeySetting.value === 'string' ? JSON.parse(gscKeySetting.value) : gscKeySetting.value
+        const gauth = new GoogleAuth({ credentials, scopes: ['https://www.googleapis.com/auth/indexing'] })
+        const client = await gauth.getClient()
+        const resp = await client.request({
+          url: 'https://indexing.googleapis.com/v3/urlNotifications:publish',
+          method: 'POST',
+          data: { url: productUrl, type: 'URL_UPDATED' },
+        })
+        prod.gscData = { ...(prod.gscData?.toObject?.() || prod.gscData || {}), siteUrl: baseUrl, lastIndexRequestAt: new Date(), indexingStatus: 'submitted', lastError: '' }
+        await prod.save()
+        return res.json({ success: true, message: 'URL submitted to Google Indexing API', productUrl, apiResponse: resp.data })
+      }
+    } catch (gscErr) {
+      console.warn('GSC API error:', gscErr?.message)
+      const errMsg = gscErr?.message || 'GSC API error'
+      const isPermissionDenied = /permission|ownership|forbidden|403/i.test(errMsg)
+      prod.gscData = { ...(prod.gscData?.toObject?.() || prod.gscData || {}), lastIndexRequestAt: new Date(), indexingStatus: 'error', lastError: errMsg }
+      await prod.save()
+      return res.json({
+        success: false,
+        permissionDenied: isPermissionDenied,
+        message: isPermissionDenied
+          ? `Permission denied — the service account is not an Owner of this property in Google Search Console. Fix: Go to Google Search Console → Settings → Users & permissions → Add ${credentials?.client_email || 'your service account email'} as Owner (not User).`
+          : 'GSC API error: ' + errMsg,
+        productUrl,
+        manualUrl: 'https://search.google.com/search-console',
+        gscSettingsUrl: 'https://search.google.com/search-console/users',
+      })
+    }
+
+    // No credentials configured — return instructions for manual submission
+    return res.json({ success: false, noCredentials: true, message: 'GSC service account key not configured in Settings. Submit the URL manually.', productUrl, manualUrl: 'https://search.google.com/search-console' })
+  } catch (err) {
+    console.error('GSC request-index error:', err)
+    res.status(500).json({ message: err?.message || 'Failed to request indexing' })
+  }
+})
+
 // Delete product (admin; user owner; manager with permission on owner's products)
 router.delete('/:id', auth, allowRoles('admin','user','manager'), async (req, res) => {
   const { id } = req.params
@@ -1614,6 +2168,28 @@ router.delete('/:id', auth, allowRoles('admin','user','manager'), async (req, re
   }
   await Product.deleteOne({ _id: id })
   res.json({ message: 'Deleted' })
+})
+
+// Generate full SEO package using Gemini AI
+router.post('/generate-seo', auth, allowRoles('admin','user','manager'), async (req, res) => {
+  try {
+    const { productName, category, description, availableCountries, baseUrl } = req.body
+    if (!productName) return res.status(400).json({ message: 'productName is required' })
+    if (!(await geminiService.ensureInitialized())) {
+      return res.status(503).json({ message: 'AI service not configured. Add Gemini API key in Settings > API Setup.' })
+    }
+    const seoData = await geminiService.generateProductSEO(
+      productName,
+      category || '',
+      description || '',
+      Array.isArray(availableCountries) ? availableCountries : [],
+      baseUrl || 'https://buysial.com'
+    )
+    res.json({ success: true, seo: seoData })
+  } catch (err) {
+    console.error('[generate-seo]', err)
+    res.status(500).json({ message: err.message || 'Failed to generate SEO' })
+  }
 })
 
 // Generate product description using Gemini AI

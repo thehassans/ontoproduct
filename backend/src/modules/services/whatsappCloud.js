@@ -865,12 +865,35 @@ async function handleWebhook(req) {
       for (const st of statuses) {
         const id = String(st?.id || '')
         const status = String(st?.status || '').toLowerCase()
+        const recipientId = String(st?.recipient_id || '')
         if (!id) continue
+
+        // ── Official WhatsApp Cloud API tick logging ──────────────────────
+        switch (status) {
+          case 'sent':
+            console.log(`[WA Tick] ✓  Single Tick: Message sent      to ${recipientId} | id=${id}`)
+            break
+          case 'delivered':
+            console.log(`[WA Tick] ✓✓ Double Tick: Message delivered to ${recipientId} | id=${id}`)
+            break
+          case 'read':
+            console.log(`[WA Tick] ✓✓ Blue Tick  : Message read by   ${recipientId} | id=${id}`)
+            break
+          case 'failed': {
+            const errs = Array.isArray(st?.errors) ? st.errors : []
+            const errMsg = errs.map(e => `${e?.code}:${e?.title}`).join(', ') || 'unknown'
+            console.warn(`[WA Tick] ✗  Failed     : Delivery failed   to ${recipientId} | id=${id} | errors=${errMsg}`)
+            break
+          }
+          default:
+            if (status) console.log(`[WA Tick] ?  Unknown    : status=${status} | id=${id} | recipient=${recipientId}`)
+        }
 
         let mapped = null
         if (status === 'sent') mapped = 'sent'
         else if (status === 'delivered') mapped = 'delivered'
         else if (status === 'read') mapped = 'read'
+        else if (status === 'failed') mapped = 'failed'
 
         if (!mapped) continue
 

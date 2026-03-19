@@ -68,6 +68,16 @@ function defaultCurrencyConfig() {
   };
 }
 
+function defaultDeliveryWorkflowConfig() {
+  return {
+    requireBarcodeScanForPickup: true,
+    allowManualPickupVerification: true,
+    autoAssignNearestShop: false,
+    enableDriverLiveTracking: true,
+    updatedAt: new Date(),
+  };
+}
+
 // GET /api/settings/currency - PUBLIC (no auth required for reading currency config)
 router.get("/currency", async (_req, res) => {
   try {
@@ -137,6 +147,76 @@ router.post(
       res.json({ success: true });
     } catch (e) {
       res.status(500).json({ success: false, error: e?.message || "failed" });
+    }
+  }
+);
+
+router.get("/delivery-workflow", async (_req, res) => {
+  try {
+    const doc = await Setting.findOne({ key: "delivery_workflow" }).lean();
+    const val = doc?.value && typeof doc.value === "object" ? doc.value : {};
+    return res.json({
+      success: true,
+      ...defaultDeliveryWorkflowConfig(),
+      ...val,
+    });
+  } catch (e) {
+    return res.status(500).json({ success: false, error: e?.message || "failed" });
+  }
+});
+
+router.post(
+  "/delivery-workflow",
+  auth,
+  allowRoles("admin", "user", "manager"),
+  async (req, res) => {
+    try {
+      const body = req.body || {};
+      let doc = await Setting.findOne({ key: "delivery_workflow" });
+      if (!doc) {
+        doc = new Setting({
+          key: "delivery_workflow",
+          category: "delivery",
+          description: "Driver pickup verification and logistics workflow flags",
+          value: defaultDeliveryWorkflowConfig(),
+        });
+      }
+
+      const out = {
+        ...defaultDeliveryWorkflowConfig(),
+        ...(doc.value && typeof doc.value === "object" ? doc.value : {}),
+      };
+
+      if (body.requireBarcodeScanForPickup != null) {
+        out.requireBarcodeScanForPickup =
+          body.requireBarcodeScanForPickup === true ||
+          String(body.requireBarcodeScanForPickup).toLowerCase() === "true";
+      }
+      if (body.allowManualPickupVerification != null) {
+        out.allowManualPickupVerification =
+          body.allowManualPickupVerification === true ||
+          String(body.allowManualPickupVerification).toLowerCase() === "true";
+      }
+      if (body.autoAssignNearestShop != null) {
+        out.autoAssignNearestShop =
+          body.autoAssignNearestShop === true ||
+          String(body.autoAssignNearestShop).toLowerCase() === "true";
+      }
+      if (body.enableDriverLiveTracking != null) {
+        out.enableDriverLiveTracking =
+          body.enableDriverLiveTracking === true ||
+          String(body.enableDriverLiveTracking).toLowerCase() === "true";
+      }
+
+      out.updatedAt = new Date();
+      doc.category = "delivery";
+      doc.description = "Driver pickup verification and logistics workflow flags";
+      doc.updatedBy = req.user?.id || undefined;
+      doc.value = out;
+      await doc.save();
+      return res.json({ success: true, config: out });
+    } catch (e) {
+      return res.status(500).json({ success: false, error: e?.message || "failed" });
     }
   }
 );
@@ -745,6 +825,14 @@ router.get("/seo", async (_req, res) => {
       customBodyCode: "",
       robotsTxt: "",
       structuredData: true,
+      
+      organizationName: "",
+      contactEmail: "",
+      eeatAuthorEnabled: false,
+      aiBotsAllowed: true,
+      llmsTxtEnabled: true,
+      enableAEO: false,
+      brandSemanticSummary: "",
     };
     res.json({ seo });
   } catch (e) {
@@ -776,6 +864,13 @@ router.post("/seo", auth, allowRoles("admin", "user", "seo_manager"), async (req
       customBodyCode,
       robotsTxt,
       structuredData,
+      organizationName,
+      contactEmail,
+      eeatAuthorEnabled,
+      aiBotsAllowed,
+      llmsTxtEnabled,
+      enableAEO,
+      brandSemanticSummary,
     } = req.body || {};
 
     let doc = await Setting.findOne({ key: "seo" });
@@ -799,10 +894,18 @@ router.post("/seo", auth, allowRoles("admin", "user", "seo_manager"), async (req
     if (typeof linkedinTag === "string") value.linkedinTag = linkedinTag.trim();
     if (typeof hotjarId === "string") value.hotjarId = hotjarId.trim();
     if (typeof clarityId === "string") value.clarityId = clarityId.trim();
-    if (typeof customHeadCode === "string") value.customHeadCode = customHeadCode;
-    if (typeof customBodyCode === "string") value.customBodyCode = customBodyCode;
-    if (typeof robotsTxt === "string") value.robotsTxt = robotsTxt;
+    if (typeof customHeadCode === "string") value.customHeadCode = customHeadCode.trim();
+    if (typeof customBodyCode === "string") value.customBodyCode = customBodyCode.trim();
+    if (typeof robotsTxt === "string") value.robotsTxt = robotsTxt.trim();
     if (typeof structuredData === "boolean") value.structuredData = structuredData;
+    
+    if (typeof organizationName === "string") value.organizationName = organizationName.trim();
+    if (typeof contactEmail === "string") value.contactEmail = contactEmail.trim();
+    if (typeof eeatAuthorEnabled === "boolean") value.eeatAuthorEnabled = eeatAuthorEnabled;
+    if (typeof aiBotsAllowed === "boolean") value.aiBotsAllowed = aiBotsAllowed;
+    if (typeof llmsTxtEnabled === "boolean") value.llmsTxtEnabled = llmsTxtEnabled;
+    if (typeof enableAEO === "boolean") value.enableAEO = enableAEO;
+    if (typeof brandSemanticSummary === "string") value.brandSemanticSummary = brandSemanticSummary.trim();
 
     doc.value = value;
     doc.markModified('value');
@@ -1207,3 +1310,60 @@ router.put(
     }
   }
 );
+
+// GET /api/settings/gsc-key - Check if GSC service account key is configured (returns masked status only)
+router.get("/gsc-key", auth, allowRoles("admin", "user", "seo_manager"), async (_req, res) => {
+  try {
+    const doc = await Setting.findOne({ key: "gscServiceAccountKey" }).lean();
+    const hasKey = !!(doc?.value && String(doc.value).length > 10);
+    let email = "";
+    if (hasKey) {
+      try {
+        const parsed = typeof doc.value === "string" ? JSON.parse(doc.value) : doc.value;
+        email = parsed?.client_email || "";
+      } catch {}
+    }
+    res.json({ configured: hasKey, clientEmail: email });
+  } catch (e) {
+    res.status(500).json({ error: e?.message || "failed" });
+  }
+});
+
+// POST /api/settings/gsc-key - Save GSC service account JSON key
+router.post("/gsc-key", auth, allowRoles("admin", "user"), async (req, res) => {
+  try {
+    const { serviceAccountKey } = req.body;
+    if (!serviceAccountKey || !String(serviceAccountKey).trim()) {
+      return res.status(400).json({ error: "serviceAccountKey is required" });
+    }
+    // Validate it parses as JSON with required fields
+    let parsed;
+    try {
+      parsed = typeof serviceAccountKey === "string" ? JSON.parse(serviceAccountKey) : serviceAccountKey;
+    } catch {
+      return res.status(400).json({ error: "Invalid JSON — paste the full service account key file contents" });
+    }
+    if (!parsed.client_email || !parsed.private_key) {
+      return res.status(400).json({ error: "JSON must contain client_email and private_key fields" });
+    }
+    const valueToStore = typeof serviceAccountKey === "string" ? serviceAccountKey : JSON.stringify(serviceAccountKey);
+    await Setting.findOneAndUpdate(
+      { key: "gscServiceAccountKey" },
+      { $set: { value: valueToStore } },
+      { upsert: true, new: true }
+    );
+    res.json({ success: true, clientEmail: parsed.client_email });
+  } catch (e) {
+    res.status(500).json({ error: e?.message || "failed" });
+  }
+});
+
+// DELETE /api/settings/gsc-key - Remove GSC service account key
+router.delete("/gsc-key", auth, allowRoles("admin", "user"), async (_req, res) => {
+  try {
+    await Setting.deleteOne({ key: "gscServiceAccountKey" });
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e?.message || "failed" });
+  }
+});

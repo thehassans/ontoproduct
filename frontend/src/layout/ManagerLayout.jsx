@@ -139,7 +139,7 @@ export default function ManagerLayout(){
           }}>
             <div style={{display:'flex', alignItems:'center', gap:10, minWidth:0}}>
               {(()=>{
-                const fallback = `${import.meta.env.BASE_URL}BuySial2.png`
+                const fallback = `${import.meta.env.BASE_URL}BSBackgroundremoved.png`
                 const src = me.headerLogo ? `${API_BASE}${me.headerLogo}` : fallback
                 return (
                   <button
@@ -297,7 +297,7 @@ export default function ManagerLayout(){
           <div className="topbar premium" style={{display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'nowrap', minHeight:'60px', padding:'0 1rem', gap:12}}>
             <div className="flex items-center gap-3" style={{flexShrink:0, minWidth:0}}>
               {(()=>{
-                const fallback = `${import.meta.env.BASE_URL}BuySial2.png`
+                const fallback = `${import.meta.env.BASE_URL}BSBackgroundremoved.png`
                 const src = me.headerLogo ? `${API_BASE}${me.headerLogo}` : fallback
                 return (
                   <button

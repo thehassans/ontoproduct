@@ -209,7 +209,7 @@ export default function Confirmers() {
         </div>
       )}
 
-      <style jsx>{`
+      <style>{`
         .confirmers-page {
           padding: 24px;
         }

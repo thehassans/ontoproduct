@@ -102,7 +102,7 @@ export default function AdminLayout(){
               ☰
             </button>
             {(()=>{
-              const fallback = `${import.meta.env.BASE_URL}BuySial2.png`
+              const fallback = `${import.meta.env.BASE_URL}BSBackgroundremoved.png`
               const src = branding.headerLogo ? `${API_BASE}${branding.headerLogo}` : fallback
               return <img src={src} alt="BuySial" className="h-7 w-auto object-contain" />
             })()}

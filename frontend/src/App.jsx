@@ -7,6 +7,7 @@ import './styles/premium-ecommerce.css'
 
 import { apiGet } from './api.js'
 import DynamicPixels from './components/DynamicPixels.jsx'
+import AppLaunchOverlay from './components/AppLaunchOverlay.jsx'
 
 // =============================================================================
 // LAZY LOADING - All components loaded on demand for faster initial load
@@ -48,6 +49,7 @@ const ConfirmerLayout = lazy(() => import('./layout/ConfirmerLayout.jsx'))
 const DropshipperLayout = lazy(() => import('./layout/DropshipperLayout.jsx'))
 const SEOManagerLayout = lazy(() => import('./layout/SEOManagerLayout.jsx'))
 const CustomerLayout = lazy(() => import('./layout/CustomerLayout.jsx'))
+const ShopVendorLayout = lazy(() => import('./layout/ShopVendorLayout.jsx'))
 
 // Admin pages
 const AdminDashboard = lazy(() => import('./pages/admin/Dashboard.jsx'))
@@ -96,13 +98,17 @@ const ProfitLoss = lazy(() => import('./pages/user/ProfitLoss.jsx'))
 const UserFinances = lazy(() => import('./pages/user/Finances.jsx'))
 const UserManagerFinances = lazy(() => import('./pages/user/ManagerFinances.jsx'))
 const AgentAmounts = lazy(() => import('./pages/user/AgentAmounts.jsx'))
+const AgentHistory = lazy(() => import('./pages/user/AgentHistory.jsx'))
+const AgentHistoryAll = lazy(() => import('./pages/user/AgentHistoryAll.jsx'))
 const CommissionerAmounts = lazy(() => import('./pages/user/CommissionerAmounts.jsx'))
 const Confirmers = lazy(() => import('./pages/user/Confirmers.jsx'))
 const DriverAmounts = lazy(() => import('./pages/user/DriverAmounts.jsx'))
+const TotalAmounts = lazy(() => import('./pages/user/TotalAmounts.jsx'))
 const CurrencySettings = lazy(() => import('./pages/user/CurrencySettings.jsx'))
 const PaymentSettings = lazy(() => import('./pages/user/PaymentSettings.jsx'))
 const EmailSettings = lazy(() => import('./pages/user/EmailSettings.jsx'))
 const UserReturnedOrders = lazy(() => import('./pages/user/ReturnedOrders.jsx'))
+const UserDriverStock = lazy(() => import('./pages/user/DriverStock.jsx'))
 const ManagerSalary = lazy(() => import('./pages/user/ManagerSalary.jsx'))
 const UserProducts = lazy(() => import('./pages/user/Products.jsx'))
 const UserProductDetail = lazy(() => import('./pages/user/ProductDetail.jsx'))
@@ -115,6 +121,10 @@ const GoogleOAuthSettings = lazy(() => import('./pages/user/GoogleOAuthSettings.
 const UserCategories = lazy(() => import('./pages/user/Categories.jsx'))
 const UserBrands = lazy(() => import('./pages/user/Brands.jsx'))
 const UserExploreMore = lazy(() => import('./pages/user/ExploreMore.jsx'))
+const UserShops = lazy(() => import('./pages/user/Shops.jsx'))
+const ShopLogistics = lazy(() => import('./pages/user/ShopLogistics.jsx'))
+const DeliveryWorkflow = lazy(() => import('./pages/user/DeliveryWorkflow.jsx'))
+const ShopCatalogAssignments = lazy(() => import('./pages/user/ShopCatalogAssignments.jsx'))
 
 // Agent pages
 const AgentDashboard = lazy(() => import('./pages/agent/Dashboard.jsx'))
@@ -146,6 +156,7 @@ const DriverPicked = lazy(() => import('./pages/driver/Picked.jsx'))
 const DriverDelivered = lazy(() => import('./pages/driver/Delivered.jsx'))
 const DriverCancelled = lazy(() => import('./pages/driver/Cancelled.jsx'))
 const DriverHistory = lazy(() => import('./pages/driver/History.jsx'))
+const DriverMyStock = lazy(() => import('./pages/driver/MyStock.jsx'))
 
 // Investor pages
 const InvestorDashboard = lazy(() => import('./pages/investor/Dashboard.jsx'))
@@ -169,12 +180,20 @@ const DropshipperSubmitOrder = lazy(() => import('./pages/dropshipper/SubmitOrde
 const DropshipperFinances = lazy(() => import('./pages/dropshipper/Finances.jsx'))
 const DropshipperShopifyConnect = lazy(() => import('./pages/dropshipper/ShopifyConnect.jsx'))
 const DropshipSignup = lazy(() => import('./pages/dropship/DropshipSignup.jsx'))
+const ShopVendorDashboard = lazy(() => import('./pages/shopVendor/Dashboard.jsx'))
+const ShopVendorOrders = lazy(() => import('./pages/shopVendor/Orders.jsx'))
+const ShopVendorProducts = lazy(() => import('./pages/shopVendor/Products.jsx'))
+const ShopVendorPayments = lazy(() => import('./pages/shopVendor/Payments.jsx'))
 
-// SEO pages
+// SEO Next-Gen AI Panel pages
 const SEODashboard = lazy(() => import('./pages/seo/Dashboard.jsx'))
+const AeoPage = lazy(() => import('./pages/seo/AeoPage.jsx'))
+const GeoPage = lazy(() => import('./pages/seo/GeoPage.jsx'))
+const TrafficPage = lazy(() => import('./pages/seo/TrafficPage.jsx'))
+const OptimizationPage = lazy(() => import('./pages/seo/OptimizationPage.jsx'))
 
 // Customer pages
-const CustomerDashboard = lazy(() => import('./pages/customer/Dashboard.jsx'))
+const CustomerDashboard = lazy(() => import('./pages/customer/ProfileHub.jsx'))
 const CustomerOrders = lazy(() => import('./pages/customer/Orders.jsx'))
 const TrackOrder = lazy(() => import('./pages/customer/TrackOrder.jsx'))
 const CustomerCoupons = lazy(() => import('./pages/customer/Coupons.jsx'))
@@ -203,12 +222,13 @@ const EditOrder = lazy(() => import('./pages/orders/EditOrder.jsx'))
 const Support = lazy(() => import('./pages/support/Support.jsx'))
 
 // E-commerce (public-facing - critical path, consider preloading)
-const ProductCatalog = lazy(() => import('./pages/ecommerce/ProductCatalog.jsx'))
-const ProductDetail = lazy(() => import('./pages/ecommerce/ProductDetail.jsx'))
-const CartPage = lazy(() => import('./pages/ecommerce/CartPage.jsx'))
+const ProductCatalog = lazyWithRetry(() => import('./pages/ecommerce/ProductCatalog.jsx'))
+const BrandPage = lazyWithRetry(() => import('./pages/ecommerce/BrandPage.jsx'))
+const ProductDetail = lazyWithRetry(() => import('./pages/ecommerce/ProductDetail.jsx'))
+const CartPage = lazyWithRetry(() => import('./pages/ecommerce/CartPage.jsx'))
 const Checkout = lazy(() => import('./pages/store/Checkout.jsx'))
-const PaymentResult = lazy(() => import('./pages/ecommerce/PaymentResult.jsx'))
-const OrderSuccess = lazy(() => import('./pages/ecommerce/OrderSuccess.jsx'))
+const PaymentResult = lazyWithRetry(() => import('./pages/ecommerce/PaymentResult.jsx'))
+const OrderSuccess = lazyWithRetry(() => import('./pages/ecommerce/OrderSuccess.jsx'))
 // import FloatingWhatsApp from './components/ecommerce/FloatingWhatsApp.jsx'
 const PaymentSuccess = lazy(() => import('./pages/payment/PaymentSuccess.jsx'))
 const PaymentCancelled = lazy(() => import('./pages/payment/PaymentCancelled.jsx'))
@@ -333,6 +353,7 @@ function RequireRole({ roles = [], children }) {
     if (role === 'manager') return <Navigate to="/manager" replace />
     if (role === 'dropshipper') return <Navigate to="/dropshipper" replace />
     if (role === 'investor') return <Navigate to="/investor" replace />
+    if (role === 'shop_vendor') return <Navigate to="/shop" replace />
     if (role === 'seo_manager') return <Navigate to="/seo" replace />
     if (role === 'admin' || role === 'user') return <Navigate to="/user" replace />
     return <Navigate to="/login" replace />
@@ -376,16 +397,51 @@ function RequireManagerPerm({ perm, children }) {
 
 // Custom Domain context for sharing state
 const CustomDomainContext = React.createContext(false)
+const CUSTOM_DOMAIN_CACHE_KEY = '__custom_domain_check__'
 
 // Hook to check if on custom domain
 export function useIsCustomDomain() {
   return React.useContext(CustomDomainContext)
 }
 
+function readCustomDomainCache(hostname) {
+  try {
+    const raw = sessionStorage.getItem(`${CUSTOM_DOMAIN_CACHE_KEY}:${hostname}`)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (String(parsed?.hostname || '') !== hostname) return null
+    if (typeof parsed?.isCustomDomain !== 'boolean') return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+function writeCustomDomainCache(hostname, isCustomDomain) {
+  try {
+    sessionStorage.setItem(`${CUSTOM_DOMAIN_CACHE_KEY}:${hostname}`, JSON.stringify({
+      hostname,
+      isCustomDomain: !!isCustomDomain,
+      ts: Date.now(),
+    }))
+  } catch {}
+}
+
 // Custom Domain Router - handles routing for custom domains
 function CustomDomainRouter({ children }) {
-  const [isCustomDomain, setIsCustomDomain] = useState(null)
-  const [checking, setChecking] = useState(true)
+  const initialDomainState = (() => {
+    try {
+      const hostname = window.location.hostname.toLowerCase()
+      if (hostname === 'buysial.com' || hostname === 'localhost' || hostname === '127.0.0.1') {
+        return { isCustomDomain: false, checking: false }
+      }
+      const cached = readCustomDomainCache(hostname)
+      if (cached) return { isCustomDomain: cached.isCustomDomain, checking: false }
+    } catch {}
+    return { isCustomDomain: null, checking: true }
+  })()
+  const [isCustomDomain, setIsCustomDomain] = useState(initialDomainState.isCustomDomain)
+  const [checking, setChecking] = useState(initialDomainState.checking)
 
   useEffect(() => {
     let alive = true
@@ -399,6 +455,7 @@ function CustomDomainRouter({ children }) {
           hostname === 'localhost' ||
           hostname === '127.0.0.1'
         ) {
+          writeCustomDomainCache(hostname, false)
           if (alive) {
             setIsCustomDomain(false)
             setChecking(false)
@@ -410,14 +467,15 @@ function CustomDomainRouter({ children }) {
         try {
           const response = await apiGet(`/api/users/by-domain/${hostname}`)
           if (alive && response?.userId) {
+            writeCustomDomainCache(hostname, true)
             setIsCustomDomain(true)
-            // Store the store info for later use
             sessionStorage.setItem('customDomainStore', JSON.stringify(response))
           } else {
+            writeCustomDomainCache(hostname, false)
             setIsCustomDomain(false)
           }
         } catch (err) {
-          // Domain not found in database, proceed normally
+          writeCustomDomainCache(hostname, false)
           setIsCustomDomain(false)
         }
       } catch (err) {
@@ -544,6 +602,7 @@ export default function App() {
         <CountryProvider>
         <CustomDomainRouter>
           <Suspense fallback={<AppFallback />}>
+          <AppLaunchOverlay />
           <DynamicPixels />
           {/* <FloatingWhatsApp /> */}
           <Routes>
@@ -559,7 +618,9 @@ export default function App() {
 
             {/* Public ecommerce routes */}
             <Route path="/catalog" element={<ProductCatalog />} />
+            <Route path="/brand/:slug" element={<BrandPage />} />
             <Route path="/product/:id" element={<ProductDetail />} />
+            <Route path="/products/:slug" element={<ProductDetail />} />
             <Route path="/cart" element={<CartPage />} />
             <Route path="/checkout" element={<Navigate to="/cart" replace />} />
             <Route path="/order-success" element={<OrderSuccess />} />
@@ -631,6 +692,21 @@ export default function App() {
             <Route path="/customer-login" element={<Navigate to="/customer/login" replace />} />
             <Route path="/register" element={<Register />} />
             <Route
+              path="/shop"
+              element={
+                <RequireAuth>
+                  <RequireRole roles={['shop_vendor']}>
+                    <ShopVendorLayout />
+                  </RequireRole>
+                </RequireAuth>
+              }
+            >
+              <Route index element={<ShopVendorDashboard />} />
+              <Route path="orders" element={<ShopVendorOrders />} />
+              <Route path="products" element={<ShopVendorProducts />} />
+              <Route path="payments" element={<ShopVendorPayments />} />
+            </Route>
+            <Route
               path="/customer"
               element={
                 <RequireAuth>
@@ -641,6 +717,7 @@ export default function App() {
               }
             >
               <Route index element={<CustomerDashboard />} />
+              <Route path="profile" element={<CustomerDashboard />} />
               <Route path="wallet" element={<CustomerWallet />} />
               <Route path="orders" element={<CustomerOrders />} />
               <Route path="orders/:id" element={<TrackOrder />} />
@@ -711,6 +788,7 @@ export default function App() {
               <Route path="orders/delivered" element={<DriverDelivered />} />
               <Route path="orders/cancelled" element={<DriverCancelled />} />
               <Route path="orders/history" element={<DriverHistory />} />
+              <Route path="my-stock" element={<DriverMyStock />} />
               <Route path="me" element={<DriverMe />} />
               <Route path="profile" element={<DriverProfile />} />
               <Route path="payout" element={<DriverPayout />} />
@@ -786,6 +864,7 @@ export default function App() {
               <Route path="campaigns" element={<Campaign />} />
               <Route path="orders" element={<UserOrders />} />
               <Route path="orders/returned" element={<UserReturnedOrders />} />
+              <Route path="driver-stock" element={<UserDriverStock />} />
               <Route path="online-orders" element={<OnlineOrders />} />
               <Route path="coupons" element={<Coupons />} />
               <Route path="cashback-offers" element={<CashbackOffers />} />
@@ -795,6 +874,10 @@ export default function App() {
               <Route path="inhouse-products" element={<InhouseProducts />} />
               <Route path="products" element={<UserProducts />} />
               <Route path="products/:id" element={<UserProductDetail />} />
+              <Route path="shops" element={<UserShops />} />
+              <Route path="shop-logistics" element={<ShopLogistics />} />
+              <Route path="delivery-workflow" element={<DeliveryWorkflow />} />
+              <Route path="shop-assignments" element={<ShopCatalogAssignments />} />
               <Route path="warehouses" element={<Warehouse />} />
               <Route path="shipments" element={<Shipments />} />
               <Route path="reports" element={<Reports />} />
@@ -807,9 +890,12 @@ export default function App() {
               <Route path="transactions" element={<Transactions />} />
               <Route path="manager-finances" element={<UserManagerFinances />} />
               <Route path="agent-amounts" element={<AgentAmounts />} />
+              <Route path="agent-history" element={<AgentHistoryAll />} />
+              <Route path="agent-history/:agentId" element={<AgentHistory />} />
               <Route path="commissioner-amounts" element={<CommissionerAmounts />} />
               <Route path="confirmers" element={<Confirmers />} />
               <Route path="driver-amounts" element={<DriverAmounts />} />
+              <Route path="total-amounts" element={<TotalAmounts />} />
               <Route path="manager-salary" element={<ManagerSalary />} />
               <Route path="finances" element={<UserFinances />} />
               <Route path="currency" element={<CurrencySettings />} />
@@ -851,7 +937,7 @@ export default function App() {
               <Route path="shopify-connected" element={<DropshipperShopifyConnect />} />
             </Route>
 
-            {/* SEO Manager Panel */}
+            {/* SEO Manager Panel with Next-Gen AI Dashboard */}
             <Route
               path="/seo"
               element={
@@ -862,6 +948,7 @@ export default function App() {
                 </RequireAuth>
               }
             >
+              {/* Legacy SEO Dashboard Tabs */}
               <Route index element={<SEODashboard />} />
               <Route path="dashboard" element={<SEODashboard />} />
               <Route path="pixels" element={<SEODashboard />} />
@@ -871,6 +958,12 @@ export default function App() {
               <Route path="products" element={<SEODashboard />} />
               <Route path="schema" element={<SEODashboard />} />
               <Route path="advanced" element={<SEODashboard />} />
+
+              {/* Next-Gen AI SEO Routes */}
+              <Route path="aeo" element={<AeoPage />} />
+              <Route path="geo" element={<GeoPage />} />
+              <Route path="traffic" element={<TrafficPage />} />
+              <Route path="optimization" element={<OptimizationPage />} />
             </Route>
 
             <Route

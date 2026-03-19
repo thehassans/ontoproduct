@@ -3,12 +3,17 @@ import { apiGet } from '../../api'
 
 const GOOGLE_MAPS_SCRIPT_ID = 'google-maps-script'
 
-export default function LiveMap({ orders = [], driverLocation, onSelectOrder }) {
+export default function LiveMap({ orders = [], driverLocation, onSelectOrder, minimal = false, activeOrderId = '', mapHeight = 400, mapCommand = null }) {
   const mapRef = useRef(null)
   const mapInstanceRef = useRef(null)
   const markersRef = useRef([])
-  const directionsRendererRef = useRef(null)
+  const routePolylinesRef = useRef([])
   const driverMarkerRef = useRef(null)
+  const driverLocationRef = useRef(null)
+  const hasCenteredOnDriverRef = useRef(false)
+  const lastAutoViewportSignatureRef = useRef('')
+  const lastHandledMapCommandRef = useRef('')
+  const usesAdvancedMarkersRef = useRef(false)
   
   const [apiKey, setApiKey] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -16,6 +21,151 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder }) 
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [routeInfo, setRouteInfo] = useState(null) // distance, duration
   const [mapLoaded, setMapLoaded] = useState(false)
+
+  useEffect(() => {
+    driverLocationRef.current = driverLocation || null
+  }, [driverLocation])
+
+  function getNumericPosition(value) {
+    const lat = Number(value?.lat ?? value?.locationLat)
+    const lng = Number(value?.lng ?? value?.locationLng)
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      return { lat, lng }
+    }
+
+    const coordinates = Array.isArray(value?.dropoffLocation?.coordinates)
+      ? value.dropoffLocation.coordinates
+      : Array.isArray(value?.coordinates)
+      ? value.coordinates
+      : []
+
+    const fallbackLng = Number(coordinates?.[0])
+    const fallbackLat = Number(coordinates?.[1])
+    if (!Number.isFinite(fallbackLat) || !Number.isFinite(fallbackLng)) return null
+    return { lat: fallbackLat, lng: fallbackLng }
+  }
+
+  function clearMapMarker(marker) {
+    if (!marker) return
+    try {
+      if (typeof marker.setMap === 'function') marker.setMap(null)
+      else marker.map = null
+    } catch {}
+  }
+
+  function setMapMarkerPosition(marker, position) {
+    if (!marker || !position) return
+    try {
+      if (typeof marker.setPosition === 'function') marker.setPosition(position)
+      else marker.position = position
+    } catch {}
+  }
+
+  function createMarkerContent({ background, text, size, shadow }) {
+    const node = document.createElement('div')
+    node.style.width = `${size}px`
+    node.style.height = `${size}px`
+    node.style.borderRadius = '999px'
+    node.style.background = background
+    node.style.border = '2px solid #ffffff'
+    node.style.display = 'grid'
+    node.style.placeItems = 'center'
+    node.style.color = '#ffffff'
+    node.style.fontWeight = '800'
+    node.style.fontSize = size >= 32 ? '12px' : '11px'
+    node.style.lineHeight = '1'
+    node.style.boxShadow = shadow
+    node.textContent = text
+    return node
+  }
+
+  function createMapMarker({ position, title, color, labelText, zIndex = 1, driver = false }) {
+    if (!mapInstanceRef.current || !window.google || !position) return null
+
+    if (usesAdvancedMarkersRef.current && window.google.maps.marker?.AdvancedMarkerElement) {
+      return new window.google.maps.marker.AdvancedMarkerElement({
+        map: mapInstanceRef.current,
+        position,
+        title,
+        zIndex,
+        content: createMarkerContent({
+          background: color,
+          text: driver ? '•' : labelText,
+          size: driver ? 24 : 34,
+          shadow: driver ? '0 10px 24px rgba(37,99,235,0.28)' : '0 12px 26px rgba(15,23,42,0.18)',
+        }),
+      })
+    }
+
+    if (driver) {
+      return new window.google.maps.Marker({
+        position,
+        map: mapInstanceRef.current,
+        icon: {
+          path: window.google.maps.SymbolPath.CIRCLE,
+          scale: 12,
+          fillColor: color,
+          fillOpacity: 1,
+          strokeColor: '#ffffff',
+          strokeWeight: 3,
+        },
+        title,
+        zIndex,
+      })
+    }
+
+    return new window.google.maps.Marker({
+      position,
+      map: mapInstanceRef.current,
+      icon: {
+        path: 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z',
+        fillColor: color,
+        fillOpacity: 1,
+        strokeColor: '#ffffff',
+        strokeWeight: 2,
+        scale: 1.8,
+        anchor: new window.google.maps.Point(12, 22),
+      },
+      title,
+      label: {
+        text: labelText,
+        color: '#ffffff',
+        fontSize: '12px',
+        fontWeight: 'bold',
+      },
+      zIndex,
+    })
+  }
+
+  function isGoogleMapsReady() {
+    const maps = window.google?.maps
+    return Boolean(
+      maps &&
+      (
+        typeof maps.importLibrary === 'function' ||
+        typeof maps.Map === 'function'
+      )
+    )
+  }
+
+  async function waitForGoogleMapsReady(timeoutMs = 10000) {
+    if (isGoogleMapsReady()) return true
+    const startedAt = Date.now()
+    return await new Promise((resolve) => {
+      const tick = () => {
+        if (isGoogleMapsReady()) {
+          resolve(true)
+          return
+        }
+        if (Date.now() - startedAt >= timeoutMs) {
+          resolve(false)
+          return
+        }
+        window.setTimeout(tick, 60)
+      }
+      tick()
+    })
+  }
 
   // Load Google Maps API key from backend
   useEffect(() => {
@@ -39,211 +189,526 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder }) 
   // Load Google Maps script
   useEffect(() => {
     if (!apiKey) return
-    
-    // Check if script already exists
-    if (document.getElementById(GOOGLE_MAPS_SCRIPT_ID)) {
-      if (window.google && window.google.maps) {
+
+    // When another component loaded the script with &loading=async, importLibrary must be called
+    // before window.google.maps.Map is available. This ensures classes are populated first.
+    async function readyUp() {
+      if (typeof window.google?.maps?.importLibrary === 'function') {
+        try {
+          await window.google.maps.importLibrary('maps')
+          await window.google.maps.importLibrary('marker').catch(() => null)
+        } catch {}
+      }
+      const ready = await waitForGoogleMapsReady()
+      if (ready) {
+        setError(null)
         setMapLoaded(true)
+      } else {
+        setMapLoaded(false)
+        setError('Failed to load Google Maps. Check your API key and network.')
+      }
+    }
+
+    const existingScript = document.getElementById(GOOGLE_MAPS_SCRIPT_ID)
+      || document.querySelector('script[src*="maps.googleapis.com/maps/api/js"]')
+    if (existingScript) {
+      if (isGoogleMapsReady() || window.google?.maps) {
+        readyUp()
+      } else {
+        const onReady = () => readyUp()
+        const onFailure = () => setError('Failed to load Google Maps. Check your API key.')
+        existingScript.addEventListener('load', onReady)
+        existingScript.addEventListener('error', onFailure)
+        return () => {
+          existingScript.removeEventListener('load', onReady)
+          existingScript.removeEventListener('error', onFailure)
+        }
       }
       return
     }
 
+    if (isGoogleMapsReady() || window.google?.maps) {
+      readyUp()
+      return
+    }
+
+    // Use loading=async for best performance; readyUp() ensures importLibrary runs before setMapLoaded
     const script = document.createElement('script')
     script.id = GOOGLE_MAPS_SCRIPT_ID
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry`
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&v=weekly&libraries=geometry,marker&loading=async`
     script.async = true
     script.defer = true
-    script.onload = () => setMapLoaded(true)
+    script.onload = () => readyUp()
     script.onerror = () => setError('Failed to load Google Maps. Check your API key.')
     document.head.appendChild(script)
-    
-    return () => {
-      // Don't remove script on unmount - it can be reused
-    }
+    return () => {}
   }, [apiKey])
 
   // Initialize map
   useEffect(() => {
-    if (!mapLoaded || !mapRef.current || !window.google) return
-    
-    const defaultCenter = driverLocation || { lat: 25.2048, lng: 55.2708 } // Dubai default
-    
-    mapInstanceRef.current = new window.google.maps.Map(mapRef.current, {
-      center: defaultCenter,
-      zoom: 10,
-      minZoom: 3,
-      maxZoom: 20,
-      styles: getMapStyles(),
-      // Enable all standard Google Maps controls
-      mapTypeControl: true,
-      mapTypeControlOptions: {
-        style: window.google.maps.MapTypeControlStyle.HORIZONTAL_BAR,
-        position: window.google.maps.ControlPosition.TOP_LEFT,
-        mapTypeIds: ['roadmap', 'satellite', 'hybrid', 'terrain']
-      },
-      fullscreenControl: true,
-      fullscreenControlOptions: {
-        position: window.google.maps.ControlPosition.TOP_RIGHT
-      },
-      streetViewControl: true,
-      streetViewControlOptions: {
-        position: window.google.maps.ControlPosition.RIGHT_BOTTOM
-      },
-      zoomControl: true,
-      zoomControlOptions: {
-        position: window.google.maps.ControlPosition.RIGHT_CENTER
-      },
-      scaleControl: true,
-      rotateControl: true,
-      gestureHandling: 'greedy',
-      clickableIcons: true,
-      keyboardShortcuts: true
-    })
-    
-    directionsRendererRef.current = new window.google.maps.DirectionsRenderer({
-      map: mapInstanceRef.current,
-      suppressMarkers: true,
-      polylineOptions: {
-        strokeColor: '#10b981',
-        strokeWeight: 5,
-        strokeOpacity: 0.8
+    if (!mapLoaded || !mapRef.current || !window.google || mapInstanceRef.current) return
+
+    let cancelled = false
+
+    async function initMap() {
+      try {
+        if (cancelled || !mapRef.current) return
+        const ready = await waitForGoogleMapsReady(8000)
+        if (!ready) {
+          if (!cancelled) setError('Google Maps failed to load. Please refresh.')
+          return
+        }
+
+        const hasDynamicLibraryImport = typeof window.google?.maps?.importLibrary === 'function'
+        const mapsLib = hasDynamicLibraryImport
+          ? await window.google.maps.importLibrary('maps').catch(() => null)
+          : null
+        const MapConstructor = mapsLib?.Map || window.google?.maps?.Map
+        if (!MapConstructor) {
+          setError('Google Maps failed to load. Please refresh.')
+          return
+        }
+
+        const markerLib = hasDynamicLibraryImport
+          ? await window.google.maps.importLibrary('marker').catch(() => null)
+          : null
+        if (markerLib?.AdvancedMarkerElement) {
+          if (!window.google.maps.marker) window.google.maps.marker = {}
+          window.google.maps.marker.AdvancedMarkerElement = markerLib.AdvancedMarkerElement
+          window.google.maps.marker.PinElement = markerLib.PinElement
+        }
+
+        usesAdvancedMarkersRef.current = Boolean(markerLib?.AdvancedMarkerElement)
+        const defaultCenter = getNumericPosition(driverLocation) || { lat: 25.2048, lng: 55.2708 }
+        const sharedOptions = {
+          center: defaultCenter,
+          zoom: minimal ? 11 : 10,
+          minZoom: minimal ? 9 : 3,
+          maxZoom: 20,
+          ...(minimal
+            ? {
+                disableDefaultUI: true,
+                zoomControl: false,
+                fullscreenControl: false,
+                streetViewControl: false,
+                mapTypeControl: false,
+                scaleControl: false,
+                rotateControl: false,
+                clickableIcons: false,
+                keyboardShortcuts: false,
+              }
+            : {
+                mapTypeControl: true,
+                mapTypeControlOptions: {
+                  style: window.google.maps.MapTypeControlStyle.HORIZONTAL_BAR,
+                  position: window.google.maps.ControlPosition.TOP_LEFT,
+                  mapTypeIds: ['roadmap', 'satellite', 'hybrid', 'terrain']
+                },
+                fullscreenControl: true,
+                fullscreenControlOptions: {
+                  position: window.google.maps.ControlPosition.TOP_RIGHT
+                },
+                streetViewControl: true,
+                streetViewControlOptions: {
+                  position: window.google.maps.ControlPosition.RIGHT_BOTTOM
+                },
+                zoomControl: true,
+                zoomControlOptions: {
+                  position: window.google.maps.ControlPosition.RIGHT_CENTER
+                },
+                scaleControl: true,
+                rotateControl: true,
+                clickableIcons: true,
+                keyboardShortcuts: true,
+              }),
+          gestureHandling: 'greedy',
+        }
+
+        let nextMap = null
+        if (usesAdvancedMarkersRef.current) {
+          try {
+            nextMap = new MapConstructor(mapRef.current, {
+              ...sharedOptions,
+              mapId: 'DEMO_MAP_ID',
+            })
+          } catch (advancedMapError) {
+            usesAdvancedMarkersRef.current = false
+            console.warn('Falling back to standard Google Map:', advancedMapError)
+          }
+        }
+
+        if (!nextMap) {
+          nextMap = new MapConstructor(mapRef.current, {
+            ...sharedOptions,
+            styles: getMapStyles(),
+          })
+        }
+
+        mapInstanceRef.current = nextMap
+        setError(null)
+      } catch (err) {
+        console.error('Failed to initialize Google Maps:', err)
+        if (!cancelled) {
+          setError('Failed to initialize Google Maps')
+        }
       }
-    })
-    
-  }, [mapLoaded, driverLocation])
+    }
+
+    initMap()
+
+    return () => {
+      cancelled = true
+    }
+  }, [driverLocation, mapLoaded, minimal])
 
   // Add driver marker
   useEffect(() => {
-    if (!mapInstanceRef.current || !driverLocation || !window.google) return
-    
+    if (!mapInstanceRef.current || !window.google) return
+
+    const position = getNumericPosition(driverLocation)
+    if (!position) return
+
     if (driverMarkerRef.current) {
-      driverMarkerRef.current.setPosition(driverLocation)
+      setMapMarkerPosition(driverMarkerRef.current, position)
     } else {
-      driverMarkerRef.current = new window.google.maps.Marker({
-        position: driverLocation,
-        map: mapInstanceRef.current,
-        icon: {
-          path: window.google.maps.SymbolPath.CIRCLE,
-          scale: 12,
-          fillColor: '#3b82f6',
-          fillOpacity: 1,
-          strokeColor: '#ffffff',
-          strokeWeight: 3,
-        },
+      driverMarkerRef.current = createMapMarker({
+        position,
         title: 'Your Location',
-        zIndex: 1000
+        color: '#2563eb',
+        labelText: '•',
+        zIndex: 1000,
+        driver: true,
       })
     }
-    
-    // Center map on driver
-    mapInstanceRef.current.panTo(driverLocation)
-  }, [driverLocation, mapLoaded])
+
+    if (!hasCenteredOnDriverRef.current && orders.length === 0) {
+      mapInstanceRef.current.setCenter(position)
+      mapInstanceRef.current.setZoom(minimal ? 14 : 12)
+      hasCenteredOnDriverRef.current = true
+    }
+  }, [driverLocation, mapLoaded, minimal, orders.length])
+
+  const clampMapZoom = useCallback((minZoom, maxZoom) => {
+    const map = mapInstanceRef.current
+    if (!map) return
+    const currentZoom = Number(map.getZoom())
+    if (!Number.isFinite(currentZoom)) return
+    if (currentZoom < minZoom) map.setZoom(minZoom)
+    else if (currentZoom > maxZoom) map.setZoom(maxZoom)
+  }, [])
+
+  useEffect(() => {
+    if (!mapInstanceRef.current || !window.google) return
+    const map = mapInstanceRef.current
+    const minResponsiveZoom = minimal ? 9 : 3
+    const listener = map.addListener('zoom_changed', () => {
+      const currentZoom = Number(map.getZoom())
+      if (!Number.isFinite(currentZoom)) return
+      if (currentZoom < minResponsiveZoom) {
+        map.setZoom(minResponsiveZoom)
+      }
+    })
+    return () => {
+      try { window.google.maps.event.removeListener(listener) } catch {}
+    }
+  }, [mapLoaded, minimal])
+
+  const clearRenderedRoute = useCallback(() => {
+    if (Array.isArray(routePolylinesRef.current) && routePolylinesRef.current.length) {
+      routePolylinesRef.current.forEach((polyline) => {
+        try {
+          polyline.setMap(null)
+        } catch {}
+      })
+    }
+    routePolylinesRef.current = []
+    setRouteInfo(null)
+  }, [])
+
+  const recenterOnDriver = useCallback(() => {
+    const position = getNumericPosition(driverLocationRef.current)
+    if (!mapInstanceRef.current || !position) return
+    mapInstanceRef.current.panTo(position)
+    mapInstanceRef.current.setZoom(minimal ? 15 : 13)
+  }, [minimal])
+
+  const recenterOnOrder = useCallback((order) => {
+    if (!mapInstanceRef.current || !window.google || !order) return
+
+    const orderPosition = getNumericPosition(order)
+    if (!orderPosition) return
+
+    const map = mapInstanceRef.current
+    const origin = getNumericPosition(driverLocationRef.current)
+
+    if (origin) {
+      const bounds = new window.google.maps.LatLngBounds()
+      bounds.extend(origin)
+      bounds.extend(orderPosition)
+      map.fitBounds(bounds, minimal ? 72 : 96)
+      window.google.maps.event.addListenerOnce(map, 'idle', () => {
+        clampMapZoom(minimal ? 11 : 6, minimal ? 17 : 16)
+      })
+      return
+    }
+
+    map.panTo(orderPosition)
+    map.setZoom(minimal ? 15 : 13)
+  }, [clampMapZoom, minimal])
+
+  function formatDistance(distanceMeters) {
+    const value = Number(distanceMeters || 0)
+    if (!Number.isFinite(value) || value <= 0) return '—'
+    if (value >= 1000) return `${(value / 1000).toFixed(value >= 10000 ? 0 : 1)} km`
+    return `${Math.round(value)} m`
+  }
+
+  function formatDuration(durationMillis) {
+    const totalMinutes = Math.round(Number(durationMillis || 0) / 60000)
+    if (!Number.isFinite(totalMinutes) || totalMinutes <= 0) return '—'
+    if (totalMinutes < 60) return `${totalMinutes} min`
+    const hours = Math.floor(totalMinutes / 60)
+    const minutes = totalMinutes % 60
+    return minutes ? `${hours} hr ${minutes} min` : `${hours} hr`
+  }
+
+  const showRoute = useCallback(async (order) => {
+    const origin = getNumericPosition(driverLocationRef.current)
+    const destination = getNumericPosition(order)
+    if (!mapInstanceRef.current || !origin || !destination || !window.google) {
+      return
+    }
+
+    try {
+      clearRenderedRoute()
+
+      let routeDistance = 0
+      let routeDuration = 0
+      let rendered = false
+
+      const routesLib = typeof window.google?.maps?.importLibrary === 'function'
+        ? await window.google.maps.importLibrary('routes').catch(() => null)
+        : null
+      const RouteClass = routesLib?.Route || window.google.maps?.routes?.Route
+
+      if (RouteClass?.computeRoutes) {
+        const response = await RouteClass.computeRoutes({
+          origin: { location: origin },
+          destination: { location: destination },
+          travelMode: 'DRIVE',
+          computeAlternativeRoutes: false,
+        })
+
+        const route = response?.routes?.[0]
+        if (route) {
+          const encodedPolyline = route.polyline?.encodedPolyline
+          if (encodedPolyline && window.google.maps.geometry?.encoding?.decodePath) {
+            const path = window.google.maps.geometry.encoding.decodePath(encodedPolyline)
+            const polyline = new window.google.maps.Polyline({
+              map: mapInstanceRef.current,
+              path,
+              strokeColor: '#10b981',
+              strokeWeight: minimal ? 6 : 5,
+              strokeOpacity: 0.88,
+              zIndex: 5,
+            })
+            routePolylinesRef.current = [polyline]
+          }
+          const leg = route.legs?.[0]
+          routeDistance = Number(leg?.distanceMeters || 0)
+          const legDuration = leg?.duration
+          if (typeof legDuration === 'string') {
+            routeDuration = (parseFloat(legDuration) || 0) * 1000
+          } else {
+            routeDuration = Number(legDuration?.seconds || 0) * 1000
+          }
+          rendered = true
+        }
+      } else if (window.google.maps.DirectionsService) {
+        const directionsService = new window.google.maps.DirectionsService()
+        const response = await directionsService.route({
+          origin,
+          destination,
+          travelMode: window.google.maps.TravelMode.DRIVING,
+          provideRouteAlternatives: false,
+        })
+        const route = response?.routes?.[0]
+        if (route) {
+          const path = Array.isArray(route.overview_path) ? route.overview_path : []
+          if (path.length) {
+            const polyline = new window.google.maps.Polyline({
+              map: mapInstanceRef.current,
+              path,
+              strokeColor: '#10b981',
+              strokeWeight: minimal ? 6 : 5,
+              strokeOpacity: 0.88,
+              zIndex: 5,
+            })
+            routePolylinesRef.current = [polyline]
+          }
+          const leg = route.legs?.[0]
+          routeDistance = Number(leg?.distance?.value || 0)
+          routeDuration = Number(leg?.duration?.value || 0) * 1000
+          rendered = true
+        }
+      }
+
+      const bounds = new window.google.maps.LatLngBounds()
+      bounds.extend(origin)
+      bounds.extend(destination)
+      mapInstanceRef.current.fitBounds(bounds, minimal ? 60 : 72)
+      window.google.maps.event.addListenerOnce(mapInstanceRef.current, 'idle', () => {
+        clampMapZoom(minimal ? 10 : 5, minimal ? 16 : 15)
+      })
+
+      if (rendered) {
+        setRouteInfo({
+          distance: formatDistance(routeDistance),
+          duration: formatDuration(routeDuration),
+          distanceValue: routeDistance,
+          durationValue: routeDuration,
+        })
+      }
+    } catch (err) {
+      const message = String(err?.message || '')
+      if (message.includes('ZERO_RESULTS') || message.includes('No route could be found')) {
+        clearRenderedRoute()
+        recenterOnOrder(order)
+        return
+      }
+      console.error('Failed to get directions:', err)
+      setRouteInfo(null)
+    }
+  }, [clampMapZoom, clearRenderedRoute, minimal, recenterOnOrder])
 
   // Add order markers
   useEffect(() => {
     if (!mapInstanceRef.current || !window.google) return
     
     // Clear existing markers
-    markersRef.current.forEach(m => m.setMap(null))
+    markersRef.current.forEach(clearMapMarker)
     markersRef.current = []
     
-    const bounds = new window.google.maps.LatLngBounds()
-    if (driverLocation) {
-      bounds.extend(driverLocation)
-    }
-    
     orders.forEach((order, index) => {
-      if (!order.locationLat || !order.locationLng) return
-      
-      const position = { lat: order.locationLat, lng: order.locationLng }
-      bounds.extend(position)
-      
-      const marker = new window.google.maps.Marker({
+      const position = getNumericPosition(order)
+      if (!position) return
+
+      const marker = createMapMarker({
         position,
-        map: mapInstanceRef.current,
-        icon: {
-          path: 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z',
-          fillColor: selectedOrder?._id === order._id ? '#10b981' : '#ef4444',
-          fillOpacity: 1,
-          strokeColor: '#ffffff',
-          strokeWeight: 2,
-          scale: 1.8,
-          anchor: new window.google.maps.Point(12, 22),
-        },
         title: order.customerName || `Order #${index + 1}`,
-        label: {
-          text: String(index + 1),
-          color: '#ffffff',
-          fontSize: '12px',
-          fontWeight: 'bold'
-        }
+        color: String(selectedOrder?._id || selectedOrder?.id || '') === String(order?._id || order?.id || '') ? '#10b981' : '#ef4444',
+        labelText: String(index + 1),
+        zIndex: String(selectedOrder?._id || selectedOrder?.id || '') === String(order?._id || order?.id || '') ? 25 : 10,
       })
-      
-      marker.addListener('click', () => {
+      if (!marker) return
+
+      const handleSelect = () => {
+        clearRenderedRoute()
         setSelectedOrder(order)
         onSelectOrder?.(order)
-        showRoute(order)
-      })
+      }
+
+      if (usesAdvancedMarkersRef.current && typeof marker.addEventListener === 'function') {
+        marker.addEventListener('gmp-click', handleSelect)
+      } else if (typeof marker.addListener === 'function') {
+        marker.addListener('click', handleSelect)
+      }
       
       markersRef.current.push(marker)
     })
-    
-    // Fit bounds if we have markers
-    if (orders.length > 0 || driverLocation) {
-      try {
-        mapInstanceRef.current.fitBounds(bounds, { padding: 50 })
-        // Prevent too much zoom in
-        const listener = mapInstanceRef.current.addListener('idle', () => {
-          if (mapInstanceRef.current.getZoom() > 15) {
-            mapInstanceRef.current.setZoom(15)
-          }
-          window.google.maps.event.removeListener(listener)
-        })
-      } catch {}
-    }
-  }, [orders, driverLocation, mapLoaded, selectedOrder])
+  }, [clearMapMarker, clearRenderedRoute, mapLoaded, onSelectOrder, orders, selectedOrder])
 
-  // Show route to selected order
-  const showRoute = useCallback(async (order) => {
-    if (!mapInstanceRef.current || !driverLocation || !order.locationLat || !order.locationLng || !window.google) {
+  useEffect(() => {
+    if (!mapInstanceRef.current || !window.google) return
+    if (String(activeOrderId || '').trim()) return
+
+    const mappableOrders = orders
+      .map((order) => ({ order, position: getNumericPosition(order) }))
+      .filter((entry) => !!entry.position)
+    const signature = [...mappableOrders]
+      .sort((a, b) => String(a?.order?._id || a?.order?.id || '').localeCompare(String(b?.order?._id || b?.order?.id || '')))
+      .map((entry) => `${String(entry?.order?._id || entry?.order?.id || '')}:${Number(entry.position.lat).toFixed(4)}:${Number(entry.position.lng).toFixed(4)}`)
+      .join('|')
+
+    if (!signature && !driverLocation) return
+    if (signature === lastAutoViewportSignatureRef.current && mappableOrders.length > 0) return
+
+    if (mappableOrders.length === 0 && driverLocation) {
+      mapInstanceRef.current.setCenter(driverLocation)
+      mapInstanceRef.current.setZoom(minimal ? 14 : 12)
+      lastAutoViewportSignatureRef.current = '__driver_only__'
+      hasCenteredOnDriverRef.current = true
       return
     }
-    
-    const directionsService = new window.google.maps.DirectionsService()
-    
+
     try {
-      const result = await directionsService.route({
-        origin: driverLocation,
-        destination: { lat: order.locationLat, lng: order.locationLng },
-        travelMode: window.google.maps.TravelMode.DRIVING,
+      const bounds = new window.google.maps.LatLngBounds()
+      const shouldIncludeDriver = !!driverLocation && mappableOrders.length <= 8
+      if (shouldIncludeDriver) bounds.extend(driverLocation)
+      mappableOrders.forEach((entry) => {
+        bounds.extend(entry.position)
       })
-      
-      directionsRendererRef.current.setDirections(result)
-      
-      // Extract route info
-      const leg = result.routes[0]?.legs[0]
-      if (leg) {
-        setRouteInfo({
-          distance: leg.distance?.text || 'Unknown',
-          duration: leg.duration?.text || 'Unknown',
-          distanceValue: leg.distance?.value || 0,
-          durationValue: leg.duration?.value || 0
-        })
-      }
-    } catch (err) {
-      console.error('Failed to get directions:', err)
-      setRouteInfo(null)
-    }
-  }, [driverLocation])
+      mapInstanceRef.current.fitBounds(bounds, minimal ? 28 : 50)
+      window.google.maps.event.addListenerOnce(mapInstanceRef.current, 'idle', () => {
+        clampMapZoom(minimal ? 9 : 5, minimal ? 16 : 15)
+      })
+      lastAutoViewportSignatureRef.current = signature
+    } catch {}
+  }, [activeOrderId, clampMapZoom, driverLocation, mapLoaded, minimal, orders])
 
   // Clear route
   const clearRoute = useCallback(() => {
-    if (directionsRendererRef.current) {
-      directionsRendererRef.current.setDirections({ routes: [] })
-    }
+    clearRenderedRoute()
     setSelectedOrder(null)
-    setRouteInfo(null)
-  }, [])
+    lastAutoViewportSignatureRef.current = ''
+  }, [clearRenderedRoute])
+
+  useEffect(() => {
+    const targetId = String(activeOrderId || '').trim()
+    if (!targetId) {
+      if (selectedOrder) setSelectedOrder(null)
+      if (routeInfo) clearRenderedRoute()
+      return
+    }
+    const next = orders.find((order) => String(order?._id || order?.id || '') === targetId)
+    if (!next) {
+      clearRoute()
+      return
+    }
+    if (String(selectedOrder?._id || selectedOrder?.id || '') === targetId) return
+    clearRenderedRoute()
+    setSelectedOrder(next)
+  }, [activeOrderId, clearRenderedRoute, clearRoute, orders, routeInfo, selectedOrder])
+
+  useEffect(() => {
+    if (!mapCommand || !mapInstanceRef.current || !window.google) return
+
+    const requestId = String(mapCommand?.requestId || '').trim()
+    if (requestId && requestId === lastHandledMapCommandRef.current) return
+
+    const targetId = String(mapCommand?.orderId || '').trim()
+    const targetOrder = targetId
+      ? orders.find((order) => String(order?._id || order?.id || '') === targetId)
+      : null
+
+    if (requestId) {
+      lastHandledMapCommandRef.current = requestId
+    }
+
+    if (mapCommand.type === 'recenter') {
+      if (targetOrder) {
+        recenterOnOrder(targetOrder)
+      } else {
+        recenterOnDriver()
+      }
+      return
+    }
+
+    if (mapCommand.type === 'show_route' && targetOrder) {
+      setSelectedOrder(targetOrder)
+      showRoute(targetOrder)
+    }
+  }, [mapCommand, orders, recenterOnDriver, recenterOnOrder, showRoute])
 
   // Map styles (dark mode friendly)
   function getMapStyles() {
@@ -264,7 +729,7 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder }) 
   if (loading) {
     return (
       <div style={{
-        height: 400,
+        height: mapHeight,
         display: 'grid',
         placeItems: 'center',
         background: 'var(--panel)',
@@ -308,79 +773,82 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder }) 
           ref={mapRef} 
           style={{ 
             width: '100%', 
-            height: 400,
+            height: mapHeight,
             background: '#1e293b'
           }} 
         />
         
         {/* CSS to hide Google branding */}
         <style>{`
-          .gm-style-cc, .gmnoprint, .gm-style a[href*="google"], 
-          .gm-style a[href*="terms"], .gm-style img[alt*="Google"],
-          .gm-style-cc + div { display: none !important; }
-          .gm-style > div:last-child { display: none !important; }
+          .gm-style img {
+            max-width: none !important;
+          }
         `}</style>
         
         {/* Buysial Logo Overlay */}
-        <div style={{
-          position: 'absolute',
-          bottom: 8,
-          left: 8,
-          background: 'rgba(0,0,0,0.4)',
-          backdropFilter: 'blur(8px)',
-          WebkitBackdropFilter: 'blur(8px)',
-          borderRadius: 8,
-          padding: '4px 10px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6
-        }}>
-          <img 
-            src="/buysiallogo.png" 
-            alt="Buysial" 
-            style={{ 
-              height: 16, 
-              opacity: 0.8,
-              filter: 'brightness(1.2)'
-            }} 
-            onError={(e) => { e.target.style.display = 'none' }}
-          />
-          <span style={{ 
-            fontSize: 10, 
-            color: 'rgba(255,255,255,0.6)',
-            fontWeight: 500,
-            letterSpacing: '0.5px'
+        {!minimal && (
+          <div style={{
+            position: 'absolute',
+            bottom: 8,
+            left: 8,
+            background: 'rgba(0,0,0,0.4)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            borderRadius: 8,
+            padding: '4px 10px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6
           }}>
-            Buysial
-          </span>
-        </div>
+            <img
+              src="/buysiallogo.png"
+              alt="Buysial"
+              style={{
+                height: 16,
+                opacity: 0.8,
+                filter: 'brightness(1.2)'
+              }}
+              onError={(e) => { e.target.style.display = 'none' }}
+            />
+            <span style={{
+              fontSize: 10,
+              color: 'rgba(255,255,255,0.6)',
+              fontWeight: 500,
+              letterSpacing: '0.5px'
+            }}>
+              Buysial
+            </span>
+          </div>
+        )}
         
         {/* Premium Center on Me Button */}
         <button
           onClick={() => {
-            if (mapInstanceRef.current && driverLocation) {
-              mapInstanceRef.current.panTo(driverLocation)
-              mapInstanceRef.current.setZoom(15)
+            if (selectedOrder) {
+              recenterOnOrder(selectedOrder)
+            } else {
+              recenterOnDriver()
             }
           }}
           style={{
             position: 'absolute',
-            bottom: 8,
-            right: 50,
-            width: 40,
-            height: 40,
-            borderRadius: 10,
+            top: minimal ? 12 : undefined,
+            bottom: minimal ? undefined : 12,
+            right: 12,
+            width: minimal ? 44 : 40,
+            height: minimal ? 44 : 40,
+            borderRadius: minimal ? 14 : 10,
             border: '1px solid rgba(59,130,246,0.3)',
-            background: 'linear-gradient(135deg, rgba(59,130,246,0.2), rgba(29,78,216,0.3))',
+            background: minimal ? 'rgba(255,255,255,0.92)' : 'linear-gradient(135deg, rgba(59,130,246,0.2), rgba(29,78,216,0.3))',
             backdropFilter: 'blur(12px)',
             WebkitBackdropFilter: 'blur(12px)',
-            color: '#3b82f6',
+            color: '#2563eb',
             cursor: 'pointer',
             display: 'grid',
             placeItems: 'center',
-            boxShadow: '0 4px 12px rgba(59,130,246,0.3)'
+            boxShadow: minimal ? '0 10px 24px rgba(15,23,42,0.18)' : '0 4px 12px rgba(59,130,246,0.3)'
           }}
-          title="Center on Me"
+          title={selectedOrder ? 'Recenter Map' : 'Center on Me'}
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="3" />
@@ -393,7 +861,7 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder }) 
       </div>
       
       {/* Ultra Premium Route Info Panel */}
-      {routeInfo && selectedOrder && (
+      {!minimal && routeInfo && selectedOrder && (
         <div style={{
           padding: '12px 16px',
           background: 'rgba(0,0,0,0.4)',
@@ -500,31 +968,33 @@ export default function LiveMap({ orders = [], driverLocation, onSelectOrder }) 
       )}
       
       {/* Minimal Legend */}
-      <div style={{
-        padding: '8px 16px',
-        background: 'rgba(0,0,0,0.2)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 16,
-        fontSize: 11,
-        color: 'rgba(255,255,255,0.5)'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#3b82f6', boxShadow: '0 0 6px rgba(59,130,246,0.6)' }} />
-          <span>You</span>
+      {!minimal && (
+        <div style={{
+          padding: '8px 16px',
+          background: 'rgba(0,0,0,0.2)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 16,
+          fontSize: 11,
+          color: 'rgba(255,255,255,0.5)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#3b82f6', boxShadow: '0 0 6px rgba(59,130,246,0.6)' }} />
+            <span>You</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444' }} />
+            <span>Deliveries</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981' }} />
+            <span>Active</span>
+          </div>
+          <span style={{ marginLeft: 'auto', opacity: 0.6, fontSize: 10 }}>
+            {orders.length} • Tap to route
+          </span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444' }} />
-          <span>Deliveries</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981' }} />
-          <span>Active</span>
-        </div>
-        <span style={{ marginLeft: 'auto', opacity: 0.6, fontSize: 10 }}>
-          {orders.length} • Tap to route
-        </span>
-      </div>
+      )}
     </div>
   )
 }

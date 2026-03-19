@@ -83,7 +83,7 @@ const memUpload = multer({ storage: multer.memoryStorage() })
 
 // Stricter rate limit for media fetches (heavier upstream load)
 const MEDIA_WINDOW = Math.max(2000, Number(process.env.WA_MEDIA_WINDOW_MS || 10000));
-const MEDIA_MAX = Math.max(2, Number(process.env.WA_MEDIA_MAX || 5));
+const MEDIA_MAX = Math.max(2, Number(process.env.WA_MEDIA_MAX || 150));
 
 // Lightweight media metadata (no download). Helps diagnose 504 vs 404 vs no-media.
 router.get('/media/meta', auth, rateLimit({ windowMs: MEDIA_WINDOW, max: MEDIA_MAX }), async (req, res) => {

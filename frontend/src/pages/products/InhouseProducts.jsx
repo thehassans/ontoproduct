@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
   apiGet,
   apiUpload,
@@ -13,6 +13,7 @@ import {
   mediaUrl,
 } from '../../api'
 import { getCurrencyConfig, convert as fxConvert } from '../../util/currency'
+import ProductSEOPanel from './ProductSEOPanel'
 
 // Convert ISO 3166-1 alpha-2 country code to emoji flag
 function codeToFlag(code) {
@@ -73,6 +74,7 @@ export default function InhouseProducts() {
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState('')
+  const [shops, setShops] = useState([])
   const [uploadProgress, setUploadProgress] = useState(null) // { percent, loaded, total, speed, eta }
   const [uploadQueue, setUploadQueue] = useState([]) // Array of { id, name, progress, status, error }
   const [form, setForm] = useState({
@@ -82,6 +84,9 @@ export default function InhouseProducts() {
     baseCurrency: 'AED',
     category: 'Other',
     subcategory: '',
+    brand: '',
+    exploreMoreId: '',
+    exploreMoreEnabled: false,
     sku: '',
     madeInCountry: '',
     description: '',
@@ -113,10 +118,17 @@ export default function InhouseProducts() {
     isBestSelling: false,
     isFeatured: false,
     isTrending: false,
+    isNewArrival: false,
     isLimitedStock: false,
     variants: {},
+    shops: [],
     images: [],
     video: null,
+    // SEO
+    seo: { seoTitle: '', seoDescription: '', seoKeywords: '', slug: '', canonicalUrl: '', noIndex: false, ogTitle: '', ogDescription: '' },
+    countrySeo: {},
+    backlinks: [],
+    gscData: { siteUrl: '', indexingStatus: 'not_requested', lastError: '' },
   })
   const [imagePreviews, setImagePreviews] = useState([])
   const [videoPreview, setVideoPreview] = useState(null)
@@ -254,6 +266,290 @@ export default function InhouseProducts() {
       return { ...curr, variants: nextVariants }
     })
   }
+
+  const normalizeShopAssignments = (entries) =>
+    Array.isArray(entries)
+      ? entries
+          .map((entry) => ({
+            shopId: String(entry?.shopId?._id || entry?.shopId || entry?._id || '').trim(),
+            shopBuyingPrice: Number(entry?.shopBuyingPrice || 0),
+          }))
+          .filter((entry) => entry.shopId)
+      : []
+
+  const sortedCategories = useMemo(() => {
+    const source = categories && categories.length ? categories : CATEGORIES
+    return Array.from(
+      new Set(
+        (source || [])
+          .map((entry) => String(entry || '').trim())
+          .filter(Boolean)
+      )
+    ).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }))
+  }, [categories])
+
+  const createVariantImageOptions = imagePreviews.map((item, index) => ({
+    label: `Image ${index + 1}`,
+    url: item?.url || '',
+  }))
+
+  const editVariantImageOptions = (Array.isArray(editing?.images) ? editing.images : []).map((path, index) => ({
+    label: `Image ${index + 1}`,
+    url: mediaUrl(path),
+  }))
+
+  const toggleShopAssignment = (setter, shopId, enabled) => {
+    setter((prev) => {
+      const curr = prev && typeof prev === 'object' ? prev : {}
+      const list = Array.isArray(curr.shops) ? [...curr.shops] : []
+      const idx = list.findIndex((entry) => String(entry?.shopId) === String(shopId))
+      if (enabled && idx === -1) {
+        return { ...curr, shops: [...list, { shopId: String(shopId), shopBuyingPrice: 0 }] }
+      }
+      if (!enabled && idx >= 0) {
+        list.splice(idx, 1)
+        return { ...curr, shops: list }
+      }
+      return curr
+    })
+  }
+
+  const updateShopAssignmentPrice = (setter, shopId, value) => {
+    setter((prev) => {
+      const curr = prev && typeof prev === 'object' ? prev : {}
+      const list = Array.isArray(curr.shops) ? [...curr.shops] : []
+      const idx = list.findIndex((entry) => String(entry?.shopId) === String(shopId))
+      if (idx === -1) return curr
+      list[idx] = { ...list[idx], shopBuyingPrice: value }
+      return { ...curr, shops: list }
+    })
+  }
+
+  const renderVariantEditor = (currentForm, setter, imageOptions) => (
+    <div style={{ display: 'grid', gap: 18 }}>
+      {VARIANT_TYPES.map((t) => {
+        const list = Array.isArray(currentForm?.variants?.[t.key]) ? currentForm.variants[t.key] : []
+        const availableCount = list.filter((opt) => Number(opt?.stockQty || 0) > 0).length
+        const tone =
+          t.key === 'color'
+            ? 'linear-gradient(135deg, rgba(59,130,246,0.08) 0%, rgba(14,165,233,0.04) 100%)'
+            : 'linear-gradient(135deg, rgba(15,23,42,0.04) 0%, rgba(100,116,139,0.03) 100%)'
+
+        return (
+          <div
+            key={t.key}
+            style={{
+              border: '1px solid rgba(226,232,240,0.95)',
+              borderRadius: 24,
+              padding: 18,
+              background: tone,
+              display: 'grid',
+              gap: 14,
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+              <div style={{ display: 'grid', gap: 4 }}>
+                <div style={{ fontWeight: 900, fontSize: 16, color: '#0f172a', letterSpacing: '-0.03em' }}>{t.label}</div>
+                <div style={{ color: '#64748b', fontSize: 13 }}>
+                  {list.length} option{list.length === 1 ? '' : 's'} • {availableCount} in stock
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn small"
+                onClick={() => addVariantOption(setter, t.key)}
+                style={{
+                  borderRadius: 999,
+                  padding: '10px 14px',
+                  fontWeight: 800,
+                  background: t.key === 'color' ? 'linear-gradient(135deg, #2563eb 0%, #0ea5e9 100%)' : '#111827',
+                  color: '#ffffff',
+                  border: 'none',
+                  boxShadow: t.key === 'color' ? '0 18px 34px rgba(37,99,235,0.22)' : '0 18px 34px rgba(15,23,42,0.16)',
+                }}
+              >
+                Add {t.label}
+              </button>
+            </div>
+
+            {!list.length ? (
+              <div
+                style={{
+                  borderRadius: 18,
+                  border: '1px dashed rgba(148,163,184,0.5)',
+                  background: 'rgba(255,255,255,0.75)',
+                  padding: '18px 16px',
+                  color: '#64748b',
+                  fontSize: 13,
+                }}
+              >
+                Add the first {t.label.toLowerCase()} option to activate premium variant selection.
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gap: 12 }}>
+                {list.map((opt, idx) => {
+                  const swatch = typeof opt?.swatch === 'string' && opt.swatch ? opt.swatch : guessSwatch(opt?.value)
+                  const imageIndex = Number.isFinite(Number(opt?.imageIndex)) ? Number(opt.imageIndex) : -1
+                  const preview = imageIndex >= 0 ? imageOptions[imageIndex] : null
+
+                  return (
+                    <div
+                      key={`${t.key}-${idx}`}
+                      style={{
+                        borderRadius: 22,
+                        border: '1px solid rgba(226,232,240,0.95)',
+                        background: 'rgba(255,255,255,0.96)',
+                        padding: 16,
+                        display: 'grid',
+                        gap: 14,
+                        boxShadow: '0 16px 36px rgba(15,23,42,0.06)',
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <div
+                            style={{
+                              width: 46,
+                              height: 46,
+                              borderRadius: 16,
+                              border: '1px solid rgba(226,232,240,0.95)',
+                              background:
+                                t.key === 'color'
+                                  ? swatch || 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)'
+                                  : 'linear-gradient(135deg, #0f172a 0%, #334155 100%)',
+                              display: 'grid',
+                              placeItems: 'center',
+                              overflow: 'hidden',
+                              color: '#ffffff',
+                              fontWeight: 900,
+                              boxShadow: '0 12px 28px rgba(15,23,42,0.14)',
+                            }}
+                          >
+                            {preview?.url ? <img src={preview.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : t.key === 'color' ? null : String(opt?.value || t.label).trim().slice(0, 2).toUpperCase()}
+                          </div>
+                          <div style={{ display: 'grid', gap: 3 }}>
+                            <div style={{ fontSize: 11, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.14em' }}>
+                              {t.label} option {idx + 1}
+                            </div>
+                            <div style={{ fontWeight: 900, color: '#0f172a', fontSize: 15 }}>
+                              {String(opt?.value || '').trim() || 'Untitled option'}
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          className="btn small danger"
+                          onClick={() => removeVariantOption(setter, t.key, idx)}
+                          style={{
+                            borderRadius: 999,
+                            padding: '9px 12px',
+                            fontWeight: 800,
+                          }}
+                        >
+                          Remove
+                        </button>
+                      </div>
+
+                      <div
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: isMobile ? '1fr' : t.key === 'color' ? 'minmax(0,1.8fr) 160px 90px minmax(0,1.1fr)' : 'minmax(0,1.8fr) 160px minmax(0,1.1fr)',
+                          gap: 12,
+                          alignItems: 'center',
+                        }}
+                      >
+                        <input
+                          className="input"
+                          placeholder={t.key === 'color' ? 'Color name, e.g. Midnight Navy' : `${t.label} label, e.g. XL`}
+                          value={String(opt?.value || '')}
+                          onChange={(e) => {
+                            const nextVal = e.target.value
+                            const prevGuess = guessSwatch(opt?.value)
+                            updateVariantOption(setter, t.key, idx, { value: nextVal })
+                            if (t.key === 'color') {
+                              const derived = guessSwatch(nextVal)
+                              const allowAuto = !opt?.swatch || (prevGuess && String(opt.swatch).toLowerCase() === String(prevGuess).toLowerCase())
+                              if (derived && (allowAuto || normalizeHex(nextVal))) {
+                                updateVariantOption(setter, t.key, idx, { swatch: derived })
+                              }
+                            }
+                          }}
+                          style={{ padding: 12, borderRadius: 16 }}
+                        />
+                        <input
+                          className="input"
+                          type="number"
+                          min="0"
+                          placeholder="Stock"
+                          value={Number.isFinite(Number(opt?.stockQty)) ? Number(opt.stockQty) : 0}
+                          onChange={(e) => updateVariantOption(setter, t.key, idx, { stockQty: Math.max(0, Math.floor(Number(e.target.value || 0))) })}
+                          style={{ padding: 12, borderRadius: 16 }}
+                        />
+                        {t.key === 'color' ? (
+                          <div
+                            style={{
+                              position: 'relative',
+                              width: isMobile ? '100%' : 84,
+                              height: 52,
+                              borderRadius: 18,
+                              border: '1px solid rgba(226,232,240,0.95)',
+                              background: swatch || 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+                              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.8)',
+                              overflow: 'hidden',
+                              justifySelf: isMobile ? 'stretch' : 'center',
+                            }}
+                            title={swatch || 'Pick color'}
+                          >
+                            <input
+                              type="color"
+                              value={swatch || '#ffffff'}
+                              onChange={(e) => updateVariantOption(setter, t.key, idx, { swatch: e.target.value })}
+                              style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
+                            />
+                          </div>
+                        ) : null}
+                        <select
+                          className="input"
+                          value={imageIndex}
+                          onChange={(e) => updateVariantOption(setter, t.key, idx, { imageIndex: Number(e.target.value) })}
+                          style={{ padding: 12, borderRadius: 16 }}
+                        >
+                          <option value={-1}>No image linked</option>
+                          {imageOptions.map((entry, optionIndex) => (
+                            <option key={`${t.key}-img-${optionIndex}`} value={optionIndex}>
+                              {entry.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <div style={{ color: '#64748b', fontSize: 12 }}>
+                          {preview?.url ? 'This option will switch the product image on the storefront.' : 'Linking an image makes this option change the gallery automatically.'}
+                        </div>
+                        <div
+                          style={{
+                            padding: '8px 12px',
+                            borderRadius: 999,
+                            background: Number(opt?.stockQty || 0) > 0 ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.1)',
+                            color: Number(opt?.stockQty || 0) > 0 ? '#047857' : '#b91c1c',
+                            fontSize: 12,
+                            fontWeight: 800,
+                          }}
+                        >
+                          {Number(opt?.stockQty || 0) > 0 ? `${Number(opt?.stockQty || 0)} ready` : 'Out of stock'}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
 
   async function createSubcategoryForCategory(category, subcategory, { alsoSetValue = false, isEdit = false } = {}) {
     const c = String(category || '').trim() || 'Other'
@@ -544,7 +840,48 @@ export default function InhouseProducts() {
 
       if (response?.success && response?.data) {
         setAiDescription(response.data)
-        setMsg('AI content generated successfully! Review below.')
+        setMsg('AI content generated! Filling SEO fields…')
+        // Also generate SEO fields in parallel
+        try {
+          const seoRes = await apiPost('/api/products/generate-seo', {
+            productName: form.name,
+            category: form.category,
+            description: response.data?.description || form.description || '',
+            availableCountries: Array.isArray(form.availableCountries) ? form.availableCountries : [],
+            baseUrl: 'https://buysial.com',
+          })
+          if (seoRes?.success && seoRes?.seo) {
+            const s = seoRes.seo
+            setForm(f => ({
+              ...f,
+              seo: {
+                ...(f.seo || {}),
+                seoTitle: s.seoTitle || '',
+                slug: s.slug || '',
+                seoDescription: s.seoDescription || '',
+                seoKeywords: s.seoKeywords || '',
+                canonicalUrl: s.canonicalUrl || '',
+                ogTitle: s.ogTitle || '',
+                ogDescription: s.ogDescription || '',
+              },
+              countrySeo: s.countrySeo && typeof s.countrySeo === 'object'
+                ? { ...(f.countrySeo || {}), ...s.countrySeo }
+                : f.countrySeo,
+              backlinks: Array.isArray(s.backlinks) && s.backlinks.length
+                ? [
+                    ...(f.backlinks || []).filter(b => !b.aiSuggested),
+                    ...s.backlinks.map(b => ({ url: b.url || '', anchor: b.anchor || '', type: b.type || 'dofollow', status: b.status || 'pending', aiSuggested: true, addedAt: new Date().toISOString() })),
+                  ]
+                : f.backlinks,
+              gscData: { ...(f.gscData || {}), siteUrl: 'https://buysial.com' },
+            }))
+            setMsg('AI content generated! Description + SEO fields filled. Review below.')
+          } else {
+            setMsg('AI content generated successfully! Review below.')
+          }
+        } catch {
+          setMsg('AI content generated successfully! Review below.')
+        }
       } else {
         setAiDescription('')
         setMsg('Failed to generate description. Please try again.')
@@ -679,6 +1016,7 @@ export default function InhouseProducts() {
     apiGet('/api/brands').then(r => setBrandsList(Array.isArray(r?.brands) ? r.brands : [])).catch(() => {})
     // Load explore more items for dropdown
     apiGet('/api/explore-more').then(r => setExploreMoreItems(Array.isArray(r?.items) ? r.items : [])).catch(() => {})
+    apiGet('/api/shops').then(r => setShops(Array.isArray(r?.shops) ? r.shops : [])).catch(() => setShops([]))
   }, [])
 
   // Load currency config once
@@ -892,6 +1230,7 @@ export default function InhouseProducts() {
     fd.append('category', form.category)
     fd.append('subcategory', String(form.subcategory || '').trim())
     fd.append('brand', String(form.brand || '').trim())
+    fd.append('shops', JSON.stringify((form.shops || []).map((entry) => ({ shopId: entry.shopId, shopBuyingPrice: Number(entry.shopBuyingPrice || 0) }))))
     if (form.exploreMoreId) fd.append('exploreMoreId', form.exploreMoreId)
     fd.append('exploreMoreEnabled', String(!!form.exploreMoreEnabled))
     fd.append('madeInCountry', form.madeInCountry)
@@ -922,9 +1261,25 @@ export default function InhouseProducts() {
     fd.append('isBestSelling', String(!!form.isBestSelling))
     fd.append('isFeatured', String(!!form.isFeatured))
     fd.append('isTrending', String(!!form.isTrending))
+    fd.append('isNewArrival', String(!!form.isNewArrival))
     fd.append('isLimitedStock', String(!!form.isLimitedStock))
     for (const f of form.images || []) fd.append('images', f)
     if (form.video) fd.append('video', form.video)
+    // SEO fields
+    try {
+      const seo = form.seo || {}
+      if (seo.seoTitle) fd.append('seoTitle', seo.seoTitle)
+      if (seo.seoDescription) fd.append('seoDescription', seo.seoDescription)
+      if (seo.seoKeywords) fd.append('seoKeywords', seo.seoKeywords)
+      if (seo.slug) fd.append('slug', seo.slug)
+      if (seo.canonicalUrl) fd.append('canonicalUrl', seo.canonicalUrl)
+      fd.append('noIndex', String(!!seo.noIndex))
+      if (seo.ogTitle) fd.append('ogTitle', seo.ogTitle)
+      if (seo.ogDescription) fd.append('ogDescription', seo.ogDescription)
+      if (form.countrySeo && Object.keys(form.countrySeo).length) fd.append('countrySeo', JSON.stringify(form.countrySeo))
+      if (Array.isArray(form.backlinks) && form.backlinks.length) fd.append('backlinks', JSON.stringify(form.backlinks))
+      if (form.gscData) fd.append('gscData', JSON.stringify(form.gscData))
+    } catch {}
     try {
       const v = form.variants && typeof form.variants === 'object' ? form.variants : {}
       fd.append('variants', JSON.stringify(v))
@@ -968,6 +1323,9 @@ export default function InhouseProducts() {
       baseCurrency: 'AED',
       category: 'Other',
       subcategory: '',
+      brand: '',
+      exploreMoreId: '',
+      exploreMoreEnabled: false,
       sku: '',
       madeInCountry: '',
       description: '',
@@ -992,10 +1350,16 @@ export default function InhouseProducts() {
       isBestSelling: false,
       isFeatured: false,
       isTrending: false,
+      isNewArrival: false,
       isLimitedStock: false,
       variants: {},
+      shops: [],
       images: [],
       video: null,
+      seo: { seoTitle: '', seoDescription: '', seoKeywords: '', slug: '', canonicalUrl: '', noIndex: false, ogTitle: '', ogDescription: '' },
+      countrySeo: {},
+      backlinks: [],
+      gscData: { siteUrl: '', indexingStatus: 'not_requested', lastError: '' },
     })
     setImagePreviews([])
     setVideoPreview(null)
@@ -1105,6 +1469,7 @@ export default function InhouseProducts() {
       specifications: p.specifications || '',
       descriptionBlocks: p.descriptionBlocks || [],
       availableCountries: p.availableCountries || [],
+      shops: normalizeShopAssignments(p.shops),
       variants: variantsForEdit,
       inStock: !!p.inStock,
       displayOnWebsite: !!p.displayOnWebsite,
@@ -1118,6 +1483,20 @@ export default function InhouseProducts() {
       stockKuwait: p.stockByCountry?.Kuwait || 0,
       stockQatar: p.stockByCountry?.Qatar || 0,
       images: [],
+      // SEO fields
+      seo: {
+        seoTitle: p.seoTitle || '',
+        seoDescription: p.seoDescription || '',
+        seoKeywords: p.seoKeywords || '',
+        slug: p.slug || '',
+        canonicalUrl: p.canonicalUrl || '',
+        noIndex: !!p.noIndex,
+        ogTitle: p.ogTitle || '',
+        ogDescription: p.ogDescription || '',
+      },
+      countrySeo: p.countrySeo || {},
+      backlinks: Array.isArray(p.backlinks) ? p.backlinks : [],
+      gscData: p.gscData || { siteUrl: '', indexingStatus: 'not_requested', lastError: '' },
     })
     setEditPreviews([])
   }
@@ -1149,6 +1528,7 @@ export default function InhouseProducts() {
       fd.append('category', editForm.category)
       fd.append('subcategory', String(editForm.subcategory || '').trim())
       fd.append('brand', String(editForm.brand || '').trim())
+      fd.append('shops', JSON.stringify((editForm.shops || []).map((entry) => ({ shopId: entry.shopId, shopBuyingPrice: Number(entry.shopBuyingPrice || 0) }))))
       if (editForm.exploreMoreId) fd.append('exploreMoreId', editForm.exploreMoreId)
       fd.append('exploreMoreEnabled', String(!!editForm.exploreMoreEnabled))
       fd.append('madeInCountry', editForm.madeInCountry)
@@ -1181,6 +1561,21 @@ export default function InhouseProducts() {
           const seq = imgs.map((_, i) => ({ type: 'image', position: i, index: i }))
           fd.append('mediaSequence', JSON.stringify(seq))
         }
+      } catch {}
+      // SEO fields
+      try {
+        const seo = editForm.seo || {}
+        if (seo.seoTitle != null) fd.append('seoTitle', seo.seoTitle)
+        if (seo.seoDescription != null) fd.append('seoDescription', seo.seoDescription)
+        if (seo.seoKeywords != null) fd.append('seoKeywords', seo.seoKeywords)
+        if (seo.slug != null) fd.append('slug', seo.slug)
+        if (seo.canonicalUrl != null) fd.append('canonicalUrl', seo.canonicalUrl)
+        fd.append('noIndex', String(!!seo.noIndex))
+        if (seo.ogTitle) fd.append('ogTitle', seo.ogTitle)
+        if (seo.ogDescription) fd.append('ogDescription', seo.ogDescription)
+        if (editForm.countrySeo) fd.append('countrySeo', JSON.stringify(editForm.countrySeo))
+        if (Array.isArray(editForm.backlinks)) fd.append('backlinks', JSON.stringify(editForm.backlinks))
+        if (editForm.gscData) fd.append('gscData', JSON.stringify(editForm.gscData))
       } catch {}
       await apiUploadPatch(`/api/products/${editing._id}`, fd)
       setEditing(null)
@@ -1257,19 +1652,23 @@ export default function InhouseProducts() {
                   <div className="label" style={{ marginBottom: 8, fontWeight: 600 }}>
                     Category
                   </div>
-                  <select
+                  <input
                     className="input"
                     name="category"
                     value={form.category}
                     onChange={onChange}
-                    style={{ padding: 12 }}
-                  >
-                    {(categories && categories.length ? categories : CATEGORIES).map((cat) => (
-                      <option key={cat} value={cat}>
-                        {cat}
-                      </option>
+                    list="category-options-create"
+                    placeholder="Search category"
+                    style={{ padding: 12, fontSize: 15 }}
+                  />
+                  <datalist id="category-options-create">
+                    {sortedCategories.map((cat) => (
+                      <option key={cat} value={cat} />
                     ))}
-                  </select>
+                  </datalist>
+                  <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-muted)' }}>
+                    Categories are sorted A to Z. Start typing to search quickly.
+                  </div>
                 </div>
                 <div>
                   <div className="label" style={{ marginBottom: 8, fontWeight: 600 }}>
@@ -1442,7 +1841,7 @@ export default function InhouseProducts() {
                         border: 'none',
                       }}
                     >
-                      {generatingDescription ? 'Generating...' : '✨ AI Generate'}
+                      {generatingDescription ? 'Generating...' : '✨ Auto-Generate AI SEO (GEO/AEO)'}
                     </button>
                     {aiDescription && (
                       <>
@@ -1646,107 +2045,79 @@ export default function InhouseProducts() {
               <div style={{ fontWeight: 700, fontSize: 16 }}>Variations</div>
             </div>
             <div style={{ padding: 24, display: 'grid', gap: 16 }}>
-              {VARIANT_TYPES.map((t) => {
-                const list = Array.isArray(form?.variants?.[t.key]) ? form.variants[t.key] : []
-                return (
-                  <div key={t.key} style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 16 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                      <div style={{ fontWeight: 700 }}>{t.label}</div>
-                      <button type="button" className="btn small" onClick={() => addVariantOption(setForm, t.key)}>
-                        + Add Option
-                      </button>
-                    </div>
+              {renderVariantEditor(form, setForm, createVariantImageOptions)}
+            </div>
+          </div>
 
-                    {list.length === 0 ? (
-                      <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>No options</div>
-                    ) : (
-                      <div style={{ display: 'grid', gap: 10 }}>
-                        {list.map((opt, idx) => (
-                          <div
-                            key={`${t.key}-${idx}`}
-                            style={{
-                              display: 'grid',
-                              gridTemplateColumns:
-                                isMobile ? '1fr' : (t.key === 'color' ? '2fr 1fr 60px 1fr auto' : '2fr 1fr 1fr 70px auto'),
-                              gap: 10,
-                              alignItems: 'center',
-                            }}
-                          >
-                            <input
-                              className="input"
-                              placeholder={`${t.label} (e.g. Red)`}
-                              value={String(opt?.value || '')}
-                              onChange={(e) => {
-                                const nextVal = e.target.value
-                                const prevGuess = guessSwatch(opt?.value)
-                                updateVariantOption(setForm, t.key, idx, { value: nextVal })
-                                if (t.key === 'color') {
-                                  const derived = guessSwatch(nextVal)
-                                  const allowAuto = !opt?.swatch || (prevGuess && String(opt.swatch).toLowerCase() === String(prevGuess).toLowerCase())
-                                  if (derived && (allowAuto || normalizeHex(nextVal))) {
-                                    updateVariantOption(setForm, t.key, idx, { swatch: derived })
-                                  }
-                                }
-                              }}
-                            />
-                            <input
-                              className="input"
-                              type="number"
-                              min="0"
-                              placeholder="Stock"
-                              value={Number.isFinite(Number(opt?.stockQty)) ? Number(opt.stockQty) : 0}
-                              onChange={(e) => updateVariantOption(setForm, t.key, idx, { stockQty: Math.max(0, Math.floor(Number(e.target.value || 0))) })}
-                            />
-                            {t.key === 'color' ? (
-                              <div style={{ display: 'flex', justifyContent: 'center' }}>
-                                <div
-                                  style={{
-                                    position: 'relative',
-                                    width: 44,
-                                    height: 44,
-                                    borderRadius: 12,
-                                    border: opt?.swatch ? '1px solid rgba(17,24,39,0.12)' : '1px solid var(--border)',
-                                    background: (opt?.swatch || guessSwatch(opt?.value)) ? String(opt?.swatch || guessSwatch(opt?.value)) : 'linear-gradient(135deg, #f3f4f6 0%, #ffffff 50%, #f3f4f6 100%)',
-                                    overflow: 'hidden',
-                                  }}
-                                  title={opt?.swatch ? String(opt.swatch) : 'Select color'}
-                                >
-                                  <input
-                                    type="color"
-                                    value={typeof opt?.swatch === 'string' && opt.swatch ? opt.swatch : (guessSwatch(opt?.value) || '#ffffff')}
-                                    onChange={(e) => updateVariantOption(setForm, t.key, idx, { swatch: e.target.value })}
-                                    style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', zIndex: 2 }}
-                                  />
-                                  {Number.isFinite(Number(opt?.imageIndex)) && Number(opt.imageIndex) >= 0 && imagePreviews?.[Number(opt.imageIndex)]?.url ? (
-                                    <img
-                                      src={imagePreviews[Number(opt.imageIndex)].url}
-                                      alt="preview"
-                                      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 1, pointerEvents: 'none' }}
-                                    />
-                                  ) : null}
-                                </div>
-                              </div>
-                            ) : null}
-                            <select
-                              className="input"
-                              value={Number.isFinite(Number(opt?.imageIndex)) ? Number(opt.imageIndex) : -1}
-                              onChange={(e) => updateVariantOption(setForm, t.key, idx, { imageIndex: Number(e.target.value) })}
-                            >
-                              <option value={-1}>No Image</option>
-                              {imagePreviews.map((_, i) => (
-                                <option key={`img-${i}`} value={i}>{`Image ${i + 1}`}</option>
-                              ))}
-                            </select>
-                            <button type="button" className="btn small danger" onClick={() => removeVariantOption(setForm, t.key, idx)}>
-                              Remove
-                            </button>
-                          </div>
-                        ))}
+          <div
+            className="card"
+            style={{
+              padding: 0,
+              overflow: 'hidden',
+              border: '1px solid var(--border)',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.04)',
+            }}
+          >
+            <div
+              style={{
+                padding: '20px 24px',
+                borderBottom: '1px solid var(--border)',
+                background: 'var(--panel-2)',
+              }}
+            >
+              <div style={{ fontWeight: 700, fontSize: 16 }}>Shop Assignment</div>
+            </div>
+            <div style={{ padding: 24, display: 'grid', gap: 14 }}>
+              {!shops.length ? (
+                <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>
+                  No shops found yet. Create shop vendors first to assign this product.
+                </div>
+              ) : (
+                shops.map((shop) => {
+                  const entry = (form.shops || []).find((item) => String(item.shopId) === String(shop._id))
+                  const enabled = !!entry
+                  return (
+                    <div
+                      key={shop._id}
+                      style={{
+                        borderRadius: 20,
+                        border: '1px solid rgba(226,232,240,0.95)',
+                        background: 'rgba(255,255,255,0.96)',
+                        padding: 16,
+                        display: 'grid',
+                        gap: 12,
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'grid', gap: 4 }}>
+                          <div style={{ fontWeight: 900, color: '#0f172a' }}>{shop.name || 'Shop'}</div>
+                          <div style={{ color: '#64748b', fontSize: 13 }}>{shop.ownerName || '-'} • {shop.phone || '-'}</div>
+                        </div>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontWeight: 800, color: '#0f172a' }}>
+                          <input type="checkbox" checked={enabled} onChange={(e) => toggleShopAssignment(setForm, shop._id, e.target.checked)} />
+                          Assigned
+                        </label>
                       </div>
-                    )}
-                  </div>
-                )
-              })}
+                      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '220px minmax(0,1fr)', gap: 12, alignItems: 'center' }}>
+                        <input
+                          className="input"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={enabled ? entry?.shopBuyingPrice ?? '' : ''}
+                          disabled={!enabled}
+                          onChange={(e) => updateShopAssignmentPrice(setForm, shop._id, e.target.value)}
+                          placeholder="Shop buying price"
+                          style={{ padding: 12, borderRadius: 16 }}
+                        />
+                        <div style={{ color: '#64748b', fontSize: 13 }}>
+                          {enabled ? 'This value is used for vendor payout and routing logic.' : 'Enable this shop if it should be able to fulfill the product.'}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })
+              )}
             </div>
           </div>
 
@@ -2285,6 +2656,41 @@ export default function InhouseProducts() {
                     <span style={{ fontWeight: 600, fontSize: 13 }}>⭐ Featured</span>
                   </label>
 
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+                    <div
+                      style={{
+                        position: 'relative',
+                        width: 40,
+                        height: 24,
+                        background: form.isNewArrival ? '#22c55e' : '#e5e7eb',
+                        borderRadius: 12,
+                        transition: '0.3s',
+                      }}
+                    >
+                      <div
+                        style={{
+                          position: 'absolute',
+                          left: form.isNewArrival ? 18 : 2,
+                          top: 2,
+                          width: 20,
+                          height: 20,
+                          background: 'white',
+                          borderRadius: '50%',
+                          transition: '0.3s',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                        }}
+                      />
+                    </div>
+                    <input
+                      type="checkbox"
+                      name="isNewArrival"
+                      checked={!!form.isNewArrival}
+                      onChange={onChange}
+                      style={{ display: 'none' }}
+                    />
+                    <span style={{ fontWeight: 600, fontSize: 13 }}>✨ New Arrival</span>
+                  </label>
+
                   {/* Limited Stock */}
                   <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
                     <div
@@ -2648,6 +3054,15 @@ export default function InhouseProducts() {
               </div>
             </div>
           )}
+
+          {/* SEO & Google Search Console Panel */}
+          <ProductSEOPanel
+            form={form}
+            setForm={setForm}
+            countryOpts={COUNTRY_OPTS}
+            productId={null}
+            isMobile={isMobile}
+          />
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, paddingBottom: 40 }}>
             <button
@@ -3586,18 +4001,22 @@ export default function InhouseProducts() {
                 </div>
                 <div>
                   <div className="label">Category</div>
-                  <select
+                  <input
                     className="input"
                     name="category"
                     value={editForm.category}
                     onChange={onEditChange}
-                  >
-                    {(categories && categories.length ? categories : CATEGORIES).map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
+                    list="category-options-edit"
+                    placeholder="Search category"
+                  />
+                  <datalist id="category-options-edit">
+                    {sortedCategories.map((c) => (
+                      <option key={c} value={c} />
                     ))}
-                  </select>
+                  </datalist>
+                  <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-muted)' }}>
+                    Categories are sorted A to Z. Start typing to search quickly.
+                  </div>
                 </div>
                 <div>
                   <div className="label">Subcategory</div>
@@ -3720,107 +4139,60 @@ export default function InhouseProducts() {
 
               <div style={{ display: 'grid', gap: 12 }}>
                 <div style={{ fontWeight: 700 }}>Variations</div>
-                {VARIANT_TYPES.map((t) => {
-                  const list = Array.isArray(editForm?.variants?.[t.key]) ? editForm.variants[t.key] : []
-                  return (
-                    <div key={t.key} style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 12 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                        <div style={{ fontWeight: 700 }}>{t.label}</div>
-                        <button type="button" className="btn small" onClick={() => addVariantOption(setEditForm, t.key)}>
-                          + Add Option
-                        </button>
-                      </div>
-
-                      {list.length === 0 ? (
-                        <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>No options</div>
-                      ) : (
-                        <div style={{ display: 'grid', gap: 10 }}>
-                          {list.map((opt, idx) => (
-                            <div
-                              key={`${t.key}-${idx}`}
-                              style={{
-                                display: 'grid',
-                                gridTemplateColumns:
-                                  isMobile ? '1fr' : (t.key === 'color' ? '2fr 1fr 60px 1fr auto' : '2fr 1fr 1fr 70px auto'),
-                                gap: 10,
-                                alignItems: 'center',
-                              }}
-                            >
-                              <input
-                                className="input"
-                                placeholder={`${t.label} (e.g. Red)`}
-                                value={String(opt?.value || '')}
-                                onChange={(e) => {
-                                  const nextVal = e.target.value
-                                  const prevGuess = guessSwatch(opt?.value)
-                                  updateVariantOption(setEditForm, t.key, idx, { value: nextVal })
-                                  if (t.key === 'color') {
-                                    const derived = guessSwatch(nextVal)
-                                    const allowAuto = !opt?.swatch || (prevGuess && String(opt.swatch).toLowerCase() === String(prevGuess).toLowerCase())
-                                    if (derived && (allowAuto || normalizeHex(nextVal))) {
-                                      updateVariantOption(setEditForm, t.key, idx, { swatch: derived })
-                                    }
-                                  }
-                                }}
-                              />
-                              <input
-                                className="input"
-                                type="number"
-                                min="0"
-                                placeholder="Stock"
-                                value={Number.isFinite(Number(opt?.stockQty)) ? Number(opt.stockQty) : 0}
-                                onChange={(e) => updateVariantOption(setEditForm, t.key, idx, { stockQty: Math.max(0, Math.floor(Number(e.target.value || 0))) })}
-                              />
-                              {t.key === 'color' ? (
-                                <div style={{ display: 'flex', justifyContent: 'center' }}>
-                                  <div
-                                    style={{
-                                      position: 'relative',
-                                      width: 44,
-                                      height: 44,
-                                      borderRadius: 12,
-                                      border: opt?.swatch ? '1px solid rgba(17,24,39,0.12)' : '1px solid var(--border)',
-                                      background: (opt?.swatch || guessSwatch(opt?.value)) ? String(opt?.swatch || guessSwatch(opt?.value)) : 'linear-gradient(135deg, #f3f4f6 0%, #ffffff 50%, #f3f4f6 100%)',
-                                      overflow: 'hidden',
-                                    }}
-                                    title={opt?.swatch ? String(opt.swatch) : 'Select color'}
-                                  >
-                                    <input
-                                      type="color"
-                                      value={typeof opt?.swatch === 'string' && opt.swatch ? opt.swatch : (guessSwatch(opt?.value) || '#ffffff')}
-                                      onChange={(e) => updateVariantOption(setEditForm, t.key, idx, { swatch: e.target.value })}
-                                      style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', zIndex: 2 }}
-                                    />
-                                    {t.key === 'color' && Number.isFinite(Number(opt?.imageIndex)) && Number(opt.imageIndex) >= 0 && Array.isArray(editing?.images) && editing.images?.[Number(opt.imageIndex)] ? (
-                                      <img
-                                        src={mediaUrl(editing.images[Number(opt.imageIndex)])}
-                                        alt="preview"
-                                        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 1, pointerEvents: 'none' }}
-                                      />
-                                    ) : null}
-                                  </div>
-                                </div>
-                              ) : null}
-                              <select
-                                className="input"
-                                value={Number.isFinite(Number(opt?.imageIndex)) ? Number(opt.imageIndex) : -1}
-                                onChange={(e) => updateVariantOption(setEditForm, t.key, idx, { imageIndex: Number(e.target.value) })}
-                              >
-                                <option value={-1}>No Image</option>
-                                {(Array.isArray(editing?.images) ? editing.images : []).map((_, i) => (
-                                  <option key={`img-${i}`} value={i}>{`Image ${i + 1}`}</option>
-                                ))}
-                              </select>
-                              <button type="button" className="btn small danger" onClick={() => removeVariantOption(setEditForm, t.key, idx)}>
-                                Remove
-                              </button>
-                            </div>
-                          ))}
+                {renderVariantEditor(editForm, setEditForm, editVariantImageOptions)}
+              </div>
+              <div style={{ display: 'grid', gap: 12 }}>
+                <div style={{ fontWeight: 700 }}>Shop Assignment</div>
+                {!shops.length ? (
+                  <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>
+                    No shops found yet. Create shop vendors first to assign this product.
+                  </div>
+                ) : (
+                  shops.map((shop) => {
+                    const entry = (editForm.shops || []).find((item) => String(item.shopId) === String(shop._id))
+                    const enabled = !!entry
+                    return (
+                      <div
+                        key={shop._id}
+                        style={{
+                          borderRadius: 20,
+                          border: '1px solid rgba(226,232,240,0.95)',
+                          background: 'rgba(255,255,255,0.96)',
+                          padding: 16,
+                          display: 'grid',
+                          gap: 12,
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                          <div style={{ display: 'grid', gap: 4 }}>
+                            <div style={{ fontWeight: 900, color: '#0f172a' }}>{shop.name || 'Shop'}</div>
+                            <div style={{ color: '#64748b', fontSize: 13 }}>{shop.ownerName || '-'} • {shop.phone || '-'}</div>
+                          </div>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontWeight: 800, color: '#0f172a' }}>
+                            <input type="checkbox" checked={enabled} onChange={(e) => toggleShopAssignment(setEditForm, shop._id, e.target.checked)} />
+                            Assigned
+                          </label>
                         </div>
-                      )}
-                    </div>
-                  )
-                })}
+                        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '220px minmax(0,1fr)', gap: 12, alignItems: 'center' }}>
+                          <input
+                            className="input"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={enabled ? entry?.shopBuyingPrice ?? '' : ''}
+                            disabled={!enabled}
+                            onChange={(e) => updateShopAssignmentPrice(setEditForm, shop._id, e.target.value)}
+                            placeholder="Shop buying price"
+                            style={{ padding: 12, borderRadius: 16 }}
+                          />
+                          <div style={{ color: '#64748b', fontSize: 13 }}>
+                            {enabled ? 'This value is used for vendor payout and routing logic.' : 'Enable this shop if it should be able to fulfill the product.'}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })
+                )}
               </div>
               <div
                 style={{
@@ -4067,6 +4439,15 @@ export default function InhouseProducts() {
                   </div>
                 </div>
               </div>
+              {/* SEO & Google Search Console Panel (Edit Mode) */}
+              <ProductSEOPanel
+                form={editForm}
+                setForm={setEditForm}
+                countryOpts={COUNTRY_OPTS}
+                productId={editing?._id}
+                isMobile={isMobile}
+              />
+
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
                 <button
                   className="btn secondary"

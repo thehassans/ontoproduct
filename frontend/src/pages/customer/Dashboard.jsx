@@ -32,7 +32,7 @@ export default function CustomerDashboard() {
           <div className="loading-spinner"></div>
           <p>Loading your dashboard...</p>
         </div>
-        <style jsx>{`
+        <style>{`
           .dashboard-loading {
             display: flex;
             flex-direction: column;
@@ -256,7 +256,7 @@ export default function CustomerDashboard() {
         </div>
       </div>
 
-      <style jsx>{`
+      <style>{`
         .customer-dashboard {
           min-height: 100vh;
           background: #f9fafb;

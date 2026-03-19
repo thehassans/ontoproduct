@@ -19,6 +19,20 @@ const StockByCountrySchema = new mongoose.Schema(
   { _id: false, strict: false }
 );
 
+const ProductShopSchema = new mongoose.Schema(
+  {
+    shopId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Shop",
+      required: true,
+    },
+    shopBuyingPrice: { type: Number, required: true, min: 0 },
+    assignedAt: { type: Date, default: Date.now },
+    assignedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+  },
+  { _id: false }
+);
+
 const ProductSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
@@ -45,6 +59,7 @@ const ProductSchema = new mongoose.Schema(
       position: { type: Number, default: 0 }
     }], // Ordered sequence of images and video
     purchasePrice: { type: Number, default: 0 },
+    shops: { type: [ProductShopSchema], default: [] },
     category: {
       type: String,
       default: "Other",
@@ -66,6 +81,7 @@ const ProductSchema = new mongoose.Schema(
     trending: { type: Boolean, default: false },
     isTrending: { type: Boolean, default: false },
     isBestSelling: { type: Boolean, default: false },
+    isNewArrival: { type: Boolean, default: false },
     displayOnWebsite: { type: Boolean, default: false },
     isForMobile: { type: Boolean, default: false }, // Show on mobile application
     displayOnShopify: { type: Boolean, default: false }, // Sync to Shopify store
@@ -96,11 +112,35 @@ const ProductSchema = new mongoose.Schema(
     slug: { type: String, default: "" },
     canonicalUrl: { type: String, default: "" },
     noIndex: { type: Boolean, default: false },
+    ogTitle: { type: String, default: "" },
+    ogDescription: { type: String, default: "" },
+    ogImage: { type: String, default: "" },
+    // Country-wise SEO overrides (e.g. { UAE: { metaTitle, metaDescription, keywords, hreflang } })
+    countrySeo: { type: mongoose.Schema.Types.Mixed, default: {} },
+    // Backlinks tracking
+    backlinks: [{
+      url: { type: String, default: "" },
+      anchor: { type: String, default: "" },
+      type: { type: String, enum: ["dofollow", "nofollow", "sponsored", "ugc"], default: "dofollow" },
+      status: { type: String, enum: ["active", "broken", "pending"], default: "pending" },
+      aiSuggested: { type: Boolean, default: false },
+      notes: { type: String, default: "" },
+      domainAuthority: { type: String, default: "" },
+      addedAt: { type: Date, default: Date.now },
+    }],
+    // Google Search Console integration
+    gscData: {
+      siteUrl: { type: String, default: "" },
+      lastIndexRequestAt: { type: Date },
+      indexingStatus: { type: String, enum: ["not_requested", "submitted", "indexed", "error"], default: "not_requested" },
+      lastError: { type: String, default: "" },
+    },
     // Premium E-commerce Features
     sellByBuysial: { type: Boolean, default: false },
     isBestSelling: { type: Boolean, default: false },
     isFeatured: { type: Boolean, default: false },
     isTrending: { type: Boolean, default: false },
+    isNewArrival: { type: Boolean, default: false },
     isRecommended: { type: Boolean, default: false },
     isLimitedStock: { type: Boolean, default: false },
     exploreMoreId: { type: mongoose.Schema.Types.ObjectId, ref: 'ExploreMore', default: null },
@@ -146,5 +186,6 @@ ProductSchema.index({ displayOnWebsite: 1, createdAt: -1 });
 ProductSchema.index({ category: 1, displayOnWebsite: 1 });
 ProductSchema.index({ inStock: 1, displayOnWebsite: 1 });
 ProductSchema.index({ name: 'text' });
+ProductSchema.index({ "shops.shopId": 1 });
 
 export default mongoose.model("Product", ProductSchema);

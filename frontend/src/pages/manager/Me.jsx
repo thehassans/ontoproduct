@@ -211,7 +211,6 @@ export default function ManagerMe() {
       {/* Header Profile Section */}
       <div style={{ 
         display: 'flex', 
-        alignItems: 'center', 
         justifyContent: 'space-between', 
         marginBottom: 32,
         flexWrap: 'wrap',

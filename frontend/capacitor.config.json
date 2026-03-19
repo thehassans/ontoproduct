@@ -1,10 +1,11 @@
 {
   "appId": "com.buysial.app",
-  "appName": "BuySial",
+  "appName": "Buysial",
   "webDir": "dist",
   "plugins": {
     "SplashScreen": {
-      "launchShowDuration": 2000,
+      "launchShowDuration": 2200,
+      "launchFadeOutDuration": 550,
       "backgroundColor": "#ffffff",
       "showSpinner": true,
       "spinnerColor": "#f97316"

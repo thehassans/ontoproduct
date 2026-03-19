@@ -6,14 +6,10 @@ import { getCurrencyConfig, convert as fxConvert, formatMoney } from '../../util
 import { trackRemoveFromCart, trackCheckoutStart } from '../../utils/analytics'
 import { COUNTRY_LIST, COUNTRY_TO_CURRENCY } from '../../utils/constants'
 import { resolveWarehouse } from '../../utils/warehouse'
+import { readCartItems, writeCartItems, clearCartItems } from '../../utils/cartStorage'
 
 export default function ShoppingCart({ isOpen, onClose }) {
-  const [cartItems, setCartItems] = useState(() => {
-    try {
-      const saved = localStorage.getItem('shopping_cart')
-      return saved ? JSON.parse(saved) : []
-    } catch { return [] }
-  })
+  const [cartItems, setCartItems] = useState(() => readCartItems())
 
   const [cartLoaded, setCartLoaded] = useState(true) // Already loaded from initializer
   const [isLoading, setIsLoading] = useState(false)
@@ -76,11 +72,10 @@ export default function ShoppingCart({ isOpen, onClose }) {
 
   const reloadCartFromStorage = () => {
     try{
-      const savedCart = localStorage.getItem('shopping_cart')
-      const parsed = savedCart ? JSON.parse(savedCart) : []
+      const parsed = readCartItems()
       const norm = normalizeCartItems(parsed, form.country)
       if (norm.changed) {
-        try { localStorage.setItem('shopping_cart', JSON.stringify(norm.items)) } catch {}
+        writeCartItems(norm.items, { dispatchEvent: false })
       }
       setCartItems(norm.items)
     }catch(err){ console.error('Error loading cart from localStorage:', err) }
@@ -196,8 +191,7 @@ export default function ShoppingCart({ isOpen, onClose }) {
     setCartItems((prev) => {
       const norm = normalizeCartItems(prev, form.country)
       if (!norm.changed) return prev
-      try { localStorage.setItem('shopping_cart', JSON.stringify(norm.items)) } catch {}
-      try { window.dispatchEvent(new CustomEvent('cartUpdated')) } catch {}
+      writeCartItems(norm.items)
       return norm.items
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -206,8 +200,7 @@ export default function ShoppingCart({ isOpen, onClose }) {
   // Save cart to localStorage and notify header whenever cartItems changes
   useEffect(() => {
     if (cartLoaded) {
-      localStorage.setItem('shopping_cart', JSON.stringify(cartItems))
-      try { window.dispatchEvent(new CustomEvent('cartUpdated')) } catch {}
+      writeCartItems(cartItems, { dispatchEvent: false })
     }
   }, [cartItems, cartLoaded])
 
@@ -229,8 +222,7 @@ export default function ShoppingCart({ isOpen, onClose }) {
           warehouseCountry: form.country,
         }
       })
-      try { localStorage.setItem('shopping_cart', JSON.stringify(next)) } catch {}
-      try { window.dispatchEvent(new CustomEvent('cartUpdated')) } catch {}
+      writeCartItems(next)
       return next
     })
   }
@@ -244,8 +236,7 @@ export default function ShoppingCart({ isOpen, onClose }) {
     } catch {}
     setCartItems(prevItems => {
       const next = prevItems.filter(item => item.id !== productId)
-      try { localStorage.setItem('shopping_cart', JSON.stringify(next)) } catch {}
-      try { window.dispatchEvent(new CustomEvent('cartUpdated')) } catch {}
+      writeCartItems(next)
       return next
     })
     toast.success('Item removed from cart')
@@ -253,10 +244,8 @@ export default function ShoppingCart({ isOpen, onClose }) {
 
   const clearCart = () => {
     setCartItems(() => {
-      const next = []
-      try { localStorage.setItem('shopping_cart', JSON.stringify(next)) } catch {}
-      try { window.dispatchEvent(new CustomEvent('cartUpdated')) } catch {}
-      return next
+      clearCartItems()
+      return []
     })
     toast.success('Cart cleared')
   }
@@ -372,8 +361,7 @@ export default function ShoppingCart({ isOpen, onClose }) {
       try { localStorage.setItem('last_order_success', JSON.stringify(orderForSuccess)) } catch {}
       
       setCartItems([])
-      localStorage.setItem('shopping_cart', JSON.stringify([]))
-      window.dispatchEvent(new CustomEvent('cartUpdated'))
+      clearCartItems()
       setLocation({ lat: null, lng: null })
       onClose && onClose()
       navigate('/order-success', { state: { order: orderForSuccess } })
@@ -690,7 +678,7 @@ export default function ShoppingCart({ isOpen, onClose }) {
         </div>
       </div>
 
-      <style jsx>{`
+      <style>{`
         .cart-overlay {
           position: fixed;
           inset: 0;

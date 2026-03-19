@@ -6,6 +6,7 @@ export default function UserLogin() {
   const toast = useToast()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [loginMode, setLoginMode] = useState('staff')
   const [showPw, setShowPw] = useState(false)
   const [loading, setLoading] = useState(false)
   const [health, setHealth] = useState({ ok: false, dbLabel: 'unknown' })
@@ -13,6 +14,20 @@ export default function UserLogin() {
   const [mounted, setMounted] = useState(false)
   const [emailFocus, setEmailFocus] = useState(false)
   const [pwFocus, setPwFocus] = useState(false)
+
+  function redirectForRole(role) {
+    if (role === 'admin') location.href = '/admin'
+    else if (role === 'agent') location.href = '/agent'
+    else if (role === 'manager') location.href = '/manager'
+    else if (role === 'investor') location.href = '/investor'
+    else if (role === 'commissioner') location.href = '/commissioner/dashboard'
+    else if (role === 'confirmer') location.href = '/confirmer'
+    else if (role === 'dropshipper') location.href = '/dropshipper'
+    else if (role === 'driver') location.href = '/driver'
+    else if (role === 'shop_vendor') location.href = '/shop'
+    else if (role === 'seo_manager') location.href = '/seo'
+    else if (role === 'user') location.href = '/user'
+  }
 
   useEffect(() => { requestAnimationFrame(() => setMounted(true)) }, [])
 
@@ -22,16 +37,7 @@ export default function UserLogin() {
     if (token) {
       try {
         const me = JSON.parse(localStorage.getItem('me') || '{}')
-        if (me.role === 'admin') location.href = '/admin'
-        else if (me.role === 'agent') location.href = '/agent'
-        else if (me.role === 'manager') location.href = '/manager'
-        else if (me.role === 'investor') location.href = '/investor'
-        else if (me.role === 'commissioner') location.href = '/commissioner/dashboard'
-        else if (me.role === 'confirmer') location.href = '/confirmer'
-        else if (me.role === 'dropshipper') location.href = '/dropshipper'
-        else if (me.role === 'driver') location.href = '/driver'
-        else if (me.role === 'seo_manager') location.href = '/seo'
-        else if (me.role === 'user') location.href = '/user'
+        redirectForRole(me.role)
       } catch {}
     }
   }, [])
@@ -82,19 +88,16 @@ export default function UserLogin() {
     e.preventDefault()
     setLoading(true)
     try {
-      const data = await apiPost('/api/auth/login', { email: email.trim().toLowerCase(), password })
+      const isShop = loginMode === 'shop'
+      const data = await apiPost(
+        isShop ? '/api/auth/shop/login' : '/api/auth/login',
+        isShop
+          ? { username: email.trim().toLowerCase(), password }
+          : { email: email.trim().toLowerCase(), password }
+      )
       localStorage.setItem('token', data.token)
       localStorage.setItem('me', JSON.stringify(data.user))
-      if (data.user.role === 'admin') location.href = '/admin'
-      else if (data.user.role === 'agent') location.href = '/agent'
-      else if (data.user.role === 'manager') location.href = '/manager'
-      else if (data.user.role === 'investor') location.href = '/investor'
-      else if (data.user.role === 'commissioner') location.href = '/commissioner/dashboard'
-      else if (data.user.role === 'confirmer') location.href = '/confirmer'
-      else if (data.user.role === 'dropshipper') location.href = '/dropshipper'
-      else if (data.user.role === 'driver') location.href = '/driver'
-      else if (data.user.role === 'seo_manager') location.href = '/seo'
-      else location.href = '/user'
+      redirectForRole(data?.user?.role || 'user')
     } catch (e) {
       const status = e?.status
       const msg = String(e?.message || '')
@@ -110,7 +113,7 @@ export default function UserLogin() {
     }
   }
 
-  const fallbackLogo = `${import.meta.env.BASE_URL}BuySial2.png`
+  const fallbackLogo = `${import.meta.env.BASE_URL}logo.png`
   const logoSrc = branding.loginLogo ? `${API_BASE}${branding.loginLogo}` : fallbackLogo
 
   const healthBad = (() => {
@@ -130,31 +133,38 @@ export default function UserLogin() {
           {/* Logo */}
           <div className="pl-logo-wrap">
             <div className="pl-logo-box">
-              <img src={logoSrc} alt="BuySial" className="pl-logo-img" />
+              <img src={logoSrc} alt="Buysial" className="pl-logo-img" />
             </div>
           </div>
 
           {/* Heading */}
           <div className="pl-heading">
+            <div className="pl-tabs">
+              <button type="button" className={`pl-tab ${loginMode === 'staff' ? 'pl-tab--active' : ''}`} onClick={() => setLoginMode('staff')}>
+                Staff
+              </button>
+              <button type="button" className={`pl-tab ${loginMode === 'shop' ? 'pl-tab--active' : ''}`} onClick={() => setLoginMode('shop')}>
+                Shop vendor
+              </button>
+            </div>
             <h1 className="pl-title">Welcome back</h1>
-            <p className="pl-subtitle">Sign in to your workspace</p>
+            <p className="pl-subtitle">{loginMode === 'shop' ? 'Access the premium shop operations console' : 'Sign in to your Buysial workspace'}</p>
           </div>
 
-          {/* Email */}
-          <label className="pl-label">Email</label>
+          <label className="pl-label">{loginMode === 'shop' ? 'Username or Email' : 'Email'}</label>
           <div className={`pl-field ${emailFocus ? 'pl-field--focus' : ''}`}>
             <svg className="pl-field-icon" width="18" height="18" viewBox="0 0 24 24" fill="none">
               <rect x="2" y="4" width="20" height="16" rx="3" stroke="currentColor" strokeWidth="1.6"/>
               <path d="M2 7l10 6 10-6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
             </svg>
             <input
-              type="email"
+              type={loginMode === 'shop' ? 'text' : 'email'}
               value={email}
               onChange={e => setEmail(e.target.value)}
               onFocus={() => setEmailFocus(true)}
               onBlur={() => setEmailFocus(false)}
-              placeholder="you@company.com"
-              autoComplete="email"
+              placeholder={loginMode === 'shop' ? 'shop-login or shop@company.com' : 'you@company.com'}
+              autoComplete={loginMode === 'shop' ? 'username' : 'email'}
               required
               className="pl-input"
             />
@@ -212,7 +222,7 @@ export default function UserLogin() {
           )}
 
           {/* Footer */}
-          <p className="pl-footer">Powered by <strong>BuySial</strong></p>
+          <p className="pl-footer">Powered by <strong>Buysial</strong></p>
         </form>
       </div>
 
@@ -303,6 +313,31 @@ export default function UserLogin() {
         .pl-heading {
           text-align: center;
           margin-bottom: 28px;
+        }
+        .pl-tabs {
+          display: inline-flex;
+          gap: 6px;
+          padding: 4px;
+          border-radius: 999px;
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+          margin-bottom: 16px;
+        }
+        .pl-tab {
+          border: none;
+          background: transparent;
+          color: #64748b;
+          font-size: 12px;
+          font-weight: 800;
+          padding: 8px 14px;
+          border-radius: 999px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+        .pl-tab--active {
+          color: #ffffff;
+          background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+          box-shadow: 0 10px 24px rgba(249, 115, 22, 0.25);
         }
         .pl-title {
           font-size: 24px;

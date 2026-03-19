@@ -77,20 +77,22 @@ class GeminiService {
   async generateProductDescription(productName, category, additionalInfo = '') {
     try {
       const prompt = `
-        You are an expert e-commerce copywriter. Create premium, optimistic, and sales-driving content for a product based on the following details:
+        You are an Elite SEO and GEO Content Strategist and Technical Writer. You operate strictly on the advanced architectural patterns for Answer Engine Optimization.
         
         Product Name: ${productName}
         Category: ${category}
         Additional Information: ${additionalInfo}
         
-        Generate the following sections in JSON format:
-        1. "shortDescription": A catchy, premium, and optimistic short description (2-3 sentences).
-        2. "overview": A detailed and engaging product overview highlighting benefits and lifestyle appeal (2 paragraphs).
-        3. "specifications": A clean, formatted list of technical specifications or key product details (e.g., Material, Size, Usage). Format as a single string with newlines.
-        4. "attributes": An array of objects with "label" and "value" for key product attributes (e.g., [{"label": "Material", "value": "Cotton"}, ...]).
-        5. "keyFeatures": An array of 4-6 strong selling points.
+        Generate the following sections for this e-commerce product in JSON format.
+        CRITICAL RULE: The frontend uses plain text areas. DO NOT use ANY Markdown formatting (NO **bold**, NO # headings, NO * italics). Use standard text, capitalization, and standard text bullet points (e.g., "• ") only.
         
-        Ensure the tone is "premium" and "optimistic".
+        1. "shortDescription": A highly dense, bulleted "AI Summary" or "Key Takeaways" section. Outline the core entities, benefits, and specifications instantly using plain text bullets.
+        2. "overview": Write authoritative, declarative content. You MUST format the most important definitive claims, benefits, and arguments into highly readable, standalone passages of EXACTLY 134 to 167 words. Treat brand mentions and semantic entity proximity as critical. Naturally weave the target brand, statistics, and highly related semantic entities throughout the plain text without keyword stuffing.
+        3. "specifications": A clean, formatted list of technical specifications. Output as a clean plain-text list using "• " bullets.
+        4. "attributes": An array of objects with "label" and "value" for key product attributes (e.g., [{"label": "Material", "value": "Cotton"}, ...]). Keep the values brief (1-4 words).
+        5. "keyFeatures": An array of 4-6 strong, definitive selling points as plain text strings.
+        
+        Zero tolerance for doorway page tactics, fluff, or sensationalized clickbait. Ensure deep E-E-A-T (Experience, Expertise, Authoritativeness, Trustworthiness).
         
         Return ONLY valid JSON.
       `;
@@ -174,6 +176,143 @@ class GeminiService {
     } catch (error) {
       console.error('Error generating product tags:', error);
       return [];
+    }
+  }
+
+  async generateProductSEO(productName, category, description = '', availableCountries = [], baseUrl = 'https://buysial.com') {
+    const countriesList = availableCountries.length > 0 ? availableCountries.join(', ') : 'UAE, KSA, UK, US';
+    const prompt = `You are a world-class Elite SEO and GEO Content Strategist specialising in fast-ranking Google results AND Answer Engine Optimization (ChatGPT, Perplexity, Google AI Overviews).
+
+PRODUCT DETAILS:
+- Name: ${productName}
+- Category: ${category}
+- Description: ${description || 'Premium product'}
+- Target Markets: ${countriesList}
+- Store URL: ${baseUrl}
+
+STRATEGY: Optimise for FAST RANKINGS using deep E-E-A-T triggers, and NO DEPRECATED SCHEMAS. 
+
+Return ONLY a valid JSON object (no markdown, no explanation):
+
+{
+  "seoTitle": "50-60 chars max — primary keyword first, brand entity second",
+  "slug": "3-5-word-hyphenated-slug",
+  "seoDescription": "145-158 chars — lead with primary keyword, state top benefit, include buying signal, end with trust signal",
+  "seoKeywords": "12-15 comma-separated core entities and latent semantic keywords",
+  "ogTitle": "Emotionally compelling social title — benefit-first, 55-70 chars",
+  "ogDescription": "Social sharing hook — open curiosity loop, mention key benefit, 100-125 chars",
+  "canonicalUrl": "${baseUrl}/products/SLUG_HERE",
+  "countrySeo": {
+    "CountryName": {
+      "metaTitle": "50-60 chars — localised long-tail keyword + product",
+      "metaDescription": "145-158 chars — buying intent for this market",
+      "keywords": "8-10 geo-targeted entities",
+      "hreflang": "en-AE"
+    }
+  },
+  "backlinks": [
+    { "url": "https://REAL_DOMAIN.com/KNOWN_SECTION_PATH", "anchor": "long-tail keyword anchor", "type": "dofollow", "status": "pending", "domainAuthority": "high", "notes": "Brand entity co-occurrence focus" }
+  ],
+  "siteUrl": "${baseUrl}"
+}
+
+STRICT RULES — follow every rule or the output is wrong:
+
+SEO TITLE: Must be < 60 characters. Primary long-tail BUYING keyword or Answer Engine prompt question first.
+SLUG: 3-5 words, primary keyword first, all lowercase, hyphens only.
+
+META DESCRIPTION: Count characters carefully. Must be 145-158 chars. First clause = primary keyword + benefit. Second clause = CTA ("Order now", "Shop today", "Free delivery UAE"). Third clause = trust signal ("Genuine product", "Fast shipping").
+
+KEYWORDS: Include these 4 types — (A) short competitive: "japan sakura cream", "face cream UAE" — (B) buying-intent long-tail: "buy japan sakura cream online UAE", "best face moisturizer for dry skin KSA" — (C) question keywords: "which sakura cream is best for glowing skin", "where to buy authentic japan skincare in Dubai" — (D) geo-targeted: "japan sakura cream dubai", "sakura face cream riyadh delivery".
+
+COUNTRY SEO: Generate entry for EVERY country in [${countriesList}]. ALL text in ENGLISH. Each country's metaTitle must include the country/city name and a buying intent word. Hreflang: en-AE (UAE), en-SA (KSA/Saudi Arabia), en-GB (UK), en-US (US), en-QA (Qatar), en-BH (Bahrain), en-KW (Kuwait), en-OM (Oman).
+
+CANONICAL URL: Replace SLUG_HERE with the actual generated slug.
+
+BACKLINKS — THIS IS AN OUTREACH TARGET LIST, NOT FAKE LINKS:
+Use ONLY real, well-known domains that exist. Use ONLY their ROOT DOMAIN URL (e.g., https://www.allure.com). DO NOT append category paths (like /beauty or /skin), article paths, or fake IDs to guarantee no 404 errors.
+Niche examples:
+- Beauty/Skincare: https://www.allure.com, https://www.byrdie.com, https://www.healthline.com, https://www.cosmopolitan.com, https://www.self.com, https://www.vogue.com
+- Fashion/Style: https://www.whowhatwear.com, https://www.harpersbazaar.com
+- Tech: https://www.techradar.com, https://www.cnet.com, https://www.tomsguide.com  
+- Home/Lifestyle: https://www.houzz.com, https://www.apartmenttherapy.com
+- Health/Fitness: https://www.menshealth.com, https://www.womenshealthmag.com
+- Q&A/Community: https://www.reddit.com, https://www.quora.com
+- UAE/KSA Authority: https://gulfnews.com, https://www.khaleejtimes.com, https://www.arabianbusiness.com
+- Review/Directory: https://www.trustpilot.com, https://www.google.com/maps
+Use the root domain URL as the target — the "notes" field explains what content to pitch/create for that site.
+Generate 5 backlinks, first 3 dofollow from niche authorities, last 2 nofollow from communities/directories.`;
+
+    const text = await this.generateContent(prompt);
+    try {
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error('No JSON found in AI response');
+      return JSON.parse(jsonMatch[0]);
+    } catch {
+      throw new Error('Failed to parse AI SEO response — please try again');
+    }
+  }
+
+  async extractVisualSearchIntent(base64Data, mimeType) {
+    if (!base64Data || !mimeType) {
+      throw new Error('Image data is required')
+    }
+    if (!this.client) {
+      await this.initClient()
+    }
+    const modelName = await this.getModelName()
+    const prompt = `You are an e-commerce product search expert.
+Analyze the uploaded image and identify the actual purchasable product shown.
+Prioritize the product type and use-case over colors, visual theme, or decorative style.
+If the image shows a novelty item, school item, toy, accessory, kitchen item, beauty item, or similar, name the concrete object a customer would search for in a store.
+Return ONLY valid JSON with this shape:
+{
+  "query": "short product search query",
+  "category": "best matching store category",
+  "brand": "brand if visible else empty string",
+  "attributes": ["attribute 1", "attribute 2"],
+  "suggestions": ["search suggestion 1", "search suggestion 2", "search suggestion 3"],
+  "confidence": 0.0
+}
+Rules:
+- query must be 2 to 8 words
+- query must describe the real product object, not only a pattern or aesthetic
+- include the strongest object noun in the query when possible
+- prefer search terms like "pencil topper", "chewable pencil topper", "silicone pencil topper", "lego-style pencil topper" over vague terms like "building block design"
+- category should be a likely shopping category, but it may be generic if uncertain
+- suggestions must be concise shopping search terms
+- suggestions should include close shopping alternatives and synonyms a customer might use
+- confidence must be between 0 and 1
+- if unsure, still provide the closest shopping-oriented query
+- do not include markdown or explanation`
+    let response = null
+    const inlineImage = { inlineData: { mimeType, data: base64Data } }
+    const textPart = { text: prompt }
+    try {
+      response = await this.client.models.generateContent({
+        model: modelName,
+        contents: [textPart, inlineImage],
+      })
+    } catch {
+      response = await this.client.models.generateContent({
+        model: modelName,
+        contents: [{ role: 'user', parts: [textPart, inlineImage] }],
+      })
+    }
+    const text = response?.text || ''
+    const jsonMatch = String(text).match(/\{[\s\S]*\}/)
+    if (!jsonMatch) {
+      throw new Error('Failed to parse AI visual search response')
+    }
+    const parsed = JSON.parse(jsonMatch[0])
+    const query = String(parsed?.query || '').trim()
+    return {
+      query,
+      category: String(parsed?.category || '').trim(),
+      brand: String(parsed?.brand || '').trim(),
+      attributes: Array.isArray(parsed?.attributes) ? parsed.attributes.map((v) => String(v || '').trim()).filter(Boolean).slice(0, 8) : [],
+      suggestions: Array.isArray(parsed?.suggestions) ? parsed.suggestions.map((v) => String(v || '').trim()).filter(Boolean).slice(0, 8) : [],
+      confidence: Math.max(0, Math.min(1, Number(parsed?.confidence || 0))),
     }
   }
 

@@ -5,13 +5,14 @@ import Header from '../../components/layout/Header'
 import ShoppingCart from '../../components/ecommerce/ShoppingCart'
 import EditMode from '../../components/ecommerce/EditMode'
 import { useToast } from '../../ui/Toast'
-import { trackPageView, trackSearch, trackFilterUsage, trackSortUsage } from '../../utils/analytics'
+import { trackPageView, trackSearch, trackFilterUsage } from '../../utils/analytics'
 import { apiGet } from '../../api'
 import { detectCountryCode } from '../../utils/geo'
 import CategoryFilter from '../../components/ecommerce/CategoryFilter'
-import SearchBar from '../../components/ecommerce/SearchBar'
 import MobileBottomNav from '../../components/ecommerce/MobileBottomNav'
-import HorizontalProductSection from '../../components/ecommerce/HorizontalProductSection'
+import DiscoverSearchSurface from '../../components/ecommerce/DiscoverSearchSurface'
+import { getCachedCurrencyConfig, getCurrencyConfig } from '../../util/currency'
+import { readCartItems } from '../../utils/cartStorage'
 
 function safeParseCatalogHeadlineSlides(raw, fallback) {
   try {
@@ -252,13 +253,10 @@ export default function ProductCatalog() {
   const toast = useToast()
   const location = useLocation()
   const navigate = useNavigate()
-  const [products, setProducts] = useState([])
-  const [filteredProducts, setFilteredProducts] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 })
-  const [categoryCounts, setCategoryCounts] = useState({})
-
+  const lastScrollY = useRef(0)
+  const urlSyncReadyRef = useRef(false)
+  const initialLoadDoneRef = useRef(false)
+  const discoverOrderRef = useRef([])
   const defaultCatalogHeadlineSlides = useRef([
     {
       title: 'noon one day',
@@ -301,6 +299,7 @@ export default function ProductCatalog() {
   const [catalogHeadlinePrevIdx, setCatalogHeadlinePrevIdx] = useState(-1)
   const [catalogHeadlinePrevVisible, setCatalogHeadlinePrevVisible] = useState(false)
   const catalogHeadlinePrevTimerRef = useRef(null)
+  const skipNextCatalogReloadRef = useRef(false)
   
   // Edit mode
   const [editMode, setEditMode] = useState(false)
@@ -316,7 +315,9 @@ export default function ProductCatalog() {
     const sp = new URLSearchParams(window.location.search)
     return sp.get('subcategory') || 'all'
   })
+  const [categoryCounts, setCategoryCounts] = useState({})
   const [subcategoryCounts, setSubcategoryCounts] = useState({})
+  const [error, setError] = useState('')
   const [searchQuery, setSearchQuery] = useState(() => {
     const sp = new URLSearchParams(window.location.search)
     return sp.get('search') || ''
@@ -326,6 +327,10 @@ export default function ProductCatalog() {
   const [filterType, setFilterType] = useState(() => {
     const sp = new URLSearchParams(window.location.search)
     return sp.get('filter') || ''
+  })
+  const [selectedBrand, setSelectedBrand] = useState(() => {
+    const sp = new URLSearchParams(window.location.search)
+    return sp.get('brand') || 'all'
   })
   const [selectedCountry, setSelectedCountry] = useState(() => {
     try { return localStorage.getItem('selected_country') || 'GB' } catch { return 'GB' }
@@ -345,18 +350,22 @@ export default function ProductCatalog() {
   // Pagination
   const [currentPage, setCurrentPage] = useState(1)
   const productsPerPage = 12
+  const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 })
+  const [loading, setLoading] = useState(false)
+  const [products, setProducts] = useState([])
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [displayedProducts, setDisplayedProducts] = useState([])
   const [hasMore, setHasMore] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const loaderRef = useRef(null)
   const [mobileCountryOpen, setMobileCountryOpen] = useState(false)
-  const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
   const [discoverCategories, setDiscoverCategories] = useState([])
   const [placeholderIdx, setPlaceholderIdx] = useState(0)
-  const [placeholderAnim, setPlaceholderAnim] = useState(false)
-  const [cartCount, setCartCount] = useState(() => { try { const c = JSON.parse(localStorage.getItem('shopping_cart') || '[]'); return c.reduce((s, i) => s + (i.quantity || 1), 0) } catch { return 0 } })
+  const [cartCount, setCartCount] = useState(() => { try { const c = readCartItems(); return c.reduce((s, i) => s + (i.quantity || 1), 0) } catch { return 0 } })
   const [annBar, setAnnBar] = useState(null)
+  const [visualSearchResult, setVisualSearchResult] = useState(null)
+  const [currencyConfig, setCurrencyConfig] = useState(() => getCachedCurrencyConfig())
+  const [availableBrands, setAvailableBrands] = useState([])
   const COUNTRY_LIST_LOCAL = [
     { code: 'GB', name: 'UK', flag: '🇬🇧' }, { code: 'US', name: 'USA', flag: '🇺🇸' },
     { code: 'AE', name: 'UAE', flag: '🇦🇪' }, { code: 'SA', name: 'KSA', flag: '🇸🇦' },
@@ -367,10 +376,85 @@ export default function ProductCatalog() {
   ]
   const currentFlag = COUNTRY_LIST_LOCAL.find(c => c.code === selectedCountry)?.flag || '🇬🇧'
   const currentCountryName = COUNTRY_LIST_LOCAL.find(c => c.code === selectedCountry)?.name || 'UK'
+  const discoverQuickFilters = [
+    { id: '', label: 'All Picks' },
+    { id: 'sale', label: 'Deals' },
+    { id: 'newArrival', label: 'New Arrivals' },
+    { id: 'bestSelling', label: 'Best Sellers' },
+    { id: 'featured', label: 'Featured' },
+    { id: 'trending', label: 'Trending' },
+  ]
+
+  const discoverCategoryCards = React.useMemo(() => {
+    const map = new Map()
+    for (const product of displayedProducts.length ? displayedProducts : products) {
+      const category = String(product?.category || '').trim()
+      if (!category || map.has(category.toLowerCase())) continue
+      const image = product?.imagePath || (Array.isArray(product?.images) ? product.images[0] : '') || ''
+      map.set(category.toLowerCase(), {
+        name: category,
+        image,
+        subtitle: product?.subcategory || product?.brand || 'Recommended for you',
+      })
+    }
+    for (const category of discoverCategories) {
+      const key = String(category || '').trim().toLowerCase()
+      if (!key || map.has(key)) continue
+      map.set(key, {
+        name: category,
+        image: '',
+        subtitle: 'Shop the category',
+      })
+    }
+    return Array.from(map.values())
+  }, [discoverCategories, displayedProducts, products])
+
+  const handleVisualSearchResult = useCallback((result) => {
+    const next = result && typeof result === 'object' ? result : null
+    setVisualSearchResult(next)
+    const query = String(next?.query || '').trim()
+    const matchedProducts = Array.isArray(next?.products) ? next.products : []
+
+    setSelectedCategory('all')
+    setSelectedSubcategory('all')
+    setFilterType('')
+    setSelectedBrand(String(next?.brand || '').trim() || 'all')
+
+    if (query) {
+      if (matchedProducts.length) skipNextCatalogReloadRef.current = true
+      setSearchQuery(query)
+      try {
+        trackSearch(query, matchedProducts.length)
+      } catch {}
+    }
+
+    if (matchedProducts.length) {
+      setProducts(matchedProducts)
+      setDisplayedProducts(matchedProducts)
+      setPagination({ page: 1, pages: 1, total: matchedProducts.length })
+      setHasMore(false)
+      setCurrentPage(1)
+      return
+    }
+
+    if (query) {
+      toast.info(`Visual search found matches for “${query}”. Showing the product list.`)
+    }
+  }, [toast])
   useEffect(() => {
-    const update = () => { try { const c = JSON.parse(localStorage.getItem('shopping_cart') || '[]'); setCartCount(c.reduce((s, i) => s + (i.quantity || 1), 0)) } catch { setCartCount(0) } }
+    const update = () => { try { const c = readCartItems(); setCartCount(c.reduce((s, i) => s + (i.quantity || 1), 0)) } catch { setCartCount(0) } }
     window.addEventListener('cartUpdated', update); window.addEventListener('storage', update)
     return () => { window.removeEventListener('cartUpdated', update); window.removeEventListener('storage', update) }
+  }, [])
+
+  useEffect(() => {
+    let alive = true
+    getCurrencyConfig().then((cfg) => {
+      if (alive && cfg) setCurrencyConfig(cfg)
+    }).catch(() => {})
+    return () => {
+      alive = false
+    }
   }, [])
 
   useEffect(() => {
@@ -405,11 +489,7 @@ export default function ProductCatalog() {
   useEffect(() => {
     if (discoverCategories.length <= 1) return
     const timer = setInterval(() => {
-      setPlaceholderAnim(true)
-      setTimeout(() => {
-        setPlaceholderIdx(prev => (prev + 1) % discoverCategories.length)
-        setPlaceholderAnim(false)
-      }, 300)
+      setPlaceholderIdx(prev => (prev + 1) % discoverCategories.length)
     }, 2500)
     return () => clearInterval(timer)
   }, [discoverCategories])
@@ -466,6 +546,7 @@ export default function ProductCatalog() {
       if (selectedCountry) params.append('country', selectedCountry)
       if (selectedCategory !== 'all') params.append('category', selectedCategory)
       if (selectedCategory !== 'all' && selectedSubcategory !== 'all') params.append('subcategory', selectedSubcategory)
+      if (selectedBrand && selectedBrand !== 'all') params.append('brand', selectedBrand)
       if (searchQuery.trim()) params.append('search', searchQuery.trim())
       if (sortBy) params.append('sort', sortBy)
       const ft = String(filterType || '')
@@ -473,6 +554,7 @@ export default function ProductCatalog() {
       else if (ft === 'featured') params.append('filter', 'featured')
       else if (ft === 'trending') params.append('filter', 'trending')
       else if (ft === 'recommended') params.append('filter', 'recommended')
+      else if (ft === 'newArrival') params.append('filter', 'newArrival')
       params.append('page', String(pageNum))
       params.append('limit', String(productsPerPage))
 
@@ -496,17 +578,12 @@ export default function ProductCatalog() {
         if (replace) {
           setProducts(list)
           setDisplayedProducts(list)
-          setFilteredProducts(list)
         } else {
           setProducts((prev) => {
             const rotated = rotateToAvoidSameCategory(prev?.[prev.length - 1], list)
             return [...prev, ...rotated]
           })
           setDisplayedProducts((prev) => {
-            const rotated = rotateToAvoidSameCategory(prev?.[prev.length - 1], list)
-            return [...prev, ...rotated]
-          })
-          setFilteredProducts((prev) => {
             const rotated = rotateToAvoidSameCategory(prev?.[prev.length - 1], list)
             return [...prev, ...rotated]
           })
@@ -520,7 +597,7 @@ export default function ProductCatalog() {
       if (replace) setLoading(false)
       setLoadingMore(false)
     }
-  }, [filterType, mixByCategory, productsPerPage, rotateToAvoidSameCategory, searchQuery, selectedCategory, selectedCountry, selectedSubcategory, sortBy, toast])
+  }, [filterType, mixByCategory, productsPerPage, rotateToAvoidSameCategory, searchQuery, selectedBrand, selectedCategory, selectedCountry, selectedSubcategory, sortBy, toast])
 
   // Load category usage counts (public)
   useEffect(() => {
@@ -536,6 +613,26 @@ export default function ProductCatalog() {
     })()
     return ()=>{ alive = false }
   }, [selectedCountry])
+
+  useEffect(() => {
+    let alive = true
+    ;(async () => {
+      try {
+        const res = await apiGet('/api/brands/public')
+        const brands = Array.isArray(res?.brands) ? res.brands : []
+        if (!alive) return
+        setAvailableBrands(
+          brands
+            .map((entry) => String(entry?.name || '').trim())
+            .filter(Boolean)
+            .sort((a, b) => a.localeCompare(b))
+        )
+      } catch {
+        if (alive) setAvailableBrands([])
+      }
+    })()
+    return () => { alive = false }
+  }, [])
 
   // Load subcategory usage counts for the selected category (public)
   useEffect(() => {
@@ -652,12 +749,17 @@ export default function ProductCatalog() {
   }
   // Load products when filters change
   useEffect(() => {
+    if (skipNextCatalogReloadRef.current) {
+      skipNextCatalogReloadRef.current = false
+      trackPageView('/products', 'Product Catalog')
+      return
+    }
     setHasMore(true)
     setCurrentPage(1)
     loadProducts(1, true)
     trackPageView('/products', 'Product Catalog')
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCategory, selectedSubcategory, searchQuery, sortBy, filterType, loadProducts])
+  }, [selectedBrand, selectedCategory, selectedSubcategory, searchQuery, sortBy, filterType, loadProducts])
 
   // Read initial category/search/filter from URL (and on URL change)
   useEffect(() => {
@@ -666,11 +768,13 @@ export default function ProductCatalog() {
     const subcat = sp.get('subcategory') || 'all'
     const q = sp.get('search') || ''
     const filter = sp.get('filter') || ''
+    const brand = sp.get('brand') || 'all'
     const sort = sp.get('sort') || 'name'
     if (cat !== selectedCategory) setSelectedCategory(cat)
     if (subcat !== selectedSubcategory) setSelectedSubcategory(subcat)
     if (q !== searchQuery) setSearchQuery(q)
     if (filter !== filterType) setFilterType(filter)
+    if (brand !== selectedBrand) setSelectedBrand(brand)
     if (sort !== sortBy) setSortBy(sort)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.search])
@@ -684,6 +788,7 @@ export default function ProductCatalog() {
     const currQ = sp.get('search') || ''
     const currSort = sp.get('sort') || ''
     const currFilter = sp.get('filter') || ''
+    const currBrand = sp.get('brand') || 'all'
     if ((selectedCategory || 'all') !== currCat){
       if (selectedCategory && selectedCategory !== 'all') sp.set('category', selectedCategory)
       else sp.delete('category')
@@ -719,11 +824,20 @@ export default function ProductCatalog() {
       sp.delete('filter')
       changed = true
     }
+    if (selectedBrand && selectedBrand !== 'all') {
+      if (currBrand !== selectedBrand) {
+        sp.set('brand', selectedBrand)
+        changed = true
+      }
+    } else if (currBrand !== 'all' && currBrand) {
+      sp.delete('brand')
+      changed = true
+    }
     if (changed){
       navigate(`/catalog?${sp.toString()}`, { replace: true })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCategory, selectedSubcategory, searchQuery, sortBy, filterType])
+  }, [selectedBrand, selectedCategory, selectedSubcategory, searchQuery, sortBy, filterType])
 
   // Persist selected country for use on product detail/cart
   useEffect(() => {
@@ -762,54 +876,10 @@ export default function ProductCatalog() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasMore, loadingMore, loading, currentPage, loadProducts])
 
-  const filterAndSortProducts = () => {
-    let filtered = [...products]
-
-    // Category filter
-    if (selectedCategory !== 'all') {
-      filtered = filtered.filter(product => product.category === selectedCategory)
-    }
-
-    // Search filter
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase()
-      filtered = filtered.filter(product =>
-        product.name.toLowerCase().includes(query) ||
-        product.description.toLowerCase().includes(query) ||
-        product.brand?.toLowerCase().includes(query) ||
-        product.category.toLowerCase().includes(query)
-      )
-    }
-
-    // Sort products
-    filtered.sort((a, b) => {
-      switch (sortBy) {
-        case 'name':
-          return a.name.localeCompare(b.name)
-        case 'name-desc':
-          return b.name.localeCompare(a.name)
-        case 'price':
-          return ((a.salePrice > 0 && a.salePrice < a.price) ? a.salePrice : a.price) - ((b.salePrice > 0 && b.salePrice < b.price) ? b.salePrice : b.price)
-        case 'price-desc':
-          return ((b.salePrice > 0 && b.salePrice < b.price) ? b.salePrice : b.price) - ((a.salePrice > 0 && a.salePrice < a.price) ? a.salePrice : a.price)
-        case 'rating':
-          return (b.rating || 0) - (a.rating || 0)
-        case 'newest':
-          return new Date(b.createdAt) - new Date(a.createdAt)
-        case 'featured':
-          return (b.featured ? 1 : 0) - (a.featured ? 1 : 0)
-        default:
-          return 0
-      }
-    })
-
-    setFilteredProducts(filtered)
-    setCurrentPage(1) // Reset to first page when filters change
-  }
-
   const getProductCounts = () => categoryCounts
 
   const handleCategoryChange = (category) => {
+    setVisualSearchResult(null)
     setSelectedCategory(category)
     setSelectedSubcategory('all')
     setCurrentPage(1)
@@ -819,6 +889,7 @@ export default function ProductCatalog() {
   }
 
   const handleSubcategoryChange = (subcategory) => {
+    setVisualSearchResult(null)
     setSelectedSubcategory(subcategory)
     setCurrentPage(1)
     // Track filter usage
@@ -826,6 +897,7 @@ export default function ProductCatalog() {
   }
 
   const handleSearch = (query) => {
+    setVisualSearchResult(null)
     setSearchQuery(query)
     setCurrentPage(1)
     // Track search event
@@ -833,6 +905,13 @@ export default function ProductCatalog() {
       const q = String(query || '').trim()
       if (q && q.length >= 4) trackSearch(q, products.length)
     } catch {}
+  }
+
+  const handleBrandChange = (brand) => {
+    setVisualSearchResult(null)
+    setSelectedBrand(brand || 'all')
+    setCurrentPage(1)
+    trackFilterUsage('brand', brand || 'all')
   }
 
   const handleAddToCart = (product) => {
@@ -920,6 +999,7 @@ export default function ProductCatalog() {
                   product={product}
                   selectedCountry={selectedCountry}
                   showVideo={true}
+                  currencyConfig={currencyConfig}
                 />
               </div>
             ))}
@@ -1018,7 +1098,7 @@ export default function ProductCatalog() {
         <ShoppingCart isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
         <MobileBottomNav onCartClick={() => setIsCartOpen(true)} />
         
-        <style jsx>{`
+        <style>{`
           .skeleton-image {
             background-size: 200% 100%;
             animation: shimmer 1.5s infinite;
@@ -1053,18 +1133,19 @@ export default function ProductCatalog() {
           <Link to="/" className="w-9 h-9 rounded-full bg-gray-50 flex items-center justify-center flex-shrink-0">
             <svg className="w-[18px] h-[18px] text-gray-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0h4" /></svg>
           </Link>
-          <form onSubmit={e => { e.preventDefault(); if (searchQuery.trim()) handleSearch(searchQuery) }} className="flex-1 flex items-center gap-2 bg-gray-50 rounded-full px-3 py-2">
-            <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
-            <div className="flex-1 relative h-5">
-              <input type="text" value={searchQuery} onChange={e => handleSearch(e.target.value)} className="w-full h-full bg-transparent border-none outline-none text-sm text-gray-800" />
-              {!searchQuery && (
-                <div className="absolute inset-0 flex items-center pointer-events-none overflow-hidden">
-                  <span className="text-sm text-gray-400">Search </span>
-                  <span className="text-sm text-gray-400 ml-1 inline-block transition-all duration-300 ease-out" style={{transform: placeholderAnim ? 'translateY(-120%)' : 'translateY(0)', opacity: placeholderAnim ? 0 : 1}}>{discoverCategories[placeholderIdx] || 'products'}...</span>
-                </div>
-              )}
-            </div>
-          </form>
+          <DiscoverSearchSurface
+            mode="mobile"
+            value={searchQuery}
+            onChange={handleSearch}
+            onSubmit={handleSearch}
+            onCategorySelect={handleCategoryChange}
+            categories={discoverCategories}
+            categoryCards={discoverCategoryCards}
+            selectedCountry={selectedCountry}
+            onVisualSearchResult={handleVisualSearchResult}
+            onError={(message) => toast.error(message)}
+            placeholder={`Search ${discoverCategories[placeholderIdx] || 'products'}...`}
+          />
           <button onClick={() => navigate('/cart')} className="w-9 h-9 rounded-full bg-gray-50 flex items-center justify-center relative flex-shrink-0">
             <svg className="w-[18px] h-[18px] text-gray-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
             {cartCount > 0 && <span className="absolute -top-0.5 -right-0.5 bg-orange-500 text-white text-[9px] font-bold rounded-full min-w-[16px] h-[16px] flex items-center justify-center px-0.5">{cartCount > 99 ? '99+' : cartCount}</span>}
@@ -1075,14 +1156,14 @@ export default function ProductCatalog() {
           <button onClick={() => setMobileCountryOpen(!mobileCountryOpen)} className="flex items-center gap-1.5 text-[12px] text-gray-500">
             <svg className="w-3.5 h-3.5 text-orange-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" /></svg>
             <span>Deliver to</span>
-            <span className="font-semibold text-gray-800">{currentFlag} {currentCountryName}</span>
+            <span className="font-semibold text-gray-800"><span key={selectedCountry}>{currentFlag}</span> {currentCountryName}</span>
             <svg className={`w-3 h-3 text-gray-400 transition-transform ${mobileCountryOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" /></svg>
           </button>
           {mobileCountryOpen && (
             <div className="absolute left-2 right-2 top-full mt-1 max-h-64 overflow-y-auto bg-white rounded-2xl shadow-[0_12px_48px_rgba(0,0,0,0.15)] border border-gray-100 py-1 z-50">
               {COUNTRY_LIST_LOCAL.map(c => (
                 <button key={c.code} onClick={() => { setSelectedCountry(c.code); setMobileCountryOpen(false); try { localStorage.setItem('selected_country', c.code) } catch {}; window.dispatchEvent(new CustomEvent('countryChanged', { detail: { code: c.code } })) }} className={`w-full px-4 py-2.5 flex items-center gap-2.5 text-left text-sm transition-colors ${selectedCountry === c.code ? 'bg-orange-50 text-orange-600 font-semibold' : 'text-gray-700 hover:bg-gray-50'}`}>
-                  <span>{c.flag}</span><span>{c.name}</span>
+                  <span key={c.code}>{c.flag}</span><span>{c.name}</span>
                   {selectedCountry === c.code && <svg className="w-3.5 h-3.5 ml-auto text-orange-500" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" /></svg>}
                 </button>
               ))}
@@ -1119,20 +1200,54 @@ export default function ProductCatalog() {
 
             {/* Minimal search bar — desktop only (mobile has it in header) */}
             <div className="mb-6 hidden lg:block">
-              <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-                <form onSubmit={e => { e.preventDefault(); if (searchQuery.trim()) handleSearch(searchQuery) }} className="flex items-center gap-3">
-                  <svg className="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
-                  <input type="text" value={searchQuery} onChange={e => handleSearch(e.target.value)} placeholder="Search products..." className="flex-1 bg-transparent border-none outline-none text-base text-gray-900 placeholder-gray-400" />
-                  <select value={sortBy} onChange={e => { setSortBy(e.target.value); setCurrentPage(1) }} className="bg-gray-50 border border-gray-100 rounded-lg px-3 py-2 text-sm text-gray-600 focus:outline-none cursor-pointer">
-                    <option value="newest">Newest</option>
-                    <option value="price">Price: Low to High</option>
-                    <option value="price-desc">Price: High to Low</option>
-                    <option value="rating">Top Rated</option>
-                    <option value="featured">Featured</option>
-                  </select>
-                </form>
-              </div>
+              <DiscoverSearchSurface
+                mode="desktop"
+                value={searchQuery}
+                onChange={handleSearch}
+                onSubmit={handleSearch}
+                onCategorySelect={handleCategoryChange}
+                categories={discoverCategories}
+                categoryCards={discoverCategoryCards}
+                selectedCountry={selectedCountry}
+                sortBy={sortBy}
+                onSortChange={(value) => { setSortBy(value); setCurrentPage(1) }}
+                onVisualSearchResult={handleVisualSearchResult}
+                onError={(message) => toast.error(message)}
+                placeholder={`Search ${discoverCategories[placeholderIdx] || 'products'}...`}
+              />
             </div>
+
+            {visualSearchResult ? (
+              <div className="mb-6 rounded-[28px] border border-emerald-100 bg-gradient-to-r from-emerald-50 via-white to-cyan-50 px-5 py-4 shadow-[0_18px_55px_rgba(16,185,129,0.08)]">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="text-[11px] font-black uppercase tracking-[0.24em] text-emerald-500 mb-1">Visual search</div>
+                    <div className="text-lg font-bold text-slate-900">
+                      {visualSearchResult.query ? `We found matches for “${visualSearchResult.query}”` : 'Image analyzed successfully'}
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {visualSearchResult.category ? <span className="px-3 py-1 rounded-full bg-white text-slate-700 text-xs font-semibold border border-slate-200">{visualSearchResult.category}</span> : null}
+                      {visualSearchResult.brand ? <span className="px-3 py-1 rounded-full bg-white text-slate-700 text-xs font-semibold border border-slate-200">{visualSearchResult.brand}</span> : null}
+                      {(visualSearchResult.attributes || []).slice(0, 4).map((entry) => (
+                        <span key={entry} className="px-3 py-1 rounded-full bg-white text-slate-600 text-xs font-medium border border-slate-200">{entry}</span>
+                      ))}
+                    </div>
+                    {(visualSearchResult.suggestions || []).length ? (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {(visualSearchResult.suggestions || []).slice(0, 4).map((entry) => (
+                          <button key={entry} type="button" onClick={() => handleSearch(entry)} className="px-3 py-1.5 rounded-full bg-slate-900 text-white text-xs font-semibold hover:bg-slate-700 transition-colors">
+                            {entry}
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                  <button type="button" onClick={() => setVisualSearchResult(null)} className="text-sm font-semibold text-slate-500 hover:text-slate-800">
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            ) : null}
 
             {catalogHeadline?.enabled && Array.isArray(catalogHeadline?.slides) && catalogHeadline.slides.length ? (
               (() => {
@@ -1292,6 +1407,68 @@ export default function ProductCatalog() {
               })()
             ) : null}
 
+            <div className="mb-5 space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-[11px] font-black uppercase tracking-[0.24em] text-slate-400">Discover filters</div>
+                <div className="flex items-center gap-2">
+                  <button type="button" onClick={() => setShowFilters((prev) => !prev)} className="lg:hidden px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold">
+                    {showFilters ? 'Hide categories' : 'Show categories'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFilterType('')
+                      setSelectedBrand('all')
+                      setSelectedCategory('all')
+                      setSelectedSubcategory('all')
+                      setCurrentPage(1)
+                    }}
+                    className="px-3 py-1.5 rounded-full border border-slate-200 bg-white text-slate-600 text-xs font-semibold"
+                  >
+                    Reset
+                  </button>
+                </div>
+              </div>
+              <div className="overflow-x-auto no-scrollbar">
+                <div className="flex gap-2 pb-1 min-w-max">
+                  {discoverQuickFilters.map((entry) => (
+                    <button
+                      key={entry.id || 'all-picks'}
+                      type="button"
+                      onClick={() => { setFilterType(entry.id); setCurrentPage(1); trackFilterUsage('discover_filter', entry.id || 'all') }}
+                      className={`px-3.5 py-2 rounded-full text-[12px] font-semibold whitespace-nowrap transition-all ${filterType === entry.id ? 'bg-slate-900 text-white shadow-[0_10px_24px_rgba(15,23,42,0.16)]' : 'bg-white border border-slate-200 text-slate-600 hover:border-slate-300'}`}
+                    >
+                      {entry.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <div className="sm:min-w-[220px]">
+                  <select
+                    value={selectedBrand}
+                    onChange={(e) => handleBrandChange(e.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 shadow-sm outline-none focus:border-slate-400"
+                  >
+                    <option value="all">All brands</option>
+                    {availableBrands.map((brand) => <option key={brand} value={brand}>{brand}</option>)}
+                  </select>
+                </div>
+                <div className="sm:min-w-[180px]">
+                  <select
+                    value={sortBy}
+                    onChange={(e) => { setSortBy(e.target.value); setCurrentPage(1) }}
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 shadow-sm outline-none focus:border-slate-400"
+                  >
+                    <option value="name">Sort: Featured Mix</option>
+                    <option value="newest">Newest</option>
+                    <option value="price">Price: Low to High</option>
+                    <option value="price-desc">Price: High to Low</option>
+                    <option value="rating">Top Rated</option>
+                  </select>
+                </div>
+              </div>
+            </div>
 
             {showFilters && (
               <div className="mb-6 lg:hidden">
@@ -1346,10 +1523,14 @@ export default function ProductCatalog() {
             {/* Premium Results Summary */}
             <div className="mb-4">
               <p className="text-[13px] font-medium text-gray-400 tracking-wide uppercase mb-2" style={{ letterSpacing: '0.08em' }}>All Products</p>
-              {(selectedCategory !== 'all' || searchQuery) && (
+              {(selectedCategory !== 'all' || selectedBrand !== 'all' || filterType || searchQuery) && (
                 <p className="text-sm font-medium text-gray-700 mb-2">
                   {selectedCategory !== 'all' && <span className="text-orange-600">{selectedCategory}</span>}
-                  {selectedCategory !== 'all' && searchQuery && <span className="text-gray-300 mx-1.5">•</span>}
+                  {selectedCategory !== 'all' && (selectedBrand !== 'all' || filterType || searchQuery) && <span className="text-gray-300 mx-1.5">•</span>}
+                  {selectedBrand !== 'all' && <span className="text-slate-600">{selectedBrand}</span>}
+                  {selectedBrand !== 'all' && (filterType || searchQuery) && <span className="text-gray-300 mx-1.5">•</span>}
+                  {filterType && <span className="text-emerald-600">{discoverQuickFilters.find((entry) => entry.id === filterType)?.label || filterType}</span>}
+                  {filterType && searchQuery && <span className="text-gray-300 mx-1.5">•</span>}
                   {searchQuery && <span className="text-gray-500">"{searchQuery}"</span>}
                 </p>
               )}
@@ -1412,10 +1593,11 @@ export default function ProductCatalog() {
                             selectedCountry={selectedCountry}
                             showVideo={false}
                             showActions={false}
+                            currencyConfig={currencyConfig}
                           />
                         ))}
                       </div>
-                      <style jsx>{`
+                      <style>{`
                         .taobao-grid {
                           display: grid;
                           grid-template-columns: repeat(2, 1fr);

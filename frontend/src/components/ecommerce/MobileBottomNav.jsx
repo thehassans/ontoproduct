@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { readWishlistIds } from '../../util/wishlist'
+import { readCartItems } from '../../utils/cartStorage'
 
 export default function MobileBottomNav({ onCartClick }) {
   const navigate = useNavigate()
@@ -13,13 +14,7 @@ export default function MobileBottomNav({ onCartClick }) {
   useEffect(() => {
     const updateCartCount = () => {
       try {
-        let cart = JSON.parse(localStorage.getItem('shopping_cart') || '[]')
-        if (!cart.length) {
-          try {
-            const bak = sessionStorage.getItem('shopping_cart_bak')
-            if (bak) cart = JSON.parse(bak)
-          } catch {}
-        }
+        const cart = readCartItems()
         const count = cart.reduce((sum, item) => sum + (item.quantity || 1), 0)
         setCartCount(count)
       } catch { /* preserve existing count */ }
@@ -62,16 +57,16 @@ export default function MobileBottomNav({ onCartClick }) {
       label: 'Home', 
       path: '/',
       icon: (active) => (
-        <div className="relative w-8 h-8 flex items-center justify-center">
+        <div className="relative w-7 h-7 flex items-center justify-center">
           {active && (
             <span className="absolute inset-0 rounded-full bg-orange-500/30 blur-md" />
           )}
           <div
-            className={`relative w-8 h-8 rounded-full flex items-center justify-center bg-white ${
+            className={`relative w-7 h-7 rounded-full flex items-center justify-center bg-white ${
               active ? 'shadow-[0_0_18px_rgba(249,115,22,0.45)]' : 'opacity-90'
             }`}
           >
-            <img src="/BuySial2.png" alt="BuySial" className="w-6 h-6 object-contain" />
+            <img src="/BSBackgroundremoved.png" alt="BuySial" className="w-5 h-5 object-contain" />
           </div>
         </div>
       )
@@ -247,7 +242,7 @@ export default function MobileBottomNav({ onCartClick }) {
             </nav>
           )}
 
-      <style jsx>{`
+      <style>{`
         .safe-area-bottom {
           padding-bottom: calc(env(safe-area-inset-bottom, 0) + 8px);
         }

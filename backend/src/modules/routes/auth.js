@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import User from "../models/User.js";
+import Shop from "../models/Shop.js";
 import Setting from "../models/Setting.js";
 import rateLimit from "../middleware/rateLimit.js";
 import { OAuth2Client } from "google-auth-library";
@@ -146,6 +147,65 @@ router.post(
     } catch (err) {
       try {
         console.error("[auth/login] error", err?.message || err);
+      } catch {}
+      return res.status(500).json({ message: "Login failed" });
+    }
+  }
+);
+
+router.post(
+  "/shop/login",
+  rateLimit({ windowMs: 60000, max: 20 }),
+  async (req, res) => {
+    try {
+      const usernameRaw = req.body?.username ?? req.body?.email ?? "";
+      const passwordRaw = req.body?.password ?? "";
+      const username = String(usernameRaw || "").trim().toLowerCase();
+      const password = String(passwordRaw || "").trim();
+      if (!username || !password) {
+        return res.status(400).json({ message: "Invalid credentials" });
+      }
+
+      const shop = await Shop.findOne({ username });
+      if (!shop || shop.isActive === false) {
+        return res.status(400).json({ message: "Invalid credentials" });
+      }
+
+      const ok = await shop.comparePassword(password);
+      if (!ok) {
+        return res.status(400).json({ message: "Invalid credentials" });
+      }
+
+      shop.lastLoginAt = new Date();
+      await shop.save();
+
+      const token = jwt.sign(
+        {
+          id: shop._id,
+          role: shop.role,
+          actorType: "shop",
+          shopId: shop._id,
+        },
+        SECRET,
+        { expiresIn: "7d" }
+      );
+
+      return res.json({
+        token,
+        user: {
+          id: shop._id,
+          role: shop.role,
+          actorType: "shop",
+          shopId: shop._id,
+          name: shop.name,
+          ownerName: shop.ownerName,
+          username: shop.username,
+          phone: shop.phone,
+        },
+      });
+    } catch (err) {
+      try {
+        console.error("[auth/shop/login] error", err?.message || err);
       } catch {}
       return res.status(500).json({ message: "Login failed" });
     }

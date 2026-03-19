@@ -90,8 +90,8 @@ export default function Branding(){
     finally{ setSaving(false) }
   }
 
-  const headerSrc = headerPreview || (branding.headerLogo ? `${API_BASE}${branding.headerLogo}` : `${import.meta.env.BASE_URL}BuySial2.png`)
-  const loginSrc = loginPreview || (branding.loginLogo ? `${API_BASE}${branding.loginLogo}` : `${import.meta.env.BASE_URL}BuySial2.png`)
+  const headerSrc = headerPreview || (branding.headerLogo ? `${API_BASE}${branding.headerLogo}` : `${import.meta.env.BASE_URL}BSBackgroundremoved.png`)
+  const loginSrc = loginPreview || (branding.loginLogo ? `${API_BASE}${branding.loginLogo}` : `${import.meta.env.BASE_URL}BSBackgroundremoved.png`)
   const faviconSrc = faviconPreview || (branding.favicon ? `${API_BASE}${branding.favicon}` : `${import.meta.env.BASE_URL}icons/icon-192.png`)
 
   function pickFirstImageFile(items){

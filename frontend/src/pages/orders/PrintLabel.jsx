@@ -216,13 +216,24 @@ export default function PrintLabel() {
   const hidePrices = !!(isUk && isOnlineOrder)
 
   const customerName = order.customerName || '-'
+  function formatPhoneDisplay(countryCode, phone) {
+    const cc = String(countryCode || '').trim()
+    const raw = String(phone || '').trim()
+    if (!cc) return raw
+    if (!raw) return cc
+    const ccDigits = cc.replace(/\D/g, '')
+    const rawDigits = raw.replace(/\D/g, '')
+    if (raw.startsWith(cc)) return raw
+    if (ccDigits && rawDigits.startsWith(ccDigits)) return raw
+    return `${cc} ${raw}`.trim()
+  }
   const phoneFull = (() => {
     const cc = String(order.phoneCountryCode || '').trim()
     const raw = String(order.customerPhone || '').trim()
-    if (cc) return `${cc} ${raw}`.trim()
+    if (cc) return formatPhoneDisplay(cc, raw)
     return raw
   })()
-  const whatsapp = phoneFull
+  const whatsapp = formatPhoneDisplay(order.phoneCountryCode, order.customerWhatsApp || order.customerPhone)
   const targetCode = orderCurrency || orderCountryCurrency(order.orderCountry)
   function phoneCodeCurrency(code) {
     const m = {
@@ -350,7 +361,12 @@ export default function PrintLabel() {
   const savedTotal = order.total != null ? Number(order.total) : null
   const savedTotalConv = savedTotal != null ? convert(savedTotal, localCode, targetCode, curCfg) : null
   const calculatedTotal = Math.max(0, itemsSubtotalConv + shipConv - discountConv)
-  const computedTotalLocal = (savedTotalConv != null && Number.isFinite(savedTotalConv)) ? savedTotalConv : calculatedTotal
+  const hasReliableItemPricing = itemsSubtotalConv > 0
+  const computedTotalLocal = hasReliableItemPricing
+    ? calculatedTotal
+    : (savedTotalConv != null && Number.isFinite(savedTotalConv))
+      ? savedTotalConv
+      : calculatedTotal
   const codLocal = Number(order.codAmount || 0)
   const collectedLocal = Number(order.collectedAmount || 0)
   const balanceDueLocal = Math.max(0, codLocal - collectedLocal - shipLocal)
@@ -576,7 +592,7 @@ export default function PrintLabel() {
           <div style={{ flex: '1 1 0', display: 'flex', alignItems: 'center' }}>
             <img
               alt="BuySial"
-              src={`${import.meta.env.BASE_URL}BuySial2.png`}
+              src={`${import.meta.env.BASE_URL}BSBackgroundremoved.png`}
               style={{ height: 50, objectFit: 'contain' }}
             />
           </div>

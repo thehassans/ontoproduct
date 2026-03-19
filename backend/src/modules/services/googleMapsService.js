@@ -39,9 +39,93 @@ class GoogleMapsService {
         }
       }
 
+      const d3d4d = s.match(/!3d(-?\d{1,3}\.\d+)!4d(-?\d{1,3}\.\d+)/);
+      if (d3d4d) {
+        const lat = Number(d3d4d[1]);
+        const lng = Number(d3d4d[2]);
+        if (Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
+          return { lat, lng };
+        }
+      }
+
+      const destination = s.match(/[?&]destination=(-?\d{1,3}\.\d+)(?:%2C|,)(-?\d{1,3}\.\d+)/i);
+      if (destination) {
+        const lat = Number(destination[1]);
+        const lng = Number(destination[2]);
+        if (Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
+          return { lat, lng };
+        }
+      }
+
       return null;
     } catch {
       return null;
+    }
+  }
+
+  buildGeoPoint(lat, lng, address = "", extra = {}) {
+    const nLat = Number(lat);
+    const nLng = Number(lng);
+    if (!Number.isFinite(nLat) || !Number.isFinite(nLng)) return undefined;
+    return {
+      type: "Point",
+      coordinates: [nLng, nLat],
+      address: String(address || ""),
+      ...extra,
+    };
+  }
+
+  async resolveGoogleMapsUrl(input) {
+    try {
+      const raw = String(input || "").trim();
+      if (!raw) return { success: false, error: "Missing Google Maps input" };
+
+      const direct = this.extractLatLng(raw);
+      if (direct) {
+        return { success: true, ...direct, sourceUrl: raw };
+      }
+
+      let finalUrl = raw;
+      try {
+        const url = new URL(raw);
+        const shortHosts = new Set(["maps.app.goo.gl", "goo.gl", "g.co"]);
+        if (shortHosts.has(url.hostname)) {
+          const response = await fetch(raw, { method: "GET", redirect: "follow" });
+          finalUrl = response?.url || raw;
+          const resolved = this.extractLatLng(finalUrl);
+          if (resolved) {
+            return { success: true, ...resolved, sourceUrl: raw, finalUrl };
+          }
+        }
+      } catch {}
+
+      const fallback = await this.resolveWhatsAppLocation(raw);
+      if (fallback?.success && Number.isFinite(Number(fallback.lat)) && Number.isFinite(Number(fallback.lng))) {
+        return {
+          success: true,
+          lat: Number(fallback.lat),
+          lng: Number(fallback.lng),
+          formatted_address: fallback.formatted_address || "",
+          city: fallback.city || "",
+          area: fallback.area || "",
+          country: fallback.country || "",
+          address_components: fallback.address_components || null,
+          sourceUrl: raw,
+          finalUrl,
+        };
+      }
+
+      return {
+        success: false,
+        error: fallback?.error || "Could not resolve Google Maps location",
+        sourceUrl: raw,
+        finalUrl,
+      };
+    } catch (err) {
+      return {
+        success: false,
+        error: err.message || "Failed to resolve Google Maps URL",
+      };
     }
   }
 
@@ -414,6 +498,53 @@ class GoogleMapsService {
       return {
         success: false,
         error: err.message || "Distance calculation failed",
+      };
+    }
+  }
+
+  async getDirections(origin, destination) {
+    try {
+      const apiKey = await this.getApiKey();
+      const originStr =
+        typeof origin === "string"
+          ? origin
+          : `${Number(origin?.lat)},${Number(origin?.lng)}`;
+      const destinationStr =
+        typeof destination === "string"
+          ? destination
+          : `${Number(destination?.lat)},${Number(destination?.lng)}`;
+
+      const url = `${this.baseUrl}/directions/json?origin=${encodeURIComponent(
+        originStr
+      )}&destination=${encodeURIComponent(
+        destinationStr
+      )}&mode=driving&key=${encodeURIComponent(apiKey)}`;
+
+      const response = await fetch(url);
+      const data = await response.json();
+      const route = data?.routes?.[0];
+      const leg = route?.legs?.[0];
+
+      if (data.status === "OK" && route) {
+        return {
+          success: true,
+          polyline: route?.overview_polyline?.points || "",
+          distance: leg?.distance || null,
+          duration: leg?.duration || null,
+          startAddress: leg?.start_address || "",
+          endAddress: leg?.end_address || "",
+          raw: route,
+        };
+      }
+
+      return {
+        success: false,
+        error: data?.error_message || data?.status || "Could not calculate directions",
+      };
+    } catch (err) {
+      return {
+        success: false,
+        error: err.message || "Directions request failed",
       };
     }
   }

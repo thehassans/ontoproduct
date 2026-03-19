@@ -93,7 +93,7 @@ export default function InvestorLayout() {
         <div className="il-mobile-header">
           <div style={{display:'flex', alignItems:'center', gap:12}}>
             <img 
-              src={`${import.meta.env.BASE_URL}BuySial2.png`} 
+              src={`${import.meta.env.BASE_URL}BSBackgroundremoved.png`} 
               alt="BuySial" 
               style={{height:32, width:'auto', objectFit:'contain'}} 
             />
@@ -124,7 +124,7 @@ export default function InvestorLayout() {
         <div className="il-topbar">
           <div style={{display:'flex', alignItems:'center', gap:12}}>
             <img 
-              src={`${import.meta.env.BASE_URL}BuySial2.png`} 
+              src={`${import.meta.env.BASE_URL}BSBackgroundremoved.png`} 
               alt="BuySial" 
               style={{height:40, width:'auto', objectFit:'contain', marginRight: 8}} 
             />

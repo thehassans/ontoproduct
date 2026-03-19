@@ -73,7 +73,7 @@ export default function BrandBrowser() {
         {brands.map((b) => (
           <Link
             key={b._id}
-            to={`/catalog?brand=${encodeURIComponent(b.name)}`}
+            to={`/brand/${encodeURIComponent(b.slug || b.name?.toLowerCase().replace(/\s+/g, '-'))}`}
             style={{
               flex: '0 0 auto',
               display: 'flex',

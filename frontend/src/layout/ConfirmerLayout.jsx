@@ -204,7 +204,7 @@ export default function ConfirmerLayout() {
         </nav>
       )}
 
-      <style jsx>{`
+      <style>{`
         .confirmer-layout {
           display: flex;
           min-height: 100vh;

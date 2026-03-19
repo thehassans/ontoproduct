@@ -26,7 +26,7 @@ const WaMessageSchema = new mongoose.Schema({
   pushName: { type: String },
   referral: { type: mongoose.Schema.Types.Mixed, default: null },
   messageTimestamp: { type: Number, index: true }, // seconds since epoch
-  status: { type: String, enum: ['sent','delivered','read', null], default: null },
+  status: { type: String, enum: ['sending','sent','delivered','read','failed', null], default: null },
 }, { timestamps: true });
 
 WaMessageSchema.index({ jid: 1, 'key.id': 1 }, { unique: true });

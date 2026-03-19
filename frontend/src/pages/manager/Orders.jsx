@@ -610,7 +610,12 @@ export default function ManagerOrders(){
     const savedTotal = o.total != null ? Number(o.total) : null
     const savedTotalConv = savedTotal != null ? convert(savedTotal, localCode, targetCode, curCfg) : null
     const calculatedTotal = Math.max(0, itemsSubtotalConv + shipConv - discountConv)
-    const totalConv = (savedTotalConv != null && Number.isFinite(savedTotalConv)) ? savedTotalConv : calculatedTotal
+    const hasReliableItemPricing = itemsSubtotalConv > 0
+    const totalConv = hasReliableItemPricing
+      ? calculatedTotal
+      : (savedTotalConv != null && Number.isFinite(savedTotalConv))
+        ? savedTotalConv
+        : calculatedTotal
     
     // Check return submission status
     const status = String(o.shipmentStatus || '').toLowerCase()

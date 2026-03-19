@@ -2,10 +2,11 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { apiPost, API_BASE } from '../../api'
 import { COUNTRY_TO_CODE, COUNTRY_TO_CURRENCY } from '../../utils/constants'
+import { readCartItems, writeCartItems, clearCartItems } from '../../utils/cartStorage'
 
 export default function Checkout(){
   const navigate = useNavigate()
-  const [cart, setCart] = useState(()=>{ try{ return JSON.parse(localStorage.getItem('shopping_cart')||'[]') }catch{ return [] } })
+  const [cart, setCart] = useState(() => readCartItems())
   const [country, setCountry] = useState(()=> localStorage.getItem('selected_country') || 'GB')
   const [form, setForm] = useState({ name:'', phone:'', city:'', area:'', address:'', details:'' })
   const [submitting, setSubmitting] = useState(false)
@@ -31,7 +32,7 @@ export default function Checkout(){
     return () => window.removeEventListener('countryChanged', handleCountryChange)
   }, [])
 
-  useEffect(()=>{ try{ localStorage.setItem('shopping_cart', JSON.stringify(cart)) }catch{} },[cart])
+  useEffect(() => { writeCartItems(cart, { dispatchEvent: false }) }, [cart])
 
   const total = useMemo(()=> cart.reduce((s, it) => s + (Number(it.price||0) * Math.max(1, Number(it.quantity||1))), 0), [cart])
   const currency = COUNTRY_TO_CURRENCY[country] || 'SAR'
@@ -69,8 +70,7 @@ export default function Checkout(){
       await apiPost('/api/ecommerce/orders', body) // Fixed endpoint to match CartPage
       alert('Order submitted. We will contact you shortly!')
       setCart([])
-      try{ localStorage.setItem('shopping_cart', '[]') }catch{}
-      window.dispatchEvent(new CustomEvent('cartUpdated'))
+      clearCartItems()
       setForm({ name:'', phone:'', city:'', area:'', address:'', details:'' })
       navigate('/catalog')
     }catch(err){ alert(err?.message||'Failed to submit order') }

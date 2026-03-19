@@ -150,7 +150,7 @@ export default function OrderSuccess() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
               <div style={{ background: '#fff', borderRadius: 10, padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <img
-                  src="/BuySial2.png"
+                  src="/BSBackgroundremoved.png"
                   alt="BuySial"
                   style={{ height: 32, objectFit: 'contain', display: 'block' }}
                   onError={(e) => { e.target.parentElement.style.display = 'none' }}

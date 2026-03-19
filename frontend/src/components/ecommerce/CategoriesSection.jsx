@@ -175,7 +175,7 @@ export default function CategoriesSection() {
         </button>
       </div>
 
-      <style jsx>{`
+      <style>{`
         .categories-section {
           padding: 48px 0;
           background: #ffffff;

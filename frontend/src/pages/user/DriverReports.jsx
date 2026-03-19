@@ -190,11 +190,11 @@ export default function DriverReports(){
 
       {/* Report Content */}
       <div ref={reportRef} style={{background: '#fff', padding: 40, borderRadius: 12, boxShadow:'0 1px 3px rgba(0,0,0,0.1)'}}>
-        {selectedTemplate === 1 && <Template1 logo="/BuySial2.png" selectedCountry={selectedCountry} selectedDriver={selectedDriver} drivers={filteredDrivers} />}
-        {selectedTemplate === 2 && <Template2 logo="/BuySial2.png" selectedCountry={selectedCountry} selectedDriver={selectedDriver} drivers={filteredDrivers} />}
-        {selectedTemplate === 3 && <Template3 logo="/BuySial2.png" selectedCountry={selectedCountry} selectedDriver={selectedDriver} drivers={filteredDrivers} />}
-        {selectedTemplate === 4 && <Template4 logo="/BuySial2.png" selectedCountry={selectedCountry} selectedDriver={selectedDriver} drivers={filteredDrivers} />}
-        {selectedTemplate === 5 && <Template5 logo="/BuySial2.png" selectedCountry={selectedCountry} selectedDriver={selectedDriver} drivers={filteredDrivers} />}
+        {selectedTemplate === 1 && <Template1 logo="/BSBackgroundremoved.png" selectedCountry={selectedCountry} selectedDriver={selectedDriver} drivers={filteredDrivers} />}
+        {selectedTemplate === 2 && <Template2 logo="/BSBackgroundremoved.png" selectedCountry={selectedCountry} selectedDriver={selectedDriver} drivers={filteredDrivers} />}
+        {selectedTemplate === 3 && <Template3 logo="/BSBackgroundremoved.png" selectedCountry={selectedCountry} selectedDriver={selectedDriver} drivers={filteredDrivers} />}
+        {selectedTemplate === 4 && <Template4 logo="/BSBackgroundremoved.png" selectedCountry={selectedCountry} selectedDriver={selectedDriver} drivers={filteredDrivers} />}
+        {selectedTemplate === 5 && <Template5 logo="/BSBackgroundremoved.png" selectedCountry={selectedCountry} selectedDriver={selectedDriver} drivers={filteredDrivers} />}
       </div>
     </div>
   )

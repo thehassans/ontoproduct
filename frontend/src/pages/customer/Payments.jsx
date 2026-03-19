@@ -46,7 +46,7 @@ export default function CustomerPayments() {
       <div className="payments-loading">
         <div className="spinner" />
         <p>Loading payment methods...</p>
-        <style jsx>{`
+        <style>{`
           .payments-loading { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 300px; gap: 16px; }
           .spinner { width: 40px; height: 40px; border: 3px solid #f1f5f9; border-top-color: #f97316; border-radius: 50%; animation: spin 1s linear infinite; }
           @keyframes spin { to { transform: rotate(360deg); } }
@@ -201,7 +201,7 @@ export default function CustomerPayments() {
         </div>
       )}
 
-      <style jsx>{`
+      <style>{`
         .payments-page {
           max-width: 900px;
         }

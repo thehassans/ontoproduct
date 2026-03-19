@@ -120,6 +120,26 @@ export default function DriverLayout() {
       ),
     },
     {
+      to: '/driver/my-stock',
+      label: 'Stock',
+      icon: (
+        <svg
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+          <path d="M3.3 7 12 12l8.7-5" />
+          <path d="M12 22V12" />
+        </svg>
+      ),
+    },
+    {
       to: '/driver/orders/history',
       label: 'History',
       icon: (
@@ -350,7 +370,7 @@ export default function DriverLayout() {
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
               {(() => {
-                const fallback = `${import.meta.env.BASE_URL}BuySial2.png`
+                const fallback = `${import.meta.env.BASE_URL}BSBackgroundremoved.png`
                 const src = me.headerLogo ? `${API_BASE}${me.headerLogo}` : fallback
                 return (
                   <img
@@ -570,6 +590,24 @@ export default function DriverLayout() {
                     </button>
                   </div>
 
+                  <div style={{padding: '12px 8px', borderBottom: '1px solid var(--border)'}}>
+                    <button
+                      className="btn small secondary"
+                      onClick={() => {
+                        setShowSettings(false)
+                        navigate('/driver/my-stock')
+                      }}
+                      style={{width: '100%', fontSize: '12px', padding: '6px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'}}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                        <path d="M3.3 7 12 12l8.7-5"/>
+                        <path d="M12 22V12"/>
+                      </svg>
+                      My Stock
+                    </button>
+                  </div>
+
                   {/* Change Password */}
                   <div style={{padding: '12px 8px', borderBottom: '1px solid var(--border)'}}>
                     <button
@@ -609,12 +647,23 @@ export default function DriverLayout() {
         </div>
       </div>
       {tabsVisible && (
-        <nav className="mobile-tabs" role="navigation" aria-label="Primary" style={{
-          gap: 2,
-          display: 'flex',
-          flexWrap: 'nowrap',
-          justifyContent: 'space-around'
-        }}>
+        <nav
+          className="mobile-tabs"
+          role="navigation"
+          aria-label="Primary"
+          style={{
+            display: 'flex',
+            flexWrap: 'nowrap',
+            overflowX: 'auto',
+            overflowY: 'hidden',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+            WebkitOverflowScrolling: 'touch',
+            gap: 0,
+            justifyContent: 'flex-start',
+          }}
+        >
+          <style>{'.mobile-tabs::-webkit-scrollbar{display:none}'}</style>
           {mobileTabs.map((tab) => {
             const isMe = tab.to.endsWith('/me')
             const meBadge = isMe && levelIdx > 1 ? `L${levelIdx}` : ''
@@ -626,9 +675,10 @@ export default function DriverLayout() {
                 className={({ isActive }) => `tab ${isActive ? 'active' : ''}`}
                 style={{
                   padding: '6px 4px',
-                  flex: '1 1 0',
-                  minWidth: 0,
-                  maxWidth: '16.66%'
+                  flex: '0 0 auto',
+                  minWidth: 58,
+                  maxWidth: 80,
+                  width: `${100 / Math.min(mobileTabs.length, 6)}vw`,
                 }}
               >
                 <span className="icon" style={{position:'relative'}}>

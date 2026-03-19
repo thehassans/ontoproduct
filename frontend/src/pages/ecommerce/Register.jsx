@@ -334,7 +334,7 @@ export default function Register() {
             {/* Logo */}
             <div className="register-logo">
               <img 
-                src={branding.loginLogo ? `${API_BASE}${branding.loginLogo}` : `${import.meta.env.BASE_URL}BuySial2.png`}
+                src={branding.loginLogo ? `${API_BASE}${branding.loginLogo}` : `${import.meta.env.BASE_URL}BSBackgroundremoved.png`}
                 alt="Logo"
               />
             </div>

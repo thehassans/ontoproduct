@@ -25,6 +25,7 @@ import reportsRoutes from "./modules/routes/reports.js";
 import geocodeRoutes from "./modules/routes/geocode.js";
 import shopifyRoutes from "./modules/routes/shopify.js";
 import websiteSettingsRoutes from "./modules/routes/websiteSettings.js";
+import shopsRoutes from "./modules/routes/shops.js";
 import dropshipperRoutes from "./modules/routes/dropshippers.js";
 import dropshipperShopifyRoutes from "./modules/routes/dropshipperShopify.js";
 import settingsShopifyRoutes from "./modules/routes/settingsShopify.js";
@@ -187,6 +188,7 @@ app.use("/api/shopify", shopifyRoutes);
 app.use("/api/settings/shopify", settingsShopifyRoutes);
 app.use("/api/settings/shopify", shopifyOAuthRoutes); // OAuth app config routes
 app.use("/api/settings/website", websiteSettingsRoutes);
+app.use("/api/shops", shopsRoutes);
 app.use("/api/dropshippers", dropshipperRoutes);
 app.use("/api/dropshippers/shopify", dropshipperShopifyRoutes);
 app.use("/api/shopify", shopifyOAuthRoutes);
@@ -404,7 +406,19 @@ app.get("/robots.txt", (req, res) => {
     return res.send(
       `User-agent: *\n` +
         `Allow: /\n` +
-        `Disallow: /api/\n` +
+        `Allow: /api/products/public/\n` +
+        `Allow: /api/settings/branding\n` +
+        `Allow: /api/settings/country-seo\n` +
+        `Allow: /api/settings/currency\n` +
+        `Allow: /api/settings/seo\n` +
+        `Allow: /api/settings/theme\n` +
+        `Allow: /api/settings/website\n` +
+        `Allow: /api/categories\n` +
+        `Disallow: /api/auth/\n` +
+        `Disallow: /api/orders/\n` +
+        `Disallow: /api/users/\n` +
+        `Disallow: /api/notifications/\n` +
+        `Disallow: /api/admin/\n` +
         `Disallow: /user/\n` +
         `Disallow: /manager/\n` +
         `Disallow: /agent/\n` +
@@ -413,10 +427,30 @@ app.get("/robots.txt", (req, res) => {
         `Disallow: /investor/\n` +
         `Disallow: /commissioner/\n` +
         `Disallow: /confirmer/\n` +
-        `Sitemap: ${baseUrl}/sitemap.xml\n`
+        `Sitemap: ${baseUrl}/sitemap_index.xml\n`
     );
   } catch {
     return res.status(200).send("User-agent: *\nAllow: /\n");
+  }
+});
+
+app.get("/sitemap_index.xml", (req, res) => {
+  try {
+    const baseUrl = getPublicBaseUrl(req);
+    const now = new Date().toISOString();
+    const xml =
+      `<?xml version="1.0" encoding="UTF-8"?>\n` +
+      `<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
+      `  <sitemap>\n` +
+      `    <loc>${xmlEscape(baseUrl)}/sitemap.xml</loc>\n` +
+      `    <lastmod>${now}</lastmod>\n` +
+      `  </sitemap>\n` +
+      `</sitemapindex>\n`;
+    res.setHeader("Content-Type", "application/xml; charset=utf-8");
+    res.setHeader("Cache-Control", "public, max-age=3600");
+    return res.status(200).send(xml);
+  } catch {
+    return res.status(500).send("<?xml version=\"1.0\"?><sitemapindex/>");
   }
 });
 
@@ -436,30 +470,32 @@ app.get("/sitemap.xml", async (req, res) => {
     "/returns",
   ];
 
-  let products = [];
+  let products = []
   try {
     products = await Product.find({
       displayOnWebsite: true,
       $or: [{ noIndex: { $exists: false } }, { noIndex: false }],
     })
-      .select("_id updatedAt createdAt")
+      .select("_id slug canonicalUrl updatedAt createdAt")
       .sort({ updatedAt: -1 })
-      .lean();
+      .lean()
   } catch (e) {
-    console.warn("[sitemap] Failed to load products (serving static only):", e?.message);
-    products = [];
+    console.warn("[sitemap] Failed to load products (serving static only):", e?.message)
+    products = []
   }
 
-  const urls = [];
+  const urls = []
   for (const p of staticPaths) {
-    urls.push({ loc: `${baseUrl}${p}`, lastmod: now.toISOString() });
+    urls.push({ loc: `${baseUrl}${p}`, lastmod: now.toISOString() })
   }
   for (const p of products) {
-    const last = p?.updatedAt || p?.createdAt || now;
+    const last = p?.updatedAt || p?.createdAt || now
+    // Use canonical URL if set, else slug URL, else ID URL
+    const loc = p.canonicalUrl || (p.slug ? `${baseUrl}/products/${p.slug}` : `${baseUrl}/product/${p._id}`)
     urls.push({
-      loc: `${baseUrl}/product/${p._id}`,
+      loc,
       lastmod: new Date(last).toISOString(),
-    });
+    })
   }
 
   const xml =

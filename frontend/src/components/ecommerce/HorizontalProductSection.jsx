@@ -372,7 +372,7 @@ export default memo(function HorizontalProductSection({
         )}
       </div>
 
-      <style jsx>{`
+      <style>{`
         .horizontal-product-section {
           margin: 4px 0;
           background: #f4f4f4;

@@ -6,6 +6,7 @@ import Header from '../../components/layout/Header'
 import { COUNTRY_LIST } from '../../utils/constants'
 import { apiGet, apiPost } from '../../api'
 import { COUNTRY_TO_CURRENCY } from '../../utils/constants'
+import { clearCartItems, readCartItems } from '../../utils/cartStorage'
 
 // Moyasar Form Script URL
 const MOYASAR_SCRIPT_URL = 'https://cdn.moyasar.com/mpf/1.14.0/moyasar.js'
@@ -429,13 +430,8 @@ export default function Checkout() {
       const itemCount = cartItems.reduce((total, item) => total + item.quantity, 0)
       trackCheckoutComplete(result.orderId || result._id, cartValue, itemCount, paymentInfo.method)
 
-      localStorage.removeItem('shopping_cart')
-      localStorage.removeItem('checkout_cart')
-      localStorage.removeItem('cart')
+      clearCartItems()
       setCartItems([])
-
-      window.dispatchEvent(new CustomEvent('cartUpdated'))
-      window.dispatchEvent(new StorageEvent('storage', { key: 'shopping_cart', newValue: null }))
 
       setStep(3)
       toast.success('Payment successful! Order placed.')
@@ -491,18 +487,18 @@ export default function Checkout() {
 
   // Load cart items on component mount
   useEffect(() => {
-    const savedCart = localStorage.getItem('checkout_cart')
-    if (savedCart) {
-      try {
-        const items = JSON.parse(savedCart)
+    try {
+      const savedCart = localStorage.getItem('checkout_cart')
+      const items = savedCart ? JSON.parse(savedCart) : readCartItems()
+      if (Array.isArray(items) && items.length) {
         setCartItems(items)
-      } catch (error) {
-        console.error('Error loading checkout cart:', error)
-        toast.error('Error loading cart items')
+      } else {
+        toast.error('No items in cart')
         navigate('/products')
       }
-    } else {
-      toast.error('No items in cart')
+    } catch (error) {
+      console.error('Error loading checkout cart:', error)
+      toast.error('Error loading cart items')
       navigate('/products')
     }
     
@@ -824,14 +820,8 @@ export default function Checkout() {
       
       trackCheckoutComplete(result.orderId || result._id, cartValue, itemCount, 'paypal')
       
-      localStorage.removeItem('shopping_cart')
-      localStorage.removeItem('checkout_cart')
-      localStorage.removeItem('cart')
-      
+      clearCartItems()
       setCartItems([])
-      
-      window.dispatchEvent(new CustomEvent('cartUpdated'))
-      window.dispatchEvent(new StorageEvent('storage', { key: 'shopping_cart', newValue: null }))
       
       setStep(3)
       toast.success('Payment successful! Order placed.')
@@ -898,16 +888,9 @@ export default function Checkout() {
       trackCheckoutComplete(result.orderId || result._id, cartValue, itemCount, paymentInfo.method)
       
       // Clear ALL cart data after successful order
-      localStorage.removeItem('shopping_cart')
-      localStorage.removeItem('checkout_cart')
-      localStorage.removeItem('cart')
-      
+      clearCartItems()
       // Clear cart items state
       setCartItems([])
-      
-      // Dispatch cart update event to notify all components
-      window.dispatchEvent(new CustomEvent('cartUpdated'))
-      window.dispatchEvent(new StorageEvent('storage', { key: 'shopping_cart', newValue: null }))
       
       setStep(3)
       toast.success('Order placed successfully!')

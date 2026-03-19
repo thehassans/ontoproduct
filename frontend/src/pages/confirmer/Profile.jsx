@@ -72,7 +72,7 @@ export default function ConfirmerProfile() {
       <div className="profile-loading">
         <div className="spinner"></div>
         <p>Loading profile...</p>
-        <style jsx>{`
+        <style>{`
           .profile-loading {
             display: flex;
             flex-direction: column;
@@ -217,7 +217,7 @@ export default function ConfirmerProfile() {
         </div>
       )}
 
-      <style jsx>{`
+      <style>{`
         .confirmer-profile {
           padding: 24px;
           max-width: 800px;

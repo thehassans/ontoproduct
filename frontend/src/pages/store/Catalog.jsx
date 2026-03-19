@@ -114,7 +114,7 @@ export default function Catalog(){
       <div style={{position:'sticky', top:0, zIndex:20, background:'var(--sidebar-bg)', borderBottom:'1px solid var(--sidebar-border)'}}>
         <div style={{display:'grid', gridTemplateColumns:'auto 1fr auto', gap:12, alignItems:'center', padding:'8px 12px'}}>
           <div style={{display:'flex', alignItems:'center', gap:10}}>
-            <img alt="BuySial" src={`${import.meta.env.BASE_URL}BuySial2.png`} style={{height:28, width:'auto'}}/>
+            <img alt="BuySial" src={`${import.meta.env.BASE_URL}BSBackgroundremoved.png`} style={{height:28, width:'auto'}}/>
             <div style={{fontWeight:900}}>BuySial Store</div>
           </div>
           <div style={{display:'grid', gridTemplateColumns:'auto 1fr', gap:8, alignItems:'center'}}>

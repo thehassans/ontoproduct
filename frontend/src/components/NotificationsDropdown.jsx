@@ -413,7 +413,7 @@ export default function NotificationsDropdown() {
         </div>
       )}
 
-      <style jsx>{`
+      <style>{`
         .notifications-dropdown {
           position: relative;
           display: inline-block;

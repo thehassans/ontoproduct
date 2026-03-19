@@ -58,27 +58,69 @@ export default function Categories() {
     }
   }
 
+  const countryLabel = COUNTRY_MAP[selectedCountry] || selectedCountry || 'Global'
+  const accentFor = (name) => {
+    const palettes = [
+      ['#f97316', '#fb7185'],
+      ['#0f172a', '#334155'],
+      ['#14b8a6', '#06b6d4'],
+      ['#8b5cf6', '#6366f1'],
+      ['#22c55e', '#84cc16'],
+    ]
+    const seed = Array.from(String(name || '')).reduce((sum, ch) => sum + ch.charCodeAt(0), 0)
+    return palettes[seed % palettes.length]
+  }
+
   return (
-    <div style={{ minHeight: '100vh', background: '#fff' }}>
+    <div style={{ minHeight: '100vh', background: '#f8fafc' }}>
       <Header onCartClick={() => {}} />
 
       {/* Minimal header */}
-      <div style={{ padding: '28px 16px 12px', maxWidth: 900, margin: '0 auto' }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: '#111', margin: 0, letterSpacing: -0.3 }}>
-          Categories
-        </h1>
-        <p style={{ fontSize: 13, color: '#888', margin: '4px 0 0' }}>
-          Browse products by category
-        </p>
+      <div style={{ padding: '28px 16px 12px', maxWidth: 1180, margin: '0 auto' }}>
+        <div style={{
+          borderRadius: 28,
+          padding: '22px 20px',
+          background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 55%, #334155 100%)',
+          boxShadow: '0 22px 60px rgba(15,23,42,0.16)',
+          color: '#fff',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.24em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.65)', marginBottom: 8 }}>
+                Explore catalog
+              </div>
+              <h1 style={{ fontSize: 28, fontWeight: 800, color: '#fff', margin: 0, letterSpacing: -0.6 }}>
+                Categories
+              </h1>
+              <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.72)', margin: '8px 0 0' }}>
+                Tap a category to open its subcategories and jump straight into the right collection.
+              </p>
+            </div>
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 10,
+              padding: '10px 14px',
+              borderRadius: 999,
+              background: 'rgba(255,255,255,0.08)',
+              border: '1px solid rgba(255,255,255,0.12)',
+              fontSize: 13,
+              fontWeight: 700,
+            }}>
+              <span style={{ opacity: 0.7 }}>Shopping for</span>
+              <span>{countryLabel}</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Categories */}
-      <main style={{ maxWidth: 900, margin: '0 auto', padding: '8px 16px 100px' }}>
+      <main style={{ maxWidth: 1180, margin: '0 auto', padding: '10px 16px 100px' }}>
         {loading ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14 }}>
             {[1,2,3,4].map(i => (
               <div key={i} style={{
-                height: 56, borderRadius: 12,
+                height: 144, borderRadius: 24,
                 background: '#f5f5f5',
                 animation: 'pulse 1.5s ease infinite',
               }} />
@@ -90,12 +132,13 @@ export default function Categories() {
             <p style={{ fontSize: 15, fontWeight: 600 }}>No categories available</p>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ display: 'grid', gap: 14 }}>
             {categories.map((cat) => {
               const isExpanded = expandedCat === cat._id
               const subs = cat.subcategories || []
               const hasSubs = subs.length > 0
               const img = catImage(cat)
+              const accent = accentFor(cat.name)
 
               return (
                 <div key={cat._id}>
@@ -104,123 +147,148 @@ export default function Categories() {
                     onClick={() => handleCatClick(cat)}
                     style={{
                       width: '100%',
-                      display: 'flex', alignItems: 'center', gap: 12,
-                      padding: '10px 14px',
-                      background: isExpanded ? '#f9fafb' : '#fff',
+                      display: 'flex', alignItems: 'center', gap: 16,
+                      padding: '18px 18px',
+                      background: '#fff',
                       border: '1px solid',
-                      borderColor: isExpanded ? '#e5e7eb' : '#f0f0f0',
-                      borderRadius: isExpanded ? '12px 12px 0 0' : 12,
+                      borderColor: isExpanded ? '#dbe4ee' : '#e5e7eb',
+                      borderRadius: isExpanded ? '24px 24px 0 0' : 24,
                       cursor: 'pointer',
-                      transition: 'all 0.15s ease',
+                      transition: 'all 0.18s ease',
                       textAlign: 'left',
+                      boxShadow: isExpanded ? '0 24px 55px rgba(15,23,42,0.08)' : '0 10px 28px rgba(15,23,42,0.04)',
                     }}
                   >
-                    {/* Image or initial */}
                     <div style={{
-                      width: 40, height: 40, borderRadius: 10, flexShrink: 0,
-                      background: img ? 'transparent' : '#f3f4f6',
+                      width: 58, height: 58, borderRadius: 18, flexShrink: 0,
+                      background: img ? 'transparent' : `linear-gradient(135deg, ${accent[0]}, ${accent[1]})`,
                       overflow: 'hidden',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      boxShadow: '0 12px 24px rgba(15,23,42,0.08)',
                     }}>
                       {img ? (
                         <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       ) : (
-                        <span style={{ fontSize: 16, fontWeight: 700, color: '#9ca3af' }}>
+                        <span style={{ fontSize: 20, fontWeight: 800, color: '#fff' }}>
                           {(cat.name || '?')[0].toUpperCase()}
                         </span>
                       )}
                     </div>
 
-                    {/* Name */}
-                    <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: '#1f2937' }}>
-                      {cat.name}
-                    </span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>
+                        {cat.name}
+                      </div>
+                      <div style={{ fontSize: 13, color: '#64748b' }}>
+                        {hasSubs ? `${subs.length} subcategories ready to explore` : 'Open this collection'}
+                      </div>
+                    </div>
 
-                    {/* Count + arrow */}
-                    {hasSubs && (
-                      <span style={{ fontSize: 11, color: '#9ca3af', fontWeight: 500, marginRight: 2 }}>
-                        {subs.length}
-                      </span>
-                    )}
+                    <div style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      padding: '10px 12px',
+                      borderRadius: 999,
+                      background: isExpanded ? '#eff6ff' : '#f8fafc',
+                      color: isExpanded ? '#2563eb' : '#475569',
+                      fontSize: 12,
+                      fontWeight: 800,
+                      flexShrink: 0,
+                    }}>
+                      <span>{hasSubs ? `${subs.length} items` : 'Shop now'}</span>
                     <svg
                       width="16" height="16" viewBox="0 0 24 24" fill="none"
-                      stroke="#bbb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
                       style={{
-                        flexShrink: 0,
                         transition: 'transform 0.2s ease',
-                        transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                        transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)'
                       }}
                     >
                       <path d="M9 18l6-6-6-6" />
                     </svg>
+                    </div>
                   </button>
 
-                  {/* Subcategories - minimal list */}
                   {isExpanded && hasSubs && (
                     <div style={{
-                      border: '1px solid #e5e7eb',
+                      border: '1px solid #dbe4ee',
                       borderTop: 'none',
-                      borderRadius: '0 0 12px 12px',
-                      background: '#fafafa',
-                      overflow: 'hidden',
+                      borderRadius: '0 0 24px 24px',
+                      background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)',
+                      padding: 18,
+                      boxShadow: '0 24px 55px rgba(15,23,42,0.08)',
                     }}>
-                      {/* View all */}
-                      <Link
-                        to={`/catalog?category=${encodeURIComponent(cat.name)}`}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: 10,
-                          padding: '10px 14px 10px 66px',
-                          textDecoration: 'none',
-                          borderBottom: '1px solid #f0f0f0',
-                          transition: 'background 0.15s',
-                        }}
-                        onMouseEnter={e => { e.currentTarget.style.background = '#f3f4f6' }}
-                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
-                      >
-                        <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: '#f97316' }}>
-                          View all {cat.name}
-                        </span>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
-                      </Link>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+                        <Link
+                          to={`/catalog?category=${encodeURIComponent(cat.name)}`}
+                          style={{
+                            minHeight: 126,
+                            borderRadius: 22,
+                            textDecoration: 'none',
+                            padding: 18,
+                            color: '#fff',
+                            background: `linear-gradient(135deg, ${accent[0]}, ${accent[1]})`,
+                            boxShadow: '0 16px 32px rgba(249,115,22,0.18)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'space-between',
+                          }}
+                        >
+                          <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.22em', textTransform: 'uppercase', opacity: 0.8 }}>
+                            Explore all
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 6 }}>View all {cat.name}</div>
+                            <div style={{ fontSize: 13, opacity: 0.9 }}>Browse the full collection</div>
+                          </div>
+                        </Link>
 
-                      {/* Subcategory items */}
                       {subs.map((sub, i) => {
                         const subImg = catImage(sub)
+                        const subAccent = accentFor(sub.name)
                         return (
                           <Link
                             key={sub._id || i}
                             to={`/catalog?category=${encodeURIComponent(cat.name)}&subcategory=${encodeURIComponent(sub.name)}`}
                             style={{
-                              display: 'flex', alignItems: 'center', gap: 10,
-                              padding: '9px 14px 9px 54px',
+                              display: 'flex', alignItems: 'center', gap: 12,
+                              padding: '14px 14px',
                               textDecoration: 'none',
-                              borderBottom: i < subs.length - 1 ? '1px solid #f0f0f0' : 'none',
-                              transition: 'background 0.15s',
+                              border: '1px solid #e2e8f0',
+                              borderRadius: 20,
+                              background: '#fff',
+                              transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+                              boxShadow: '0 10px 24px rgba(15,23,42,0.04)',
                             }}
-                            onMouseEnter={e => { e.currentTarget.style.background = '#f3f4f6' }}
-                            onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 14px 30px rgba(15,23,42,0.08)' }}
+                            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 10px 24px rgba(15,23,42,0.04)' }}
                           >
                             <div style={{
-                              width: 28, height: 28, borderRadius: 7, flexShrink: 0,
-                              background: subImg ? 'transparent' : '#e5e7eb',
+                              width: 42, height: 42, borderRadius: 14, flexShrink: 0,
+                              background: subImg ? 'transparent' : `linear-gradient(135deg, ${subAccent[0]}, ${subAccent[1]})`,
                               overflow: 'hidden',
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
                             }}>
                               {subImg ? (
                                 <img src={subImg} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                               ) : (
-                                <span style={{ fontSize: 11, fontWeight: 600, color: '#9ca3af' }}>
+                                <span style={{ fontSize: 12, fontWeight: 700, color: '#fff' }}>
                                   {(sub.name || '?')[0].toUpperCase()}
                                 </span>
                               )}
                             </div>
-                            <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: '#374151' }}>
-                              {sub.name}
-                            </span>
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="2"><path d="M9 18l6-6-6-6" /></svg>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', marginBottom: 2 }}>
+                                {sub.name}
+                              </div>
+                              <div style={{ fontSize: 12, color: '#64748b' }}>Open products</div>
+                            </div>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2"><path d="M9 18l6-6-6-6" /></svg>
                           </Link>
                         )
                       })}
+                      </div>
                     </div>
                   )}
                 </div>

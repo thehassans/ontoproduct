@@ -487,7 +487,7 @@ export default function CustomerLogin() {
         <div className="cl-left">
           <div className="cl-logo-container">
             <img
-              src={branding.loginLogo ? `${API_BASE}${branding.loginLogo}` : `${import.meta.env.BASE_URL}BuySial2.png`}
+              src={branding.loginLogo ? `${API_BASE}${branding.loginLogo}` : `${import.meta.env.BASE_URL}BSBackgroundremoved.png`}
               alt="Logo"
               className="cl-logo"
             />

@@ -142,6 +142,545 @@ const DEMO_MESSAGES = [
   },
 ]
 
+
+// --- EXTRACTED BY SCRIPT ---
+const BLUE = '#53bdeb';
+const GREY = '#8696a0';
+const __waveformCache = new Map();
+let __globalAudio = null;
+let __ringCtx = null;
+  function AllIcon() {
+    return (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+        <path
+          d="M4 6h16M4 12h16M4 18h16"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+        />
+      </svg>
+    )
+  }
+
+  function UnreadIcon() {
+    return (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+        <circle cx="12" cy="12" r="5" />
+      </svg>
+    )
+  }
+  function ReadIcon() {
+    return (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+        <path
+          d="M20 6 9 17l-5-5"
+          stroke="currentColor"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M22 8 11 19l-3-3"
+          stroke="currentColor"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    )
+  }
+  function VideoBubble({ jid, msg, content, ensureMediaUrl }) {
+    const [url, setUrl] = useState(null)
+    const [playing, setPlaying] = useState(false)
+    const caption = content?.videoMessage?.caption || ''
+    const showCaption = caption && !/\.(mp4|mkv|webm|mov|avi)$/i.test(caption)
+    useEffect(() => {
+      let alive = true
+      const load = async () => {
+        const u = await ensureMediaUrl(jid, msg?.key?.id)
+        if (alive) setUrl(u)
+      }
+      load()
+      return () => { alive = false }
+    }, [jid, msg?.key?.id])
+    return (
+      <div style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', width: 280, minHeight: 180, background: '#111' }}>
+        {url ? (
+          playing ? (
+            <video
+              src={url}
+              controls
+              autoPlay
+              preload="auto"
+              style={{ display: 'block', width: '100%', maxHeight: 300, borderRadius: 8, background: '#000' }}
+            />
+          ) : (
+            <div
+              style={{ position: 'relative', cursor: 'pointer', borderRadius: 8, overflow: 'hidden' }}
+              onClick={() => setPlaying(true)}
+            >
+              <video
+                src={url}
+                preload="metadata"
+                style={{ display: 'block', width: '100%', maxHeight: 300, borderRadius: 8, background: '#111' }}
+              />
+              {/* Play overlay */}
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.25)' }}>
+                <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><polygon points="5,3 19,12 5,21"/></svg>
+                </div>
+              </div>
+            </div>
+          )
+        ) : (
+          <div style={{ width: 200, height: 140, background: '#222', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="1.5"><polygon points="5,3 19,12 5,21"/></svg>
+          </div>
+        )}
+        {showCaption && (
+          <div style={{ padding: '4px 6px 2px', fontSize: 13.5, color: 'var(--wa-in-text)', lineHeight: 1.4 }}>{caption}</div>
+        )}
+      </div>
+    )
+  }
+  function secondsToMMSS(s) {
+    const m = Math.floor(s / 60)
+      .toString()
+      .padStart(2, '0')
+    const sec = (s % 60).toString().padStart(2, '0')
+    return `${m}:${sec}`
+  }
+  function getRingCtx() {
+    try {
+      // Do not create an AudioContext until the user has interacted (autoplay policy)
+      if (!userInteractedRef.current) return null
+      if (__ringCtx && typeof __ringCtx.state === 'string')
+        return __ringCtx
+      const Ctx = window.AudioContext || window.webkitAudioContext
+      if (!Ctx) return null
+      __ringCtx = new Ctx()
+      return __ringCtx
+    } catch {
+      return null
+    }
+  }
+  function AudioBubble({ jid, msg, content, ensureMediaUrl }) {
+    const [url, setUrl] = useState(null)
+    const [loading, setLoading] = useState(true)
+    const [duration, setDuration] = useState(0)
+    const [peaks, setPeaks] = useState([])
+    const [playing, setPlaying] = useState(false)
+    const [progress, setProgress] = useState(0) // 0..1
+    const [currTime, setCurrTime] = useState(0)
+    const audioRef = useRef(null)
+    const canvasRef = useRef(null)
+    const containerRef = useRef(null)
+    const [containerWidth, setContainerWidth] = useState(240)
+
+    // Load URL (support optimistic localUrl for immediate playback)
+    useEffect(() => {
+      let alive = true
+      const local = content?.audioMessage?.localUrl
+      if (local) {
+        setUrl(local)
+        setLoading(false)
+        return () => {
+          alive = false
+        }
+      }
+      const load = async () => {
+        const u = await ensureMediaUrl(jid, msg?.key?.id)
+        if (!alive) return
+        setUrl(u)
+      }
+      load()
+      return () => {
+        alive = false
+      }
+    }, [jid, msg?.key?.id, content?.audioMessage?.localUrl])
+
+    // Build audio element and decode peaks
+    useEffect(() => {
+      if (!url) return
+      let cancelled = false
+      const a = new Audio()
+      a.src = url
+      a.preload = 'metadata'
+      const onTime = () => {
+        if (!a.duration || isNaN(a.duration)) return
+        setCurrTime(a.currentTime || 0)
+        setProgress((a.currentTime || 0) / a.duration)
+      }
+      const onEnded = () => {
+        setPlaying(false)
+        setProgress(1)
+        try { setCurrTime(a.duration || 0) } catch {}
+      }
+      const onPause = () => {
+        setPlaying(false)
+      }
+      a.addEventListener('timeupdate', onTime)
+      a.addEventListener('ended', onEnded)
+      a.addEventListener('pause', onPause)
+      audioRef.current = a
+
+      const compute = async () => {
+        setLoading(true)
+        // Use cache if present
+        if (__waveformCache.has(url)) {
+          const { peaks, duration } = __waveformCache.get(url)
+          if (!cancelled) {
+            setPeaks(peaks)
+            setDuration(duration)
+            setLoading(false)
+          }
+          return
+        }
+        try {
+          const res = await fetch(url)
+          const buf = await res.arrayBuffer()
+          // Use shared AudioContext only after user interaction; otherwise fall back
+          const ctx = getRingCtx()
+          if (!ctx) {
+            // No AudioContext yet due to autoplay policy; render a simple fallback waveform
+            const fallback = new Array(40).fill(0).map((_, i) => (Math.sin(i / 3) + 1) / 2)
+            if (!cancelled) {
+              setPeaks(fallback)
+              setDuration(0)
+              setLoading(false)
+            }
+            return
+          }
+          const audioBuf = await ctx.decodeAudioData(buf)
+          const ch = audioBuf.numberOfChannels > 0 ? audioBuf.getChannelData(0) : new Float32Array()
+          const len = 34 // number of bars, exact match to WhatsApp layout size
+          const block = Math.floor(ch.length / len) || 1
+          const peaksArr = new Array(len).fill(0).map((_, i) => {
+            let sum = 0
+            const start = i * block
+            for (let j = 0; j < block && start + j < ch.length; j++) sum += Math.abs(ch[start + j])
+            return sum / block
+          })
+          // Normalize
+          const max = Math.max(0.01, ...peaksArr)
+          const norm = peaksArr.map((v) => v / max)
+          const dur = audioBuf.duration
+          __waveformCache.set(url, { peaks: norm, duration: dur })
+          if (!cancelled) {
+            setPeaks(norm)
+            setDuration(dur)
+          }
+        } catch {
+          // Fallback: show simple bar if decode fails
+          const fallback = new Array(40).fill(0).map((_, i) => (Math.sin(i / 3) + 1) / 2)
+          __waveformCache.set(url, { peaks: fallback, duration: 0 })
+          if (!cancelled) {
+            setPeaks(fallback)
+            setDuration(0)
+          }
+        } finally {
+          if (!cancelled) setLoading(false)
+        }
+      }
+      compute()
+      return () => {
+        cancelled = true
+        try {
+          a.pause()
+        } catch {}
+        try {
+          a.removeAttribute('src')
+          a.load?.()
+        } catch {}
+        try {
+          a.removeEventListener('timeupdate', onTime)
+        } catch {}
+        try {
+          a.removeEventListener('ended', onEnded)
+        } catch {}
+        try {
+          a.removeEventListener('pause', onPause)
+        } catch {}
+        try {
+          if (__globalAudio === a) __globalAudio = null
+        } catch {}
+      }
+    }, [url])
+
+    // Observe container width for responsive canvas sizing (with fallback if ResizeObserver is unavailable)
+    useEffect(() => {
+      if (!containerRef.current) return
+      const el = containerRef.current
+      const update = () => {
+        try {
+          setContainerWidth(el.clientWidth || 240)
+        } catch {}
+      }
+      let ro = null
+      try {
+        if (typeof ResizeObserver !== 'undefined') {
+          ro = new ResizeObserver((entries) => {
+            const cr = entries[0]?.contentRect
+            if (cr && cr.width) {
+              setContainerWidth(cr.width)
+            }
+          })
+          ro.observe(el)
+        } else {
+          window.addEventListener('resize', update)
+        }
+      } catch {
+        /* ignore */
+      }
+      // initial measure
+      update()
+      return () => {
+        try {
+          ro ? ro.disconnect() : window.removeEventListener('resize', update)
+        } catch {}
+      }
+    }, [])
+
+    // Draw waveform
+    useEffect(() => {
+      const canvas = canvasRef.current
+      if (!canvas || peaks.length === 0) return
+      const dpr = window.devicePixelRatio || 1
+      const height = 36
+      const width = Math.max(180, Math.floor(containerWidth))
+      canvas.width = width * dpr
+      canvas.height = height * dpr
+      canvas.style.width = width + 'px'
+      canvas.style.height = height + 'px'
+      const ctx = canvas.getContext('2d')
+      ctx.scale(dpr, dpr)
+      ctx.clearRect(0, 0, width, height)
+      const barW = Math.max(2, Math.floor(width / (peaks.length * 1.5)))
+      const gap = Math.max(1, Math.floor(barW / 2))
+      const baseY = height / 2
+      const color = '#9aa4b2'
+      const colorActive = '#4fb3ff'
+      const progressBars = Math.floor(peaks.length * progress)
+      for (let i = 0; i < peaks.length; i++) {
+        const p = Math.max(0.15, peaks[i])
+        const h = p * (height - 6)
+        const x = i * (barW + gap)
+        ctx.fillStyle = i <= progressBars ? colorActive : color
+        ctx.fillRect(x, baseY - h / 2, barW, h)
+      }
+    }, [peaks, progress, containerWidth])
+
+    function toggle() {
+      const a = audioRef.current
+      if (!a) return
+      if (a.paused) {
+        try {
+          const cur = __globalAudio
+          if (cur && cur !== a) {
+            cur.pause()
+          }
+          __globalAudio = a
+        } catch {}
+        a.play()
+          .then(() => setPlaying(true))
+          .catch(() => {})
+      } else {
+        a.pause()
+        setPlaying(false)
+      }
+    }
+
+    function seek(e) {
+      try {
+        const a = audioRef.current
+        if (!a || !a.duration || isNaN(a.duration)) return
+        const rect = e.currentTarget.getBoundingClientRect()
+        const x = Math.min(Math.max(0, e.clientX - rect.left), rect.width)
+        const ratio = rect.width ? x / rect.width : 0
+        a.currentTime = Math.max(0, Math.min(a.duration, a.duration * ratio))
+        setCurrTime(a.currentTime || 0)
+        setProgress((a.currentTime || 0) / a.duration)
+      } catch {}
+    }
+
+    function onSeekTouch(e) {
+      try {
+        const t = e.touches && e.touches[0]
+        if (!t) return
+        seek({ currentTarget: e.currentTarget, clientX: t.clientX })
+      } catch {}
+    }
+
+    return (
+      <div className="wa-audio-bubble" ref={containerRef}>
+        {/* Mic avatar (shows while not playing) */}
+        <div className="wa-audio-thumb" aria-hidden>
+          {playing
+            ? <svg width="14" height="14" viewBox="0 0 24 24" fill="#00a884"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path fill="none" stroke="#00a884" strokeWidth="2" strokeLinecap="round" d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/></svg>
+            : <svg width="14" height="14" viewBox="0 0 24 24" fill="#667781"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path fill="none" stroke="#667781" strokeWidth="2" strokeLinecap="round" d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/></svg>
+          }
+        </div>
+        {/* Play/Pause button */}
+        <button
+          className="wa-audio-play"
+          onClick={toggle}
+          aria-label={playing ? 'Pause voice message' : 'Play voice message'}
+        >
+          {playing
+            ? <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+            : <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff" style={{ marginLeft: 2 }}><polygon points="5,3 19,12 5,21"/></svg>
+          }
+        </button>
+        {/* Waveform + duration */}
+        <div className="wa-audio-waveform-wrap">
+          <div
+            className="wa-audio-waveform"
+            onClick={seek}
+            onTouchStart={onSeekTouch}
+            style={{ cursor: 'pointer' }}
+          >
+            {peaks.length > 0
+              ? peaks.map((p, i) => {
+                  const pct = Math.floor(peaks.length * progress)
+                  const h = Math.max(4, Math.round(p * 26))
+                  return (
+                    <div
+                      key={i}
+                      className={`wa-audio-waveform-bar${i <= pct ? ' played' : ''}`}
+                      style={{ height: h }}
+                    />
+                  )
+                })
+              : Array.from({ length: 40 }).map((_, i) => (
+                  <div key={i} className="wa-audio-waveform-bar" style={{ height: 6 }} />
+                ))
+            }
+          </div>
+          <div className="wa-audio-dur">
+            {duration
+              ? secondsToMMSS(Math.max(0, Math.floor(duration - currTime)))
+              : (content?.audioMessage?.seconds
+                  ? secondsToMMSS(content.audioMessage.seconds)
+                  : '0:00')
+            }
+          </div>
+        </div>
+      </div>
+    )
+  }
+  function ImageBubble({ jid, msg, content, ensureMediaUrl }) {
+    const [url, setUrl] = useState(null)
+    const [loaded, setLoaded] = useState(false)
+    const caption = content?.imageMessage?.caption || ''
+    useEffect(() => {
+      let alive = true
+      const local = content?.imageMessage?.localUrl
+      if (local) { setUrl(local); return () => { alive = false } }
+      const load = async () => {
+        const u = await ensureMediaUrl(jid, msg?.key?.id)
+        if (alive) setUrl(u)
+      }
+      load()
+      return () => { alive = false }
+    }, [jid, msg?.key?.id])
+    const showCaption = caption && !/\.(jpe?g|png|gif|bmp|webp)$/i.test(caption)
+    return (
+      <div style={{ position: 'relative', borderRadius: 6, overflow: 'hidden', width: 280, minHeight: 180, background: '#e8e8e8' }}>
+        {url ? (
+          <a href={url} target="_blank" rel="noreferrer" style={{ display: 'block', width: '100%', height: '100%' }}>
+            <img
+              src={url}
+              alt="photo"
+              onLoad={() => setLoaded(true)}
+              style={{ display: 'block', width: '100%', height: '100%', maxHeight: 320, objectFit: 'cover', transition: 'opacity 0.2s', opacity: loaded ? 1 : 0 }}
+            />
+            {!loaded && <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span className="spinner" style={{ borderColor: 'rgba(0,0,0,0.1)', borderTopColor: '#888' }} /></div>}
+          </a>
+        ) : (
+          <div style={{ width: 200, height: 140, background: '#e8e8e8', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+          </div>
+        )}
+        {showCaption && (
+          <div style={{ padding: '4px 6px 2px', fontSize: 13.5, color: 'var(--wa-in-text)', background: 'rgba(0,0,0,0.02)', lineHeight: 1.4 }}>{caption}</div>
+        )}
+      </div>
+    )
+  }
+  function LocationBubble({ content }) {
+    const loc = content?.locationMessage || {}
+    const lat = loc.degreesLatitude
+    const lng = loc.degreesLongitude
+    const name = loc.name || 'Location'
+    const address = loc.address || ''
+    const url =
+      typeof lat === 'number' && typeof lng === 'number'
+        ? `https://www.google.com/maps?q=${lat},${lng}`
+        : null
+    const [copied, setCopied] = useState(false)
+    function copyCoords() {
+      try {
+        const txt =
+          typeof lat === 'number' && typeof lng === 'number'
+            ? `${lat.toFixed(6)}, ${lng.toFixed(6)}`
+            : ''
+        if (!txt) return
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(txt)
+        } else {
+          const ta = document.createElement('textarea')
+          ta.value = txt
+          document.body.appendChild(ta)
+          ta.select()
+          try {
+            document.execCommand('copy')
+          } catch {}
+          document.body.removeChild(ta)
+        }
+        setCopied(true)
+        setTimeout(() => setCopied(false), 1200)
+      } catch {}
+    }
+    return (
+      <div style={{ display: 'grid', gap: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span>📍</span>
+          <div style={{ fontWeight: 600 }}>{name}</div>
+        </div>
+        {address && <div style={{ opacity: 0.9 }}>{address}</div>}
+        {typeof lat === 'number' && typeof lng === 'number' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ fontSize: 12, opacity: 0.8 }}>
+              ({lat.toFixed(6)}, {lng.toFixed(6)})
+            </div>
+            <button
+              className="btn secondary small"
+              onClick={copyCoords}
+              title="Copy coordinates"
+              aria-label="Copy coordinates"
+              style={{ padding: '4px 8px' }}
+            >
+              {copied ? 'Copied' : 'Copy'}
+            </button>
+          </div>
+        )}
+        {url && (
+          <a
+            href={url}
+            target="_blank"
+            rel="noreferrer"
+            className="btn secondary"
+            style={{ justifySelf: 'start' }}
+          >
+            Open in Maps
+          </a>
+        )}
+      </div>
+    )
+  }
+
+// ----------------------------
+
 export default function WhatsAppInbox() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -185,8 +724,6 @@ export default function WhatsAppInbox() {
   const listRef = useRef(null)
   const mediaUrlCacheRef = useRef(new Map()) // key: `${jid}:${id}` -> objectURL
   const mediaMetaCacheRef = useRef(new Map()) // key: `${jid}:${id}` -> { hasMedia, type, mimeType, fileName, fileLength }
-  const waveformCacheRef = useRef(new Map()) // key: media URL -> { peaks, duration }
-  const globalAudioRef = useRef(null)
   // Voice send guards
   const recStartGuardRef = useRef(0) // last startRecording timestamp to debounce duplicate pointer events
   const voiceSendingRef = useRef(false) // prevent concurrent voice uploads
@@ -194,7 +731,6 @@ export default function WhatsAppInbox() {
   const [notifyGranted, setNotifyGranted] = useState(
     () => typeof Notification !== 'undefined' && Notification.permission === 'granted'
   )
-  const ringCtxRef = useRef(null)
   const lastRingAtRef = useRef(0)
   const userInteractedRef = useRef(false)
   const chatsLoadAtRef = useRef(0)
@@ -270,67 +806,7 @@ export default function WhatsAppInbox() {
   }
 
   // Small SVG icons for professional look
-  function AllIcon() {
-    return (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-        <path
-          d="M4 6h16M4 12h16M4 18h16"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-        />
-      </svg>
-    )
-  }
 
-  function LocationBubble({ content }) {
-    try {
-      const loc = content?.locationMessage || {}
-      const lat = Number(loc.degreesLatitude)
-      const lon = Number(loc.degreesLongitude)
-      const name = loc.name || loc.address || 'Location'
-      const q = `${lat},${lon}`
-      const url = `https://www.google.com/maps?q=${encodeURIComponent(q)}`
-      return (
-        <div className="wa-location">
-          <div className="wa-location-title">{name}</div>
-          <div className="wa-location-geo">{Number.isFinite(lat) && Number.isFinite(lon) ? `${lat.toFixed(5)}, ${lon.toFixed(5)}` : ''}</div>
-          <a href={url} target="_blank" rel="noreferrer" className="btn secondary" style={{ marginTop: 6 }}>
-            Open in Google Maps
-          </a>
-        </div>
-      )
-    } catch {
-      return <div style={{ opacity: 0.8 }}>[Location]</div>
-    }
-  }
-  function UnreadIcon() {
-    return (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-        <circle cx="12" cy="12" r="5" />
-      </svg>
-    )
-  }
-  function ReadIcon() {
-    return (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-        <path
-          d="M20 6 9 17l-5-5"
-          stroke="currentColor"
-          strokeWidth="2.2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M22 8 11 19l-3-3"
-          stroke="currentColor"
-          strokeWidth="2.2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    )
-  }
   function PlusIcon() {
     return (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -548,8 +1024,29 @@ export default function WhatsAppInbox() {
   }, [])
   // Availability is managed on the Me page; the inbox UI does not expose controls
 
-  // Availability is loaded and updated on Me page; no-op here
-  useEffect(() => {}, [myRole])
+  // Global interaction listener to safely initialize AudioContext without Autoplay warnings
+  useEffect(() => {
+    const handleInteraction = () => {
+      userInteractedRef.current = true
+      if (!__ringCtx) {
+        try {
+          const Ctx = window.AudioContext || window.webkitAudioContext
+          if (Ctx) __ringCtx = new Ctx()
+        } catch {}
+      }
+      window.removeEventListener('click', handleInteraction)
+      window.removeEventListener('keydown', handleInteraction)
+      window.removeEventListener('touchstart', handleInteraction)
+    }
+    window.addEventListener('click', handleInteraction, { once: true })
+    window.addEventListener('keydown', handleInteraction, { once: true })
+    window.addEventListener('touchstart', handleInteraction, { once: true })
+    return () => {
+      window.removeEventListener('click', handleInteraction)
+      window.removeEventListener('keydown', handleInteraction)
+      window.removeEventListener('touchstart', handleInteraction)
+    }
+  }, [])
 
   // Chat menu and modals
   const [showChatMenu, setShowChatMenu] = useState(false)
@@ -610,41 +1107,14 @@ export default function WhatsAppInbox() {
     navigate(`${base}/orders?${q}`)
   }
 
-  function VideoBubble({ jid, msg, content, ensureMediaUrl }) {
-    const [url, setUrl] = useState(null)
-    const caption = content?.videoMessage?.caption || ''
-    useEffect(() => {
-      let alive = true
-      const load = async () => {
-        const u = await ensureMediaUrl(jid, msg?.key?.id)
-        if (alive) setUrl(u)
-      }
-      load()
-      return () => {
-        alive = false
-      }
-    }, [jid, msg?.key?.id])
-    return (
-      <div style={{ display: 'grid', gap: 6 }}>
-        {url ? (
-          <video
-            src={url}
-            controls
-            preload="metadata"
-            className="wa-media-video"
-          />
-        ) : (
-          <span style={{ opacity: 0.7 }}>[video]</span>
-        )}
-        {caption && <div style={{ opacity: 0.9 }}>{caption}</div>}
-      </div>
-    )
-  }
+
 
   function DocumentBubble({ jid, msg, content, ensureMediaUrl }) {
     const [url, setUrl] = useState(null)
-    const name = content?.documentMessage?.fileName || 'document'
-    const size = content?.documentMessage?.fileLength
+    const doc = content?.documentMessage || {}
+    const name = doc.fileName || 'document'
+    const size = doc.fileLength
+    const ext = name.split('.').pop()?.toLowerCase() || 'doc'
     useEffect(() => {
       let alive = true
       const load = async () => {
@@ -652,31 +1122,39 @@ export default function WhatsAppInbox() {
         if (alive) setUrl(u)
       }
       load()
-      return () => {
-        alive = false
-      }
+      return () => { alive = false }
     }, [jid, msg?.key?.id])
     function fmtSize(n) {
       if (!n) return ''
       const i = Math.floor(Math.log(n) / Math.log(1024))
-      const num = (n / Math.pow(1024, i)).toFixed(1)
-      const unit = ['B', 'KB', 'MB', 'GB', 'TB'][i] || 'B'
-      return `${num} ${unit}`
+      return `${(n / Math.pow(1024, i)).toFixed(1)} ${['B','KB','MB','GB'][i] || 'B'}`
     }
+    const extColors = { pdf: '#e53935', doc: '#1565c0', docx: '#1565c0', xls: '#2e7d32', xlsx: '#2e7d32', ppt: '#e65100', pptx: '#e65100', zip: '#6a1b9a', rar: '#6a1b9a' }
+    const extColor = extColors[ext] || '#546e7a'
     return (
-      <div style={{ display: 'grid', gap: 6 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 200, maxWidth: 300, padding: '2px 0 2px' }}>
+        {/* File icon */}
+        <div style={{ width: 44, height: 52, borderRadius: 6, background: extColor, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0, position: 'relative' }}>
+          <svg width="22" height="26" viewBox="0 0 22 26" fill="none">
+            <rect x="1" y="1" width="20" height="24" rx="2" fill="rgba(255,255,255,0.25)" stroke="rgba(255,255,255,0.4)" strokeWidth="1"/>
+            <path d="M6 8h10M6 12h10M6 16h6" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
+          <span style={{ position: 'absolute', bottom: 3, fontSize: 7, color: '#fff', fontWeight: 700, letterSpacing: '0.02em', textTransform: 'uppercase' }}>{ext}</span>
+        </div>
+        {/* File info */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: 500, fontSize: 13, color: 'var(--wa-in-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 200 }}>{name}</div>
+          <div style={{ fontSize: 11, color: 'var(--wa-meta)', marginTop: 2 }}>{fmtSize(size)}</div>
+        </div>
+        {/* Download */}
         {url ? (
-          <a
-            href={url}
-            target="_blank"
-            rel="noreferrer"
-            className="btn secondary"
-            style={{ justifySelf: 'start' }}
-          >
-            📄 {name} {size ? `(${fmtSize(size)})` : ''}
+          <a href={url} download={name} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: '50%', background: 'rgba(0,168,132,0.1)', flexShrink: 0, color: 'var(--wa-green)' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 18l7 7 7-7"/></svg>
           </a>
         ) : (
-          <span style={{ opacity: 0.7 }}>[file] {name}</span>
+          <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2z"/><path d="M12 8v4l3 2"/></svg>
+          </div>
         )}
       </div>
     )
@@ -768,7 +1246,7 @@ export default function WhatsAppInbox() {
     }
     const p = (async () => {
       try {
-        const r = await apiGet(`/api/wa/messages?jid=${encodeURIComponent(jid)}&limit=50`)
+        const r = await apiGet(`/api/wa/messages?jid=${encodeURIComponent(jid)}&limit=50`, { skipCache: true })
         const items = Array.isArray(r) ? r : r?.items || []
         // Merge statuses with existing messages to avoid downgrading ticks on refresh
         setMessages((prev) => {
@@ -898,20 +1376,21 @@ export default function WhatsAppInbox() {
   // Real-time updates with WebSockets (create once)
   useEffect(() => {
     const token = localStorage.getItem('token') || ''
-    const socket = io(API_BASE || undefined, {
-      transports: ['polling'],
-      upgrade: false,
-      withCredentials: true,
+    let sockUrl = undefined
+    try {
+      if (API_BASE && /^https?:\/\//i.test(API_BASE)) sockUrl = new URL(API_BASE).origin
+    } catch {}
+    const socket = io(sockUrl, {
       path: '/socket.io',
+      transports: ['websocket'],
+      withCredentials: true,
       auth: { token },
       reconnection: true,
       reconnectionAttempts: Infinity,
-      reconnectionDelay: 1000, // Start with 1s delay
-      reconnectionDelayMax: 10000, // Max 10s between attempts
-      timeout: 20000, // Connection timeout
-      forceNew: false,
-      // Add randomization to avoid thundering herd
+      reconnectionDelay: 2000,
+      reconnectionDelayMax: 30000,
       randomizationFactor: 0.5,
+      timeout: 20000,
     })
 
     socket.on('connect', () => {
@@ -942,31 +1421,51 @@ export default function WhatsAppInbox() {
               }
             }
           }catch{}
-          // If this is our own freshly sent voice, replace the optimistic temp bubble instead of appending
+          // If this is our own freshly sent message, try to match it to a temp bubble
           try {
             const fromMe = !!message?.key?.fromMe
             const content = unwrapMessage(message?.message)
             const isVoice = !!content?.audioMessage
-            if (fromMe && isVoice) {
-              // Find the latest optimistic temp voice bubble
-              for (let i = next.length - 1; i >= 0; i--) {
+            const textContent = content?.extendedTextMessage?.text || content?.conversation
+            
+            let matched = false
+            if (fromMe) {
+              // Look backwards for a matching optimistic bubble
+              for (let i = next.length - 1; i >= 0 && i >= next.length - 15; i--) {
                 const m = next[i]
-                if (m?.key?.id && String(m.key.id).startsWith('temp:voice:')) {
-                  const localUrl = m?.message?.audioMessage?.localUrl
-                  const merged = { ...message }
-                  try {
-                    if (localUrl) {
-                      const audioMsg = merged.message && merged.message.audioMessage
-                        ? merged.message.audioMessage
-                        : (merged.message.audioMessage = {})
-                      audioMsg.localUrl = localUrl
-                    }
-                  } catch {}
-                  next[i] = merged
-                  break
+                const isTemp = m?.key?.id && String(m.key.id).startsWith('temp:')
+                
+                if (isTemp) {
+                  const mContent = unwrapMessage(m?.message)
+                  const mText = mContent?.extendedTextMessage?.text || mContent?.conversation
+                  
+                  // Match voice
+                  if (isVoice && String(m.key.id).startsWith('temp:voice:')) {
+                    const localUrl = m?.message?.audioMessage?.localUrl
+                    const merged = { ...message }
+                    try {
+                      if (localUrl) {
+                        const audioMsg = merged.message && merged.message.audioMessage
+                          ? merged.message.audioMessage
+                          : (merged.message.audioMessage = {})
+                        audioMsg.localUrl = localUrl
+                      }
+                    } catch {}
+                    next[i] = merged
+                    matched = true
+                    break
+                  }
+                  
+                  // Match exact text sent recently
+                  if (!isVoice && textContent && textContent === mText) {
+                    next[i] = { ...message } // Swap the temp bubble with the real one
+                    matched = true
+                    break
+                  }
                 }
               }
-            } else {
+            }
+            if (!matched) {
               next.push(message)
             }
           } catch {
@@ -1067,9 +1566,17 @@ export default function WhatsAppInbox() {
       }
       if (showChatMenu && chatMenuRef.current && !chatMenuRef.current.contains(e.target))
         setShowChatMenu(false)
+        
+      if (!e.target.closest('.wa-react-bar')) {
+        setReactingTo(null)
+      }
     }
-    document.addEventListener('mousedown', onDocClick)
-    return () => document.removeEventListener('mousedown', onDocClick)
+    document.addEventListener('mousedown', onDocClick, { capture: true })
+    document.addEventListener('touchstart', onDocClick, { capture: true, passive: true })
+    return () => {
+      document.removeEventListener('mousedown', onDocClick, { capture: true })
+      document.removeEventListener('touchstart', onDocClick, { capture: true })
+    }
   }, [showEmoji, showAttach, showChatMenu])
 
   // Filter agents during Assign modal (debounced)
@@ -1439,15 +1946,9 @@ export default function WhatsAppInbox() {
       
       if (isImageOrVideo) {
         // Show preview modal for images/videos
-        const previews = await Promise.all(
-          files.map(f => {
-            return new Promise((resolve) => {
-              const reader = new FileReader()
-              reader.onload = (ev) => resolve({ url: ev.target.result, file: f, type: f.type })
-              reader.readAsDataURL(f)
-            })
-          })
-        )
+        const previews = files.map(f => {
+          return { url: URL.createObjectURL(f), file: f, type: f.type }
+        })
         setImagePreview({ files: files, previews: previews, caption: '' })
         setSelectedImageIndex(0)
       } else {
@@ -1527,7 +2028,8 @@ export default function WhatsAppInbox() {
         )
         await new Promise((resolve, reject) => {
           try {
-            const url = `${API_BASE || ''}/api/wa/send-media`
+            const basePath = String(API_BASE || '').replace(/\/$/, '')
+            const url = basePath.endsWith('/api') ? `${basePath.slice(0, -4)}/api/wa/send-media` : `${basePath}/api/wa/send-media`
             const xhr = new XMLHttpRequest()
             uploadAbortRef.current = xhr
             xhr.open('POST', url, true)
@@ -1625,10 +2127,10 @@ export default function WhatsAppInbox() {
     try {
       userInteractedRef.current = true
       const Ctx = window.AudioContext || window.webkitAudioContext
-      if (Ctx && !ringCtxRef.current) {
-        ringCtxRef.current = new Ctx()
+      if (Ctx && !__ringCtx) {
+        __ringCtx = new Ctx()
       }
-      ringCtxRef.current && ringCtxRef.current.resume && ringCtxRef.current.resume().catch(() => {})
+      __ringCtx && __ringCtx.resume && __ringCtx.resume().catch(() => {})
     } catch {}
     // Basic capability checks with fallback to native capture
     if (
@@ -2044,13 +2546,6 @@ export default function WhatsAppInbox() {
     setText((t) => t + e)
   }
 
-  function secondsToMMSS(s) {
-    const m = Math.floor(s / 60)
-      .toString()
-      .padStart(2, '0')
-    const sec = (s % 60).toString().padStart(2, '0')
-    return `${m}:${sec}`
-  }
 
   function normalizeTs(ts) {
     try {
@@ -2111,20 +2606,6 @@ export default function WhatsAppInbox() {
       return 'New message'
     }
   }
-  function getRingCtx() {
-    try {
-      // Do not create an AudioContext until the user has interacted (autoplay policy)
-      if (!userInteractedRef.current) return null
-      if (ringCtxRef.current && typeof ringCtxRef.current.state === 'string')
-        return ringCtxRef.current
-      const Ctx = window.AudioContext || window.webkitAudioContext
-      if (!Ctx) return null
-      ringCtxRef.current = new Ctx()
-      return ringCtxRef.current
-    } catch {
-      return null
-    }
-  }
 
   // Initialize/resume the audio context only after the first user gesture
   useEffect(() => {
@@ -2133,11 +2614,11 @@ export default function WhatsAppInbox() {
         try {
           userInteractedRef.current = true
           const Ctx = window.AudioContext || window.webkitAudioContext
-          if (Ctx && !ringCtxRef.current) {
-            ringCtxRef.current = new Ctx()
+          if (Ctx && !__ringCtx) {
+            __ringCtx = new Ctx()
           }
-          if (ringCtxRef.current && ringCtxRef.current.resume) {
-            ringCtxRef.current.resume().catch(() => {})
+          if (__ringCtx && __ringCtx.resume) {
+            __ringCtx.resume().catch(() => {})
           }
         } catch {}
       }
@@ -2287,8 +2768,8 @@ export default function WhatsAppInbox() {
     try {
       if (!mediaMetaCacheRef.current.has(key)) {
         try {
-          const info = await apiGet(
-            `/api/wa/media/meta?jid=${encodeURIComponent(jid)}&id=${encodeURIComponent(id)}`
+          const info = await scheduleMediaFetch(key + ':meta', () =>
+            apiGet(`/api/wa/media/meta?jid=${encodeURIComponent(jid)}&id=${encodeURIComponent(id)}`)
           )
           mediaMetaCacheRef.current.set(key, info || { hasMedia: false })
         } catch (err) {
@@ -2368,458 +2849,52 @@ export default function WhatsAppInbox() {
 
   function Ticks({ isMe, status }) {
     if (!isMe) return null
-    // normalize status: some backends may use 'seen' instead of 'read'
-    const st = (status === 'seen' ? 'read' : status) || 'sent'
-    const Blue = '#34B7F1' // WhatsApp-like blue for read ticks
-    const Grey = '#8696A0' // WhatsApp-like grey for sent/delivered
+    let st = status || 'sent'
+    if (typeof st === 'string') st = st.toLowerCase()
+    if (st === 'seen') st = 'read'
+    
+    const GREY = '#8696a0'
+    const BLUE = '#53bdeb'
 
-    // Special case: show a small clock for 'sending'
+    // Sending: clock icon
     if (st === 'sending') {
       return (
-        <span style={{ marginLeft: 6, display: 'inline-flex', alignItems: 'center' }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
-            <circle cx="12" cy="12" r="9" stroke={Grey} strokeWidth="2" />
-            <path d="M12 7v5l3 2" stroke={Grey} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <span style={{ marginLeft: 3, display: 'inline-flex', alignItems: 'center', verticalAlign: 'middle' }}>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-label="Sending">
+            <circle cx="7" cy="7" r="6" stroke={GREY} strokeWidth="1.5" />
+            <path d="M7 4v3l2 1.5" stroke={GREY} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </span>
       )
     }
 
-    // Draw curved WhatsApp-style ticks. For single tick, render only the front path.
-    function DoubleTick({ color, both = true }){
+    // Single check: sent (reached WhatsApp server)
+    if (st === 'sent') {
       return (
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-          {both && (
-            <path
-              d="M16.4 7.6l-6.9 6.9-2.9-2.9"
-              stroke={color}
-              strokeWidth="2.2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          )}
-          <path
-            d="M20.2 7.6l-6.9 6.9-2.9-2.9"
-            stroke={color}
-            strokeWidth="2.2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
+        <span style={{ marginLeft: 3, display: 'inline-flex', alignItems: 'center', verticalAlign: 'middle' }}>
+          <svg width="16" height="11" viewBox="0 0 16 11" fill="none" aria-label="Sent">
+            <path d="M1 5.8l3.8 3.8 10.2-9.2" stroke={GREY} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </span>
       )
     }
 
+    // Double check: delivered = grey, read = blue
+    const color = st === 'read' ? BLUE : GREY
     return (
-      <span style={{ marginLeft: 6, display: 'inline-flex', alignItems: 'center' }}>
-        {st === 'sent' && <DoubleTick color={Grey} both={false} />}
-        {st === 'delivered' && <DoubleTick color={Grey} both={true} />}
-        {st === 'read' && <DoubleTick color={Blue} both={true} />}
+      <span style={{ marginLeft: 3, display: 'inline-flex', alignItems: 'center', verticalAlign: 'middle' }}>
+        <svg width="16" height="11" viewBox="0 0 16 11" fill="none" aria-label={st === 'read' ? 'Read' : 'Delivered'}>
+          {/* Back check */}
+          <path d="M1 5.8l3.8 3.8 2-1.8m4.5-4.5L15 0.4" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+          {/* Front check */}
+          <path d="M5.5 5.8l3.8 3.8 10.2-9.2" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
       </span>
     )
   }
 
-  function AudioBubble({ jid, msg, content, ensureMediaUrl }) {
-    const [url, setUrl] = useState(null)
-    const [loading, setLoading] = useState(true)
-    const [duration, setDuration] = useState(0)
-    const [peaks, setPeaks] = useState([])
-    const [playing, setPlaying] = useState(false)
-    const [progress, setProgress] = useState(0) // 0..1
-    const [currTime, setCurrTime] = useState(0)
-    const audioRef = useRef(null)
-    const canvasRef = useRef(null)
-    const containerRef = useRef(null)
-    const [containerWidth, setContainerWidth] = useState(240)
 
-    // Load URL (support optimistic localUrl for immediate playback)
-    useEffect(() => {
-      let alive = true
-      const local = content?.audioMessage?.localUrl
-      if (local) {
-        setUrl(local)
-        setLoading(false)
-        return () => {
-          alive = false
-        }
-      }
-      const load = async () => {
-        const u = await ensureMediaUrl(jid, msg?.key?.id)
-        if (!alive) return
-        setUrl(u)
-      }
-      load()
-      return () => {
-        alive = false
-      }
-    }, [jid, msg?.key?.id, content?.audioMessage?.localUrl])
 
-    // Build audio element and decode peaks
-    useEffect(() => {
-      if (!url) return
-      let cancelled = false
-      const a = new Audio()
-      a.src = url
-      a.preload = 'metadata'
-      const onTime = () => {
-        if (!a.duration || isNaN(a.duration)) return
-        setCurrTime(a.currentTime || 0)
-        setProgress((a.currentTime || 0) / a.duration)
-      }
-      const onEnded = () => {
-        setPlaying(false)
-        setProgress(1)
-        try { setCurrTime(a.duration || 0) } catch {}
-      }
-      const onPause = () => {
-        setPlaying(false)
-      }
-      a.addEventListener('timeupdate', onTime)
-      a.addEventListener('ended', onEnded)
-      a.addEventListener('pause', onPause)
-      audioRef.current = a
-
-      const compute = async () => {
-        setLoading(true)
-        // Use cache if present
-        if (waveformCacheRef.current.has(url)) {
-          const { peaks, duration } = waveformCacheRef.current.get(url)
-          if (!cancelled) {
-            setPeaks(peaks)
-            setDuration(duration)
-            setLoading(false)
-          }
-          return
-        }
-        try {
-          const res = await fetch(url)
-          const buf = await res.arrayBuffer()
-          // Use shared AudioContext only after user interaction; otherwise fall back
-          const ctx = getRingCtx()
-          if (!ctx) {
-            // No AudioContext yet due to autoplay policy; render a simple fallback waveform
-            const fallback = new Array(40).fill(0).map((_, i) => (Math.sin(i / 3) + 1) / 2)
-            if (!cancelled) {
-              setPeaks(fallback)
-              setDuration(0)
-              setLoading(false)
-            }
-            return
-          }
-          const audioBuf = await ctx.decodeAudioData(buf)
-          const ch = audioBuf.numberOfChannels > 0 ? audioBuf.getChannelData(0) : new Float32Array()
-          const len = 60 // number of bars, WhatsApp-like compact waveform
-          const block = Math.floor(ch.length / len) || 1
-          const peaksArr = new Array(len).fill(0).map((_, i) => {
-            let sum = 0
-            const start = i * block
-            for (let j = 0; j < block && start + j < ch.length; j++) sum += Math.abs(ch[start + j])
-            return sum / block
-          })
-          // Normalize
-          const max = Math.max(0.01, ...peaksArr)
-          const norm = peaksArr.map((v) => v / max)
-          const dur = audioBuf.duration
-          waveformCacheRef.current.set(url, { peaks: norm, duration: dur })
-          if (!cancelled) {
-            setPeaks(norm)
-            setDuration(dur)
-          }
-        } catch {
-          // Fallback: show simple bar if decode fails
-          const fallback = new Array(40).fill(0).map((_, i) => (Math.sin(i / 3) + 1) / 2)
-          waveformCacheRef.current.set(url, { peaks: fallback, duration: 0 })
-          if (!cancelled) {
-            setPeaks(fallback)
-            setDuration(0)
-          }
-        } finally {
-          if (!cancelled) setLoading(false)
-        }
-      }
-      compute()
-      return () => {
-        cancelled = true
-        try {
-          a.pause()
-        } catch {}
-        try {
-          a.removeAttribute('src')
-          a.load?.()
-        } catch {}
-        try {
-          a.removeEventListener('timeupdate', onTime)
-        } catch {}
-        try {
-          a.removeEventListener('ended', onEnded)
-        } catch {}
-        try {
-          a.removeEventListener('pause', onPause)
-        } catch {}
-        try {
-          if (globalAudioRef.current === a) globalAudioRef.current = null
-        } catch {}
-      }
-    }, [url])
-
-    // Observe container width for responsive canvas sizing (with fallback if ResizeObserver is unavailable)
-    useEffect(() => {
-      if (!containerRef.current) return
-      const el = containerRef.current
-      const update = () => {
-        try {
-          setContainerWidth(el.clientWidth || 240)
-        } catch {}
-      }
-      let ro = null
-      try {
-        if (typeof ResizeObserver !== 'undefined') {
-          ro = new ResizeObserver((entries) => {
-            const cr = entries[0]?.contentRect
-            if (cr && cr.width) {
-              setContainerWidth(cr.width)
-            }
-          })
-          ro.observe(el)
-        } else {
-          window.addEventListener('resize', update)
-        }
-      } catch {
-        /* ignore */
-      }
-      // initial measure
-      update()
-      return () => {
-        try {
-          ro ? ro.disconnect() : window.removeEventListener('resize', update)
-        } catch {}
-      }
-    }, [])
-
-    // Draw waveform
-    useEffect(() => {
-      const canvas = canvasRef.current
-      if (!canvas || peaks.length === 0) return
-      const dpr = window.devicePixelRatio || 1
-      const height = 36
-      const width = Math.max(180, Math.floor(containerWidth))
-      canvas.width = width * dpr
-      canvas.height = height * dpr
-      canvas.style.width = width + 'px'
-      canvas.style.height = height + 'px'
-      const ctx = canvas.getContext('2d')
-      ctx.scale(dpr, dpr)
-      ctx.clearRect(0, 0, width, height)
-      const barW = Math.max(2, Math.floor(width / (peaks.length * 1.5)))
-      const gap = Math.max(1, Math.floor(barW / 2))
-      const baseY = height / 2
-      const color = '#9aa4b2'
-      const colorActive = '#4fb3ff'
-      const progressBars = Math.floor(peaks.length * progress)
-      for (let i = 0; i < peaks.length; i++) {
-        const p = Math.max(0.15, peaks[i])
-        const h = p * (height - 6)
-        const x = i * (barW + gap)
-        ctx.fillStyle = i <= progressBars ? colorActive : color
-        ctx.fillRect(x, baseY - h / 2, barW, h)
-      }
-    }, [peaks, progress, containerWidth])
-
-    function toggle() {
-      const a = audioRef.current
-      if (!a) return
-      if (a.paused) {
-        try {
-          const cur = globalAudioRef.current
-          if (cur && cur !== a) {
-            cur.pause()
-          }
-          globalAudioRef.current = a
-        } catch {}
-        a.play()
-          .then(() => setPlaying(true))
-          .catch(() => {})
-      } else {
-        a.pause()
-        setPlaying(false)
-      }
-    }
-
-    function seek(e) {
-      try {
-        const a = audioRef.current
-        if (!a || !a.duration || isNaN(a.duration)) return
-        const rect = e.currentTarget.getBoundingClientRect()
-        const x = Math.min(Math.max(0, e.clientX - rect.left), rect.width)
-        const ratio = rect.width ? x / rect.width : 0
-        a.currentTime = Math.max(0, Math.min(a.duration, a.duration * ratio))
-        setCurrTime(a.currentTime || 0)
-        setProgress((a.currentTime || 0) / a.duration)
-      } catch {}
-    }
-
-    function onSeekTouch(e) {
-      try {
-        const t = e.touches && e.touches[0]
-        if (!t) return
-        seek({ currentTarget: e.currentTarget, clientX: t.clientX })
-      } catch {}
-    }
-
-    return (
-      <div
-        ref={containerRef}
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '36px 1fr auto',
-          alignItems: 'center',
-          gap: 8,
-          width: 'clamp(220px, 60vw, 420px)',
-        }}
-      >
-        <button
-          className="btn secondary"
-          onClick={toggle}
-          aria-label={playing ? 'Pause voice message' : 'Play voice message'}
-          title={playing ? 'Pause' : 'Play'}
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: 999,
-            display: 'grid',
-            placeItems: 'center',
-          }}
-        >
-          {playing ? <PauseIcon /> : <PlayIcon />}
-        </button>
-        <div onClick={toggle} onMouseDown={seek} onTouchStart={onSeekTouch} style={{ cursor: 'pointer' }}>
-          <canvas ref={canvasRef} />
-        </div>
-        <div style={{ fontSize: 12, opacity: 0.8, minWidth: 44, textAlign: 'right' }}>
-          {duration
-            ? secondsToMMSS(
-                Math.max(0, Math.floor((duration || 0) - (currTime || 0)))
-              )
-            : ''}
-        </div>
-      </div>
-    )
-  }
-
-  function ImageBubble({ jid, msg, content, ensureMediaUrl }) {
-    const [url, setUrl] = useState(null)
-    const caption = content?.imageMessage?.caption || ''
-    useEffect(() => {
-      let alive = true
-      const load = async () => {
-        const u = await ensureMediaUrl(jid, msg?.key?.id)
-        if (alive) setUrl(u)
-      }
-      load()
-      return () => {
-        alive = false
-      }
-    }, [jid, msg?.key?.id])
-    function isFileNameLike(s) {
-      try {
-        const t = String(s || '').trim()
-        if (!t) return false
-        if (/\.(jpe?g|png|gif|bmp|webp|heic|heif|tiff|svg)$/i.test(t)) return true
-        if (/^(img[-_]?|image[-_]?|photo[-_]?|screenshot[-_]?)/i.test(t)) return true
-        return false
-      } catch {
-        return false
-      }
-    }
-    const showCaption = caption && !isFileNameLike(caption)
-    return (
-      <div style={{ display: 'grid', gap: 6 }}>
-        {url ? (
-          <a href={url} target="_blank" rel="noreferrer">
-            <img
-              src={url}
-              alt="image"
-              className="wa-media-img"
-            />
-          </a>
-        ) : (
-          <span style={{ opacity: 0.7 }}>[image]</span>
-        )}
-        {showCaption && <div style={{ opacity: 0.9 }}>{caption}</div>}
-      </div>
-    )
-  }
-
-  function LocationBubble({ content }) {
-    const loc = content?.locationMessage || {}
-    const lat = loc.degreesLatitude
-    const lng = loc.degreesLongitude
-    const name = loc.name || 'Location'
-    const address = loc.address || ''
-    const url =
-      typeof lat === 'number' && typeof lng === 'number'
-        ? `https://www.google.com/maps?q=${lat},${lng}`
-        : null
-    const [copied, setCopied] = useState(false)
-    function copyCoords() {
-      try {
-        const txt =
-          typeof lat === 'number' && typeof lng === 'number'
-            ? `${lat.toFixed(6)}, ${lng.toFixed(6)}`
-            : ''
-        if (!txt) return
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(txt)
-        } else {
-          const ta = document.createElement('textarea')
-          ta.value = txt
-          document.body.appendChild(ta)
-          ta.select()
-          try {
-            document.execCommand('copy')
-          } catch {}
-          document.body.removeChild(ta)
-        }
-        setCopied(true)
-        setTimeout(() => setCopied(false), 1200)
-      } catch {}
-    }
-    return (
-      <div style={{ display: 'grid', gap: 6 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span>📍</span>
-          <div style={{ fontWeight: 600 }}>{name}</div>
-        </div>
-        {address && <div style={{ opacity: 0.9 }}>{address}</div>}
-        {typeof lat === 'number' && typeof lng === 'number' && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ fontSize: 12, opacity: 0.8 }}>
-              ({lat.toFixed(6)}, {lng.toFixed(6)})
-            </div>
-            <button
-              className="btn secondary small"
-              onClick={copyCoords}
-              title="Copy coordinates"
-              aria-label="Copy coordinates"
-              style={{ padding: '4px 8px' }}
-            >
-              {copied ? 'Copied' : 'Copy'}
-            </button>
-          </div>
-        )}
-        {url && (
-          <a
-            href={url}
-            target="_blank"
-            rel="noreferrer"
-            className="btn secondary"
-            style={{ justifySelf: 'start' }}
-          >
-            Open in Maps
-          </a>
-        )}
-      </div>
-    )
-  }
 
   // UI helpers
   const MOBILE_HDR_H = 56
@@ -3333,30 +3408,53 @@ export default function WhatsAppInbox() {
                   const samePrev = !!(prev && !!prev?.key?.id && !!m?.key?.id && !!prev?.key?.fromMe === !!isMe && prevTsMs && Math.abs(tsMs - prevTsMs) <= 5 * 60 * 1000)
                   const sameNext = !!(next && !!next?.key?.id && !!m?.key?.id && !!next?.key?.fromMe === !!isMe && nextTsMs && Math.abs(nextTsMs - tsMs) <= 5 * 60 * 1000)
                   const uniqueKey = `${m?.key?.id || 'k'}-${m?.messageTimestamp || 't'}-${idx}`
+                  
+                  // Big Emoji Check
+                  let isJustEmoji = false
+                  const txt = content?.conversation || content?.extendedTextMessage?.text || ''
+                  if (txt) {
+                    const emojiRegex = /^[\u2000-\u3300\uFE0F\uD83C-\uD83E\uDC00-\uDFFF\s]{1,10}$/
+                    isJustEmoji = emojiRegex.test(txt) && txt.trim().length > 0 && Array.from(txt.trim().replace(/\s/g, '')).length <= 3
+                  }
                   return (
                     <React.Fragment key={uniqueKey}>
                       {(!prevDayKey || prevDayKey !== dayKey) && (
                         <div className="wa-date-sep">{dateSepLabel(tsMs)}</div>
                       )}
                       <div
+                        data-msgid={m?.key?.id}
                         className={`wa-message-bubble ${isMe ? 'me' : 'them'}${samePrev ? ' continued' : ''}${sameNext ? ' no-tail' : ''}`}
                         style={{ marginTop: samePrev ? 1 : 6 }}
-                        onContextMenu={e => { e.preventDefault(); setReactingTo(m?.key?.id || null) }}
-                        onDoubleClick={() => setReactingTo(m?.key?.id || null)}
+                        onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setReactingTo(m?.key?.id || null) }}
+                        onDoubleClick={() => startReply(m)}
                         onTouchStart={e => {
                           const id = m?.key?.id || null; if (!id) return
                           const touch = e.touches && e.touches[0]
                           const startX = touch ? touch.clientX : 0; const startY = touch ? touch.clientY : 0
                           let handled = false
                           const timer = setTimeout(() => { if (!handled) setReactingTo(id) }, 380)
+                          const el = e.currentTarget
                           const onMove = mv => {
                             const t2 = mv.touches && mv.touches[0]; if (!t2) return
                             const dx = t2.clientX - startX; const dy = t2.clientY - startY
-                            if (dx > 56 && Math.abs(dy) < 24 && !handled) { handled = true; clearTimeout(timer); try { startReply(m) } catch {} cleanup() }
-                            else if (Math.abs(dy) > 24) { clearTimeout(timer); cleanup() }
+                            if (!handled && dx > 0 && Math.abs(dy) < 30) {
+                              el.style.transform = `translateX(${Math.min(dx, 65)}px)`
+                              el.style.transition = 'none'
+                            }
+                            if (dx > 45 && Math.abs(dy) < 30 && !handled) { 
+                              handled = true; clearTimeout(timer); 
+                              try { startReply(m) } catch {} 
+                              // Instead of cleanup() immediately, just let the bubble snap back
+                              el.style.transform = ''
+                              el.style.transition = 'transform 0.2s ease-out'
+                            }
+                            else if (Math.abs(dy) > 30) { clearTimeout(timer); cleanup() }
                           }
-                          const onEnd = () => { clearTimeout(timer); cleanup() }
-                          const el = e.currentTarget
+                          const onEnd = () => { 
+                            el.style.transform = ''
+                            el.style.transition = 'transform 0.2s ease-out'
+                            clearTimeout(timer); cleanup() 
+                          }
                           function cleanup() { try { el.removeEventListener('touchend', onEnd) } catch {} try { el.removeEventListener('touchmove', onMove) } catch {} }
                           el.addEventListener('touchend', onEnd, { once: true })
                           el.addEventListener('touchmove', onMove, { passive: true })
@@ -3371,7 +3469,21 @@ export default function WhatsAppInbox() {
                             const author = q?.author || null
                             const text = q?.preview || q?.text || q?.conversation || q?.extendedTextMessage?.text || '[Quoted]'
                             return (
-                              <div className="wa-quote">
+                              <div className="wa-quote" onClick={() => {
+                                try {
+                                  if (q.id) {
+                                    // Use data-msgid attribute because wamid IDs contain chars invalid in CSS selectors
+                                    const escaped = q.id.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
+                                    const el = document.querySelector(`[data-msgid="${escaped}"]`)
+                                    if (el) {
+                                      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                                      el.style.animation = 'none'
+                                      void el.offsetWidth
+                                      el.style.animation = 'wa-highlight-flash 1.5s ease-out'
+                                    }
+                                  }
+                                } catch {}
+                              }} style={{ cursor: q.id ? 'pointer' : 'default' }}>
                                 {author ? <div className="wa-quote-author">{author}</div> : null}
                                 <div className="wa-quote-text">{text}</div>
                               </div>
@@ -3384,9 +3496,9 @@ export default function WhatsAppInbox() {
                         )}
                         {/* Content */}
                         {content?.conversation ? (
-                          <span style={{ whiteSpace: 'pre-wrap' }}>{content.conversation}</span>
+                          <span className={isJustEmoji ? 'wa-emoji-only' : ''} style={{ whiteSpace: 'pre-wrap' }}>{content.conversation}</span>
                         ) : content?.extendedTextMessage ? (
-                          <span style={{ whiteSpace: 'pre-wrap' }}>{content.extendedTextMessage.text}</span>
+                          <span className={isJustEmoji ? 'wa-emoji-only' : ''} style={{ whiteSpace: 'pre-wrap' }}>{content.extendedTextMessage.text}</span>
                         ) : content?.imageMessage ? (
                           <ImageBubble jid={activeJid} msg={m} content={content} ensureMediaUrl={ensureMediaUrl} />
                         ) : content?.videoMessage ? (
@@ -3420,16 +3532,11 @@ export default function WhatsAppInbox() {
                             )
                           } catch { return null }
                         })()}
-                        {/* Hover actions */}
-                        <div className="wa-msg-actions">
-                          <button className="link" onClick={() => startReply(m)}>Reply</button>
-                          <button className="link" onClick={() => setReactingTo(m?.key?.id || null)}>React</button>
-                        </div>
                         {/* Reaction picker */}
                         {reactingTo === (m?.key?.id || null) && (
-                          <div className="wa-react-bar" role="menu" onMouseLeave={() => setReactingTo(null)}>
+                          <div className="wa-react-bar" role="menu">
                             {['❤️','👍','😂','😮','😢','🙏'].map(em => (
-                              <button key={em} className="emoji" onClick={() => { setReactingTo(null); sendReaction(m?.key?.id, em) }}>{em}</button>
+                              <button key={em} className="emoji" onClick={(e) => { e.stopPropagation(); setReactingTo(null); sendReaction(m?.key?.id, em) }}>{em}</button>
                             ))}
                           </div>
                         )}
@@ -3440,13 +3547,7 @@ export default function WhatsAppInbox() {
                 <div ref={endRef} />
               </div>
 
-              {/* Recording indicator */}
-              {recording && (
-                <div className="wa-recording badge danger" aria-live="polite">
-                  <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 999, background: '#ef4444', marginRight: 6, animation: 'pulse 1s infinite' }} />
-                  {secondsToMMSS(recSeconds)} — slide left to cancel
-                </div>
-              )}
+              {/* Recording indicator handled inside composer */}
             </div>
 
             {/* ── Composer ── */}
@@ -3461,45 +3562,77 @@ export default function WhatsAppInbox() {
                   <button className="wa-reply-strip-close" onClick={() => setReplyTo(null)} aria-label="Cancel reply">×</button>
                 </div>
               )}
-              {/* Emoji */}
-              <div ref={emojiRef} style={{ position: 'relative' }}>
-                <button className="wa-icon-btn" onClick={() => setShowEmoji(s => !s)} disabled={!activeJid} aria-label="Emoji" style={{ color: '#54656f' }}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9" strokeWidth="2.5"/><line x1="15" y1="9" x2="15.01" y2="9" strokeWidth="2.5"/></svg>
-                </button>
-                {showEmoji && (
-                  <div style={{ position: 'absolute', bottom: '100%', left: 0, marginBottom: 8, display: 'flex', flexWrap: 'wrap', gap: 4, width: 248, padding: 10, background: 'var(--wa-list-bg)', borderRadius: 14, boxShadow: '0 4px 20px rgba(0,0,0,0.18)', border: '1px solid #e9edef', zIndex: 100 }}>
-                    {EMOJIS.map(e => <button key={e} onClick={() => addEmoji(e)} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', width: 36, height: 36, borderRadius: 8, display: 'grid', placeItems: 'center' }}>{e}</button>)}
+              
+              {recording ? (
+                <div className="wa-rec-overlay">
+                  <div className="wa-rec-dot" />
+                  <div className="wa-rec-timer">{secondsToMMSS(recSeconds)}</div>
+                  <div className="wa-rec-cancel-hint">
+                    <button className="wa-icon-btn" onClick={() => stopRecording(true)} aria-label="Cancel recording" title="Cancel recording" style={{ color: '#f15c6d', width: 40, height: 40 }}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                    </button>
                   </div>
-                )}
-              </div>
-              {/* Attach */}
-              <div ref={attachRef} style={{ position: 'relative' }}>
-                <button className="wa-icon-btn" onClick={() => { setShowAttach(s => !s); try { if (isMobile) inputRef.current?.blur() } catch {} }} disabled={!canSend || uploading} aria-label={uploading ? 'Uploading…' : 'Attach'} style={{ color: '#54656f' }}>
-                  {uploading ? <span className="spinner" /> : <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>}
-                </button>
-              </div>
-              {/* Text input */}
-              <div className="wa-composer-input-wrap">
-                <textarea ref={inputRef} value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }} placeholder={canSend ? 'Type a message' : 'Chat not assigned to you'} rows={1} style={{ opacity: (recording ? 0.6 : 1) * (canSend ? 1 : 0.65), pointerEvents: recording || !canSend ? 'none' : 'auto' }} disabled={!canSend} />
-              </div>
-              {/* Send / Mic / Record */}
-              {text ? (
-                <button className="wa-send-btn" onClick={send} aria-label="Send" disabled={!canSend}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-                </button>
-              ) : recording ? (
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <button className="wa-send-btn" onClick={() => stopRecording(true)} style={{ background: '#ef4444' }} aria-label="Cancel recording"><XIcon size={18} /></button>
-                  <button className="wa-send-btn" onClick={() => stopRecording(false)} aria-label="Send voice"><StopIcon size={18} /></button>
+                  <button className="wa-send-btn" onClick={() => stopRecording(false)} aria-label="Send voice">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                  </button>
                 </div>
               ) : (
-                <button className="wa-send-btn" onPointerDown={startRecording} aria-label="Hold to record" style={{ opacity: canSend ? 1 : 0.5, cursor: canSend ? 'pointer' : 'not-allowed', touchAction: 'none' }} disabled={!canSend}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/></svg>
-                </button>
+                <>
+                  <div className="wa-composer-inner">
+                    {/* Emoji */}
+                    <div ref={emojiRef} style={{ position: 'relative' }}>
+                      <button className="wa-icon-btn wa-composer-icon-btn" onClick={() => setShowEmoji(s => !s)} disabled={!activeJid} aria-label="Emoji" style={{ color: '#54656f' }}>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9" strokeWidth="2.5"/><line x1="15" y1="9" x2="15.01" y2="9" strokeWidth="2.5"/></svg>
+                      </button>
+                      {showEmoji && (
+                        <div style={{ position: 'absolute', bottom: '100%', left: 0, marginBottom: 8, display: 'flex', flexWrap: 'wrap', gap: 4, width: 248, padding: 10, background: 'var(--wa-list-bg)', borderRadius: 14, boxShadow: '0 4px 20px rgba(0,0,0,0.18)', border: '1px solid #e9edef', zIndex: 100 }}>
+                          {EMOJIS.map(e => <button key={e} onClick={() => addEmoji(e)} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', width: 36, height: 36, borderRadius: 8, display: 'grid', placeItems: 'center' }}>{e}</button>)}
+                        </div>
+                      )}
+                    </div>
+                    {/* Attach */}
+                    <div ref={attachRef} style={{ position: 'relative' }}>
+                      <button className="wa-icon-btn wa-composer-icon-btn" onClick={() => { setShowAttach(s => !s); try { if (isMobile) inputRef.current?.blur() } catch {} }} disabled={!canSend || uploading} aria-label={uploading ? 'Uploading…' : 'Attach'} style={{ color: '#54656f' }}>
+                        {uploading ? <span className="wa-spinner" style={{borderColor:'rgba(84,101,111,0.3)',borderTopColor:'#54656f'}} /> : <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>}
+                      </button>
+                    </div>
+                    {/* Text input */}
+                    <textarea
+                      className="wa-composer-textarea"
+                      ref={inputRef}
+                      value={text}
+                      onChange={e => setText(e.target.value)}
+                      onInput={e => {
+                        requestAnimationFrame(() => {
+                          const el = e.target
+                          if (!el) return
+                          el.style.height = 'auto'
+                          el.style.height = Math.min(el.scrollHeight, 100) + 'px'
+                        })
+                      }}
+                      onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
+                      placeholder={canSend ? 'Type a message' : 'Chat not assigned to you'}
+                      rows={1}
+                      style={{ opacity: canSend ? 1 : 0.65, pointerEvents: canSend ? 'auto' : 'none' }}
+                      disabled={!canSend}
+                    />
+                  </div>
+                  {/* Send / Mic */}
+                  {text ? (
+                    <button className="wa-send-btn" onClick={send} aria-label="Send" disabled={!canSend}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                    </button>
+                  ) : (
+                    <button className="wa-send-btn" onPointerDown={startRecording} onTouchStart={startRecording} aria-label="Hold to record" style={{ opacity: canSend ? 1 : 0.5, cursor: canSend ? 'pointer' : 'not-allowed', touchAction: 'none' }} disabled={!canSend}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/></svg>
+                    </button>
+                  )}
+                </>
               )}
               {myRole === 'user' && (
-                <button className="wa-icon-btn" onClick={clearAllChats} title="Clear all chats" aria-label="Clear all chats" style={{ color: '#ef4444', opacity: 0.7 }}><TrashIcon /></button>
+                <button className="wa-icon-btn" onClick={clearAllChats} title="Clear all chats" aria-label="Clear all chats" style={{ color: '#ef4444', opacity: 0.7, padding: 8, marginLeft: 8 }}><TrashIcon /></button>
               )}
+
             </div>
           </>
         )}
@@ -3509,21 +3642,22 @@ export default function WhatsAppInbox() {
       {showAttach && (
         <>
           <div onClick={() => setShowAttach(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 9998 }} />
-          <div ref={attachSheetRef} style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 9999, background: 'var(--wa-list-bg)', borderTopLeftRadius: 18, borderTopRightRadius: 18, padding: '10px 16px calc(16px + env(safe-area-inset-bottom)) 16px', boxShadow: '0 -8px 30px rgba(0,0,0,0.2)' }}>
-            <div style={{ width: 36, height: 4, background: '#e9edef', borderRadius: 999, margin: '0 auto 14px' }} />
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-              {[
-                { label: 'Photo', bg: '#e8f5e9', fg: '#2e7d32', icon: <PhotoIcon size={22} />, act: () => { setShowAttach(false); try { const i = photoInputRef.current||document.getElementById('wa-photo-input'); if(i){i.value='';i.click()} } catch {} } },
-                { label: 'Video', bg: '#fce4ec', fg: '#c62828', icon: <VideoIcon size={22} />, act: () => { setShowAttach(false); try { const i = videoInputRef.current||document.getElementById('wa-video-input'); if(i){i.value='';i.click()} } catch {} } },
-                { label: 'Document', bg: '#e3f2fd', fg: '#1565c0', icon: <FileIcon size={22} />, act: () => { setShowAttach(false); try { const i = docInputRef.current||document.getElementById('wa-doc-input'); if(i){i.value='';i.click()} } catch {} } },
-                { label: 'Audio', bg: '#ede7f6', fg: '#6a1b9a', icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>, act: () => { setShowAttach(false); try { const i = audioInputRef.current||document.getElementById('wa-audio-input'); if(i){i.value='';i.click()} } catch {} } },
-              ].map(({ label, bg, fg, icon, act }) => (
-                <div key={label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '8px 4px', borderRadius: 12 }} onClick={act}>
-                  <div style={{ width: 56, height: 56, borderRadius: 16, background: bg, display: 'grid', placeItems: 'center', color: fg }}>{icon}</div>
-                  <span style={{ fontSize: 13, color: '#111b21', fontWeight: 500 }}>{label}</span>
-                </div>
-              ))}
-            </div>
+          <div ref={attachSheetRef} className="wa-attach-sheet">
+            {[
+              { label: 'Photos', fg: '#007af5', icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>, act: () => { setShowAttach(false); try { const i = photoInputRef.current||document.getElementById('wa-photo-input'); if(i){i.value='';i.click()} } catch {} } },
+              { label: 'Video', fg: '#ea4335', icon: <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>, act: () => { setShowAttach(false); try { const i = videoInputRef.current||document.getElementById('wa-video-input'); if(i){i.value='';i.click()} } catch {} } },
+              { label: 'Document', fg: '#007af5', icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1 7V3.5L18.5 9H13z"/></svg>, act: () => { setShowAttach(false); try { const i = docInputRef.current||document.getElementById('wa-doc-input'); if(i){i.value='';i.click()} } catch {} } },
+              { label: 'Audio', fg: '#ffb020', icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>, act: () => { setShowAttach(false); try { const i = audioInputRef.current||document.getElementById('wa-audio-input'); if(i){i.value='';i.click()} } catch {} } },
+              { label: 'Location', fg: '#00a884', icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 010-5 2.5 2.5 0 010 5z"/></svg>, act: () => { setShowAttach(false); alert('No permission to agents') } },
+              { label: 'Contact', fg: '#8696a0', icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>, act: () => { setShowAttach(false); alert('No permission to agents') } },
+              { label: 'Catalog', fg: '#8696a0', icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4v2h16V4zm1 10v-2l-1-5H4l-1 5v2h1v6h10v-6h4v6h2v-6h1zm-9 4H6v-4h6v4z"/></svg>, act: () => { setShowAttach(false); alert('No permission to agents') } },
+              { label: 'Poll', fg: '#ffb020', icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-2h2v2zm0-4H7v-2h2v2zm0-4H7V7h2v2zm8 8h-6v-2h6v2zm0-4h-6v-2h6v2zm0-4h-6V7h6v2z"/></svg>, act: () => { setShowAttach(false); alert('No permission to agents') } },
+            ].map(({ label, fg, icon, act }) => (
+              <button key={label} className="wa-attach-item" onClick={act}>
+                <div className="wa-attach-icon" style={{ background: '#233138', color: fg }}>{icon}</div>
+                <span className="wa-attach-label">{label}</span>
+              </button>
+            ))}
           </div>
         </>
       )}
@@ -3973,3 +4107,4 @@ export default function WhatsAppInbox() {
     </div>
   )
 }
+

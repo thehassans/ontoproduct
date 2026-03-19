@@ -4,7 +4,8 @@ import { useToast } from '../../ui/Toast'
 import { trackProductView, trackAddToCart } from '../../utils/analytics'
 import { mediaUrl } from '../../api.js'
 import { getCurrencyConfig, convert as fxConvert, formatMoney } from '../../util/currency'
-import { resolveWarehouse } from '../../utils/warehouse'
+import { resolveWarehouse, getLocalStockByCountry } from '../../utils/warehouse'
+import { readCartItems, writeCartItems } from '../../utils/cartStorage'
 
 export default function ProductCard({ product, onAddToCart, selectedCountry = 'SA', selectionEnabled = false, selected = false, onToggleSelect }) {
   const navigate = useNavigate()
@@ -72,11 +73,11 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
         const discounted = Number(product?.discount) > 0 ? basePrice * (1 - Number(product.discount) / 100) : basePrice
         const unitPrice = hasSale ? salePriceVal : discounted
         const addQty = 1
-        const savedCart = localStorage.getItem('shopping_cart')
-        let cartItems = savedCart ? JSON.parse(savedCart) : []
+        let cartItems = readCartItems()
 
         const existingItemIndex = cartItems.findIndex(item => item.id === product._id)
-        const max = Number(product.stockQty || 0)
+        const localStock = getLocalStockByCountry(product?.stockByCountry, selectedCountry)
+        const max = localStock > 0 ? localStock : Number(product.stockQty || 0)
         
         if (existingItemIndex > -1) {
           const current = Number(cartItems[existingItemIndex].quantity || 0)
@@ -90,7 +91,7 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
           const wh = resolveWarehouse(product, selectedCountry, cartItems[existingItemIndex].quantity)
           cartItems[existingItemIndex].price = unitPrice
           cartItems[existingItemIndex].currency = product.baseCurrency || 'SAR'
-          cartItems[existingItemIndex].maxStock = product.stockQty
+          cartItems[existingItemIndex].maxStock = max
           cartItems[existingItemIndex].stockByCountry = product.stockByCountry || cartItems[existingItemIndex].stockByCountry || {}
           cartItems[existingItemIndex].warehouseType = wh.type
           cartItems[existingItemIndex].etaMinDays = wh.etaMinDays
@@ -105,7 +106,7 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
             currency: product.baseCurrency || 'SAR',
             image: product.images?.[0] || '',
             quantity: addQty,
-            maxStock: product.stockQty,
+            maxStock: max,
             stockByCountry: product.stockByCountry || {},
             warehouseType: wh.type,
             etaMinDays: wh.etaMinDays,
@@ -116,10 +117,9 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
         
         const cartJson = JSON.stringify(cartItems)
         localStorage.setItem('shopping_cart', cartJson)
-        try { sessionStorage.setItem('shopping_cart_bak', cartJson) } catch {}
+        writeCartItems(cartItems)
         try { localStorage.setItem('last_added_product', String(product._id)) } catch {}
         trackAddToCart(product._id, product.name, unitPrice, addQty)
-        window.dispatchEvent(new CustomEvent('cartUpdated'))
         
         // Premium Success Feedback
         createPremiumRipple(e) // Visual effect
@@ -336,7 +336,7 @@ export default function ProductCard({ product, onAddToCart, selectedCountry = 'S
         </div>
       </div>
 
-      <style jsx>{`
+      <style>{`
         .product-card-ultra {
           position: relative;
           background: #ffffff;

@@ -1,5 +1,7 @@
 import { Server } from 'socket.io';
 import jwt from 'jsonwebtoken';
+import User from '../models/User.js';
+import Shop from '../models/Shop.js';
 
 class SocketManager {
   constructor(){
@@ -60,16 +62,23 @@ class SocketManager {
             if (uid){
               socket.data.user = { id: uid, role };
               try{ socket.join(`user:${uid}`) }catch{}
+              if (payload?.actorType === 'shop' || role === 'shop_vendor') {
+                try{ socket.join(`shop:${uid}`) }catch{}
+              }
               if (role) try{ socket.join(`role:${role}`) }catch{}
-              console.log(`[socket] ${socket.id} joined rooms:`, [`user:${uid}`, role?`role:${role}`:null].filter(Boolean).join(', '))
+              console.log(`[socket] ${socket.id} joined rooms:`, [`user:${uid}`, (payload?.actorType === 'shop' || role === 'shop_vendor') ? `shop:${uid}` : null, role?`role:${role}`:null].filter(Boolean).join(', '))
 
               // Also join workspace:<ownerId> so we can broadcast workspace updates
               ;(async()=>{
                 try{
-                  const { default: User } = await import('../models/User.js')
-                  const doc = await User.findById(uid).select('role createdBy').lean()
                   let ownerId = uid
-                  if (doc){ ownerId = (doc.role === 'user') ? uid : (doc.createdBy ? String(doc.createdBy) : uid) }
+                  if (payload?.actorType === 'shop' || role === 'shop_vendor') {
+                    const doc = await Shop.findById(uid).select('createdBy').lean()
+                    if (doc?.createdBy) ownerId = String(doc.createdBy)
+                  } else {
+                    const doc = await User.findById(uid).select('role createdBy').lean()
+                    if (doc){ ownerId = (doc.role === 'user') ? uid : (doc.createdBy ? String(doc.createdBy) : uid) }
+                  }
                   try{ socket.join(`workspace:${ownerId}`) }catch{}
                 }catch(e){ /* ignore */ }
               })()

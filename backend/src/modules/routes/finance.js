@@ -882,7 +882,7 @@ router.get(
           {
             $match: {
               driver: new M.Types.ObjectId(driverId),
-              status: "accepted",
+              status: { $in: ["accepted", "manager_accepted"] },
             },
           },
           {
@@ -1308,7 +1308,7 @@ router.post(
         {
           $match: {
             driver: new M.Types.ObjectId(req.user.id),
-            status: "accepted",
+            status: { $in: ["accepted", "manager_accepted"] },
           },
         },
         { $group: { _id: null, total: { $sum: { $ifNull: ["$amount", 0] } } } },
@@ -1398,7 +1398,7 @@ router.post(
         // Get orders for PDF - only pending orders (after last remittance)
         const acceptedRemittances = await Remittance.find({
           driver: req.user.id,
-          status: "accepted",
+          status: { $in: ["accepted", "manager_accepted"] },
         }).select("createdAt");
 
         const lastAcceptedDate =
@@ -1648,7 +1648,7 @@ router.post(
             {
               $match: {
                 driver: r.driver,
-                status: "accepted",
+                status: { $in: ["accepted", "manager_accepted"] },
               },
             },
             {
@@ -1855,7 +1855,7 @@ router.get(
         {
           $match: {
             driver: new M.Types.ObjectId(req.user.id),
-            status: "accepted",
+            status: { $in: ["accepted", "manager_accepted"] },
           },
         },
         { $group: { _id: null, total: { $sum: { $ifNull: ["$amount", 0] } } } },
@@ -2200,7 +2200,8 @@ router.get(
           deliveredCommissionPKR,
           upcomingCommissionPKR,
           sentPKR: rStats.sent,
-          sentAvgRate: rStats.sentAvgRate, // Average commission rate for sent payments
+          sentBasePKR: rStats.sentBase,
+          sentAvgRate: rStats.sentAvgRate,
           pendingPKR: rStats.pending,
         };
       });
@@ -2227,15 +2228,59 @@ router.get(
         }
       }
 
+      const agent = await User.findById(id).select('firstName lastName phone').lean();
       const history = await AgentRemit.find({
         agent: id,
-        status: "sent", // Only show sent payments
+        status: "sent",
       })
         .sort({ createdAt: -1 })
         .populate("approver", "firstName lastName email")
         .lean();
 
-      return res.json({ history });
+      const agentName = agent ? `${agent.firstName || ''} ${agent.lastName || ''}`.trim() : '';
+      return res.json({ history, agentName });
+    } catch (err) {
+      return res.status(500).json({ message: "Failed to fetch history" });
+    }
+  }
+);
+
+// Get all commission payments across all agents (for owner overview)
+router.get(
+  "/agents/all-commission-history",
+  auth,
+  allowRoles("admin", "user"),
+  async (req, res) => {
+    try {
+      const { page = 1, limit = 500, agentId } = req.query;
+      const skip = (Number(page) - 1) * Number(limit);
+
+      // Build match: filter by agents belonging to this owner
+      const matchCond = { status: "sent" };
+      if (req.user.role !== "admin") {
+        // Get all agents under this owner
+        const ownedAgents = await User.find(
+          { role: "agent", createdBy: req.user.id },
+          "_id"
+        ).lean();
+        const ownedAgentIds = ownedAgents.map((a) => a._id);
+        matchCond.agent = { $in: ownedAgentIds };
+      }
+      // Optionally filter by specific agent
+      if (agentId) matchCond.agent = agentId;
+
+      const [history, total] = await Promise.all([
+        AgentRemit.find(matchCond)
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(Number(limit))
+          .populate("agent", "firstName lastName phone")
+          .populate("approver", "firstName lastName")
+          .lean(),
+        AgentRemit.countDocuments(matchCond),
+      ]);
+
+      return res.json({ history, total });
     } catch (err) {
       return res.status(500).json({ message: "Failed to fetch history" });
     }

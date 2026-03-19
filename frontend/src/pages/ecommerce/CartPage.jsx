@@ -9,20 +9,11 @@ import Header from '../../components/layout/Header'
 import MobileBottomNav from '../../components/ecommerce/MobileBottomNav'
 import { COUNTRY_LIST, COUNTRY_TO_CURRENCY } from '../../utils/constants'
 import { resolveWarehouse } from '../../utils/warehouse'
+import { readCartItems, writeCartItems, clearCartItems, areCartItemsEqual } from '../../utils/cartStorage'
 
 export default function CartPage() {
-  const [cartItems, setCartItems] = useState(() => {
-    try {
-      const saved = localStorage.getItem('shopping_cart')
-      const parsed = saved ? JSON.parse(saved) : []
-      if (parsed.length > 0) return parsed
-      // Fallback: sessionStorage backup (covers TikTok/FB in-app browser ephemeral localStorage)
-      const bak = sessionStorage.getItem('shopping_cart_bak')
-      return bak ? JSON.parse(bak) : []
-    } catch { return [] }
-  })
+  const [cartItems, setCartItems] = useState(() => readCartItems())
   const [cartLoaded, setCartLoaded] = useState(false)
-  const [cartKey, setCartKey] = useState(0) // Force re-render key
   const [annBar, setAnnBar] = useState(() => {
     try { return JSON.parse(localStorage.getItem('_ann_bar') || 'null') } catch { return null }
   })
@@ -422,7 +413,7 @@ export default function CartPage() {
     if (!mapsApiKey || mapLoaded) return
     if (window.google?.maps) { setMapLoaded(true); return }
     const script = document.createElement('script')
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${mapsApiKey}&libraries=places`
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${mapsApiKey}&libraries=places&loading=async`
     script.async = true
     script.onload = () => setMapLoaded(true)
     document.head.appendChild(script)
@@ -634,13 +625,12 @@ export default function CartPage() {
 
   const reloadCartFromStorage = () => {
     try {
-      const savedCart = localStorage.getItem('shopping_cart')
-      const parsed = savedCart ? JSON.parse(savedCart) : []
+      const parsed = readCartItems()
       const norm = normalizeCartItems(parsed, form.country)
       if (norm.changed) {
-        try { localStorage.setItem('shopping_cart', JSON.stringify(norm.items)) } catch {}
+        writeCartItems(norm.items, { dispatchEvent: false })
       }
-      setCartItems(norm.items)
+      setCartItems(prev => (areCartItemsEqual(prev, norm.items) ? prev : norm.items))
     } catch(err) { console.error('Error loading cart:', err) }
   }
 
@@ -648,14 +638,12 @@ export default function CartPage() {
   useEffect(() => {
     const loadCart = () => {
       try {
-        const savedCart = localStorage.getItem('shopping_cart')
-        const parsed = savedCart ? JSON.parse(savedCart) : []
+        const parsed = readCartItems()
         const norm = normalizeCartItems(parsed, form.country)
         if (norm.changed) {
-          try { localStorage.setItem('shopping_cart', JSON.stringify(norm.items)) } catch {}
+          writeCartItems(norm.items, { dispatchEvent: false })
         }
-        setCartItems(norm.items)
-        setCartKey(k => k + 1)
+        setCartItems(prev => (areCartItemsEqual(prev, norm.items) ? prev : norm.items))
         setCartLoaded(true)
       } catch { 
         setCartItems([]) 
@@ -731,8 +719,7 @@ export default function CartPage() {
         
         // Clear cart
         setCartItems([])
-        localStorage.setItem('shopping_cart', JSON.stringify([]))
-        window.dispatchEvent(new CustomEvent('cartUpdated'))
+        clearCartItems()
         
         toast.success('Payment successful! Order placed.')
         navigate(isCustomerLoggedIn ? '/customer/orders' : '/catalog')
@@ -752,22 +739,13 @@ export default function CartPage() {
   useEffect(() => {
     const loadCart = () => {
       try {
-        const savedCart = localStorage.getItem('shopping_cart')
-        let parsed = savedCart ? JSON.parse(savedCart) : []
-        // Fallback: sessionStorage backup covers TikTok/FB in-app browser where localStorage is ephemeral
-        if (!parsed.length) {
-          try {
-            const bak = sessionStorage.getItem('shopping_cart_bak')
-            if (bak) parsed = JSON.parse(bak)
-          } catch {}
-        }
+        const parsed = readCartItems()
         const norm = normalizeCartItems(parsed, form.country)
         if (norm.changed) {
-          try { localStorage.setItem('shopping_cart', JSON.stringify(norm.items)) } catch {}
+          writeCartItems(norm.items, { dispatchEvent: false })
         }
-        // Only clear cart if we are certain it's empty (no backup either)
         if (norm.items.length > 0 || !parsed.length) {
-          setCartItems(norm.items)
+          setCartItems(prev => (areCartItemsEqual(prev, norm.items) ? prev : norm.items))
         }
       } catch(err) { console.error('Error loading cart:', err) /* preserve existing cart */ }
     }
@@ -843,8 +821,7 @@ export default function CartPage() {
     setCartItems((prev) => {
       const norm = normalizeCartItems(prev, form.country)
       if (!norm.changed) return prev
-      try { localStorage.setItem('shopping_cart', JSON.stringify(norm.items)) } catch {}
-      try { window.dispatchEvent(new CustomEvent('cartUpdated')) } catch {}
+      writeCartItems(norm.items)
       return norm.items
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -853,8 +830,7 @@ export default function CartPage() {
   useEffect(() => {
     // Only save to localStorage after cart has been loaded to prevent overwriting
     if (cartLoaded) {
-      localStorage.setItem('shopping_cart', JSON.stringify(cartItems))
-      try { window.dispatchEvent(new CustomEvent('cartUpdated')) } catch {}
+      writeCartItems(cartItems, { dispatchEvent: false })
     }
   }, [cartItems, cartLoaded])
 
@@ -876,8 +852,7 @@ export default function CartPage() {
           warehouseCountry: form.country,
         }
       })
-      try { localStorage.setItem('shopping_cart', JSON.stringify(next)) } catch {}
-      try { window.dispatchEvent(new CustomEvent('cartUpdated')) } catch {}
+      writeCartItems(next)
       return next
     })
   }
@@ -891,8 +866,7 @@ export default function CartPage() {
     } catch {}
     setCartItems(prevItems => {
       const next = prevItems.filter(item => item.id !== productId)
-      try { localStorage.setItem('shopping_cart', JSON.stringify(next)) } catch {}
-      try { window.dispatchEvent(new CustomEvent('cartUpdated')) } catch {}
+      writeCartItems(next)
       return next
     })
     toast.success('Removed')
@@ -1223,8 +1197,7 @@ export default function CartPage() {
     try { localStorage.setItem('last_order_success', JSON.stringify(orderForSuccess)) } catch {}
     
     setCartItems([])
-    localStorage.setItem('shopping_cart', JSON.stringify([]))
-    window.dispatchEvent(new CustomEvent('cartUpdated'))
+    clearCartItems()
     navigate('/order-success', { state: { order: orderForSuccess } })
   }
 

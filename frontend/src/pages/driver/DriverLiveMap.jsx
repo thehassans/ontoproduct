@@ -1,12 +1,14 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { apiGet, apiPost } from '../../api'
 import LiveMap from '../../components/driver/LiveMap'
+import { useToast } from '../../ui/Toast'
 
 export default function DriverLiveMapPage() {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [driverLocation, setDriverLocation] = useState(null)
   const [selectedOrder, setSelectedOrder] = useState(null)
+  const [mapCommand, setMapCommand] = useState(null)
   const [autoRefresh, setAutoRefresh] = useState(true)
   const [lastUpdated, setLastUpdated] = useState(null)
   
@@ -14,6 +16,8 @@ export default function DriverLiveMapPage() {
   const [selectedStatus, setSelectedStatus] = useState('')
   const [statusNote, setStatusNote] = useState('')
   const [savingStatus, setSavingStatus] = useState(false)
+  const [collectedAmount, setCollectedAmount] = useState('')
+  const toast = useToast()
 
   // Get driver's current location
   const refreshLocation = useCallback(() => {
@@ -38,18 +42,18 @@ export default function DriverLiveMapPage() {
   const loadOrders = useCallback(async () => {
     try {
       const data = await apiGet('/api/orders/driver/assigned')
-      console.log('Loaded orders:', data.orders?.length || 0, data.orders)
       
-      // Filter: must have location AND shipmentStatus not delivered/cancelled/returned
-      const excludedShipmentStatuses = ['delivered', 'cancelled', 'returned']
       const ordersWithLocation = (data.orders || []).filter(o => {
-        const hasLocation = o.locationLat && o.locationLng
-        const notExcluded = !excludedShipmentStatuses.includes(o.shipmentStatus)
-        console.log('Order', o._id?.slice(-5), 'hasLoc:', hasLocation, 'status:', o.status, 'shipment:', o.shipmentStatus, 'include:', hasLocation && notExcluded)
-        return hasLocation && notExcluded
+        return hasMappableLocation(o) && shouldShowOrderOnMap(o)
       })
       
       setOrders(ordersWithLocation)
+      setSelectedOrder((prev) => {
+        const prevId = String(prev?._id || prev?.id || '').trim()
+        if (!prevId) return prev
+        const refreshed = ordersWithLocation.find((order) => String(order?._id || order?.id || '') === prevId)
+        return refreshed || null
+      })
       setLastUpdated(new Date())
     } catch (err) {
       console.error('Failed to load orders:', err)
@@ -57,6 +61,196 @@ export default function DriverLiveMapPage() {
       setLoading(false)
     }
   }, [])
+
+  const PHONE_CODE_TO_CCY = {
+    '+966': 'SAR',
+    '+971': 'AED',
+    '+968': 'OMR',
+    '+973': 'BHD',
+    '+965': 'KWD',
+    '+974': 'QAR',
+    '+91': 'INR',
+    '+44': 'GBP',
+    '+1': 'USD',
+    '+61': 'AUD',
+    '+92': 'PKR',
+  }
+
+  function getOrderNumericTotal(order) {
+    try {
+      if (order?.total != null && !Number.isNaN(Number(order.total))) return Number(order.total)
+      if (Array.isArray(order?.items) && order.items.length > 0) {
+        return order.items.reduce((sum, item) => {
+          const price = Number(item?.productId?.price || item?.price || 0)
+          const qty = Math.max(1, Number(item?.quantity || 1))
+          return sum + (price * qty)
+        }, 0)
+      }
+      const qty = Math.max(1, Number(order?.quantity || 1))
+      const price = Number(order?.productId?.price || order?.price || 0)
+      return price * qty
+    } catch {
+      return 0
+    }
+  }
+
+  function getDefaultCollectedAmount(order) {
+    try {
+      const cod = Number(order?.codAmount)
+      if (!Number.isNaN(cod) && cod > 0) return cod
+      return getOrderNumericTotal(order)
+    } catch {
+      return getOrderNumericTotal(order)
+    }
+  }
+
+  function currencyFromPhoneCode(code) {
+    try {
+      const raw = String(code || '').trim()
+      return PHONE_CODE_TO_CCY[raw] || (raw ? raw.replace(/\D/g, '') : 'SAR')
+    } catch {
+      return 'SAR'
+    }
+  }
+
+  function formatOrderAmount(order) {
+    try {
+      const currency = currencyFromPhoneCode(order?.phoneCountryCode || '')
+      const total = getDefaultCollectedAmount(order)
+      return `${currency} ${Number(total || 0).toFixed(2)}`
+    } catch {
+      return 'SAR 0.00'
+    }
+  }
+
+  function getOrderTitle(order) {
+    try {
+      if (Array.isArray(order?.items) && order.items.length > 0) {
+        const named = order.items.find((item) => String(item?.productId?.name || item?.name || '').trim())
+        if (named) return String(named?.productId?.name || named?.name || '').trim()
+      }
+      if (String(order?.productId?.name || '').trim()) return String(order.productId.name).trim()
+      if (String(order?.details || '').trim()) return String(order.details).trim()
+      return order?.customerName || 'Order'
+    } catch {
+      return 'Order'
+    }
+  }
+
+  function getOrderCode(order) {
+    const raw = String(order?.invoiceNumber || '').trim()
+    if (raw) return `#${raw}`
+    const fallback = String(order?._id || order?.id || '').trim()
+    return fallback ? `#${fallback.slice(-5)}` : '#-----'
+  }
+
+  function getAddressLine(order) {
+    return order?.customerAddress || order?.customerLocation || [order?.city, order?.orderCountry].filter(Boolean).join(', ') || 'No address'
+  }
+
+  function normalizeShipmentStatus(status) {
+    const raw = String(status || '').trim().toLowerCase()
+    if (!raw) return ''
+    if (raw === 'open') return 'pending'
+    if (raw === 'shipped') return 'in_transit'
+    if (raw === 'attempted' || raw === 'contacted') return 'in_transit'
+    if (raw === 'picked' || raw === 'pickedup') return 'picked_up'
+    return raw
+  }
+
+  function getOrderStatusValue(order) {
+    return normalizeShipmentStatus(order?.shipmentStatus || order?.status || '')
+  }
+
+  function hasMappableLocation(order) {
+    const lat = Number(order?.locationLat)
+    const lng = Number(order?.locationLng)
+    if (Number.isFinite(lat) && Number.isFinite(lng)) return true
+    const coordinates = Array.isArray(order?.dropoffLocation?.coordinates)
+      ? order.dropoffLocation.coordinates
+      : []
+    return Number.isFinite(Number(coordinates?.[1])) && Number.isFinite(Number(coordinates?.[0]))
+  }
+
+  function shouldShowOrderOnMap(order) {
+    const shipmentStatus = getOrderStatusValue(order)
+    const rawStatus = normalizeShipmentStatus(order?.status || '')
+    const activeStatus = shipmentStatus || rawStatus
+    return [
+      'picked_up',
+      'out_for_delivery',
+      'in_transit',
+      'attempted',
+      'contacted',
+      'no_response',
+    ].includes(activeStatus)
+  }
+
+  function getCustomerLabel(order) {
+    const name = String(order?.customerName || '').trim()
+    if (name) return name
+    const invoice = String(order?.invoiceNumber || '').trim()
+    if (invoice) return `Customer ${invoice}`
+    const fallback = String(order?._id || order?.id || '').trim()
+    return fallback ? `Customer ${fallback.slice(-5)}` : 'Customer'
+  }
+
+  function formatStatusLabel(status) {
+    const raw = String(status || '').trim().toLowerCase()
+    if (!raw) return 'Pending'
+    return raw.split('_').map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' ')
+  }
+
+  function openWhatsApp(phone) {
+    if (!phone) return
+    const cleanPhone = String(phone).replace(/[^\d+]/g, '')
+    window.open(`https://wa.me/${cleanPhone}`, '_blank', 'noopener,noreferrer')
+  }
+
+  function callPhone(phone) {
+    if (!phone) return
+    window.location.href = `tel:${phone}`
+  }
+
+  function queueMapCommand(type, order = null) {
+    const orderId = String(order?._id || order?.id || '').trim()
+    setMapCommand({
+      type,
+      orderId,
+      requestId: `${type}:${orderId || 'driver'}:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`
+    })
+  }
+
+  function openExternalDirections(order) {
+    const directLat = Number(order?.locationLat)
+    const directLng = Number(order?.locationLng)
+    const coordinates = Array.isArray(order?.dropoffLocation?.coordinates)
+      ? order.dropoffLocation.coordinates
+      : []
+    const lat = Number.isFinite(directLat) ? directLat : Number(coordinates?.[1])
+    const lng = Number.isFinite(directLng) ? directLng : Number(coordinates?.[0])
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      toast.warn('This order does not have a valid customer pin')
+      return
+    }
+
+    const originLat = Number(driverLocation?.lat)
+    const originLng = Number(driverLocation?.lng)
+    const hasOrigin = Number.isFinite(originLat) && Number.isFinite(originLng)
+
+    const params = new URLSearchParams({
+      api: '1',
+      destination: `${lat},${lng}`,
+      travelmode: 'driving',
+      dir_action: 'navigate',
+    })
+
+    if (hasOrigin) {
+      params.set('origin', `${originLat},${originLng}`)
+    }
+
+    window.open(`https://www.google.com/maps/dir/?${params.toString()}`, '_blank', 'noopener,noreferrer')
+  }
 
   // Initial load
   useEffect(() => {
@@ -95,8 +289,13 @@ export default function DriverLiveMapPage() {
   // When order is selected, set its current status
   useEffect(() => {
     if (selectedOrder) {
-      setSelectedStatus(selectedOrder.shipmentStatus || '')
+      setSelectedStatus(getOrderStatusValue(selectedOrder))
       setStatusNote('')
+      setCollectedAmount(String(getDefaultCollectedAmount(selectedOrder) || ''))
+    } else {
+      setSelectedStatus('')
+      setStatusNote('')
+      setCollectedAmount('')
     }
   }, [selectedOrder])
 
@@ -107,27 +306,42 @@ export default function DriverLiveMapPage() {
     setSavingStatus(true)
     try {
       const id = selectedOrder._id || selectedOrder.id
+      const orderId = String(id || '').trim()
+      const nextStatus = selectedStatus
       
-      if (selectedStatus === 'delivered') {
-        await apiPost(`/api/orders/${id}/deliver`, { note: statusNote || '' })
-      } else if (selectedStatus === 'cancelled') {
+      if (nextStatus === 'delivered') {
+        const parsedAmount = Number(collectedAmount)
+        const amount = Number.isFinite(parsedAmount) ? Math.max(0, parsedAmount) : Math.max(0, Number(getDefaultCollectedAmount(selectedOrder) || 0))
+        await apiPost(`/api/orders/${id}/deliver`, { note: statusNote || '', collectedAmount: amount })
+      } else if (nextStatus === 'cancelled') {
         await apiPost(`/api/orders/${id}/cancel`, { reason: statusNote || '' })
-      } else if (selectedStatus === 'returned') {
-        await apiPost(`/api/orders/${id}/return`, { reason: statusNote || '' })
       } else {
         await apiPost(`/api/orders/${id}/shipment/update`, {
-          shipmentStatus: selectedStatus,
+          shipmentStatus: nextStatus,
           deliveryNotes: statusNote || ''
         })
       }
-      
-      // Refresh orders after save
-      await loadOrders()
+
+      const shouldRemainVisible = shouldShowOrderOnMap({ ...selectedOrder, shipmentStatus: nextStatus, status: nextStatus })
+      setOrders((prev) => prev.flatMap((order) => {
+        const currentId = String(order?._id || order?.id || '').trim()
+        if (currentId !== orderId) return [order]
+        if (!shouldRemainVisible) return []
+        return [{ ...order, shipmentStatus: nextStatus, status: nextStatus }]
+      }))
+      setLastUpdated(new Date())
       setSelectedOrder(null)
       setSelectedStatus('')
       setStatusNote('')
+      setCollectedAmount('')
+      
+      // Refresh orders after save
+      await loadOrders()
+      if (nextStatus === 'delivered') toast.success('Order marked delivered')
+      else if (nextStatus === 'cancelled') toast.warn('Order cancelled')
+      else toast.info(`Order marked ${formatStatusLabel(nextStatus)}`)
     } catch (err) {
-      alert(err?.message || 'Failed to update status')
+      toast.error(err?.message || 'Failed to update status')
     } finally {
       setSavingStatus(false)
     }
@@ -160,72 +374,66 @@ export default function DriverLiveMapPage() {
     )
   }
 
+  const quickActions = [
+    { value: 'delivered', label: 'Delivered', bg: '#dcfce7', color: '#166534' },
+    { value: 'no_response', label: 'No Response', bg: '#fef3c7', color: '#92400e' },
+    { value: 'cancelled', label: 'Cancelled', bg: '#fee2e2', color: '#b91c1c' },
+  ]
+  const activeOrderId = String(selectedOrder?._id || selectedOrder?.id || '')
+  const selectedOrderStatus = getOrderStatusValue(selectedOrder)
+  const isQuickActionSelected = quickActions.some((action) => action.value === selectedStatus)
+  const mapViewportHeight = 'clamp(420px, calc(100vh - 300px), 72vh)'
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, paddingBottom: 20 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingBottom: 16 }}>
       {/* Header */}
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'flex-start',
-        flexWrap: 'wrap',
-        gap: 16
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: 12,
+        flexWrap: 'wrap'
       }}>
         <div>
-          <h1 style={{ 
-            fontSize: 28, 
-            fontWeight: 800, 
-            margin: 0,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12
-          }}>
-            🗺️ Live Map
+          <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0, letterSpacing: '-0.04em', color: '#0f172a' }}>
+            Driver Live Map
           </h1>
-          <p style={{ color: 'var(--muted)', marginTop: 4, fontSize: 14 }}>
-            Real-time view of all your delivery locations
+          <p style={{ color: '#64748b', margin: '4px 0 0', fontSize: 14 }}>
+            Tap any picked-up stop to open actions and directions
           </p>
         </div>
-        
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          {/* Auto Refresh Toggle */}
           <button
             onClick={() => setAutoRefresh(!autoRefresh)}
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '10px 16px',
-              borderRadius: 10,
-              border: '1px solid var(--border)',
-              background: autoRefresh ? 'rgba(16,185,129,0.1)' : 'var(--panel)',
-              color: autoRefresh ? '#10b981' : 'var(--text)',
-              fontWeight: 600,
-              fontSize: 13,
-              cursor: 'pointer'
+              padding: '10px 14px',
+              borderRadius: 999,
+              border: '1px solid rgba(148,163,184,0.35)',
+              background: autoRefresh ? '#ecfdf5' : '#ffffff',
+              color: autoRefresh ? '#047857' : '#334155',
+              fontWeight: 700,
+              fontSize: 12,
+              cursor: 'pointer',
+              boxShadow: '0 10px 30px rgba(15,23,42,0.06)'
             }}
           >
-            {autoRefresh ? '✓' : '○'} Auto Refresh
+            {autoRefresh ? 'Auto Refresh On' : 'Auto Refresh Off'}
           </button>
-          
-          {/* Manual Refresh */}
           <button
             onClick={() => { loadOrders(); refreshLocation(); }}
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '10px 16px',
-              borderRadius: 10,
+              width: 42,
+              height: 42,
+              borderRadius: 14,
               border: 'none',
-              background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
+              background: '#0f172a',
               color: 'white',
-              fontWeight: 600,
-              fontSize: 13,
+              fontWeight: 700,
               cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(59,130,246,0.3)'
+              boxShadow: '0 14px 30px rgba(15,23,42,0.18)'
             }}
           >
-            🔄 Refresh Now
+            ↻
           </button>
         </div>
       </div>
@@ -233,289 +441,384 @@ export default function DriverLiveMapPage() {
       {/* Stats Bar */}
       <div style={{
         display: 'flex',
-        gap: 16,
+        gap: 10,
         flexWrap: 'wrap'
       }}>
         <div style={{
-          padding: '12px 20px',
-          background: 'var(--panel)',
-          borderRadius: 12,
-          border: '1px solid var(--border)',
+          padding: '10px 14px',
+          background: '#ffffff',
+          borderRadius: 999,
+          border: '1px solid rgba(148,163,184,0.2)',
           display: 'flex',
           alignItems: 'center',
-          gap: 10
+          gap: 8,
+          boxShadow: '0 12px 32px rgba(15,23,42,0.06)'
         }}>
-          <div style={{ 
-            width: 10, 
-            height: 10, 
-            borderRadius: '50%', 
+          <div style={{
+            width: 8,
+            height: 8,
+            borderRadius: '50%',
             background: '#10b981',
-            boxShadow: '0 0 8px rgba(16,185,129,0.5)'
+            boxShadow: '0 0 8px rgba(16,185,129,0.4)'
           }} />
-          <span style={{ fontWeight: 600 }}>{orders.length}</span>
-          <span style={{ color: 'var(--muted)' }}>Active Orders</span>
+          <span style={{ fontWeight: 700, color: '#0f172a' }}>{orders.length}</span>
+          <span style={{ color: '#64748b', fontSize: 13 }}>Live Stops</span>
         </div>
         
         {driverLocation && (
           <div style={{
-            padding: '12px 20px',
-            background: 'var(--panel)',
-            borderRadius: 12,
-            border: '1px solid var(--border)',
+            padding: '10px 14px',
+            background: '#ffffff',
+            borderRadius: 999,
+            border: '1px solid rgba(148,163,184,0.2)',
             display: 'flex',
             alignItems: 'center',
-            gap: 10
+            gap: 8,
+            boxShadow: '0 12px 32px rgba(15,23,42,0.06)'
           }}>
-            <div style={{ 
-              width: 10, 
-              height: 10, 
-              borderRadius: '50%', 
+          <div style={{
+              width: 8,
+              height: 8,
+              borderRadius: '50%',
               background: '#3b82f6',
-              boxShadow: '0 0 8px rgba(59,130,246,0.5)'
+              boxShadow: '0 0 8px rgba(59,130,246,0.4)'
             }} />
-            <span style={{ color: 'var(--muted)' }}>Location Active</span>
+            <span style={{ color: '#64748b', fontSize: 13 }}>Location Active</span>
           </div>
         )}
         
         {lastUpdated && (
           <div style={{
-            padding: '12px 20px',
-            background: 'var(--panel)',
-            borderRadius: 12,
-            border: '1px solid var(--border)',
-            color: 'var(--muted)',
-            fontSize: 13
+            padding: '10px 14px',
+            background: '#ffffff',
+            borderRadius: 999,
+            border: '1px solid rgba(148,163,184,0.2)',
+            color: '#64748b',
+            fontSize: 13,
+            boxShadow: '0 12px 32px rgba(15,23,42,0.06)'
           }}>
-            Updated: {lastUpdated.toLocaleTimeString()}
+            Updated {lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </div>
         )}
       </div>
 
+      {orders.length > 0 && (
+        <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4 }}>
+          {orders.map((order) => {
+            const orderId = String(order?._id || order?.id || '')
+            const active = activeOrderId && activeOrderId === orderId
+            return (
+              <button
+                key={orderId}
+                onClick={() => setSelectedOrder(order)}
+                style={{
+                  minWidth: 200,
+                  textAlign: 'left',
+                  padding: '12px 14px',
+                  borderRadius: 18,
+                  border: active ? '1px solid rgba(37,99,235,0.24)' : '1px solid rgba(148,163,184,0.16)',
+                  background: active ? 'linear-gradient(135deg, #eff6ff, #ffffff)' : '#ffffff',
+                  boxShadow: active ? '0 18px 32px rgba(37,99,235,0.14)' : '0 12px 30px rgba(15,23,42,0.06)',
+                  cursor: 'pointer'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: active ? '#1d4ed8' : '#475569' }}>{getOrderCode(order)}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#0f172a' }}>{formatOrderAmount(order)}</span>
+                </div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {getOrderTitle(order)}
+                </div>
+                <div style={{ fontSize: 12, color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {order.customerName || 'Customer'} · {formatStatusLabel(getOrderStatusValue(order))}
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      )}
+
       {/* Full Size Map */}
       <div style={{ 
         flex: 1,
-        minHeight: 'calc(100vh - 300px)',
-        borderRadius: 16,
-        overflow: 'hidden'
+        minHeight: mapViewportHeight,
+        borderRadius: 28,
+        overflow: 'hidden',
+        position: 'relative',
+        background: '#ffffff',
+        boxShadow: '0 24px 60px rgba(15,23,42,0.12)'
       }}>
         <LiveMap 
           orders={orders}
           driverLocation={driverLocation}
           onSelectOrder={(order) => setSelectedOrder(order)}
+          minimal={true}
+          activeOrderId={activeOrderId}
+          mapHeight={mapViewportHeight}
+          mapCommand={mapCommand}
         />
-      </div>
 
-      {/* Ultra Premium Selected Order Panel */}
-      {selectedOrder && (
-        <div style={{
-          padding: 16,
-          background: 'linear-gradient(135deg, rgba(30,41,59,0.95), rgba(15,23,42,0.98))',
-          backdropFilter: 'blur(16px)',
-          WebkitBackdropFilter: 'blur(16px)',
-          borderRadius: 16,
-          border: '1px solid rgba(255,255,255,0.08)',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
-        }}>
-          {/* Header Row */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{
-                width: 40,
-                height: 40,
-                borderRadius: 12,
-                background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
-                display: 'grid',
-                placeItems: 'center',
-                fontSize: 18
-              }}>
-                📦
-              </div>
-              <div>
-                <div style={{ fontWeight: 700, fontSize: 15, color: 'white' }}>
-                  {selectedOrder.invoiceNumber 
-                    ? `#${selectedOrder.invoiceNumber}` 
-                    : `#${(selectedOrder._id || '').slice(-5)}`}
+        {selectedOrder && (
+          <div style={{
+            position: 'absolute',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: 'min(430px, calc(100% - 24px))',
+            bottom: 12,
+            padding: 14,
+            borderRadius: 22,
+            background: 'rgba(255,255,255,0.88)',
+            backdropFilter: 'blur(24px)',
+            WebkitBackdropFilter: 'blur(24px)',
+            boxShadow: '0 18px 48px rgba(15,23,42,0.16)',
+            border: '1px solid rgba(255,255,255,0.72)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 10 }}>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+                  <span style={{ padding: '5px 9px', borderRadius: 999, background: '#eff6ff', color: '#1d4ed8', fontSize: 10, fontWeight: 800, letterSpacing: '0.02em' }}>
+                    {getOrderCode(selectedOrder)}
+                  </span>
+                  <span style={{ padding: '5px 9px', borderRadius: 999, background: '#f8fafc', color: '#475569', fontSize: 10, fontWeight: 700 }}>
+                    {formatStatusLabel(selectedOrderStatus)}
+                  </span>
                 </div>
-                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>
-                  {selectedOrder.customerName || 'Customer'}
+                <div style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.03em', marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {getOrderTitle(selectedOrder)}
+                </div>
+                <div style={{ fontSize: 12, color: '#64748b', marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {getCustomerLabel(selectedOrder)}
+                </div>
+                <div style={{ fontSize: 11, color: '#94a3b8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {getAddressLine(selectedOrder)}
+                </div>
+              </div>
+              <div style={{ textAlign: 'right', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
+                <button
+                  onClick={() => setSelectedOrder(null)}
+                  style={{
+                    width: 30,
+                    height: 30,
+                    borderRadius: 999,
+                    border: '1px solid rgba(148,163,184,0.18)',
+                    background: 'rgba(248,250,252,0.92)',
+                    color: '#64748b',
+                    fontSize: 16,
+                    lineHeight: 1,
+                    cursor: 'pointer'
+                  }}
+                >
+                  ×
+                </button>
+                <div style={{ fontSize: 18, fontWeight: 900, color: '#0f172a', letterSpacing: '-0.03em' }}>
+                  {formatOrderAmount(selectedOrder)}
                 </div>
               </div>
             </div>
-            
-            {/* Premium Quick Actions */}
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8, marginBottom: 8 }}>
               <button
-                onClick={() => {
-                  const phone = selectedOrder.customerPhone
-                  if (phone) {
-                    const cleanPhone = phone.replace(/[^\d+]/g, '')
-                    window.open(`https://wa.me/${cleanPhone}`, '_blank')
-                  }
-                }}
+                onClick={() => queueMapCommand('show_route', selectedOrder)}
                 style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 12,
+                  height: 42,
+                  borderRadius: 14,
                   border: 'none',
-                  background: 'linear-gradient(135deg, #25d366, #128c7e)',
+                  background: '#0f172a',
                   color: 'white',
+                  fontWeight: 800,
+                  fontSize: 12,
                   cursor: 'pointer',
-                  display: 'grid',
-                  placeItems: 'center',
-                  boxShadow: '0 4px 12px rgba(37,211,102,0.4)'
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 7
                 }}
-                title="WhatsApp"
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 18l6-6-6-6" />
+                  <path d="M5 12h10" />
+                </svg>
+                Get Direction
+              </button>
+              <button
+                onClick={() => openExternalDirections(selectedOrder)}
+                style={{
+                  height: 42,
+                  borderRadius: 14,
+                  border: '1px solid rgba(37,99,235,0.16)',
+                  background: '#eff6ff',
+                  color: '#1d4ed8',
+                  fontWeight: 800,
+                  fontSize: 12,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 7
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 3h7v7" />
+                  <path d="M10 14L21 3" />
+                  <path d="M21 14v7h-7" />
+                  <path d="M3 10L14 21" />
+                </svg>
+                Open on Google Maps
+              </button>
+              <button
+                onClick={() => openWhatsApp(selectedOrder.customerPhone)}
+                style={{
+                  height: 42,
+                  borderRadius: 15,
+                  border: 'none',
+                  background: '#25d366',
+                  color: 'white',
+                  fontWeight: 800,
+                  fontSize: 12,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 7,
+                  boxShadow: '0 10px 22px rgba(37,211,102,0.22)'
+                }}
+              >
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
                 </svg>
+                WhatsApp
               </button>
               <button
-                onClick={() => {
-                  if (selectedOrder.customerPhone) {
-                    window.location.href = `tel:${selectedOrder.customerPhone}`
-                  }
-                }}
+                onClick={() => callPhone(selectedOrder.customerPhone)}
                 style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 12,
-                  border: 'none',
-                  background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
-                  color: 'white',
+                  height: 42,
+                  borderRadius: 15,
+                  border: '1px solid rgba(37,99,235,0.16)',
+                  background: '#eff6ff',
+                  color: '#1d4ed8',
+                  fontWeight: 800,
+                  fontSize: 12,
                   cursor: 'pointer',
-                  display: 'grid',
-                  placeItems: 'center',
-                  boxShadow: '0 4px 12px rgba(59,130,246,0.4)'
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 7
                 }}
-                title="Call"
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/>
                 </svg>
-              </button>
-              <button
-                onClick={() => setSelectedOrder(null)}
-                style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 12,
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  background: 'rgba(255,255,255,0.05)',
-                  color: 'rgba(255,255,255,0.6)',
-                  cursor: 'pointer',
-                  display: 'grid',
-                  placeItems: 'center'
-                }}
-                title="Close"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M18 6L6 18" />
-                  <path d="M6 6l12 12" />
-                </svg>
+                Call
               </button>
             </div>
-          </div>
 
-          {/* Address - Truncated */}
-          <div style={{ 
-            fontSize: 11, 
-            color: 'rgba(255,255,255,0.4)', 
-            marginBottom: 14,
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis'
-          }}>
-            📍 {selectedOrder.customerAddress || selectedOrder.city || 'No address'}
-          </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8, marginBottom: isQuickActionSelected ? 10 : 0, marginTop: 2 }}>
+              {quickActions.map((action) => {
+                const active = selectedStatus === action.value
+                return (
+                  <button
+                    key={action.value}
+                    onClick={() => setSelectedStatus(action.value)}
+                    style={{
+                      height: 40,
+                      borderRadius: 13,
+                      border: active ? '1px solid transparent' : '1px solid rgba(148,163,184,0.22)',
+                      background: active ? action.bg : '#ffffff',
+                      color: active ? action.color : '#334155',
+                      fontWeight: 800,
+                      fontSize: 11,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {action.label}
+                  </button>
+                )
+              })}
+            </div>
 
-          {/* Ultra Minimal Status Row */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            padding: '10px 12px',
-            background: 'rgba(255,255,255,0.03)',
-            borderRadius: 10,
-            border: '1px solid rgba(255,255,255,0.05)'
-          }}>
-            <select
-              value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
-              style={{
-                flex: 1,
-                padding: '8px 10px',
-                borderRadius: 8,
-                border: '1px solid rgba(255,255,255,0.1)',
-                background: 'rgba(0,0,0,0.3)',
-                color: 'white',
-                fontSize: 12,
-                fontWeight: 500,
-                appearance: 'none',
-                cursor: 'pointer'
-              }}
-            >
-              <option value="">Status...</option>
-              <option value="picked_up">📦 Picked</option>
-              <option value="out_for_delivery">🚚 OFD</option>
-              <option value="contacted">📞 Contacted</option>
-              <option value="attempted">🔄 Attempted</option>
-              <option value="no_response">📵 No Resp</option>
-              <option value="delivered">✅ Delivered</option>
-              <option value="cancelled">❌ Cancelled</option>
-              <option value="returned">↩️ Returned</option>
-            </select>
-            
-            <input
-              type="text"
-              value={statusNote}
-              onChange={(e) => setStatusNote(e.target.value)}
-              placeholder="Note..."
-              style={{
-                flex: 1.5,
-                padding: '8px 10px',
-                borderRadius: 8,
-                border: '1px solid rgba(255,255,255,0.1)',
-                background: 'rgba(0,0,0,0.3)',
-                color: 'white',
-                fontSize: 12
-              }}
-            />
-            
-            <button
-              onClick={saveStatus}
-              disabled={!selectedStatus || savingStatus}
-              style={{
-                padding: '8px 16px',
-                borderRadius: 8,
-                border: 'none',
-                background: selectedStatus 
-                  ? 'linear-gradient(135deg, #10b981, #059669)' 
-                  : 'rgba(255,255,255,0.1)',
-                color: selectedStatus ? 'white' : 'rgba(255,255,255,0.4)',
-                fontWeight: 700,
-                cursor: selectedStatus ? 'pointer' : 'not-allowed',
-                fontSize: 11,
-                opacity: savingStatus ? 0.7 : 1,
-                transition: 'all 0.2s ease'
-              }}
-            >
-              {savingStatus ? '...' : 'Save'}
-            </button>
+            {isQuickActionSelected && (
+              <>
+                {selectedStatus === 'delivered' && (
+                  <div style={{ marginTop: 10, marginBottom: 8 }}>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      min="0"
+                      step="0.01"
+                      value={collectedAmount}
+                      onChange={(e) => setCollectedAmount(e.target.value)}
+                      placeholder="Collected amount"
+                      style={{
+                        width: '100%',
+                        height: 42,
+                        padding: '0 13px',
+                        borderRadius: 13,
+                        border: '1px solid rgba(148,163,184,0.18)',
+                        fontSize: 13,
+                        boxSizing: 'border-box',
+                        background: 'rgba(248,250,252,0.84)'
+                      }}
+                    />
+                  </div>
+                )}
+
+                <div style={{ marginBottom: 8 }}>
+                  <input
+                    type="text"
+                    value={statusNote}
+                    onChange={(e) => setStatusNote(e.target.value)}
+                    placeholder={selectedStatus === 'cancelled' ? 'Cancellation reason' : selectedStatus === 'no_response' ? 'Why no response?' : 'Delivery note'}
+                    style={{
+                      width: '100%',
+                      height: 42,
+                      padding: '0 13px',
+                      borderRadius: 13,
+                      border: '1px solid rgba(148,163,184,0.18)',
+                      fontSize: 13,
+                      boxSizing: 'border-box',
+                      background: 'rgba(248,250,252,0.84)'
+                    }}
+                  />
+                </div>
+
+                <button
+                  onClick={saveStatus}
+                  disabled={!isQuickActionSelected || savingStatus}
+                  style={{
+                    width: '100%',
+                    height: 44,
+                    borderRadius: 15,
+                    border: 'none',
+                    background: '#0f172a',
+                    color: 'white',
+                    fontWeight: 800,
+                    fontSize: 13,
+                    cursor: savingStatus ? 'wait' : 'pointer',
+                    opacity: savingStatus ? 0.72 : 1
+                  }}
+                >
+                  {savingStatus ? 'Saving...' : `Mark ${formatStatusLabel(selectedStatus)}`}
+                </button>
+              </>
+            )}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* No Orders State */}
       {orders.length === 0 && (
         <div style={{
-          padding: 40,
+          padding: 32,
           textAlign: 'center',
-          color: 'var(--muted)'
+          color: '#64748b',
+          background: '#ffffff',
+          borderRadius: 24,
+          border: '1px solid rgba(148,163,184,0.16)',
+          boxShadow: '0 18px 50px rgba(15,23,42,0.06)'
         }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>📍</div>
-          <div style={{ fontWeight: 600, marginBottom: 8 }}>No orders with locations</div>
-          <div style={{ fontSize: 14 }}>Your assigned orders will appear on the map when they have location data</div>
+          <div style={{ fontSize: 40, marginBottom: 12 }}>📍</div>
+          <div style={{ fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>No delivery stops on the map</div>
+          <div style={{ fontSize: 14 }}>Orders with active delivery status and valid customer pins will appear here automatically.</div>
         </div>
       )}
     </div>

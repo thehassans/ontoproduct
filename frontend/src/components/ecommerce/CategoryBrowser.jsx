@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { apiGet, mediaUrl } from '../../api'
+import FormattedPrice from '../ui/FormattedPrice'
 
 const COUNTRY_MAP = {
   SA: 'Saudi Arabia', AE: 'UAE', OM: 'Oman', BH: 'Bahrain',
@@ -10,8 +11,8 @@ const COUNTRY_MAP = {
 
 const CURRENCY_MAP = {
   SA: 'SAR', AE: 'AED', OM: 'OMR', BH: 'BHD',
-  IN: '₹', KW: 'KWD', QA: 'QAR', JO: 'JOD',
-  PK: 'Rs', US: '$', GB: '£', CA: 'C$', AU: 'A$',
+  IN: 'INR', KW: 'KWD', QA: 'QAR', JO: 'JOD',
+  PK: 'PKR', US: 'USD', GB: 'GBP', CA: 'CAD', AU: 'AUD',
 }
 
 function getDefaultCategoryImage(name) {
@@ -168,9 +169,9 @@ export default function CategoryBrowser({ selectedCountry = 'GB' }) {
                   <div className="cb-product-name">{p.name}</div>
                   {price > 0 && (
                     <div className="cb-product-price-row">
-                      <span className="cb-product-price">{currency} {price.toFixed(2)}</span>
+                      <FormattedPrice amount={price} currency={currency} className="cb-product-price" priceClassName="cb-product-price-number" />
                       {hasDiscount && (
-                        <span className="cb-product-old-price">{currency} {originalPrice.toFixed(2)}</span>
+                        <FormattedPrice amount={originalPrice} currency={currency} className="cb-product-old-price" priceClassName="cb-product-old-price-number" />
                       )}
                     </div>
                   )}

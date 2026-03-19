@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom'
 import { apiGet, apiPost, mediaUrl } from '../../api'
 import { detectCountryCode } from '../../utils/geo'
 import { useToast } from '../../ui/Toast'
@@ -12,9 +12,38 @@ import FormattedPrice from '../../components/ui/FormattedPrice'
 import { resolveWarehouse, getLocalStockByCountry } from '../../utils/warehouse'
 import { readWishlistIds, toggleWishlist } from '../../util/wishlist'
 import { getProductRating, getProductReviews, getStarArray } from '../../utils/autoReviews'
+import { readCartItems, writeCartItems } from '../../utils/cartStorage'
+
+const SITE_URL = 'https://buysial.com'
+
+const PremiumText = ({ content, className = '' }) => {
+  if (!content) return null;
+  const parts = String(content).split(/(\*\*.*?\*\*)/g);
+  return (
+    <div className={`whitespace-pre-wrap ${className}`}>
+      {parts.map((part, i) => {
+        if (part.startsWith('**') && part.endsWith('**')) {
+          let inner = part.slice(2, -2).replace(/:$/, '').trim();
+          return (
+            <span key={i} className="inline-flex items-center mt-1.5 mb-1.5 font-bold text-gray-800 bg-orange-50 px-2.5 py-1 rounded-md border border-orange-100 shadow-sm text-xs tracking-wider uppercase mr-1.5 ml-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-orange-400 mr-2 opacity-80"></span>
+              {inner}
+            </span>
+          );
+        }
+        let text = part;
+        if (i > 0 && parts[i-1].startsWith('**')) text = text.replace(/^[\s:]+/, ' ');
+        text = text.replace(/[-\s]+$/, ' ');
+        if (i === 0) text = text.replace(/^[-\s]+/, '');
+        return <span key={i} className="leading-relaxed inline">{text}</span>;
+      })}
+    </div>
+  );
+};
 
 const ProductDetail = () => {
-  const { id } = useParams()
+  const { id, slug } = useParams()
+  const location = useLocation()
   const navigate = useNavigate()
   const toast = useToast()
   const [product, setProduct] = useState(null)
@@ -69,24 +98,42 @@ const ProductDetail = () => {
     const v = rawVariants && typeof rawVariants === 'object' && !Array.isArray(rawVariants) ? rawVariants : {}
     for (const [k, opts] of Object.entries(v)) {
       if (!Array.isArray(opts)) continue
-      const norm = opts.map((opt) => {
+      const deduped = new Map()
+      opts.forEach((opt) => {
         if (opt == null) return null
-        if (typeof opt === 'string') return { value: opt, stockQty: 0 }
-        if (typeof opt !== 'object') return null
-        const value = String(opt.value ?? opt.name ?? opt.label ?? '').trim()
-        if (!value) return null
-        const stockQtyRaw = Number(opt.stockQty ?? opt.stock ?? 0)
-        const stockQty = Number.isFinite(stockQtyRaw) ? Math.max(0, Math.floor(stockQtyRaw)) : 0
-        const image = typeof opt.image === 'string' && opt.image.trim() ? opt.image.trim() : ''
-        let swatch = ''
-        try {
-          if (typeof opt.swatch === 'string' && opt.swatch.trim()) {
-            const raw = opt.swatch.trim()
-            if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(raw)) swatch = raw
-          }
-        } catch {}
-        return { value, stockQty, ...(image ? { image } : {}), ...(swatch ? { swatch } : {}) }
-      }).filter(Boolean)
+        const parsed = (() => {
+          if (typeof opt === 'string') return { value: String(opt).trim(), stockQty: 0 }
+          if (typeof opt !== 'object') return null
+          const value = String(opt.value ?? opt.name ?? opt.label ?? '').trim()
+          if (!value) return null
+          const stockQtyRaw = Number(opt.stockQty ?? opt.stock ?? 0)
+          const stockQty = Number.isFinite(stockQtyRaw) ? Math.max(0, Math.floor(stockQtyRaw)) : 0
+          const image = typeof opt.image === 'string' && opt.image.trim() ? opt.image.trim() : ''
+          let swatch = ''
+          try {
+            if (typeof opt.swatch === 'string' && opt.swatch.trim()) {
+              const raw = opt.swatch.trim()
+              if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(raw)) swatch = raw
+            }
+          } catch {}
+          return { value, stockQty, ...(image ? { image } : {}), ...(swatch ? { swatch } : {}) }
+        })()
+        if (!parsed?.value) return null
+        const key = parsed.value.toLowerCase()
+        const existing = deduped.get(key)
+        if (!existing) {
+          deduped.set(key, parsed)
+          return null
+        }
+        deduped.set(key, {
+          ...existing,
+          stockQty: Math.max(Number(existing?.stockQty || 0), Number(parsed?.stockQty || 0)),
+          image: existing?.image || parsed?.image || '',
+          swatch: existing?.swatch || parsed?.swatch || '',
+        })
+        return null
+      })
+      const norm = Array.from(deduped.values()).filter(Boolean)
       if (norm.length) out[k] = norm
     }
     return out
@@ -115,33 +162,119 @@ const ProductDetail = () => {
     } catch { return false }
   })
 
+  const [isAdmin] = useState(() => {
+    try {
+      const me = JSON.parse(localStorage.getItem('me') || 'null')
+      return !!me && ['admin', 'user', 'manager', 'seo_manager'].includes(me.role)
+    } catch { return false }
+  })
+
+  const [adminSeoOpen, setAdminSeoOpen] = useState(false)
+  const [indexingStatus, setIndexingStatus] = useState('')
+  const [indexingLoading, setIndexingLoading] = useState(false)
+
+  // Inject / clean-up all SEO meta tags whenever product loads
   useEffect(() => {
-    if (product) {
-      const pageTitle = product.metaTitle || product.seoTitle || product.name || 'Product'
-      document.title = pageTitle
-      const metaDesc = product.metaDescription || product.seoDescription || product.description?.slice(0, 160) || ''
-      if (metaDesc) {
-        let metaTag = document.querySelector('meta[name="description"]')
-        if (!metaTag) { metaTag = document.createElement('meta'); metaTag.setAttribute('name', 'description'); document.head.appendChild(metaTag) }
-        metaTag.setAttribute('content', metaDesc)
-      }
-      trackPageView(`/product/${id}`, `Product: ${product.name}`)
-      trackProductView(product._id, product.name, product.category, product.price)
-      if (product.variants && typeof product.variants === 'object') {
-        const normalized = normalizeVariants(product.variants)
-        const initialVariants = {}
-        Object.keys(normalized).forEach((variantType) => {
-          const list = normalized[variantType]
-          if (Array.isArray(list) && list.length > 0) {
-            const firstInStock = list.find((o) => Number(o?.stockQty) > 0)
-            initialVariants[variantType] = String((firstInStock || list[0])?.value || '')
-          }
-        })
-        setSelectedVariants(initialVariants)
-      }
-      if (product.category) loadRelatedProducts(product.category)
+    if (!product) return
+
+    const pageTitle = product.seoTitle || product.metaTitle || product.name || 'Product'
+    document.title = pageTitle
+
+    const canonicalHref = product.canonicalUrl || `${SITE_URL}/product/${product._id}`
+    const pageUrl = `${SITE_URL}${location.pathname}`
+    const metaDesc = product.seoDescription || product.metaDescription || (product.description || '').slice(0, 158)
+    const keywords = product.seoKeywords || ''
+    const ogTitle = product.ogTitle || pageTitle
+    const ogDesc = product.ogDescription || metaDesc
+    const ogImage = (() => {
+      const imgs = Array.isArray(product.images) ? product.images : []
+      const raw = imgs[0] || product.imagePath || ''
+      return raw.startsWith('http') ? raw : raw ? `${SITE_URL}${raw}` : ''
+    })()
+
+    const setMeta = (sel, attr, val) => {
+      if (!val) return
+      let el = document.querySelector(sel)
+      if (!el) { el = document.createElement('meta'); if (sel.includes('property')) el.setAttribute('property', sel.match(/property="([^"]+)"/)?.[1] || ''); else el.setAttribute('name', sel.match(/name="([^"]+)"/)?.[1] || ''); document.head.appendChild(el) }
+      el.setAttribute(attr, val)
     }
-  }, [product, id])
+    const setLink = (rel, href, extra = {}) => {
+      if (!href) return
+      let el = document.querySelector(`link[rel="${rel}"]`)
+      if (!el) { el = document.createElement('link'); el.setAttribute('rel', rel); document.head.appendChild(el) }
+      el.setAttribute('href', href)
+      Object.entries(extra).forEach(([k, v]) => el.setAttribute(k, v))
+    }
+
+    setMeta('meta[name="description"]', 'content', metaDesc)
+    setMeta('meta[name="keywords"]', 'content', keywords)
+    if (product.noIndex) setMeta('meta[name="robots"]', 'content', 'noindex,nofollow')
+    else { const r = document.querySelector('meta[name="robots"]'); if (r) r.setAttribute('content', 'index,follow') }
+    setLink('canonical', canonicalHref)
+    setMeta('meta[property="og:title"]', 'content', ogTitle)
+    setMeta('meta[property="og:description"]', 'content', ogDesc)
+    setMeta('meta[property="og:url"]', 'content', pageUrl)
+    setMeta('meta[property="og:type"]', 'content', 'product')
+    if (ogImage) setMeta('meta[property="og:image"]', 'content', ogImage)
+    setMeta('meta[name="twitter:card"]', 'content', 'summary_large_image')
+    setMeta('meta[name="twitter:title"]', 'content', ogTitle)
+    setMeta('meta[name="twitter:description"]', 'content', ogDesc)
+
+    // Hreflang tags from countrySeo
+    document.querySelectorAll('link[rel="alternate"][hreflang]').forEach(el => el.remove())
+    if (product.countrySeo && typeof product.countrySeo === 'object') {
+      Object.entries(product.countrySeo).forEach(([, cs]) => {
+        if (cs?.hreflang) {
+          const el = document.createElement('link')
+          el.rel = 'alternate'
+          el.setAttribute('hreflang', cs.hreflang)
+          el.href = canonicalHref
+          document.head.appendChild(el)
+        }
+      })
+    }
+
+    // JSON-LD Product structured data
+    let ld = document.getElementById('__product_jsonld')
+    if (!ld) { ld = document.createElement('script'); ld.type = 'application/ld+json'; ld.id = '__product_jsonld'; document.head.appendChild(ld) }
+    ld.textContent = JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'Product',
+      name: product.name,
+      description: product.description || '',
+      image: ogImage || undefined,
+      sku: product.sku || undefined,
+      brand: product.brand ? { '@type': 'Brand', name: product.brand } : undefined,
+      offers: {
+        '@type': 'Offer',
+        priceCurrency: product.baseCurrency || 'SAR',
+        price: product.price || 0,
+        availability: product.inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+        url: canonicalHref,
+      },
+    })
+
+    trackPageView(`/product/${product._id}`, `Product: ${product.name}`)
+    trackProductView(product._id, product.name, product.category, product.price)
+
+    if (product.variants && typeof product.variants === 'object') {
+      const normalized = normalizeVariants(product.variants)
+      const initialVariants = {}
+      Object.keys(normalized).forEach((variantType) => {
+        const list = normalized[variantType]
+        if (Array.isArray(list) && list.length > 0) {
+          const firstInStock = list.find((o) => Number(o?.stockQty) > 0)
+          initialVariants[variantType] = String((firstInStock || list[0])?.value || '')
+        }
+      })
+      setSelectedVariants(initialVariants)
+    }
+    if (product.category) loadRelatedProducts(product.category)
+
+    return () => {
+      try { document.getElementById('__product_jsonld')?.remove() } catch {}
+    }
+  }, [product, location.pathname])
 
   const loadRelatedProducts = async (category) => {
     try {
@@ -155,9 +288,21 @@ const ProductDetail = () => {
   const loadProduct = async () => {
     try {
       setLoading(true)
-      const response = await apiGet(`/api/products/public/${id}`)
+      let response
+      if (slug) {
+        response = await apiGet(`/api/products/public/by-slug/${encodeURIComponent(slug)}`)
+        if (!response?.product && id) response = await apiGet(`/api/products/public/${id}`)
+      } else {
+        response = await apiGet(`/api/products/public/${id}`)
+      }
       if (response?.product) {
-        setProduct({ ...response.product, images: response.product.images || [response.product.imagePath || '/placeholder-product.svg'] })
+        const p = response.product
+        // If we arrived via /product/:id and the product has a slug, redirect to the SEO-friendly URL
+        if (!slug && p.slug) {
+          navigate(`/products/${p.slug}`, { replace: true })
+          return
+        }
+        setProduct({ ...p, images: p.images || [p.imagePath || '/placeholder-product.svg'] })
       } else { toast.error('Product not found'); navigate('/catalog') }
     } catch (error) { console.error('Error loading product:', error); toast.error('Failed to load product'); navigate('/catalog') }
     finally { setLoading(false) }
@@ -165,14 +310,40 @@ const ProductDetail = () => {
 
   const loadReviews = async () => {
     try {
-      const response = await apiGet(`/api/reviews/product/${id}`)
+      const productId = product?._id || id
+      if (!productId) return
+      const response = await apiGet(`/api/reviews/product/${productId}`)
       if (response?.reviews) {
         setReviews(response.reviews.map(r => ({ id: r._id, name: r.customerName, rating: r.rating, comment: r.comment, date: new Date(r.createdAt).toLocaleDateString(), verified: r.isVerifiedPurchase })))
       }
     } catch (error) { console.error('Error loading reviews:', error) }
   }
 
-  useEffect(() => { if (!id) return; setSelectedImage(0); setQuantity(1); loadProduct(); loadReviews(); try { window.scrollTo({ top: 0, behavior: 'instant' }) } catch {} }, [id])
+  const requestGoogleIndex = async () => {
+    if (!product?._id) return
+    setIndexingLoading(true)
+    setIndexingStatus('')
+    try {
+      const token = localStorage.getItem('token')
+      const res = await apiPost(`/api/products/${product._id}/seo/request-index`, { siteUrl: SITE_URL }, { headers: { Authorization: `Bearer ${token}` } })
+      if (res?.success) {
+        setIndexingStatus(`✅ Submitted to Google — ${res.productUrl || ''}`)
+      } else if (res?.noCredentials) {
+        setIndexingStatus('⚠️ No GSC key configured. Go to Admin → Settings → API Setup.')
+      } else if (res?.permissionDenied) {
+        setIndexingStatus(`🔒 PERMISSION_DENIED|${res.productUrl || ''}`)
+      } else {
+        setIndexingStatus(`⚠️ ${res?.message || 'Failed'}`)
+      }
+    } catch (err) {
+      setIndexingStatus(`❌ ${err?.message || 'Failed to request indexing'}`)
+    } finally {
+      setIndexingLoading(false)
+    }
+  }
+
+  useEffect(() => { setSelectedImage(0); setQuantity(1); loadProduct(); try { window.scrollTo({ top: 0, behavior: 'instant' }) } catch {} }, [id, slug])
+  useEffect(() => { if (product?._id) loadReviews() }, [product?._id])
 
   // Inject <link rel="preload"> for first product image the moment we know the URL — starts
   // browser fetch one full API round-trip earlier than waiting for the <img> to render
@@ -201,8 +372,7 @@ const ProductDetail = () => {
   const handleAddToCart = () => {
     if (!product) return
     try {
-      const savedCart = localStorage.getItem('shopping_cart')
-      let cartItems = savedCart ? JSON.parse(savedCart) : []
+      let cartItems = readCartItems()
       const normalizedVariants2 = normalizeVariants(product.variants)
       let variantMax = Number.POSITIVE_INFINITY
       for (const [k, opts] of Object.entries(normalizedVariants2)) {
@@ -231,7 +401,14 @@ const ProductDetail = () => {
       const variantSignature = buildVariantSignature(selectedVariants)
       const cartItemId = variantSignature ? `${product._id}::${variantSignature}` : String(product._id)
       const existingItemIndex = cartItems.findIndex(item => String(item.id) === String(cartItemId))
-      const cartItem = { id: cartItemId, productId: product._id, name: product.name, price: unitPrice, currency: product.baseCurrency || 'SAR', image: (Array.isArray(product.images) && product.images.length > 0 ? product.images[0] : (product.imagePath || '')), quantity: addQty, maxStock: max, variants: selectedVariants, stockByCountry: product.stockByCountry || {}, warehouseType: wh.type, etaMinDays: wh.etaMinDays, etaMaxDays: wh.etaMaxDays, warehouseCountry: selectedCountry }
+      const selectedImagePath = (() => {
+        if (selectedVariantPreviewImage) {
+          const raw = Array.isArray(product.images) ? product.images.find((img) => resolveImageUrl(img) === selectedVariantPreviewImage) : ''
+          if (raw) return raw
+        }
+        return Array.isArray(product.images) && product.images.length > 0 ? product.images[0] : (product.imagePath || '')
+      })()
+      const cartItem = { id: cartItemId, productId: product._id, name: product.name, price: unitPrice, currency: product.baseCurrency || 'SAR', image: selectedImagePath, quantity: addQty, maxStock: max, variants: selectedVariants, stockByCountry: product.stockByCountry || {}, warehouseType: wh.type, etaMinDays: wh.etaMinDays, etaMaxDays: wh.etaMaxDays, warehouseCountry: selectedCountry }
       if (existingItemIndex >= 0) {
         const current = Number(cartItems[existingItemIndex].quantity || 0)
         const candidate = current + addQty
@@ -242,13 +419,17 @@ const ProductDetail = () => {
         const wh2 = resolveWarehouse(product, selectedCountry, cartItems[existingItemIndex].quantity)
         Object.assign(cartItems[existingItemIndex], { stockByCountry: product.stockByCountry || cartItems[existingItemIndex].stockByCountry || {}, warehouseType: wh2.type, etaMinDays: wh2.etaMinDays, etaMaxDays: wh2.etaMaxDays, warehouseCountry: selectedCountry })
       } else { cartItems.push(cartItem) }
-      const cartJson = JSON.stringify(cartItems)
-      localStorage.setItem('shopping_cart', cartJson)
-      try { sessionStorage.setItem('shopping_cart_bak', cartJson) } catch {}
+      writeCartItems(cartItems)
       try { localStorage.setItem('last_added_product', String(product._id)) } catch {}
-      trackAddToCart(product._id, product.name, addQty, unitPrice)
-      window.dispatchEvent(new CustomEvent('cartUpdated'))
-      setCartSuccessModal({ image: Array.isArray(product.images) && product.images.length > 0 ? product.images[0] : (product.imagePath || ''), name: product.name, qty: addQty })
+      trackAddToCart(product._id, product.name, unitPrice, addQty)
+      setCartSuccessModal({
+        image: selectedImagePath || (Array.isArray(product.images) && product.images.length > 0 ? product.images[0] : (product.imagePath || '')),
+        name: product.name,
+        qty: addQty,
+        variants: Object.entries(selectedVariants || {})
+          .map(([name, value]) => ({ name: String(name || '').trim(), value: String(value || '').trim() }))
+          .filter((entry) => entry.name && entry.value),
+      })
     } catch (error) { console.error('Error adding to cart:', error); toast.error('Failed to add item to cart') }
   }
 
@@ -273,6 +454,136 @@ const ProductDetail = () => {
       if (next) toast.success('Added to wishlist'); else toast.info('Removed from wishlist')
     } catch {} finally { setWishBusy(false) }
   }
+
+  const resolveImageUrl = (u) => {
+    if (!u) return '/placeholder-product.svg'
+    if (typeof u !== 'string') return '/placeholder-product.svg'
+    if (u.startsWith('http')) return u
+    if (u.startsWith('/') && !u.startsWith('/uploads/') && !u.startsWith('/api/uploads/')) return u
+    return mediaUrl(u) || '/placeholder-product.svg'
+  }
+  const sanitizeWhatsAppNumber = (n) => String(n || '').replace(/[^0-9]/g, '')
+  const toAbsoluteUrl = (u) => { const s = String(u || ''); if (!s) return ''; if (s.startsWith('http://') || s.startsWith('https://')) return s; if (!s.startsWith('/')) return s; try { return `${window.location.origin}${s}` } catch { return s } }
+  const productData = product || {}
+
+  const orderedMedia = (() => {
+    const seq = Array.isArray(productData.mediaSequence) ? productData.mediaSequence : []
+    const cleaned = seq.filter(m => m && typeof m === 'object' && typeof m.url === 'string' && String(m.url).trim()).map(m => ({ type: String(m.type || 'image'), url: String(m.url || '').trim(), position: Number.isFinite(Number(m.position)) ? Number(m.position) : 0 })).sort((a, b) => a.position - b.position)
+    if (cleaned.length) return cleaned
+    const imgs = Array.isArray(productData.images) && productData.images.length ? productData.images : (productData.imagePath ? [productData.imagePath] : [])
+    const out = imgs.filter(Boolean).map((u, idx) => ({ type: 'image', url: String(u), position: idx }))
+    const v = productData.video || ''
+    if (v) out.push({ type: 'video', url: String(v), position: out.length })
+    return out
+  })()
+
+  const imageMedia = orderedMedia.filter(m => String(m.type) === 'image')
+  const rawImages = imageMedia.map(m => m.url)
+  const hasNoImages = rawImages.length === 0
+  const images = hasNoImages ? [] : rawImages.map(resolveImageUrl)
+  const firstVideo = orderedMedia.find(m => String(m.type) === 'video')
+  const videoUrl = firstVideo?.url ? resolveImageUrl(firstVideo.url) : (productData.video ? resolveImageUrl(productData.video) : null)
+  const hasVideo = !!videoUrl
+  const isVideoSelected = hasVideo && selectedImage === images.length
+
+  const waNumber = sanitizeWhatsAppNumber(productData.whatsappNumber)
+  const waImage = toAbsoluteUrl((images && images.length ? images[0] : resolveImageUrl(productData.imagePath)) || '')
+  const waProductUrl = (() => { try { return window.location.href } catch { return '' } })()
+  const waText = (() => { try { return encodeURIComponent(`Product: ${productData.name || ''}\nImage: ${waImage}\nLink: ${waProductUrl}`) } catch { return '' } })()
+  const waUrl = waNumber ? `https://wa.me/${waNumber}?text=${waText}` : ''
+
+  const basePrice = Number(productData.price) || 0
+  const salePrice2 = Number(productData.salePrice) || 0
+  const hasActiveSale = salePrice2 > 0 && salePrice2 < basePrice
+  const displayPrice = hasActiveSale ? salePrice2 : basePrice
+  const originalPrice = hasActiveSale ? basePrice : null
+  const discountPercentage = originalPrice && originalPrice > displayPrice ? Math.round(((originalPrice - displayPrice) / originalPrice) * 100) : 0
+
+  const normalizedVars = normalizeVariants(productData.variants)
+  const colorVariantEntry = Object.entries(normalizedVars).find(([k]) => String(k).toLowerCase() === 'color') || []
+  const colorVariantKey = colorVariantEntry[0] || 'color'
+  const variantColorOpts = Array.isArray(colorVariantEntry[1]) ? colorVariantEntry[1] : []
+  const selectedVariantPreviewImage = useMemo(() => {
+    const preferredKeys = [colorVariantKey, ...Object.keys(selectedVariants || {})]
+    for (const key of preferredKeys) {
+      const selectedValue = String(selectedVariants?.[key] || '').trim()
+      if (!selectedValue) continue
+      const options = Array.isArray(normalizedVars?.[key]) ? normalizedVars[key] : []
+      const match = options.find((opt) => String(opt?.value || '').trim() === selectedValue)
+      if (match?.image) return resolveImageUrl(match.image)
+    }
+    return ''
+  }, [colorVariantKey, normalizedVars, selectedVariants])
+
+  const selectedVariantAvailability = useMemo(() => {
+    let max = Number.POSITIVE_INFINITY
+    let hasSelection = false
+    for (const [key, options] of Object.entries(normalizedVars || {})) {
+      const selectedValue = String(selectedVariants?.[key] || '').trim()
+      if (!selectedValue) continue
+      const match = Array.isArray(options) ? options.find((opt) => String(opt?.value || '').trim() === selectedValue) : null
+      if (!match) continue
+      hasSelection = true
+      if (Number.isFinite(Number(match.stockQty))) {
+        max = Math.min(max, Math.max(0, Number(match.stockQty)))
+      }
+    }
+    if (!hasSelection || max === Number.POSITIVE_INFINITY) return null
+    return max
+  }, [normalizedVars, selectedVariants])
+  const selectedVariantSummary = useMemo(() => {
+    return Object.entries(selectedVariants || {})
+      .map(([name, value]) => ({
+        name: String(name || '').trim(),
+        value: String(value || '').trim(),
+      }))
+      .filter((entry) => entry.name && entry.value)
+  }, [selectedVariants])
+
+  const goBack = () => { try { if (window.history.length > 1) navigate(-1); else navigate('/catalog') } catch { navigate('/catalog') } }
+
+  const handleShare = async () => {
+    const shareData = { title: product?.name || 'Product', text: product?.name || '', url: window.location.href }
+    try {
+      if (navigator.share) { await navigator.share(shareData) }
+      else { await navigator.clipboard.writeText(window.location.href); toast.success('Link copied') }
+    } catch (err) { if (err.name !== 'AbortError') { try { await navigator.clipboard.writeText(window.location.href); toast.success('Link copied') } catch {} } }
+  }
+
+  const scrollToImage = (idx) => {
+    setSelectedImage(idx)
+    if (mobileGalleryRef.current) {
+      const w = mobileGalleryRef.current.offsetWidth
+      mobileGalleryRef.current.scrollTo({ left: w * idx, behavior: 'smooth' })
+    }
+  }
+
+  const onVariantClick = (name, value, opt) => {
+    setSelectedVariants(prev => ({ ...prev, [name]: value }))
+    try {
+      if (opt?.image) {
+        const abs = resolveImageUrl(opt.image)
+        const imgIdx = images.findIndex((u) => u === abs)
+        if (imgIdx >= 0) scrollToImage(imgIdx)
+      }
+    } catch {}
+  }
+
+  useEffect(() => {
+    if (!selectedVariantPreviewImage) return
+    const imgIdx = images.findIndex((u) => u === selectedVariantPreviewImage)
+    if (imgIdx >= 0 && imgIdx !== selectedImage) {
+      scrollToImage(imgIdx)
+    }
+  }, [images, selectedImage, selectedVariantPreviewImage])
+
+  // Shared price display (numeric values for FormattedPrice)
+  const priceConverted = convertPrice(displayPrice, productData.baseCurrency || 'SAR', getDisplayCurrency())
+  const origPriceConverted = originalPrice ? convertPrice(originalPrice, productData.baseCurrency || 'SAR', getDisplayCurrency()) : null
+  const dispCcy = getDisplayCurrency()
+  // Legacy string fallbacks for places that still use text
+  const priceDisplay = formatPrice(priceConverted, dispCcy)
+  const origPriceDisplay = origPriceConverted ? formatPrice(origPriceConverted, dispCcy) : null
 
   // Loading state
   if (loading && !product) {
@@ -299,83 +610,6 @@ const ProductDetail = () => {
     )
   }
 
-  const resolveImageUrl = (u) => {
-    if (!u) return '/placeholder-product.svg'
-    if (typeof u !== 'string') return '/placeholder-product.svg'
-    if (u.startsWith('http')) return u
-    if (u.startsWith('/') && !u.startsWith('/uploads/') && !u.startsWith('/api/uploads/')) return u
-    return mediaUrl(u) || '/placeholder-product.svg'
-  }
-  const sanitizeWhatsAppNumber = (n) => String(n || '').replace(/[^0-9]/g, '')
-  const toAbsoluteUrl = (u) => { const s = String(u || ''); if (!s) return ''; if (s.startsWith('http://') || s.startsWith('https://')) return s; if (!s.startsWith('/')) return s; try { return `${window.location.origin}${s}` } catch { return s } }
-
-  const orderedMedia = (() => {
-    const seq = Array.isArray(product?.mediaSequence) ? product.mediaSequence : []
-    const cleaned = seq.filter(m => m && typeof m === 'object' && typeof m.url === 'string' && String(m.url).trim()).map(m => ({ type: String(m.type || 'image'), url: String(m.url || '').trim(), position: Number.isFinite(Number(m.position)) ? Number(m.position) : 0 })).sort((a, b) => a.position - b.position)
-    if (cleaned.length) return cleaned
-    const imgs = Array.isArray(product?.images) && product.images.length ? product.images : (product?.imagePath ? [product.imagePath] : [])
-    const out = imgs.filter(Boolean).map((u, idx) => ({ type: 'image', url: String(u), position: idx }))
-    const v = product?.video || ''
-    if (v) out.push({ type: 'video', url: String(v), position: out.length })
-    return out
-  })()
-
-  const imageMedia = orderedMedia.filter(m => String(m.type) === 'image')
-  const rawImages = imageMedia.map(m => m.url)
-  const hasNoImages = rawImages.length === 0
-  const images = hasNoImages ? [] : rawImages.map(resolveImageUrl)
-  const firstVideo = orderedMedia.find(m => String(m.type) === 'video')
-  const videoUrl = firstVideo?.url ? resolveImageUrl(firstVideo.url) : (product.video ? resolveImageUrl(product.video) : null)
-  const hasVideo = !!videoUrl
-  const isVideoSelected = hasVideo && selectedImage === images.length
-
-  const waNumber = sanitizeWhatsAppNumber(product?.whatsappNumber)
-  const waImage = toAbsoluteUrl((images && images.length ? images[0] : resolveImageUrl(product?.imagePath)) || '')
-  const waProductUrl = (() => { try { return window.location.href } catch { return '' } })()
-  const waText = (() => { try { return encodeURIComponent(`Product: ${product?.name || ''}\nImage: ${waImage}\nLink: ${waProductUrl}`) } catch { return '' } })()
-  const waUrl = waNumber ? `https://wa.me/${waNumber}?text=${waText}` : ''
-
-  const basePrice = Number(product.price) || 0
-  const salePrice2 = Number(product.salePrice) || 0
-  const hasActiveSale = salePrice2 > 0 && salePrice2 < basePrice
-  const displayPrice = hasActiveSale ? salePrice2 : basePrice
-  const originalPrice = hasActiveSale ? basePrice : null
-  const discountPercentage = originalPrice && originalPrice > displayPrice ? Math.round(((originalPrice - displayPrice) / originalPrice) * 100) : 0
-
-  const normalizedVars = normalizeVariants(product.variants)
-  const variantColorOpts = (() => { for (const [k, opts] of Object.entries(normalizedVars)) { if (String(k).toLowerCase() === 'color') return opts } return [] })()
-
-  const goBack = () => { try { if (window.history.length > 1) navigate(-1); else navigate('/catalog') } catch { navigate('/catalog') } }
-
-  const handleShare = async () => {
-    const shareData = { title: product?.name || 'Product', text: product?.name || '', url: window.location.href }
-    try {
-      if (navigator.share) { await navigator.share(shareData) }
-      else { await navigator.clipboard.writeText(window.location.href); toast.success('Link copied') }
-    } catch (err) { if (err.name !== 'AbortError') { try { await navigator.clipboard.writeText(window.location.href); toast.success('Link copied') } catch {} } }
-  }
-
-  const scrollToImage = (idx) => {
-    setSelectedImage(idx)
-    if (mobileGalleryRef.current) {
-      const w = mobileGalleryRef.current.offsetWidth
-      mobileGalleryRef.current.scrollTo({ left: w * idx, behavior: 'smooth' })
-    }
-  }
-
-  const onVariantClick = (name, value, opt) => {
-    setSelectedVariants(prev => ({ ...prev, [name]: value }))
-    try { if (opt?.image) { const abs = resolveImageUrl(opt.image); const imgIdx = images.findIndex(u => u === abs); if (imgIdx >= 0) setSelectedImage(imgIdx) } } catch {}
-  }
-
-  // Shared price display (numeric values for FormattedPrice)
-  const priceConverted = convertPrice(displayPrice, product.baseCurrency || 'SAR', getDisplayCurrency())
-  const origPriceConverted = originalPrice ? convertPrice(originalPrice, product.baseCurrency || 'SAR', getDisplayCurrency()) : null
-  const dispCcy = getDisplayCurrency()
-  // Legacy string fallbacks for places that still use text
-  const priceDisplay = formatPrice(priceConverted, dispCcy)
-  const origPriceDisplay = origPriceConverted ? formatPrice(origPriceConverted, dispCcy) : null
-
   // --- Variant Selector Component ---
   const VariantSelector = ({ excludeColor }) => {
     if (!product.variants || Object.keys(normalizedVars).length === 0) return null
@@ -384,26 +618,34 @@ const ProductDetail = () => {
         {Object.entries(normalizedVars).map(([name, options]) => {
           const isColor = String(name).toLowerCase() === 'color'
           if (excludeColor && isColor) return null
+          const selectedLabel = selectedVariants[name] || ''
           if (isColor) return (
-            <div key={name}>
-              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">{name}: <span className="text-gray-900">{selectedVariants[name] || ''}</span></label>
-              <div className="flex flex-wrap gap-2">
+            <div key={name} className="rounded-[28px] border border-slate-200/80 bg-white/90 backdrop-blur-xl shadow-[0_16px_50px_rgba(15,23,42,0.06)] p-4">
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <label className="text-[11px] font-black text-slate-400 uppercase tracking-[0.24em] block">{name}</label>
+                <span className="px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-bold">{selectedLabel || 'Choose'}</span>
+              </div>
+              <div className="flex flex-wrap gap-3">
                 {options.map((opt, idx) => {
                   const val = String(opt?.value || ''); const dis = Number.isFinite(Number(opt?.stockQty)) ? Number(opt.stockQty) <= 0 : false
-                  return <button key={idx} onClick={() => !dis && onVariantClick(name, val, opt)} disabled={dis} title={val} className={`w-10 h-10 rounded-full border-2 transition-all overflow-hidden ${selectedVariants[name] === val ? 'border-orange-500 scale-110 shadow-md' : dis ? 'border-gray-200 opacity-30 cursor-not-allowed' : 'border-gray-200 hover:border-gray-400 hover:scale-105'}`}>
+                  return <button key={idx} onClick={() => !dis && onVariantClick(name, val, opt)} disabled={dis} title={val} className={`relative w-12 h-12 rounded-full border-[3px] transition-all overflow-hidden ${selectedVariants[name] === val ? 'border-orange-500 scale-110 shadow-[0_16px_26px_rgba(249,115,22,0.28)]' : dis ? 'border-slate-200 opacity-30 cursor-not-allowed' : 'border-white shadow-md hover:border-slate-300 hover:scale-105'}`}>
                     {opt?.image ? <img src={resolveImageUrl(opt.image)} alt={val} className="w-full h-full object-cover" /> : <div className="w-full h-full" style={{ backgroundColor: opt?.swatch || '#e5e7eb' }} />}
+                    {selectedVariants[name] === val ? <span className="absolute inset-0 rounded-full ring-2 ring-white/80" /> : null}
                   </button>
                 })}
               </div>
             </div>
           )
           return (
-            <div key={name}>
-              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">{name}</label>
-              <div className="flex flex-wrap gap-2">
+            <div key={name} className="rounded-[28px] border border-slate-200/80 bg-white/90 backdrop-blur-xl shadow-[0_16px_50px_rgba(15,23,42,0.05)] p-4">
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <label className="text-[11px] font-black text-slate-400 uppercase tracking-[0.24em] block">{name}</label>
+                <span className="px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-bold">{selectedLabel || 'Choose'}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
                 {options.map((opt, idx) => {
                   const val = String(opt?.value || ''); const dis = Number.isFinite(Number(opt?.stockQty)) ? Number(opt.stockQty) <= 0 : false
-                  return <button key={idx} onClick={() => !dis && onVariantClick(name, val, opt)} disabled={dis} className={`px-5 py-2.5 rounded-2xl text-sm font-medium transition-all ${selectedVariants[name] === val ? 'bg-gray-900 text-white shadow-lg scale-105' : dis ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{val}</button>
+                  return <button key={idx} onClick={() => !dis && onVariantClick(name, val, opt)} disabled={dis} className={`min-w-0 min-h-[52px] px-4 py-3 rounded-[20px] text-sm font-semibold transition-all text-left leading-tight ${selectedVariants[name] === val ? 'bg-slate-900 text-white shadow-[0_18px_35px_rgba(15,23,42,0.18)] scale-[1.02]' : dis ? 'bg-slate-100 text-slate-300 cursor-not-allowed' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>{val}</button>
                 })}
               </div>
             </div>
@@ -448,9 +690,9 @@ const ProductDetail = () => {
       </div>
       {activeTab === 'description' && (
         <div className="space-y-4">
-          {product.descriptionBlocks?.length > 0 && <div className="grid grid-cols-2 gap-2">{product.descriptionBlocks.map((b, i) => <div key={i} className="bg-white rounded-2xl p-3 shadow-sm"><p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">{b.label}</p><p className="text-gray-900 font-semibold text-sm">{b.value}</p></div>)}</div>}
-          {product.overview && <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-2xl p-5"><p className="text-gray-700 leading-relaxed text-sm whitespace-pre-line">{product.overview}</p></div>}
-          {product.specifications && <div className="bg-white rounded-2xl p-5 shadow-sm"><p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Specifications</p><p className="text-gray-600 text-sm whitespace-pre-line leading-relaxed">{product.specifications}</p></div>}
+          {product.descriptionBlocks?.length > 0 && <div className="grid grid-cols-2 gap-2">{product.descriptionBlocks.map((b, i) => <div key={i} className="bg-white rounded-2xl p-3 shadow-sm"><p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">{b.label}</p><PremiumText className="text-gray-900 font-semibold text-sm" content={b.value} /></div>)}</div>}
+          {product.overview && <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-2xl p-5"><PremiumText content={product.overview} className="text-gray-700 leading-relaxed text-sm" /></div>}
+          {product.specifications && <div className="bg-white rounded-2xl p-5 shadow-sm"><p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Specifications</p><PremiumText content={product.specifications} className="text-gray-600 text-sm leading-relaxed" /></div>}
           {!product.description && !product.overview && !product.specifications && !product.descriptionBlocks?.length && <div className="text-center py-12 text-gray-400">No description available</div>}
           {/* ── Media Gallery – full-width one-by-one carousel ── */}
           {(images.length > 0 || hasVideo) && (
@@ -600,8 +842,8 @@ const ProductDetail = () => {
 
           {/* Floating color swatches */}
           {variantColorOpts.length > 1 && (
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 z-20 flex flex-col gap-3 bg-white/60 backdrop-blur-md p-2 rounded-full shadow-xl">
-              {variantColorOpts.map((opt, idx) => { const val = String(opt?.value || ''); return <button key={idx} onClick={() => onVariantClick('color', val, opt)} className={`w-7 h-7 rounded-full border-2 transition-all ${selectedVariants.color === val ? 'border-orange-500 scale-125' : 'border-white/80 hover:scale-110'}`} style={{ backgroundColor: opt?.swatch || '#e5e7eb' }} title={val} /> })}
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 z-20 flex flex-col gap-3 bg-white/65 backdrop-blur-xl px-2.5 py-3 rounded-[32px] shadow-[0_18px_45px_rgba(15,23,42,0.16)] border border-white/70">
+              {variantColorOpts.map((opt, idx) => { const val = String(opt?.value || ''); return <button key={idx} onClick={() => onVariantClick(colorVariantKey, val, opt)} className={`w-8 h-8 rounded-full border-[3px] transition-all ${selectedVariants[colorVariantKey] === val ? 'border-orange-500 scale-125 shadow-[0_14px_25px_rgba(249,115,22,0.26)]' : 'border-white/80 hover:scale-110'}`} style={{ backgroundColor: opt?.swatch || '#e5e7eb' }} title={val} /> })}
             </div>
           )}
 
@@ -654,8 +896,16 @@ const ProductDetail = () => {
             <span className="text-sm font-semibold text-gray-700">{displayRating.toFixed(1)}</span>
             <span className="text-xs text-gray-400">({displayReviewCount})</span>
           </div>
-          {product.description && <p className="text-gray-500 text-sm leading-relaxed mb-4">{product.description}</p>}
-          <div className="mb-5"><VariantSelector excludeColor /></div>
+          {product.description && <PremiumText content={product.description} className="text-gray-500 text-sm leading-relaxed mb-4" />}
+          <div className="mb-5 space-y-3">
+            {selectedVariantAvailability != null ? (
+              <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold ${selectedVariantAvailability > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
+                <span className={`w-2 h-2 rounded-full ${selectedVariantAvailability > 0 ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                {selectedVariantAvailability > 0 ? `${selectedVariantAvailability} variant units available` : 'Selected variant is out of stock'}
+              </div>
+            ) : null}
+            <VariantSelector excludeColor />
+          </div>
 
 
           <div className="rounded-2xl p-4 flex items-start gap-3 bg-white shadow-sm mb-5">
@@ -722,8 +972,8 @@ const ProductDetail = () => {
               </div>
 
               {variantColorOpts.length > 1 && (
-                <div className="absolute right-8 top-1/2 -translate-y-1/2 z-10 flex flex-col gap-3 bg-white/60 backdrop-blur-md p-2.5 rounded-full shadow-xl">
-                  {variantColorOpts.map((opt, idx) => { const val = String(opt?.value || ''); return <button key={idx} onClick={() => onVariantClick('color', val, opt)} className={`w-8 h-8 rounded-full border-2 transition-all ${selectedVariants.color === val ? 'border-orange-500 scale-125' : 'border-transparent hover:scale-110'}`} style={{ backgroundColor: opt?.swatch || '#e5e7eb' }} title={val} /> })}
+                <div className="absolute right-8 top-1/2 -translate-y-1/2 z-10 flex flex-col gap-3 bg-white/65 backdrop-blur-xl px-3 py-3 rounded-[34px] shadow-[0_18px_45px_rgba(15,23,42,0.16)] border border-white/70">
+                  {variantColorOpts.map((opt, idx) => { const val = String(opt?.value || ''); return <button key={idx} onClick={() => onVariantClick(colorVariantKey, val, opt)} className={`w-9 h-9 rounded-full border-[3px] transition-all ${selectedVariants[colorVariantKey] === val ? 'border-orange-500 scale-125 shadow-[0_14px_25px_rgba(249,115,22,0.24)]' : 'border-transparent hover:scale-110'}`} style={{ backgroundColor: opt?.swatch || '#e5e7eb' }} title={val} /> })}
                 </div>
               )}
 
@@ -744,9 +994,17 @@ const ProductDetail = () => {
                 {origPriceConverted && <span className="text-lg text-gray-400 line-through mb-1"><FormattedPrice amount={origPriceConverted} currency={dispCcy} size={14} /></span>}
                 {hasActiveSale && <span className="text-sm font-bold text-red-500 mb-1">-{discountPercentage}%</span>}
               </div>
-              {product.description && <p className="text-gray-500 leading-relaxed mb-8 text-base line-clamp-4">{product.description}</p>}
+              {product.description && <PremiumText content={product.description} className="text-gray-500 leading-relaxed mb-8 text-base line-clamp-4 overflow-hidden" />}
 
-              <div className="mb-8"><VariantSelector /></div>
+              <div className="mb-8 space-y-3">
+                {selectedVariantAvailability != null ? (
+                  <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold ${selectedVariantAvailability > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
+                    <span className={`w-2 h-2 rounded-full ${selectedVariantAvailability > 0 ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                    {selectedVariantAvailability > 0 ? `${selectedVariantAvailability} variant units available` : 'Selected variant is out of stock'}
+                  </div>
+                ) : null}
+                <VariantSelector />
+              </div>
 
               <div className="flex items-center gap-4 mb-8">
                 <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Quantity</label>
@@ -885,6 +1143,16 @@ const ProductDetail = () => {
               <p className="text-green-600 text-xs font-bold tracking-widest uppercase mb-1" style={{ animation: 'fadeSlideUp 0.4s 0.2s ease both' }}>Successfully Added!</p>
               <h3 className="font-bold text-gray-900 text-[17px] leading-snug line-clamp-2 mb-1" style={{ animation: 'fadeSlideUp 0.4s 0.3s ease both' }}>{cartSuccessModal.name}</h3>
               {cartSuccessModal.qty > 1 && <p className="text-gray-400 text-sm mb-4" style={{ animation: 'fadeSlideUp 0.4s 0.35s ease both' }}>Qty: {cartSuccessModal.qty}</p>}
+              {!!cartSuccessModal.variants?.length && (
+                <div className="mb-4 flex flex-wrap justify-center gap-2" style={{ animation: 'fadeSlideUp 0.4s 0.36s ease both' }}>
+                  {cartSuccessModal.variants.map((entry) => (
+                    <span key={`${entry.name}:${entry.value}`} className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700">
+                      <span className="uppercase tracking-wide text-slate-400">{entry.name}</span>
+                      <span>{entry.value}</span>
+                    </span>
+                  ))}
+                </div>
+              )}
               {/* Buttons */}
               <div className="flex gap-3 mt-5" style={{ animation: 'fadeSlideUp 0.4s 0.4s ease both' }}>
                 <button type="button" onClick={() => setCartSuccessModal(null)} className="flex-1 py-3.5 rounded-2xl border-2 border-gray-200 text-gray-700 font-bold text-sm hover:border-gray-300 hover:bg-gray-50 active:scale-95 transition-all">
@@ -907,6 +1175,8 @@ const ProductDetail = () => {
           `}</style>
         </div>
       )}
+
+
     </div>
   )
 }

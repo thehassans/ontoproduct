@@ -1,6 +1,26 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 
+const GeoPointSchema = new mongoose.Schema(
+  {
+    type: { type: String, enum: ["Point"], default: "Point" },
+    coordinates: {
+      type: [Number],
+      default: undefined,
+      validate: {
+        validator: (value) => !value || value.length === 2,
+        message: "Coordinates must be [lng, lat]",
+      },
+    },
+    address: { type: String, default: "" },
+    accuracy: { type: Number, default: 0 },
+    heading: { type: Number, default: 0 },
+    speed: { type: Number, default: 0 },
+    updatedAt: { type: Date },
+  },
+  { _id: false }
+);
+
 const UserSchema = new mongoose.Schema(
   {
     firstName: { type: String, default: "" },
@@ -22,6 +42,7 @@ const UserSchema = new mongoose.Schema(
         "investor",
         "driver",
         "customer",
+        "shop_vendor",
         "dropshipper",
         "reference",
         "commissioner",
@@ -155,6 +176,19 @@ const UserSchema = new mongoose.Schema(
     },
     // Driver-specific profile
     driverProfile: {
+      vehicleType: {
+        type: String,
+        enum: ["bike", "car", "van", "truck", "other"],
+        default: "bike",
+      },
+      isOnline: { type: Boolean, default: false },
+      liveTrackingEnabled: { type: Boolean, default: true },
+      currentOrder: { type: mongoose.Schema.Types.ObjectId, ref: "Order" },
+      currentAssignmentStage: {
+        type: String,
+        enum: ["idle", "to_pickup", "at_pickup", "picked_up", "to_dropoff"],
+        default: "idle",
+      },
       commissionPerOrder: { type: Number, default: 0 },
       commissionCurrency: {
         type: String,
@@ -178,6 +212,16 @@ const UserSchema = new mongoose.Schema(
       commissionRate: { type: Number, default: 8 },
       totalCommission: { type: Number, default: 0 }, // Total commission earned from all delivered orders
       paidCommission: { type: Number, default: 0 }, // Total commission already paid via remittances
+    },
+    shopVendorProfile: {
+      shop: { type: mongoose.Schema.Types.ObjectId, ref: "Shop" },
+      permissions: [
+        {
+          type: String,
+          enum: ["dashboard", "orders", "products", "payments"],
+        },
+      ],
+      lastSeenAt: { type: Date },
     },
     // Dropshipper-specific profile
     dropshipperProfile: {
@@ -216,8 +260,12 @@ const UserSchema = new mongoose.Schema(
     lastLocation: {
       lat: { type: Number },
       lng: { type: Number },
+      accuracy: { type: Number },
+      heading: { type: Number },
+      speed: { type: Number },
       updatedAt: { type: Date },
     },
+    lastKnownLocation: { type: GeoPointSchema, default: undefined },
     // Workspace/user-level settings
     settings: {
       autoSendInvoice: { type: Boolean, default: true }, // controls auto WhatsApp invoice PDF on order create
@@ -230,6 +278,9 @@ const UserSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+UserSchema.index({ lastKnownLocation: "2dsphere" });
+UserSchema.index({ "shopVendorProfile.shop": 1 });
 
 UserSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
