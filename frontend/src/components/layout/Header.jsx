@@ -508,6 +508,9 @@ export default function Header({ onCartClick, editMode = false, editState = {}, 
           top: 0;
           z-index: 100;
           box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+          padding-top: env(safe-area-inset-top, 0px);
+          backdrop-filter: blur(14px);
+          -webkit-backdrop-filter: blur(14px);
         }
 
         .header-container {
@@ -518,6 +521,8 @@ export default function Header({ onCartClick, editMode = false, editState = {}, 
           align-items: center;
           justify-content: space-between;
           height: 90px;
+          gap: 16px;
+          min-width: 0;
         }
 
         .header-left {
@@ -525,6 +530,7 @@ export default function Header({ onCartClick, editMode = false, editState = {}, 
           display: flex;
           align-items: center;
           gap: 12px;
+          min-width: 0;
         }
 
         .mobile-menu-btn {
@@ -547,11 +553,14 @@ export default function Header({ onCartClick, editMode = false, editState = {}, 
           display: flex;
           align-items: center;
           text-decoration: none;
+          min-width: 0;
         }
 
         .logo-img {
           height: 72px;
           width: auto;
+          max-width: min(36vw, 220px);
+          object-fit: contain;
         }
 
         .header-center {
@@ -591,12 +600,14 @@ export default function Header({ onCartClick, editMode = false, editState = {}, 
 
         .header-right {
           flex-shrink: 0;
+          min-width: 0;
         }
 
         .header-actions {
           display: flex;
           align-items: center;
           gap: 12px;
+          min-width: 0;
         }
 
         /* Country Selector */
@@ -1098,12 +1109,21 @@ export default function Header({ onCartClick, editMode = false, editState = {}, 
 
         @media (max-width: 768px) {
           .header-container {
-            padding: 0 16px;
-            height: 60px;
+            padding: 0 12px;
+            min-height: 64px;
+            height: auto;
+            display: grid;
+            grid-template-columns: auto minmax(0, 1fr) auto;
+            gap: 10px;
+          }
+
+          .header-left {
+            gap: 10px;
           }
 
           .logo-img {
             height: 34px;
+            max-width: min(40vw, 148px);
           }
 
           .mobile-logo {
@@ -1118,27 +1138,61 @@ export default function Header({ onCartClick, editMode = false, editState = {}, 
             display: none;
           }
 
+          .country-selector {
+            display: none;
+          }
+
           .auth-buttons {
             display: none;
           }
 
           .header-actions {
-            gap: 8px;
+            gap: 6px;
+            justify-content: flex-end;
           }
 
           .search-btn,
-          .cart-btn {
-            padding: 8px;
+          .cart-btn,
+          .wishlist-btn,
+          .mobile-menu-btn {
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            display: grid;
+            place-items: center;
+            border-radius: 12px;
+          }
+
+          .cart-preview-img {
+            width: 20px;
+            height: 20px;
           }
         }
 
         @media (max-width: 480px) {
           .header-container {
-            padding: 0 12px;
+            padding: 0 10px;
+            min-height: 60px;
+            gap: 8px;
+          }
+
+          .logo-img {
+            height: 32px;
+            max-width: min(38vw, 132px);
           }
 
           .mobile-menu-content {
             width: 100vw;
+          }
+        }
+
+        @media (max-width: 380px) {
+          .search-btn {
+            display: none;
+          }
+
+          .logo-img {
+            max-width: min(42vw, 124px);
           }
         }
 

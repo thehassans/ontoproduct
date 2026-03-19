@@ -44,10 +44,8 @@ export default function AppLaunchOverlay() {
         <div className="app-launch-content">
           <div className="app-launch-logo-shell">
             <div className="app-launch-logo-glow" />
-            <img src={`${import.meta.env.BASE_URL}BSBackgroundremoved.png`} alt="BuySial" className="app-launch-logo" />
+            <img src={`${import.meta.env.BASE_URL}mobile-app-icon.png`} alt="BuySial" className="app-launch-logo" />
           </div>
-          <div className="app-launch-title">BuySial</div>
-          <div className="app-launch-subtitle">Shopping, beautifully fast</div>
           <div className="app-launch-progress">
             <span />
           </div>
@@ -76,17 +74,17 @@ export default function AppLaunchOverlay() {
         .app-launch-content {
           position: relative;
           display: grid;
-          gap: 14px;
+          gap: 18px;
           justify-items: center;
-          padding: 28px;
-          width: min(92vw, 360px);
+          padding: 24px;
+          width: min(92vw, 300px);
           text-align: center;
         }
 
         .app-launch-logo-shell {
           position: relative;
-          width: clamp(90px, 24vw, 122px);
-          height: clamp(90px, 24vw, 122px);
+          width: clamp(82px, 22vw, 108px);
+          height: clamp(82px, 22vw, 108px);
           display: grid;
           place-items: center;
           animation: appLaunchFloat 1.35s ease-in-out forwards;
@@ -111,30 +109,13 @@ export default function AppLaunchOverlay() {
           animation: appLaunchScale 0.82s cubic-bezier(0.2, 0.9, 0.2, 1) forwards;
         }
 
-        .app-launch-title {
-          font-size: clamp(28px, 7vw, 42px);
-          font-weight: 950;
-          letter-spacing: -0.06em;
-          color: #0f172a;
-          animation: appLaunchRise 0.72s ease forwards;
-        }
-
-        .app-launch-subtitle {
-          font-size: 13px;
-          font-weight: 700;
-          letter-spacing: 0.18em;
-          text-transform: uppercase;
-          color: #f97316;
-          animation: appLaunchRise 0.9s ease forwards;
-        }
-
         .app-launch-progress {
           width: min(72vw, 180px);
           height: 5px;
           border-radius: 999px;
           background: rgba(148,163,184,0.16);
           overflow: hidden;
-          margin-top: 6px;
+          margin-top: 2px;
         }
 
         .app-launch-progress span {
@@ -217,13 +198,8 @@ export default function AppLaunchOverlay() {
 
         @media (max-width: 480px) {
           .app-launch-content {
-            width: min(94vw, 320px);
-            padding: 20px;
-          }
-
-          .app-launch-subtitle {
-            letter-spacing: 0.12em;
-            font-size: 11px;
+            width: min(92vw, 260px);
+            padding: 18px;
           }
         }
       `}</style>
