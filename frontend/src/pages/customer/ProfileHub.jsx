@@ -52,6 +52,7 @@ export default function CustomerProfileHub() {
   const [profile, setProfile] = useState(null)
   const [orders, setOrders] = useState([])
   const [walletSummary, setWalletSummary] = useState({ byCurrency: {} })
+  const [walletTransactions, setWalletTransactions] = useState([])
   const [coupons, setCoupons] = useState([])
   const [wishlistIds, setWishlistIds] = useState(() => readWishlistIds())
   const [wishlistProducts, setWishlistProducts] = useState([])
@@ -93,10 +94,11 @@ export default function CustomerProfileHub() {
 
     ;(async () => {
       try {
-        const [profileRes, ordersRes, walletRes, couponsRes] = await Promise.all([
+        const [profileRes, ordersRes, walletRes, walletTxRes, couponsRes] = await Promise.all([
           apiGet('/api/ecommerce/customer/profile').catch(() => null),
-          apiGet('/api/ecommerce/customer/orders?limit=4').catch(() => ({ orders: [] })),
+          apiGet('/api/ecommerce/customer/orders?limit=6').catch(() => ({ orders: [] })),
           apiGet('/api/ecommerce/customer/wallet/summary').catch(() => ({ byCurrency: {} })),
+          apiGet('/api/ecommerce/customer/wallet/transactions?page=1&limit=4').catch(() => ({ transactions: [] })),
           apiGet('/api/coupons/public').catch(() => ({ coupons: [] })),
         ])
 
@@ -105,6 +107,7 @@ export default function CustomerProfileHub() {
         setProfile(profileRes)
         setOrders(Array.isArray(ordersRes?.orders) ? ordersRes.orders : [])
         setWalletSummary(walletRes?.byCurrency ? { byCurrency: walletRes.byCurrency } : { byCurrency: {} })
+        setWalletTransactions(Array.isArray(walletTxRes?.transactions) ? walletTxRes.transactions : [])
         setCoupons(Array.isArray(couponsRes?.coupons) ? couponsRes.coupons : [])
       } finally {
         if (active) setLoading(false)
@@ -146,14 +149,16 @@ export default function CustomerProfileHub() {
   const displayName = `${customer.firstName || ''} ${customer.lastName || ''}`.trim() || 'Customer'
   const customerEmail = customer.email || 'Manage your orders, wishlist, wallet, and offers in one place.'
   const customerInitial = (customer.firstName?.[0] || displayName?.[0] || 'C').toUpperCase()
-  const previewCoupons = activeCoupons.slice(0, 2)
-  const previewWishlist = wishlistProducts.slice(0, 2)
+  const previewCoupons = activeCoupons.slice(0, 4)
+  const previewWishlist = wishlistProducts.slice(0, 4)
+  const previewTransactions = walletTransactions.slice(0, 4)
   const statCards = [
     { label: 'Orders', value: stats.totalOrders },
     { label: 'Pending', value: stats.pendingOrders },
     { label: 'Delivered', value: stats.deliveredOrders },
     { label: 'Spent', value: formatMoney(stats.totalSpent, orders[0]?.currency || 'SAR') },
   ]
+  const walletBalances = Object.entries(walletSummary?.byCurrency || {})
 
   function doLogout() {
     try {
@@ -163,41 +168,6 @@ export default function CustomerProfileHub() {
     } catch {}
     navigate('/customer/login', { replace: true })
   }
-
-  const actionCards = [
-    {
-      to: '/customer/wishlist',
-      title: 'Wishlist',
-      value: wishlistIds.length,
-      meta: 'Saved products',
-      accent: '#ef4444',
-      icon: '♡',
-    },
-    {
-      to: '/customer/wallet',
-      title: 'Wallet',
-      value: walletEntries.length ? formatMoney(primaryWallet[1], primaryWallet[0]) : 'Empty',
-      meta: 'Balance & top-ups',
-      accent: '#8b5cf6',
-      icon: '◔',
-    },
-    {
-      to: '/customer/orders',
-      title: 'My Orders',
-      value: stats.totalOrders,
-      meta: 'Track every order',
-      accent: '#2563eb',
-      icon: '▣',
-    },
-    {
-      to: '/customer/coupons',
-      title: 'Coupons',
-      value: activeCoupons.length,
-      meta: 'Offers waiting',
-      accent: '#f59e0b',
-      icon: '⌁',
-    },
-  ]
 
   if (loading) {
     return (
@@ -270,7 +240,6 @@ export default function CustomerProfileHub() {
 
                 <div className="profile-hero-actions">
                   <Link to="/catalog" className="profile-primary-btn">Continue shopping</Link>
-                  <Link to="/customer/orders" className="profile-secondary-btn">Track orders</Link>
                   <button type="button" className="profile-secondary-btn profile-logout-btn" onClick={doLogout}>Logout</button>
                 </div>
               </div>
@@ -285,41 +254,18 @@ export default function CustomerProfileHub() {
               </div>
             </section>
 
-            <section className="profile-panel wide-panel">
-              <div className="section-row">
-                <div>
-                  <div className="section-label">Shortcuts</div>
-                  <div className="section-title">Everything in one place</div>
-                </div>
-                <Link to="/catalog" className="section-link">Open store</Link>
-              </div>
-
-              <div className="shortcut-grid">
-                {actionCards.map((item) => (
-                  <Link key={item.title} to={item.to} className="shortcut-card" style={{ '--accent': item.accent }}>
-                    <div className="shortcut-icon">{item.icon}</div>
-                    <div className="shortcut-copy">
-                      <div className="shortcut-title">{item.title}</div>
-                      <div className="shortcut-value">{item.value}</div>
-                      <div className="shortcut-meta">{item.meta}</div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </section>
-
             <section className="profile-grid-two">
               <div className="profile-panel">
                 <div className="section-row compact-row">
                   <div>
-                    <div className="section-label">Balance</div>
+                    <div className="section-label">Wallet</div>
                     <div className="section-title">Wallet</div>
                   </div>
-                  <Link to="/customer/wallet" className="section-link">Open</Link>
+                  <div className="section-value-pill">{walletEntries.length ? formatMoney(primaryWallet[1], primaryWallet[0]) : 'Empty'}</div>
                 </div>
-                {walletEntries.length ? (
+                {walletBalances.length ? (
                   <div className="mini-stack">
-                    {walletEntries.map(([currency, amount]) => (
+                    {walletBalances.map(([currency, amount]) => (
                       <div key={currency} className="info-row">
                         <span>{currency}</span>
                         <strong>{Number(amount || 0).toFixed(2)}</strong>
@@ -329,44 +275,46 @@ export default function CustomerProfileHub() {
                 ) : (
                   <div className="empty-mini-state">No wallet balance yet.</div>
                 )}
-              </div>
 
-              <div className="profile-panel">
+                <div className="section-divider" />
+
                 <div className="section-row compact-row">
                   <div>
-                    <div className="section-label">Offers</div>
-                    <div className="section-title">Coupons</div>
+                    <div className="section-label">Activity</div>
+                    <div className="section-title">Recent transactions</div>
                   </div>
-                  <Link to="/customer/coupons" className="section-link">View all</Link>
                 </div>
+
                 <div className="mini-stack">
-                  {previewCoupons.map((coupon) => (
-                    <div key={coupon._id} className="coupon-row">
-                      <div>
-                        <div className="coupon-code">{coupon.code}</div>
-                        <div className="coupon-copy">{coupon.description || 'Use this code at checkout.'}</div>
+                  {previewTransactions.map((tx) => (
+                    <div key={tx._id} className="transaction-row">
+                      <div className="transaction-copy">
+                        <div className="transaction-title">{(tx.type || 'wallet').toUpperCase()} {tx.direction === 'credit' ? 'Credit' : 'Debit'}</div>
+                        <div className="transaction-meta">{tx.description || 'Wallet activity'}</div>
+                        <div className="transaction-meta">{new Date(tx.createdAt).toLocaleString()}</div>
                       </div>
-                      <div className="coupon-discount">
-                        {coupon.discountType === 'percentage' ? `${coupon.discountValue}%` : `${coupon.discountValue} OFF`}
+                      <div className="transaction-side">
+                        <strong className={tx.direction === 'credit' ? 'amount-positive' : 'amount-negative'}>
+                          {tx.direction === 'credit' ? '+' : '-'}{Number(tx.amount || 0).toFixed(2)} {tx.currency || primaryWallet[0]}
+                        </strong>
+                        <span>{tx.status || 'completed'}</span>
                       </div>
                     </div>
                   ))}
-                  {!previewCoupons.length && <div className="empty-mini-state">No active coupons right now.</div>}
+                  {!previewTransactions.length && <div className="empty-mini-state">No wallet transactions yet.</div>}
                 </div>
               </div>
-            </section>
 
-            <section className="profile-grid-two profile-grid-bottom">
-              <div className="profile-panel profile-panel-large">
+              <div className="profile-panel">
                 <div className="section-row">
                   <div>
                     <div className="section-label">Orders</div>
                     <div className="section-title">Recent activity</div>
                   </div>
-                  <Link to="/customer/orders" className="section-link">View all</Link>
+                  <div className="section-value-pill">{stats.totalOrders}</div>
                 </div>
                 <div className="mini-stack">
-                  {orders.slice(0, 4).map((order) => {
+                  {orders.slice(0, 6).map((order) => {
                     const statusKey = order?.shipmentStatus || order?.status || 'pending'
                     const theme = STATUS_THEME[statusKey] || STATUS_THEME.pending
                     return (
@@ -374,6 +322,7 @@ export default function CustomerProfileHub() {
                         <div className="order-row-main">
                           <div className="order-row-id">#{order._id?.slice(-8).toUpperCase()}</div>
                           <div className="order-row-date">{new Date(order.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                          <div className="order-row-date">{order.items?.length ? `${order.items.length} item${order.items.length > 1 ? 's' : ''}` : 'Order items'}</div>
                         </div>
                         <div className="order-row-side">
                           <span className="order-status-pill" style={{ color: theme.color, background: theme.background }}>
@@ -387,19 +336,21 @@ export default function CustomerProfileHub() {
                   {!orders.length && <div className="empty-mini-state">No recent orders yet.</div>}
                 </div>
               </div>
+            </section>
 
-              <div className="profile-panel">
+            <section className="profile-grid-two profile-grid-bottom">
+              <div className="profile-panel profile-panel-large">
                 <div className="section-row">
                   <div>
                     <div className="section-label">Saved</div>
                     <div className="section-title">Wishlist</div>
                   </div>
-                  <Link to="/customer/wishlist" className="section-link">Open</Link>
+                  <div className="section-value-pill">{wishlistIds.length}</div>
                 </div>
                 {previewWishlist.length ? (
-                  <div className="wishlist-list">
+                  <div className="wishlist-list wishlist-grid-list">
                     {previewWishlist.map((product) => (
-                      <Link key={product._id} to={`/product/${product._id}`} className="wishlist-row">
+                      <Link key={product._id} to={`/product/${product._id}`} className="wishlist-row cardish-wishlist">
                         <div className="wishlist-thumb-shell">
                           {getProductImage(product) ? (
                             <img src={getProductImage(product)} alt={product?.name || 'Product'} className="wishlist-thumb" />
@@ -417,6 +368,43 @@ export default function CustomerProfileHub() {
                 ) : (
                   <div className="empty-mini-state">Your wishlist is empty for now.</div>
                 )}
+              </div>
+
+              <div className="profile-panel">
+                <div className="section-row compact-row">
+                  <div>
+                    <div className="section-label">Offers</div>
+                    <div className="section-title">Coupons</div>
+                  </div>
+                  <div className="section-value-pill">{activeCoupons.length}</div>
+                </div>
+                <div className="mini-stack">
+                  {previewCoupons.map((coupon) => (
+                    <div key={coupon._id} className="coupon-row">
+                      <div className="coupon-main-copy">
+                        <div className="coupon-code">{coupon.code}</div>
+                        <div className="coupon-copy">{coupon.description || 'Use this code at checkout.'}</div>
+                        <div className="coupon-copy coupon-meta-line">
+                          {coupon.minOrderAmount > 0 ? `Min order ${coupon.minOrderAmount}` : 'Use at checkout'}
+                          {coupon.expiresAt ? ` • Expires ${new Date(coupon.expiresAt).toLocaleDateString()}` : ''}
+                        </div>
+                      </div>
+                      <div className="coupon-side">
+                        <div className="coupon-discount">
+                          {coupon.discountType === 'percentage' ? `${coupon.discountValue}%` : `${coupon.discountValue} OFF`}
+                        </div>
+                        <button
+                          type="button"
+                          className="coupon-copy-btn"
+                          onClick={() => navigator.clipboard?.writeText?.(coupon.code)}
+                        >
+                          Copy
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {!previewCoupons.length && <div className="empty-mini-state">No active coupons right now.</div>}
+                </div>
               </div>
             </section>
           </div>
@@ -536,7 +524,8 @@ export default function CustomerProfileHub() {
 
         .profile-primary-btn,
         .profile-secondary-btn,
-        .section-link {
+        .section-link,
+        .coupon-copy-btn {
           display: inline-flex;
           align-items: center;
           justify-content: center;
@@ -548,7 +537,8 @@ export default function CustomerProfileHub() {
 
         .profile-primary-btn,
         .profile-secondary-btn,
-        .section-link {
+        .section-link,
+        .coupon-copy-btn {
           padding: 10px 14px;
           border-radius: 999px;
           border: 1px solid rgba(148,163,184,0.18);
@@ -567,10 +557,17 @@ export default function CustomerProfileHub() {
           background: rgba(255,255,255,0.9);
         }
 
+        .coupon-copy-btn {
+          color: #ea580c;
+          background: rgba(255,247,237,0.92);
+          cursor: pointer;
+          font-weight: 800;
+        }
+
         .profile-primary-btn:hover,
         .profile-secondary-btn:hover,
         .section-link:hover,
-        .shortcut-card:hover,
+        .coupon-copy-btn:hover,
         .order-row:hover,
         .wishlist-row:hover {
           transform: translateY(-2px);
@@ -636,6 +633,21 @@ export default function CustomerProfileHub() {
           align-items: start;
         }
 
+        .section-value-pill {
+          padding: 7px 10px;
+          border-radius: 999px;
+          background: rgba(15,23,42,0.05);
+          color: #0f172a;
+          font-size: 11px;
+          font-weight: 800;
+          white-space: nowrap;
+        }
+
+        .section-divider {
+          height: 1px;
+          background: rgba(148,163,184,0.16);
+        }
+
         .section-title {
           margin-top: 2px;
           font-size: 16px;
@@ -643,58 +655,11 @@ export default function CustomerProfileHub() {
           letter-spacing: -0.02em;
         }
 
-        .shortcut-grid {
-          display: grid;
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-          gap: 10px;
-        }
-
-        .shortcut-card {
-          display: flex;
-          gap: 12px;
-          align-items: center;
-          padding: 14px;
-          border-radius: 18px;
-          text-decoration: none;
-          color: inherit;
-          border: 1px solid color-mix(in srgb, var(--accent) 16%, rgba(148,163,184,0.14));
-          background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 8%, white) 0%, rgba(255,255,255,0.98) 100%);
-        }
-
-        .shortcut-icon {
-          width: 40px;
-          height: 40px;
-          border-radius: 14px;
-          display: grid;
-          place-items: center;
-          background: color-mix(in srgb, var(--accent) 14%, white);
-          color: var(--accent);
-          font-size: 18px;
-          font-weight: 900;
-          flex-shrink: 0;
-        }
-
-        .shortcut-copy {
-          min-width: 0;
-          display: grid;
-          gap: 2px;
-        }
-
-        .shortcut-title {
-          font-size: 12px;
-          font-weight: 800;
-        }
-
-        .shortcut-value {
-          font-size: 15px;
-          font-weight: 900;
-          overflow-wrap: anywhere;
-        }
-
-        .shortcut-meta,
         .wishlist-meta,
         .coupon-copy,
-        .order-row-date {
+        .order-row-date,
+        .transaction-meta,
+        .transaction-side span {
           color: #64748b;
           font-size: 11px;
           font-weight: 600;
@@ -709,7 +674,8 @@ export default function CustomerProfileHub() {
         .info-row,
         .coupon-row,
         .order-row,
-        .wishlist-row {
+        .wishlist-row,
+        .transaction-row {
           padding: 12px 14px;
           border-radius: 16px;
           border: 1px solid rgba(148,163,184,0.12);
@@ -726,7 +692,8 @@ export default function CustomerProfileHub() {
         .coupon-code,
         .order-row-id,
         .wishlist-name,
-        .order-row-side strong {
+        .order-row-side strong,
+        .transaction-title {
           font-size: 13px;
           font-weight: 800;
           color: #0f172a;
@@ -748,11 +715,38 @@ export default function CustomerProfileHub() {
           color: inherit;
         }
 
+        .coupon-main-copy,
+        .transaction-copy {
+          min-width: 0;
+          display: grid;
+          gap: 3px;
+        }
+
+        .coupon-side,
+        .transaction-side {
+          display: grid;
+          gap: 8px;
+          justify-items: end;
+          text-align: right;
+        }
+
+        .coupon-meta-line {
+          font-size: 10px;
+        }
+
         .order-row-main,
         .wishlist-copy {
           min-width: 0;
           display: grid;
           gap: 3px;
+        }
+
+        .amount-positive {
+          color: #16a34a;
+        }
+
+        .amount-negative {
+          color: #ef4444;
         }
 
         .order-row-side {
@@ -775,6 +769,14 @@ export default function CustomerProfileHub() {
         .wishlist-row {
           align-items: center;
           flex-wrap: nowrap;
+        }
+
+        .wishlist-grid-list {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .cardish-wishlist {
+          min-width: 0;
         }
 
         .wishlist-thumb-shell {
@@ -824,8 +826,8 @@ export default function CustomerProfileHub() {
           .profile-stat-strip {
             grid-template-columns: repeat(2, minmax(0, 1fr));
           }
-          .shortcut-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
+          .wishlist-grid-list {
+            grid-template-columns: 1fr;
           }
         }
 
@@ -864,17 +866,25 @@ export default function CustomerProfileHub() {
 
           .profile-primary-btn,
           .profile-secondary-btn,
-          .section-link {
+          .section-link,
+          .coupon-copy-btn {
             width: 100%;
           }
 
           .profile-stat-strip,
           .profile-grid-two,
-          .shortcut-grid {
+          .wishlist-grid-list {
             grid-template-columns: 1fr;
           }
 
           .order-row-side {
+            width: 100%;
+            justify-items: start;
+            text-align: left;
+          }
+
+          .coupon-side,
+          .transaction-side {
             width: 100%;
             justify-items: start;
             text-align: left;
