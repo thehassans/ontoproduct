@@ -44,7 +44,7 @@ export default function AppLaunchOverlay() {
         <div className="app-launch-content">
           <div className="app-launch-logo-shell">
             <div className="app-launch-logo-glow" />
-            <img src={`${import.meta.env.BASE_URL}mobile-app-icon.png`} alt="BuySial" className="app-launch-logo" />
+            <img src={`${import.meta.env.BASE_URL}mobile-app-launch-logo.png`} alt="BuySial" className="app-launch-logo" />
           </div>
           <div className="app-launch-progress">
             <span />
@@ -77,14 +77,14 @@ export default function AppLaunchOverlay() {
           gap: 18px;
           justify-items: center;
           padding: 24px;
-          width: min(92vw, 300px);
+          width: min(96vw, 420px);
           text-align: center;
         }
 
         .app-launch-logo-shell {
           position: relative;
-          width: clamp(82px, 22vw, 108px);
-          height: clamp(82px, 22vw, 108px);
+          width: clamp(164px, 44vw, 216px);
+          height: clamp(164px, 44vw, 216px);
           display: grid;
           place-items: center;
           animation: appLaunchFloat 1.35s ease-in-out forwards;
@@ -198,7 +198,7 @@ export default function AppLaunchOverlay() {
 
         @media (max-width: 480px) {
           .app-launch-content {
-            width: min(92vw, 260px);
+            width: min(96vw, 320px);
             padding: 18px;
           }
         }

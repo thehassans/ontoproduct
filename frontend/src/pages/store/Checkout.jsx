@@ -4,6 +4,8 @@ import { apiPost, API_BASE } from '../../api'
 import { COUNTRY_TO_CODE, COUNTRY_TO_CURRENCY } from '../../utils/constants'
 import { readCartItems, writeCartItems, clearCartItems } from '../../utils/cartStorage'
 
+const MOBILE_DELIVERY_PROFILE_KEY = '__buysial_mobile_delivery_profile__'
+
 export default function Checkout(){
   const navigate = useNavigate()
   const [cart, setCart] = useState(() => readCartItems())
@@ -30,6 +32,25 @@ export default function Checkout(){
     }
     window.addEventListener('countryChanged', handleCountryChange)
     return () => window.removeEventListener('countryChanged', handleCountryChange)
+  }, [])
+
+  useEffect(() => {
+    const applyMobileDeliveryProfile = () => {
+      try {
+        const raw = localStorage.getItem(MOBILE_DELIVERY_PROFILE_KEY)
+        if (!raw) return
+        const profile = JSON.parse(raw) || {}
+        setForm(prev => ({
+          ...prev,
+          name: String(profile?.name || '').trim() || prev.name,
+          phone: String(profile?.phone || '').trim() || prev.phone,
+        }))
+      } catch {}
+    }
+
+    applyMobileDeliveryProfile()
+    window.addEventListener('buysialDeliveryProfileUpdated', applyMobileDeliveryProfile)
+    return () => window.removeEventListener('buysialDeliveryProfileUpdated', applyMobileDeliveryProfile)
   }, [])
 
   useEffect(() => { writeCartItems(cart, { dispatchEvent: false }) }, [cart])
