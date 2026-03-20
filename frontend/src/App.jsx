@@ -8,7 +8,7 @@ import './styles/premium-ecommerce.css'
 import { apiGet } from './api.js'
 import DynamicPixels from './components/DynamicPixels.jsx'
 import AppLaunchOverlay from './components/AppLaunchOverlay.jsx'
-import MobileDeliveryProfilePrompt from './components/MobileDeliveryProfilePrompt.jsx'
+import DeliveryDetailsPrompt from './components/DeliveryDetailsPrompt.jsx'
 
 // =============================================================================
 // LAZY LOADING - All components loaded on demand for faster initial load
@@ -616,7 +616,7 @@ export default function App() {
         <CustomDomainRouter>
           <Suspense fallback={<AppFallback />}>
           <AppLaunchOverlay />
-          <MobileDeliveryProfilePrompt />
+          <DeliveryDetailsPrompt />
           <DynamicPixels />
           {/* <FloatingWhatsApp /> */}
           <Routes>

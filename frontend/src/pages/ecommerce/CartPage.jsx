@@ -11,7 +11,7 @@ import { COUNTRY_LIST, COUNTRY_TO_CURRENCY } from '../../utils/constants'
 import { resolveWarehouse } from '../../utils/warehouse'
 import { readCartItems, writeCartItems, clearCartItems, areCartItemsEqual } from '../../utils/cartStorage'
 
-const MOBILE_DELIVERY_PROFILE_KEY = '__buysial_mobile_delivery_profile__'
+const DELIVERY_DRAFT_KEY = '__buysial_delivery_draft__'
 
 export default function CartPage() {
   const [cartItems, setCartItems] = useState(() => readCartItems())
@@ -670,6 +670,26 @@ export default function CartPage() {
     }
   }, [])
 
+  useEffect(() => {
+    const applyDraft = () => {
+      try {
+        const draft = JSON.parse(localStorage.getItem(DELIVERY_DRAFT_KEY) || '{}') || {}
+        const name = String(draft?.name || '').trim()
+        const phone = String(draft?.phone || '').trim()
+        if (!name && !phone) return
+        setForm(prev => ({
+          ...prev,
+          name: prev.name || name,
+          phone: prev.phone || phone,
+        }))
+      } catch {}
+    }
+
+    applyDraft()
+    window.addEventListener('buysialDeliveryDraftUpdated', applyDraft)
+    return () => window.removeEventListener('buysialDeliveryDraftUpdated', applyDraft)
+  }, [])
+
   // Handle PayPal return
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
@@ -784,25 +804,6 @@ export default function CartPage() {
         }))
       }
     } catch {}
-  }, [])
-
-  useEffect(() => {
-    const applyMobileDeliveryProfile = () => {
-      try {
-        const raw = localStorage.getItem(MOBILE_DELIVERY_PROFILE_KEY)
-        if (!raw) return
-        const profile = JSON.parse(raw) || {}
-        setForm(prev => ({
-          ...prev,
-          name: String(profile?.name || '').trim() || prev.name,
-          phone: String(profile?.phone || '').trim() || prev.phone,
-        }))
-      } catch {}
-    }
-
-    applyMobileDeliveryProfile()
-    window.addEventListener('buysialDeliveryProfileUpdated', applyMobileDeliveryProfile)
-    return () => window.removeEventListener('buysialDeliveryProfileUpdated', applyMobileDeliveryProfile)
   }, [])
 
   useEffect(() => {
@@ -1249,12 +1250,12 @@ export default function CartPage() {
       </div>
       {/* Announcement bar */}
       {annBar?.text && (
-        <div className="lg:hidden" style={{ background: annBar.bg || '#111827', color: annBar.color || '#fff', textAlign: 'center', padding: '8px 16px', paddingTop: 'calc(8px + max(env(safe-area-inset-top, 0px), var(--native-safe-area-top, 0px)))', fontSize: 12, fontWeight: 500, letterSpacing: '0.01em' }}>
+        <div className="lg:hidden" style={{ background: annBar.bg || '#111827', color: annBar.color || '#fff', textAlign: 'center', padding: '8px 16px', fontSize: 12, fontWeight: 500, letterSpacing: '0.01em' }}>
           {annBar.text}
         </div>
       )}
       {/* Mobile: ultra minimal header */}
-      <div className="lg:hidden" style={{ background: '#fff', borderBottom: '1px solid #f1f5f9', padding: '12px 16px', paddingTop: annBar?.text ? '12px' : 'calc(12px + max(env(safe-area-inset-top, 0px), var(--native-safe-area-top, 0px)))', display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div className="lg:hidden" style={{ background: '#fff', borderBottom: '1px solid #f1f5f9', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
         <button onClick={() => navigate(-1)} style={{ width: 36, height: 36, borderRadius: '50%', background: '#f8fafc', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </button>

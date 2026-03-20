@@ -4,7 +4,7 @@ import { apiPost, API_BASE } from '../../api'
 import { COUNTRY_TO_CODE, COUNTRY_TO_CURRENCY } from '../../utils/constants'
 import { readCartItems, writeCartItems, clearCartItems } from '../../utils/cartStorage'
 
-const MOBILE_DELIVERY_PROFILE_KEY = '__buysial_mobile_delivery_profile__'
+const DELIVERY_DRAFT_KEY = '__buysial_delivery_draft__'
 
 export default function Checkout(){
   const navigate = useNavigate()
@@ -35,22 +35,23 @@ export default function Checkout(){
   }, [])
 
   useEffect(() => {
-    const applyMobileDeliveryProfile = () => {
+    const applyDraft = () => {
       try {
-        const raw = localStorage.getItem(MOBILE_DELIVERY_PROFILE_KEY)
-        if (!raw) return
-        const profile = JSON.parse(raw) || {}
-        setForm(prev => ({
+        const draft = JSON.parse(localStorage.getItem(DELIVERY_DRAFT_KEY) || '{}') || {}
+        const name = String(draft?.name || '').trim()
+        const phone = String(draft?.phone || '').trim()
+        if (!name && !phone) return
+        setForm((prev) => ({
           ...prev,
-          name: String(profile?.name || '').trim() || prev.name,
-          phone: String(profile?.phone || '').trim() || prev.phone,
+          name: prev.name || name,
+          phone: prev.phone || phone,
         }))
       } catch {}
     }
 
-    applyMobileDeliveryProfile()
-    window.addEventListener('buysialDeliveryProfileUpdated', applyMobileDeliveryProfile)
-    return () => window.removeEventListener('buysialDeliveryProfileUpdated', applyMobileDeliveryProfile)
+    applyDraft()
+    window.addEventListener('buysialDeliveryDraftUpdated', applyDraft)
+    return () => window.removeEventListener('buysialDeliveryDraftUpdated', applyDraft)
   }, [])
 
   useEffect(() => { writeCartItems(cart, { dispatchEvent: false }) }, [cart])
