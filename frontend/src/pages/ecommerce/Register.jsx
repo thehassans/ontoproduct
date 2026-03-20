@@ -6,6 +6,8 @@ import PasswordInput from '../../components/PasswordInput'
 import MobileBottomNav from '../../components/ecommerce/MobileBottomNav'
 import { COUNTRY_LIST } from '../../utils/constants'
 
+const MOBILE_SIGNUP_PREFILL_KEY = '__buysial_mobile_signup_prefill__'
+
 const STYLES = `
   .register-page {
     min-height: 100vh;
@@ -228,6 +230,25 @@ export default function Register() {
       } catch {}
     })()
     return () => { cancelled = true }
+  }, [])
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(MOBILE_SIGNUP_PREFILL_KEY)
+      if (!raw) return
+      const data = JSON.parse(raw) || {}
+      const fullName = String(data?.name || '').trim()
+      if (!fullName) return
+      const parts = fullName.split(/\s+/).filter(Boolean)
+      const firstName = parts[0] || ''
+      const lastName = parts.slice(1).join(' ')
+      setFormData(prev => ({
+        ...prev,
+        firstName: prev.firstName || firstName,
+        lastName: prev.lastName || lastName,
+      }))
+      localStorage.removeItem(MOBILE_SIGNUP_PREFILL_KEY)
+    } catch {}
   }, [])
 
   const handleChange = (e) => {

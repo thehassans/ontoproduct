@@ -83,8 +83,8 @@ export default function AppLaunchOverlay() {
 
         .app-launch-logo-shell {
           position: relative;
-          width: clamp(164px, 44vw, 216px);
-          height: clamp(164px, 44vw, 216px);
+          width: clamp(150px, 40vw, 196px);
+          height: clamp(150px, 40vw, 196px);
           display: grid;
           place-items: center;
           animation: appLaunchFloat 1.35s ease-in-out forwards;
@@ -101,8 +101,8 @@ export default function AppLaunchOverlay() {
 
         .app-launch-logo {
           position: relative;
-          width: 100%;
-          height: 100%;
+          width: 76%;
+          height: 76%;
           object-fit: contain;
           filter: drop-shadow(0 20px 34px rgba(249,115,22,0.20));
           transform: scale(0.92);

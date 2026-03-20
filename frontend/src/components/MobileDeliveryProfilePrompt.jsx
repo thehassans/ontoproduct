@@ -1,9 +1,12 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Capacitor } from '@capacitor/core'
+import { apiGet, apiPost } from '../api.js'
+import { useToast } from '../ui/Toast'
 
-const PROMPT_SEEN_KEY = '__buysial_mobile_delivery_prompt_seen__'
+const PROMPT_SEEN_KEY = '__buysial_mobile_onboarding_prompt_seen_v2__'
 const PROFILE_KEY = '__buysial_mobile_delivery_profile__'
+const SIGNUP_PREFILL_KEY = '__buysial_mobile_signup_prefill__'
 
 function isNativeApp() {
   try {
@@ -26,23 +29,26 @@ export function readMobileDeliveryProfile() {
 }
 
 export default function MobileDeliveryProfilePrompt() {
+  const toast = useToast()
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(() => {
     const profile = readProfile()
     return {
       name: String(profile?.name || '').trim(),
-      phone: String(profile?.phone || '').trim(),
     }
   })
+  const [googleClientId, setGoogleClientId] = useState('')
+  const [googleReady, setGoogleReady] = useState(false)
+  const [googleLoading, setGoogleLoading] = useState(false)
 
-  const canSave = useMemo(() => String(form.name || '').trim() && String(form.phone || '').trim(), [form])
+  const canContinue = useMemo(() => String(form.name || '').trim().length > 0, [form.name])
 
   useEffect(() => {
     if (!isNativeApp()) return undefined
 
     let shouldOpen = false
     try {
-      shouldOpen = localStorage.getItem(PROMPT_SEEN_KEY) !== '1'
+      shouldOpen = !localStorage.getItem('token') && localStorage.getItem(PROMPT_SEEN_KEY) !== '1'
     } catch {
       shouldOpen = false
     }
@@ -61,39 +67,139 @@ export default function MobileDeliveryProfilePrompt() {
     }
   }, [open])
 
-  const closePrompt = (markSeen = true) => {
+  useEffect(() => {
+    if (!open) return undefined
+
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await apiGet('/api/settings/google-oauth')
+        if (!cancelled) setGoogleClientId(String(res?.clientId || '').trim())
+      } catch {}
+    })()
+
+    return () => { cancelled = true }
+  }, [open])
+
+  useEffect(() => {
+    if (!open || !googleClientId) return undefined
+    if (window.google?.accounts?.id) {
+      setGoogleReady(true)
+      return undefined
+    }
+
+    const existing = document.getElementById('buysial-mobile-google-gsi')
+    if (existing) {
+      const timer = window.setInterval(() => {
+        if (window.google?.accounts?.id) {
+          setGoogleReady(true)
+          window.clearInterval(timer)
+        }
+      }, 120)
+      return () => window.clearInterval(timer)
+    }
+
+    const script = document.createElement('script')
+    script.id = 'buysial-mobile-google-gsi'
+    script.src = 'https://accounts.google.com/gsi/client'
+    script.async = true
+    script.defer = true
+    script.onload = () => setGoogleReady(true)
+    document.head.appendChild(script)
+
+    return undefined
+  }, [open, googleClientId])
+
+  const closePrompt = useCallback((markSeen = true) => {
     if (markSeen) {
       try { localStorage.setItem(PROMPT_SEEN_KEY, '1') } catch {}
     }
     setOpen(false)
-  }
+  }, [])
 
-  const handleSkip = () => {
+  const persistProfile = useCallback((extra = {}) => {
     const existing = readProfile()
-    try {
-      localStorage.setItem(PROFILE_KEY, JSON.stringify({
-        ...existing,
-        skipped: true,
-        updatedAt: new Date().toISOString(),
-      }))
-    } catch {}
-    closePrompt(true)
-  }
-
-  const handleSave = () => {
-    if (!canSave) return
     const payload = {
-      name: String(form.name || '').trim(),
-      phone: String(form.phone || '').trim(),
-      skipped: false,
+      ...existing,
+      name: String(form.name || '').trim() || String(existing?.name || '').trim(),
       updatedAt: new Date().toISOString(),
+      ...extra,
     }
     try {
       localStorage.setItem(PROFILE_KEY, JSON.stringify(payload))
       window.dispatchEvent(new CustomEvent('buysialDeliveryProfileUpdated', { detail: payload }))
     } catch {}
+    return payload
+  }, [form.name])
+
+  const handleSkip = useCallback(() => {
+    persistProfile({ skipped: true })
     closePrompt(true)
-  }
+  }, [closePrompt, persistProfile])
+
+  const handleSignup = useCallback(() => {
+    if (!canContinue) {
+      toast.error('Enter your name to continue')
+      return
+    }
+    const payload = persistProfile({ skipped: false })
+    try {
+      localStorage.setItem(SIGNUP_PREFILL_KEY, JSON.stringify({ name: payload.name }))
+    } catch {}
+    closePrompt(true)
+    window.location.href = '/register'
+  }, [canContinue, closePrompt, persistProfile, toast])
+
+  const handleGoogleLogin = useCallback(async (response) => {
+    if (!response?.credential) {
+      toast.error('Google sign-in failed')
+      return
+    }
+
+    setGoogleLoading(true)
+    try {
+      const data = await apiPost('/api/auth/google', {
+        credential: response.credential,
+        clientId: googleClientId
+      })
+
+      persistProfile({ skipped: false })
+      localStorage.setItem('token', data.token)
+      localStorage.setItem('me', JSON.stringify(data.user))
+      closePrompt(true)
+      window.location.href = '/customer'
+    } catch (err) {
+      toast.error(err?.message || 'Google sign-in failed')
+    } finally {
+      setGoogleLoading(false)
+    }
+  }, [closePrompt, googleClientId, persistProfile, toast])
+
+  useEffect(() => {
+    if (!open || !googleClientId || !googleReady || !window.google?.accounts?.id) return undefined
+    try {
+      window.google.accounts.id.initialize({
+        client_id: googleClientId,
+        callback: handleGoogleLogin,
+        auto_select: false,
+        cancel_on_tap_outside: true,
+      })
+    } catch {}
+    return undefined
+  }, [open, googleClientId, googleReady, handleGoogleLogin])
+
+  const handleGoogleContinue = useCallback(() => {
+    persistProfile({ skipped: false })
+    if (!googleClientId || !window.google?.accounts?.id) {
+      toast.error('Google sign-in is not ready yet')
+      return
+    }
+    try {
+      window.google.accounts.id.prompt()
+    } catch {
+      toast.error('Google sign-in is not ready yet')
+    }
+  }, [googleClientId, persistProfile, toast])
 
   if (!open || typeof document === 'undefined') return null
 
@@ -101,40 +207,34 @@ export default function MobileDeliveryProfilePrompt() {
     <>
       <div className="mobile-delivery-prompt-backdrop">
         <div className="mobile-delivery-prompt-card" role="dialog" aria-modal="true" aria-labelledby="mobile-delivery-prompt-title">
-          <div className="mobile-delivery-prompt-orb orb-a" />
-          <div className="mobile-delivery-prompt-orb orb-b" />
-          <div className="mobile-delivery-prompt-badge">Deliver smarter</div>
-          <h2 id="mobile-delivery-prompt-title">Who should receive your orders?</h2>
-          <p>
-            Add your delivery name and phone once so checkout feels instant every time.
-          </p>
+          <div className="mobile-delivery-prompt-topline">
+            <img src={`${import.meta.env.BASE_URL}mobile-app-icon.png`} alt="BuySial" className="mobile-delivery-prompt-logo" />
+            <span>Buysial</span>
+          </div>
+
+          <h2 id="mobile-delivery-prompt-title">Start with your name</h2>
+          <p>Use a minimal setup now, then finish the rest later.</p>
 
           <div className="mobile-delivery-prompt-fields">
             <label className="mobile-delivery-field">
-              <span>Customer name</span>
+              <span>Name</span>
               <input
                 value={form.name}
                 onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
-                placeholder="Enter full name"
+                placeholder="Your name"
                 autoComplete="name"
-              />
-            </label>
-            <label className="mobile-delivery-field">
-              <span>Phone number</span>
-              <input
-                value={form.phone}
-                onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))}
-                placeholder="Enter phone number"
-                autoComplete="tel"
-                inputMode="tel"
               />
             </label>
           </div>
 
-          <div className="mobile-delivery-prompt-actions">
-            <button type="button" className="mobile-delivery-skip" onClick={handleSkip}>Skip</button>
-            <button type="button" className="mobile-delivery-save" onClick={handleSave} disabled={!canSave}>Save details</button>
+          <div className="mobile-delivery-prompt-actions stacked">
+            <button type="button" className="mobile-delivery-save" onClick={handleSignup} disabled={!canContinue}>Sign up</button>
+            <button type="button" className="mobile-delivery-google" onClick={handleGoogleContinue} disabled={googleLoading || !googleClientId || !googleReady}>
+              {googleLoading ? 'Connecting...' : 'Continue with Google'}
+            </button>
           </div>
+
+          <button type="button" className="mobile-delivery-skip-link" onClick={handleSkip}>Skip for now</button>
         </div>
       </div>
 
@@ -145,167 +245,140 @@ export default function MobileDeliveryProfilePrompt() {
           z-index: 9998;
           display: grid;
           place-items: center;
-          padding: 20px;
-          background: rgba(15, 23, 42, 0.52);
+          padding: 18px;
+          background: rgba(255,255,255,0.72);
           backdrop-filter: blur(16px);
           -webkit-backdrop-filter: blur(16px);
         }
 
         .mobile-delivery-prompt-card {
-          position: relative;
-          width: min(100%, 380px);
-          border-radius: 30px;
-          padding: 24px;
-          overflow: hidden;
-          background:
-            radial-gradient(circle at top right, rgba(249,115,22,0.18), transparent 34%),
-            linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(255,247,237,0.98) 100%);
-          border: 1px solid rgba(255,255,255,0.58);
-          box-shadow: 0 30px 90px rgba(15,23,42,0.24);
+          width: min(100%, 332px);
+          border-radius: 24px;
+          padding: 20px 18px 16px;
+          background: rgba(255,255,255,0.92);
+          border: 1px solid rgba(15,23,42,0.06);
+          box-shadow: 0 24px 80px rgba(15,23,42,0.12);
         }
 
-        .mobile-delivery-prompt-orb {
-          position: absolute;
-          border-radius: 999px;
-          filter: blur(28px);
-          pointer-events: none;
-          opacity: 0.4;
-        }
-
-        .mobile-delivery-prompt-orb.orb-a {
-          width: 120px;
-          height: 120px;
-          top: -10px;
-          right: -14px;
-          background: rgba(249,115,22,0.26);
-        }
-
-        .mobile-delivery-prompt-orb.orb-b {
-          width: 84px;
-          height: 84px;
-          left: -20px;
-          bottom: 24px;
-          background: rgba(59,130,246,0.20);
-        }
-
-        .mobile-delivery-prompt-badge {
-          position: relative;
+        .mobile-delivery-prompt-topline {
           display: inline-flex;
           align-items: center;
-          justify-content: center;
-          padding: 8px 12px;
-          border-radius: 999px;
-          background: rgba(255,255,255,0.78);
-          border: 1px solid rgba(148,163,184,0.16);
-          color: #ea580c;
+          gap: 8px;
+          color: #0f172a;
           font-size: 11px;
-          font-weight: 800;
-          letter-spacing: 0.12em;
+          font-weight: 700;
+          letter-spacing: 0.08em;
           text-transform: uppercase;
         }
 
+        .mobile-delivery-prompt-logo {
+          width: 24px;
+          height: 24px;
+          object-fit: contain;
+        }
+
         .mobile-delivery-prompt-card h2 {
-          position: relative;
-          margin: 16px 0 8px;
+          margin: 14px 0 6px;
           color: #0f172a;
-          font-size: 30px;
-          line-height: 1.02;
+          font-size: 22px;
+          line-height: 1.08;
           letter-spacing: -0.04em;
-          font-weight: 900;
+          font-weight: 700;
         }
 
         .mobile-delivery-prompt-card p {
-          position: relative;
           margin: 0;
           color: #64748b;
-          font-size: 14px;
-          line-height: 1.6;
-          font-weight: 600;
+          font-size: 12px;
+          line-height: 1.55;
+          font-weight: 500;
         }
 
         .mobile-delivery-prompt-fields {
-          position: relative;
           display: grid;
-          gap: 12px;
-          margin-top: 20px;
+          gap: 10px;
+          margin-top: 16px;
         }
 
         .mobile-delivery-field {
           display: grid;
-          gap: 8px;
+          gap: 6px;
         }
 
         .mobile-delivery-field span {
-          color: #334155;
-          font-size: 12px;
-          font-weight: 800;
+          color: #475569;
+          font-size: 11px;
+          font-weight: 700;
           letter-spacing: 0.02em;
         }
 
         .mobile-delivery-field input {
-          height: 54px;
-          border-radius: 18px;
-          border: 1px solid rgba(148,163,184,0.16);
-          background: rgba(255,255,255,0.84);
-          padding: 0 16px;
+          height: 44px;
+          border-radius: 14px;
+          border: 1px solid rgba(148,163,184,0.18);
+          background: #ffffff;
+          padding: 0 13px;
           color: #0f172a;
-          font-size: 15px;
-          font-weight: 700;
+          font-size: 13px;
+          font-weight: 600;
           outline: none;
-          box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
         }
 
         .mobile-delivery-field input:focus {
-          border-color: rgba(249,115,22,0.48);
-          box-shadow: 0 0 0 4px rgba(249,115,22,0.12);
+          border-color: rgba(249,115,22,0.40);
+          box-shadow: 0 0 0 4px rgba(249,115,22,0.10);
         }
 
-        .mobile-delivery-prompt-actions {
-          position: relative;
+        .mobile-delivery-prompt-actions.stacked {
           display: grid;
-          grid-template-columns: 1fr 1.25fr;
-          gap: 10px;
-          margin-top: 20px;
+          gap: 8px;
+          margin-top: 14px;
         }
 
-        .mobile-delivery-skip,
-        .mobile-delivery-save {
-          height: 52px;
-          border-radius: 18px;
+        .mobile-delivery-save,
+        .mobile-delivery-google {
+          height: 42px;
+          border-radius: 14px;
           border: none;
-          font-size: 14px;
-          font-weight: 800;
+          font-size: 12px;
+          font-weight: 700;
         }
 
-        .mobile-delivery-skip {
-          background: rgba(255,255,255,0.78);
-          color: #334155;
+        .mobile-delivery-save {
+          background: #0f172a;
+          color: #ffffff;
+        }
+
+        .mobile-delivery-google {
+          background: #f8fafc;
+          color: #0f172a;
           border: 1px solid rgba(148,163,184,0.18);
         }
 
-        .mobile-delivery-save {
-          background: linear-gradient(135deg, #0f172a 0%, #1e293b 42%, #f97316 120%);
-          color: #ffffff;
-          box-shadow: 0 18px 36px rgba(15,23,42,0.24);
+        .mobile-delivery-save:disabled,
+        .mobile-delivery-google:disabled {
+          opacity: 0.5;
         }
 
-        .mobile-delivery-save:disabled {
-          opacity: 0.5;
-          box-shadow: none;
+        .mobile-delivery-skip-link {
+          margin-top: 10px;
+          width: 100%;
+          border: none;
+          background: transparent;
+          color: #64748b;
+          font-size: 11px;
+          font-weight: 600;
+          letter-spacing: 0.02em;
         }
 
         @media (max-width: 480px) {
           .mobile-delivery-prompt-card {
-            padding: 20px;
-            border-radius: 26px;
+            width: min(100%, 312px);
+            padding: 18px 16px 14px;
           }
 
           .mobile-delivery-prompt-card h2 {
-            font-size: 26px;
-          }
-
-          .mobile-delivery-prompt-actions {
-            grid-template-columns: 1fr;
+            font-size: 20px;
           }
         }
       `}</style>
