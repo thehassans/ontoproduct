@@ -37,6 +37,15 @@ function formatDateTime(value, withTime = true) {
   }
 }
 
+function formatDateRange(start, end) {
+  const startText = formatDateTime(start, false)
+  const endText = formatDateTime(end, false)
+  if (startText === 'N/A' && endText === 'N/A') return 'N/A'
+  if (startText === 'N/A') return endText
+  if (endText === 'N/A') return startText
+  return `${startText} - ${endText}`
+}
+
 function statusMeta(status) {
   const normalized = String(status || '').toLowerCase()
   if (normalized === 'cancelled' || normalized === 'returned') {
@@ -58,7 +67,6 @@ export async function generateAgentCommissionReceiptPDF(data) {
       const doc = new PDFDocument({
         size: 'A4',
         margin: 50,
-        bufferPages: true,
         info: {
           Title: 'Commission Payment Receipt',
           Author: 'BuySial Commerce',
@@ -89,6 +97,20 @@ export async function generateAgentCommissionReceiptPDF(data) {
       // Top blue accent bar
       doc.rect(0, 0, pageWidth, 6)
          .fillAndStroke(colors.accent, colors.accent)
+
+      const badgeWidth = 108
+      const badgeHeight = 28
+      const badgeX = pageWidth - margin - badgeWidth
+      const badgeY = 20
+      doc.roundedRect(badgeX, badgeY, badgeWidth, badgeHeight, 8)
+         .fillAndStroke('#16a34a', '#15803d')
+      doc.fontSize(14)
+         .font('Helvetica-Bold')
+         .fillColor('#ffffff')
+         .text('PAID', badgeX, badgeY + 8, {
+           width: badgeWidth,
+           align: 'center'
+         })
       
       // Centered logo with premium spacing
       const logoPath = getLogoPath()
@@ -102,32 +124,22 @@ export async function generateAgentCommissionReceiptPDF(data) {
         }
       }
       
-      y += 80
+      y += 76
 
       // === ELITE TITLE ===
-      doc.fontSize(24)
+      doc.fontSize(22)
          .font('Helvetica-Bold')
          .fillColor(colors.primary)
          .text('Commission Closing Statement', margin, y, {
            width: contentWidth,
            align: 'center'
          })
-      y += 34
+      y += 30
       
       // Elite blue underline
-      doc.rect(margin + (contentWidth / 2) - 100, y, 200, 3)
+      doc.rect(margin + (contentWidth / 2) - 82, y, 164, 3)
          .fill(colors.accent)
       y += 3
-
-      doc.roundedRect(pageWidth - margin - 110, y - 36, 110, 28, 8)
-         .fillAndStroke('#16a34a', '#15803d')
-      doc.fontSize(14)
-         .font('Helvetica-Bold')
-         .fillColor('#ffffff')
-         .text('PAID', pageWidth - margin - 110, y - 28, {
-           width: 110,
-           align: 'center'
-         })
 
       // Receipt ID and Date
       const generatedAt = new Date()
@@ -135,25 +147,25 @@ export async function generateAgentCommissionReceiptPDF(data) {
       doc.fontSize(9)
          .font('Helvetica')
          .fillColor(colors.muted)
-         .text(`Receipt ID: ${timestamp}  |  Generated: ${generatedAt.toLocaleString('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`, margin, y + 15, {
+         .text(`Receipt ID: ${timestamp}  |  Generated: ${generatedAt.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`, margin, y + 12, {
            width: contentWidth,
            align: 'center'
          })
-      doc.text(`Paid At: ${paidAt.toLocaleString('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`, margin, y + 30, {
+      doc.text(`Paid At: ${paidAt.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`, margin, y + 26, {
         width: contentWidth,
         align: 'center'
       })
-      y += 42
+      y += 38
 
       // === AGENT INFORMATION SECTION ===
       const hasClosingRange = Boolean(data.rangeStart || data.rangeEnd)
       const infoHeight = data.agentPhone
         ? hasClosingRange
-          ? 110
-          : 92
+          ? 98
+          : 82
         : hasClosingRange
-        ? 92
-        : 76
+        ? 82
+        : 70
       doc.roundedRect(margin, y, contentWidth, infoHeight, 12)
          .lineWidth(2)
          .strokeOpacity(0.1)
@@ -167,14 +179,14 @@ export async function generateAgentCommissionReceiptPDF(data) {
          .font('Helvetica-Bold')
          .fillColor(colors.accent)
          .text('AGENT INFORMATION', leftCol, infoY)
-      infoY += 22
+      infoY += 20
 
       doc.fontSize(10)
          .font('Helvetica')
          .fillColor(colors.muted)
-         .text('Agent Name:', leftCol, infoY, { continued: true })
+         .text('Agent:', leftCol, infoY, { continued: true })
       doc.font('Helvetica-Bold').fillColor(colors.secondary).text(`  ${data.agentName || 'N/A'}`)
-      infoY += 18
+      infoY += 16
 
       if (data.agentPhone) {
         doc.fontSize(10)
@@ -182,16 +194,16 @@ export async function generateAgentCommissionReceiptPDF(data) {
            .fillColor(colors.muted)
            .text('Contact:', leftCol, infoY, { continued: true })
         doc.font('Helvetica-Bold').fillColor(colors.secondary).text(`  ${data.agentPhone}`)
-        infoY += 18
+        infoY += 16
       }
 
       if (hasClosingRange) {
         doc.fontSize(10)
            .font('Helvetica')
            .fillColor(colors.muted)
-           .text('Closing Range:', leftCol, infoY, { continued: true })
+           .text('Range:', leftCol, infoY, { continued: true })
         doc.font('Helvetica-Bold').fillColor(colors.secondary).text(
-          `  ${formatDateTime(data.rangeStart)} → ${formatDateTime(data.rangeEnd)}`
+          `  ${formatDateRange(data.rangeStart, data.rangeEnd)}`
         )
       }
 
@@ -295,22 +307,22 @@ export async function generateAgentCommissionReceiptPDF(data) {
 
         // Table header
         const col1X = margin
-        const col2X = margin + 150
-        const col3X = margin + 270
-        const col4X = margin + 370
-        const col5X = margin + 455
+        const col2X = margin + 138
+        const col3X = margin + 248
+        const col4X = margin + 340
+        const col5X = margin + 420
 
         doc.roundedRect(margin, y, contentWidth, 34, 5)
            .fill(colors.primary)
 
-        doc.fontSize(10)
+        doc.fontSize(9)
            .font('Helvetica-Bold')
            .fillColor('#ffffff')
            .text('ORDER NUMBER', col1X + 16, y + 11)
            .text('DATE', col2X + 10, y + 11)
            .text('STATUS', col3X + 10, y + 11)
            .text('PRICE', col4X + 10, y + 11)
-           .text('COMMISSION', col5X + 4, y + 11)
+           .text('COMMISSION', col5X + 4, y + 11, { width: 72 })
 
         y += 34
 
@@ -336,14 +348,14 @@ export async function generateAgentCommissionReceiptPDF(data) {
             y += 20
             doc.roundedRect(margin, y, contentWidth, 34, 5)
                .fill(colors.primary)
-            doc.fontSize(10)
+            doc.fontSize(9)
                .font('Helvetica-Bold')
                .fillColor('#ffffff')
                .text('ORDER NUMBER', col1X + 16, y + 11)
                .text('DATE', col2X + 10, y + 11)
                .text('STATUS', col3X + 10, y + 11)
                .text('PRICE', col4X + 10, y + 11)
-               .text('COMMISSION', col5X + 4, y + 11)
+               .text('COMMISSION', col5X + 4, y + 11, { width: 72 })
             y += 34
           }
 
@@ -368,7 +380,7 @@ export async function generateAgentCommissionReceiptPDF(data) {
              .font('Helvetica-Bold')
              .fillColor(colors.secondary)
              .text(order.orderId || 'N/A', col1X + 16, y + 11, {
-               width: 118,
+               width: 104,
                ellipsis: true
              })
 
@@ -378,63 +390,28 @@ export async function generateAgentCommissionReceiptPDF(data) {
           doc.fontSize(9)
              .font('Helvetica')
              .fillColor(colors.muted)
-             .text(orderDate, col2X + 10, y + 11, { width: 92 })
+             .text(orderDate, col2X + 10, y + 11, { width: 84 })
 
           const orderStatus = statusMeta(order.status)
           doc.fontSize(9)
              .font('Helvetica-Bold')
              .fillColor(orderStatus.color)
-             .text(orderStatus.label, col3X + 10, y + 11, { width: 80 })
+             .text(orderStatus.label, col3X + 10, y + 11, { width: 68 })
 
           // Price
           doc.fontSize(10)
              .font('Helvetica-Bold')
              .fillColor(colors.secondary)
-             .text(formatCurrency(order.amount || 0, order.currency || 'AED'), col4X + 10, y + 11, { width: 78 })
+             .text(formatCurrency(order.amount || 0, order.currency || 'AED'), col4X + 10, y + 11, { width: 72 })
 
           // Commission
           doc.fontSize(10)
              .font('Helvetica-Bold')
              .fillColor(orderStatus.label === 'Cancelled' ? colors.muted : colors.success)
-             .text(formatCurrency(order.commission || 0, order.commissionCurrency || 'PKR'), col5X + 4, y + 11, { width: 74 })
+             .text(formatCurrency(order.commission || 0, order.commissionCurrency || 'PKR'), col5X + 4, y + 11, { width: 72 })
 
           y += rowHeight
         })
-      }
-
-      // === ELITE FOOTER ===
-      const footerY = pageHeight - 54
-      y = Math.min(Math.max(y + 12, footerY), footerY)
-
-      doc.fontSize(9)
-         .font('Helvetica')
-         .fillColor(colors.muted)
-         .text('BuySial Commerce', margin, y, {
-           width: contentWidth,
-           align: 'center'
-         })
-
-      // Premium page numbers with blue accent bars
-      const range = doc.bufferedPageRange()
-      for (let i = 0; i < range.count; i++) {
-        doc.switchToPage(i)
-        
-        // Bottom blue accent bar
-        doc.rect(0, pageHeight - 6, pageWidth, 6)
-           .fill(colors.accent)
-        
-        doc.fontSize(8)
-           .font('Helvetica')
-           .fillColor(colors.muted)
-           .text(
-             `— Page ${i + 1} of ${range.count} —`,
-             margin,
-             pageHeight - 22,
-             {
-               width: contentWidth,
-               align: 'center'
-             }
-           )
       }
 
       doc.end()
