@@ -359,6 +359,16 @@ function buildPersonDisplayName(value, fallbackLabel) {
   return String(fallbackLabel || "").trim() || "Unknown";
 }
 
+function buildOrderProductName(order) {
+  if (Array.isArray(order?.items) && order.items.length) {
+    const parts = order.items
+      .map((item) => item?.name || item?.productId?.name || "")
+      .filter(Boolean);
+    if (parts.length) return parts.join(", ");
+  }
+  return order?.productId?.name || "Product";
+}
+
 function createEmptyPersonTotals({ id = "", name = "", role = "agent", country = "Other" } = {}) {
   const normalizedCountry = canonicalCountryName(country);
   return {
@@ -452,6 +462,33 @@ export async function buildTotalAmountSnapshot({ ownerId, periodType = "monthly"
   );
   const WebOrder = (await import("../models/WebOrder.js")).default;
   const rateConfig = await getPerAEDConfig();
+  const [pendingInternalOrders, pendingWebOrders] = await Promise.all([
+    Order.find(
+      {
+        createdBy: { $in: creatorIds },
+        createdAt: { $gte: start, $lt: end },
+        $nor: [
+          { shipmentStatus: { $in: ["delivered", "cancelled", "returned"] } },
+          { status: "cancelled" },
+          { confirmationStatus: "cancelled" },
+        ],
+      },
+      "invoiceNumber customerName customerPhone orderCountry city customerArea customerAddress details total productId quantity items createdAt shipmentStatus status confirmationStatus"
+    )
+      .populate("productId", "name")
+      .populate("items.productId", "name")
+      .lean(),
+    WebOrder.find(
+      {
+        createdAt: { $gte: start, $lt: end },
+        shipmentStatus: { $nin: ["delivered", "cancelled", "returned"] },
+        status: { $ne: "cancelled" },
+      },
+      "customerName customerPhone orderCountry city area address details total currency items createdAt shipmentStatus status"
+    )
+      .populate("items.productId", "name")
+      .lean(),
+  ]);
 
   const [createdInternalRows, deliveredInternalRows, createdWebRows, deliveredWebRows, deliveredCommissionRows, agentPaidRows, driverPaidRows, dropshipperPaidRows, expenseRows, deliveredItemRows, deliveredWebItemRows] = await Promise.all([
     Order.aggregate([
@@ -1346,6 +1383,49 @@ export async function buildTotalAmountSnapshot({ ownerId, periodType = "monthly"
     })
     .sort((a, b) => Number(b.deliveredAmount || 0) - Number(a.deliveredAmount || 0));
 
+  const pendingOrders = [
+    ...(pendingInternalOrders || []).map((order) => ({
+      id: String(order?._id || ""),
+      source: "manual",
+      country: canonicalCountryName(order?.orderCountry || "Other"),
+      orderId: order?.invoiceNumber || `ORD-${String(order?._id || "").slice(-8)}`,
+      productName: buildOrderProductName(order),
+      customerName: order?.customerName || "Customer",
+      customerPhone: order?.customerPhone || "",
+      city: order?.city || "",
+      area: order?.customerArea || "",
+      address: order?.customerAddress || "",
+      details: order?.details || "",
+      amount: Number(order?.total || 0),
+      currency: currencyFromCountry(order?.orderCountry || ""),
+      createdAt: order?.createdAt || null,
+      shipmentStatus: order?.shipmentStatus || "pending",
+      status: order?.status || "pending",
+      confirmationStatus: order?.confirmationStatus || "pending",
+    })),
+    ...(pendingWebOrders || []).map((order) => ({
+      id: String(order?._id || ""),
+      source: "online",
+      country: canonicalCountryName(order?.orderCountry || "Other"),
+      orderId: `WEB-${String(order?._id || "").slice(-8)}`,
+      productName: buildOrderProductName(order),
+      customerName: order?.customerName || "Customer",
+      customerPhone: order?.customerPhone || "",
+      city: order?.city || "",
+      area: order?.area || "",
+      address: order?.address || "",
+      details: order?.details || "",
+      amount: Number(order?.total || 0),
+      currency: String(order?.currency || currencyFromCountry(order?.orderCountry || "") || "AED").toUpperCase(),
+      createdAt: order?.createdAt || null,
+      shipmentStatus: order?.shipmentStatus || "pending",
+      status: order?.status || "new",
+      confirmationStatus: "-",
+    })),
+  ].sort(
+    (left, right) => new Date(right?.createdAt || 0).getTime() - new Date(left?.createdAt || 0).getTime()
+  );
+
   return {
     periodType: resolvedPeriod.periodType,
     periodKey: resolvedPeriod.periodKey,
@@ -1356,6 +1436,7 @@ export async function buildTotalAmountSnapshot({ ownerId, periodType = "monthly"
     rangeEnd: end,
     countries,
     summary,
+    pendingOrders,
     details: {
       agents: agentDetails,
       drivers: driverDetails,

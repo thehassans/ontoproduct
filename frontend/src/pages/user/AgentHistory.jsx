@@ -36,7 +36,7 @@ export default function AgentHistory() {
         // Try to get agent name from the first record
         setAgentName(r?.agentName || agentId)
       } catch (e) {
-        if (alive) toast.show(e?.message || 'Failed to load history', 'error')
+        if (alive) toast.error(e?.message || 'Failed to load history')
       } finally {
         if (alive) setLoading(false)
       }

@@ -907,12 +907,16 @@ async function buildAgentClosingOrderData({ agentId, paidAt = new Date() }) {
   const lowerBound = previousRemit
     ? new Date(previousRemit.sentAt || previousRemit.createdAt || 0)
     : new Date(0);
-  const baseMatch = { createdBy: agentId, createdByRole: "agent" };
+  const baseMatch = {
+    createdBy: agentId,
+    createdByRole: "agent",
+    "agentClosing.paidAt": { $exists: false },
+  };
   const cfg = await getCurrencyConfig();
   const submittedOrders = await Order.find(
     {
       ...baseMatch,
-      createdAt: { $gt: lowerBound, $lte: effectivePaidAt },
+      createdAt: { $lte: effectivePaidAt },
     },
     "invoiceNumber invoiceId shipmentStatus createdAt updatedAt deliveredAt total grandTotal subTotal productId quantity items agentCommissionPKR"
   )
@@ -923,7 +927,7 @@ async function buildAgentClosingOrderData({ agentId, paidAt = new Date() }) {
     {
       ...baseMatch,
       shipmentStatus: { $in: ["cancelled", "returned"] },
-      updatedAt: { $gt: lowerBound, $lte: effectivePaidAt },
+      updatedAt: { $lte: effectivePaidAt },
     },
     "invoiceNumber invoiceId shipmentStatus createdAt updatedAt deliveredAt total grandTotal subTotal productId quantity items agentCommissionPKR"
   )
@@ -934,7 +938,7 @@ async function buildAgentClosingOrderData({ agentId, paidAt = new Date() }) {
     {
       ...baseMatch,
       shipmentStatus: "delivered",
-      deliveredAt: { $gt: lowerBound, $lte: effectivePaidAt },
+      deliveredAt: { $lte: effectivePaidAt },
     },
     "invoiceNumber invoiceId deliveredAt updatedAt createdAt total grandTotal subTotal productId quantity items agentCommissionPKR"
   )
@@ -981,6 +985,12 @@ async function buildAgentClosingOrderData({ agentId, paidAt = new Date() }) {
   const cancelledOrderIds = uniqueIdStrings(
     cancelledOrders.map((order) => order?._id)
   );
+  const rangeStartCandidates = summaryOrders
+    .map((order) => order?.createdAt || order?.deliveredAt || order?.updatedAt)
+    .filter(Boolean)
+    .map((value) => new Date(value))
+    .filter((value) => !Number.isNaN(value.getTime()))
+    .sort((left, right) => left.getTime() - right.getTime());
   return {
     totalSubmitted,
     totalCancelled,
@@ -991,7 +1001,7 @@ async function buildAgentClosingOrderData({ agentId, paidAt = new Date() }) {
     deliveredOrderIds,
     cancelledOrderIds,
     orders,
-    rangeStart: lowerBound,
+    rangeStart: rangeStartCandidates[0] || lowerBound,
     rangeEnd: effectivePaidAt,
   };
 }
@@ -2642,6 +2652,9 @@ router.get(
         {
           $addFields: {
             valInAED: { $divide: ["$valInPKR", aedRate] },
+            isClosingPaid: {
+              $ne: [{ $ifNull: ["$agentClosing.paidAt", null] }, null],
+            },
           },
         },
         {
@@ -2662,6 +2675,15 @@ router.get(
             deliveredCommissionPKR: {
               $sum: {
                 $cond: ["$isDelivered", { $ifNull: ["$agentCommissionPKR", 0] }, 0],
+              },
+            },
+            payableDeliveredCommissionPKR: {
+              $sum: {
+                $cond: [
+                  { $and: ["$isDelivered", { $not: ["$isClosingPaid"] }] },
+                  { $ifNull: ["$agentCommissionPKR", 0] },
+                  0,
+                ],
               },
             },
             upcomingCommissionPKR: {
@@ -2743,8 +2765,15 @@ router.get(
         const deliveredCommissionPKR = Math.round(
           oStats.deliveredCommissionPKR || 0
         );
+        const payableDeliveredCommissionPKR = Math.round(
+          oStats.payableDeliveredCommissionPKR || 0
+        );
         const upcomingCommissionPKR = Math.round(
           oStats.upcomingCommissionPKR || 0
+        );
+        const balancePKR = Math.max(
+          0,
+          payableDeliveredCommissionPKR - Number(rStats.pendingBase || 0)
         );
 
         return {
@@ -2759,7 +2788,9 @@ router.get(
           deliveredOrderValueAED,
           upcomingOrderValueAED,
           deliveredCommissionPKR,
+          payableDeliveredCommissionPKR,
           upcomingCommissionPKR,
+          balancePKR,
           sentPKR: rStats.sent,
           sentBasePKR: rStats.sentBase,
           sentAvgRate: rStats.sentAvgRate,

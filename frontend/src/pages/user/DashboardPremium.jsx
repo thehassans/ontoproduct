@@ -57,6 +57,19 @@ function formatDate(value) {
   }).format(date)
 }
 
+function formatDateTime(value) {
+  if (!value) return '-'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '-'
+  return new Intl.DateTimeFormat('en-US', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date)
+}
+
 function monthKey(month, year) {
   return `${year}-${String(month).padStart(2, '0')}`
 }
@@ -131,9 +144,10 @@ function sectionCardStyle() {
   }
 }
 
-function SummaryCard({ label, value, hint, accent = '#2563eb' }) {
+function SummaryCard({ label, value, hint, accent = '#2563eb', onClick = null }) {
   return (
     <div
+      onClick={onClick || undefined}
       style={{
         borderRadius: 24,
         padding: 20,
@@ -143,6 +157,8 @@ function SummaryCard({ label, value, hint, accent = '#2563eb' }) {
         display: 'grid',
         gap: 8,
         minHeight: 122,
+        cursor: onClick ? 'pointer' : 'default',
+        transition: 'transform 0.2s ease, box-shadow 0.2s ease',
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
@@ -227,10 +243,11 @@ export default function DashboardPremium({ mode = 'user' } = {}) {
   const [selectedMonth, setSelectedMonth] = useState(currentMonth())
   const [selectedYear, setSelectedYear] = useState(currentYear())
   const [selectedCountryCode, setSelectedCountryCode] = useState('all')
-  const [report, setReport] = useState({ summary: createEmptySummary(), countries: [], periodLabel: '' })
+  const [report, setReport] = useState({ summary: createEmptySummary(), countries: [], periodLabel: '', pendingOrders: [] })
   const [expenses, setExpenses] = useState([])
   const [loading, setLoading] = useState(true)
   const [expenseOpen, setExpenseOpen] = useState(false)
+  const [pendingOrdersOpen, setPendingOrdersOpen] = useState(false)
   const [savingExpense, setSavingExpense] = useState(false)
   const [form, setForm] = useState({
     title: '',
@@ -266,10 +283,11 @@ export default function DashboardPremium({ mode = 'user' } = {}) {
           ? [reportRes.summary]
           : [],
         periodLabel: reportRes?.periodLabel || `${monthNames[selectedMonth - 1]} ${selectedYear}`,
+        pendingOrders: Array.isArray(reportRes?.pendingOrders) ? reportRes.pendingOrders : [],
       })
       setExpenses(Array.isArray(expenseRes?.expenses) ? expenseRes.expenses : [])
     } catch (error) {
-      toast.show(error?.message || 'Failed to load dashboard', 'error')
+      toast.error(error?.message || 'Failed to load dashboard')
     } finally {
       setLoading(false)
     }
@@ -310,6 +328,11 @@ export default function DashboardPremium({ mode = 'user' } = {}) {
     const accepted = new Set(meta.match.concat(meta.expenseCountry).map((value) => String(value).toLowerCase()))
     return pending.filter((item) => accepted.has(String(item.country || '').toLowerCase())).slice(0, 4)
   }, [expenses, selectedCountryCode])
+  const filteredPendingOrders = useMemo(() => {
+    const list = Array.isArray(report?.pendingOrders) ? report.pendingOrders : []
+    if (selectedCountryCode === 'all') return list
+    return list.filter((item) => getCountryMetaFromName(item?.country)?.code === selectedCountryCode)
+  }, [report, selectedCountryCode])
 
   const overviewCards = useMemo(() => {
     const label = selectedCountryCode === 'all' ? 'all markets' : `${activeMeta?.label || 'selected market'} only`
@@ -317,10 +340,11 @@ export default function DashboardPremium({ mode = 'user' } = {}) {
       { label: 'Total Orders', value: formatCount(activeRow?.totalOrders), hint: `Across ${label}`, accent: '#2563eb' },
       { label: 'Delivered Orders', value: formatCount(activeRow?.deliveredOrders), hint: 'Agent + dropshipper + online', accent: '#059669' },
       { label: 'Cancelled Orders', value: formatCount(activeRow?.cancelledOrders), hint: 'All cancelled and returned flow', accent: '#dc2626' },
+      { label: 'Pending Orders', value: formatCount(filteredPendingOrders.length), hint: filteredPendingOrders.length ? 'Click to view pending order details' : 'No pending orders in this scope', accent: '#f59e0b', onClick: () => setPendingOrdersOpen(true) },
       { label: 'Total Order Amount', value: formatMoney(activeRow?.totalAmount, activeCurrency), hint: 'All orders combined', accent: '#7c3aed' },
       { label: 'Delivered Order Amount', value: formatMoney(activeRow?.deliveredAmount, activeCurrency), hint: 'Delivered value only', accent: '#0f766e' },
     ]
-  }, [activeCurrency, activeMeta, activeRow, selectedCountryCode])
+  }, [activeCurrency, activeMeta, activeRow, filteredPendingOrders.length, selectedCountryCode])
 
   const agentItems = useMemo(() => ([
     { label: 'Agent Total Amount', value: formatMoney(activeRow?.agentAmount, activeCurrency), background: 'rgba(59,130,246,0.05)' },
@@ -386,7 +410,7 @@ export default function DashboardPremium({ mode = 'user' } = {}) {
 
   async function submitExpense() {
     if (!form.title || !form.amount || !form.country) {
-      toast.show('Please complete the expense form', 'error')
+      toast.error('Please complete the expense form')
       return
     }
     setSavingExpense(true)
@@ -402,10 +426,10 @@ export default function DashboardPremium({ mode = 'user' } = {}) {
       })
       setExpenseOpen(false)
       setForm({ title: '', amount: '', country: 'UAE', currency: 'AED', notes: '', incurredAt: '' })
-      toast.show('Expense added successfully', 'success')
+      toast.success('Expense added successfully')
       await loadDashboard()
     } catch (error) {
-      toast.show(error?.message || 'Failed to add expense', 'error')
+      toast.error(error?.message || 'Failed to add expense')
     } finally {
       setSavingExpense(false)
     }
@@ -527,33 +551,98 @@ export default function DashboardPremium({ mode = 'user' } = {}) {
         </section>
       </div>
 
-      {!isPartner ? <Modal
-        title="Add Expense"
-        open={expenseOpen}
-        onClose={() => setExpenseOpen(false)}
-        footer={(
-          <>
-            <button className="btn secondary" type="button" onClick={() => setExpenseOpen(false)} disabled={savingExpense}>Cancel</button>
-            <button className="btn" type="button" onClick={submitExpense} disabled={savingExpense}>{savingExpense ? 'Saving...' : 'Save Expense'}</button>
-          </>
-        )}
-      >
-        <div style={{ display: 'grid', gap: 16 }}>
-          <input className="input" name="title" value={form.title} onChange={handleFormChange} placeholder="Campaign / expense title" />
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
-            <select className="input" name="country" value={form.country} onChange={handleFormChange}>
-              {COUNTRY_META.map((item) => (
-                <option key={item.code} value={item.expenseCountry}>{item.flag} {item.label}</option>
-              ))}
-            </select>
-            <input className="input" name="currency" value={form.currency} readOnly />
+      {!isPartner ? (
+        <Modal
+          title="Add Expense"
+          open={expenseOpen}
+          onClose={() => setExpenseOpen(false)}
+          footer={(
+            <>
+              <button className="btn secondary" type="button" onClick={() => setExpenseOpen(false)} disabled={savingExpense}>Cancel</button>
+              <button className="btn" type="button" onClick={submitExpense} disabled={savingExpense}>{savingExpense ? 'Saving...' : 'Save Expense'}</button>
+            </>
+          )}
+        >
+          <div style={{ display: 'grid', gap: 16 }}>
+            <input className="input" name="title" value={form.title} onChange={handleFormChange} placeholder="Campaign / expense title" />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+              <select className="input" name="country" value={form.country} onChange={handleFormChange}>
+                {COUNTRY_META.map((item) => (
+                  <option key={item.code} value={item.expenseCountry}>{item.flag} {item.label}</option>
+                ))}
+              </select>
+              <input className="input" name="currency" value={form.currency} onChange={handleFormChange} placeholder="Currency" />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+              <input className="input" type="number" min="0" step="0.01" name="amount" value={form.amount} onChange={handleFormChange} placeholder="Amount" />
+              <input className="input" type="date" name="incurredAt" value={form.incurredAt} onChange={handleFormChange} />
+            </div>
+            <textarea className="input" name="notes" value={form.notes} onChange={handleFormChange} placeholder="Optional notes" rows={4} />
           </div>
-          <input className="input" type="number" min="0" step="0.01" name="amount" value={form.amount} onChange={handleFormChange} placeholder="Amount" />
-          <input className="input" type="date" name="incurredAt" value={form.incurredAt} onChange={handleFormChange} />
-          <textarea className="input" name="notes" value={form.notes} onChange={handleFormChange} rows={4} placeholder="Notes (optional)" style={{ resize: 'vertical', minHeight: 120 }} />
+        </Modal>
+      ) : null}
+
+      <Modal
+        title="Pending Orders"
+        open={pendingOrdersOpen}
+        onClose={() => setPendingOrdersOpen(false)}
+        footer={
+          <button className="btn secondary" type="button" onClick={() => setPendingOrdersOpen(false)}>Close</button>
+        }
+      >
+        <div style={{ display: 'grid', gap: 14 }}>
+          <div style={{ color: '#64748b', fontSize: 14 }}>
+            {selectedCountryCode === 'all' ? 'All countries' : `${activeMeta?.flag || ''} ${activeMeta?.label || 'Selected country'}`} pending orders for {report?.periodLabel || `${monthNames[selectedMonth - 1]} ${selectedYear}`}
+          </div>
+
+          {!filteredPendingOrders.length ? (
+            <div style={{ borderRadius: 20, border: '1px dashed rgba(148,163,184,0.28)', padding: 22, color: '#64748b', background: 'rgba(248,250,252,0.84)' }}>
+              No pending orders found for this dashboard scope.
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gap: 12, maxHeight: '68vh', overflowY: 'auto', paddingRight: 4 }}>
+              {filteredPendingOrders.map((item) => (
+                <div key={`${item.source}-${item.id}`} style={{ borderRadius: 22, border: '1px solid rgba(148,163,184,0.16)', background: '#fff', padding: 16, display: 'grid', gap: 10 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'grid', gap: 4 }}>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <span style={{ fontWeight: 900, color: '#0f172a' }}>{item.orderId}</span>
+                        <span style={{ borderRadius: 999, padding: '4px 10px', background: item.source === 'online' ? 'rgba(37,99,235,0.10)' : 'rgba(245,158,11,0.12)', color: item.source === 'online' ? '#1d4ed8' : '#b45309', fontSize: 12, fontWeight: 800 }}>
+                          {item.source === 'online' ? 'Online' : 'Manual'}
+                        </span>
+                        <span style={{ borderRadius: 999, padding: '4px 10px', background: 'rgba(15,23,42,0.05)', color: '#475569', fontSize: 12, fontWeight: 700 }}>
+                          {String(item.shipmentStatus || item.status || 'pending').replace(/_/g, ' ')}
+                        </span>
+                      </div>
+                      <div style={{ color: '#64748b', fontSize: 13 }}>{formatDateTime(item.createdAt)} • {item.country || 'Other'}</div>
+                    </div>
+                    <div style={{ fontWeight: 900, color: '#0f172a', fontSize: 16 }}>{formatMoney(item.amount, item.currency)}</div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
+                    <div>
+                      <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 800, textTransform: 'uppercase' }}>Product</div>
+                      <div style={{ marginTop: 4, fontWeight: 700, color: '#0f172a' }}>{item.productName || '-'}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 800, textTransform: 'uppercase' }}>Customer</div>
+                      <div style={{ marginTop: 4, fontWeight: 700, color: '#0f172a' }}>{item.customerName || '-'}</div>
+                      <div style={{ color: '#64748b', fontSize: 13 }}>{item.customerPhone || '-'}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 800, textTransform: 'uppercase' }}>Location</div>
+                      <div style={{ marginTop: 4, color: '#0f172a' }}>{[item.city, item.area].filter(Boolean).join(' • ') || '-'}</div>
+                      <div style={{ color: '#64748b', fontSize: 13 }}>{item.address || '-'}</div>
+                    </div>
+                  </div>
+
+                  {item.details ? <div style={{ fontSize: 13, lineHeight: 1.6, color: '#475569' }}>{item.details}</div> : null}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </Modal>
-      : null}
     </div>
   )
 }

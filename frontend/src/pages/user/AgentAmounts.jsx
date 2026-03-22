@@ -127,11 +127,11 @@ export default function AgentAmounts() {
 
   async function handlePayCommission() {
     if (!payModal?.agent || !payPreview) {
-      toast.show('Commission preview is not ready yet', 'error')
+      toast.error('Commission preview is not ready yet')
       return
     }
     if (!calculatedAmount || calculatedAmount <= 0) {
-      toast.show('No delivered commission is available to pay', 'error')
+      toast.error('No delivered commission is available to pay')
       return
     }
 
@@ -161,14 +161,14 @@ export default function AgentAmounts() {
         amount: latestAmount,
       })
 
-      toast.show('Commission payment sent successfully!', 'success')
+      toast.success('Commission payment sent successfully!')
       setPayModal(null)
       setPayPreview(null)
       setEditingPayCommissions({})
       setPayPreviewError('')
       fetchAgents() // Refresh the list
     } catch (err) {
-      toast.show(err?.message || 'Failed to send commission', 'error')
+      toast.error(err?.message || 'Failed to send commission')
     } finally {
       setPayingAgent(null)
     }
@@ -190,8 +190,7 @@ export default function AgentAmounts() {
     }
     // Only show agents with remaining balance OR upcoming commission
     list = list.filter((a) => {
-      const paidBase = Number(a.sentBasePKR || a.sentPKR || 0)
-      const bal = Math.max(0, Number(a.deliveredCommissionPKR || 0) - paidBase - Number(a.pendingPKR || 0))
+      const bal = Math.max(0, Number(a.balancePKR ?? a.payableDeliveredCommissionPKR ?? 0))
       const upcoming = Number(a.upcomingCommissionPKR || 0)
       return bal > 0 || upcoming > 0
     })
@@ -212,10 +211,7 @@ export default function AgentAmounts() {
       upcomingCommission += Number(a.upcomingCommissionPKR || 0)
       sent += Number(a.sentPKR || 0)
       pending += Number(a.pendingPKR || 0)
-      const agentBalance = Math.max(
-        0,
-        Number(a.deliveredCommissionPKR || 0) - Number(a.sentBasePKR || a.sentPKR || 0) - Number(a.pendingPKR || 0)
-      )
+      const agentBalance = Math.max(0, Number(a.balancePKR ?? a.payableDeliveredCommissionPKR ?? 0))
       balance += agentBalance
       ordersSubmitted += Number(a.ordersSubmitted || 0)
       ordersDelivered += Number(a.ordersDelivered || 0)
@@ -543,12 +539,7 @@ export default function AgentAmounts() {
                 </tr>
               ) : (
                 filteredAgents.map((a, idx) => {
-                  const paidBase = Number(a.sentBasePKR || a.sentPKR || 0)
-                  const rawBalance =
-                    Number(a.deliveredCommissionPKR || 0) -
-                    paidBase -
-                    Number(a.pendingPKR || 0)
-                  const balance = Math.max(0, rawBalance)
+                  const balance = Math.max(0, Number(a.balancePKR ?? a.payableDeliveredCommissionPKR ?? 0))
                   return (
                     <tr
                       key={String(a.id)}

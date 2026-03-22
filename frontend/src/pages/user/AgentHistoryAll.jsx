@@ -26,7 +26,7 @@ export default function AgentHistoryAll() {
         setHistory(Array.isArray(r?.history) ? r.history : [])
         setTotal(r?.total || 0)
       } catch (e) {
-        if (alive) toast.show(e?.message || 'Failed to load history', 'error')
+        if (alive) toast.error(e?.message || 'Failed to load history')
       } finally {
         if (alive) setLoading(false)
       }
