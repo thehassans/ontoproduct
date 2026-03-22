@@ -61,6 +61,19 @@ export default function DeliveredOrders() {
     })
   }, [orders, query])
 
+  const totals = useMemo(() => {
+    return filteredOrders.reduce(
+      (sum, order) => {
+        sum.count += 1
+        sum.total += Number(order?.total || 0) || 0
+        sum.commission += Number(order?.agentCommissionPKR || 0) || 0
+        if (order?.agentCommissionSetByAgent) sum.locked += 1
+        return sum
+      },
+      { count: 0, total: 0, commission: 0, locked: 0 }
+    )
+  }, [filteredOrders])
+
   async function saveCommission(orderId) {
     const amount = Math.max(0, Number(editingCommission[orderId] ?? 0) || 0)
     const key = `save-${orderId}`
@@ -89,8 +102,33 @@ export default function DeliveredOrders() {
   return (
     <div className="section" style={{ display: 'grid', gap: 12 }}>
       <div className="page-header" style={{ display: 'grid', gap: 6 }}>
-        <div className="page-title gradient heading-purple">Delivered Orders</div>
-        <div className="page-subtitle">Set your PKR commission once for your delivered orders.</div>
+        <div className="page-title gradient heading-purple">Delivered</div>
+        <div className="page-subtitle">Set your PKR commission once for each delivered order.</div>
+      </div>
+
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+          gap: 12,
+        }}
+      >
+        <div className="card" style={{ padding: 14, display: 'grid', gap: 4 }}>
+          <div className="helper">Delivered Orders</div>
+          <div style={{ fontSize: 22, fontWeight: 800 }}>{totals.count}</div>
+        </div>
+        <div className="card" style={{ padding: 14, display: 'grid', gap: 4 }}>
+          <div className="helper">Order Value</div>
+          <div style={{ fontSize: 22, fontWeight: 800 }}>{totals.total.toFixed(2)}</div>
+        </div>
+        <div className="card" style={{ padding: 14, display: 'grid', gap: 4 }}>
+          <div className="helper">Commission Set</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: '#16a34a' }}>PKR {totals.commission.toFixed(2)}</div>
+        </div>
+        <div className="card" style={{ padding: 14, display: 'grid', gap: 4 }}>
+          <div className="helper">Locked Orders</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: '#7c3aed' }}>{totals.locked}</div>
+        </div>
       </div>
 
       <div className="card" style={{ display: 'grid', gap: 10 }}>

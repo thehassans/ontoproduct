@@ -75,6 +75,18 @@ async function getCurrencyConfig() {
   }
 }
 
+function convertAmountToAED(amount, currency, cfg = defaultCurrencyConfig()) {
+  const numericAmount = Number(amount || 0);
+  if (!Number.isFinite(numericAmount) || numericAmount <= 0) return 0;
+  const normalizedCurrency = String(currency || "AED").toUpperCase();
+  if (normalizedCurrency === "AED") return numericAmount;
+  const pkrRates = cfg?.pkrPerUnit || {};
+  const sourceRate = Number(pkrRates[normalizedCurrency] || 0);
+  const aedRate = Number(pkrRates.AED || 76);
+  if (!sourceRate || !aedRate) return 0;
+  return (numericAmount * sourceRate) / aedRate;
+}
+
 // Multer config for receipt uploads (reuse uploads/ folder)
 try {
   fs.mkdirSync("uploads", { recursive: true });
@@ -828,10 +840,27 @@ async function buildAgentClosingOrderData({ agentId, paidAt = new Date() }) {
     ? new Date(previousRemit.sentAt || previousRemit.createdAt || 0)
     : new Date(0);
   const baseMatch = { createdBy: agentId, createdByRole: "agent" };
-  const totalSubmitted = await Order.countDocuments({
-    ...baseMatch,
-    createdAt: { $gt: lowerBound, $lte: effectivePaidAt },
-  });
+  const cfg = await getCurrencyConfig();
+  const submittedOrders = await Order.find(
+    {
+      ...baseMatch,
+      createdAt: { $gt: lowerBound, $lte: effectivePaidAt },
+    },
+    "invoiceNumber invoiceId shipmentStatus createdAt updatedAt deliveredAt total grandTotal subTotal productId quantity items agentCommissionPKR"
+  )
+    .populate("productId", "name price baseCurrency")
+    .populate("items.productId", "name price baseCurrency")
+    .lean();
+  const totalSubmitted = submittedOrders.length;
+  const totalCancelled = submittedOrders.reduce((sum, order) => {
+    const status = String(order?.shipmentStatus || "").toLowerCase();
+    return status === "cancelled" || status === "returned" ? sum + 1 : sum;
+  }, 0);
+  const totalOrderValueAED = submittedOrders.reduce((sum, order) => {
+    const amount = computeOrderGrossAmount(order);
+    const currency = resolveOrderCurrency(order, "AED");
+    return sum + convertAmountToAED(amount, currency, cfg);
+  }, 0);
   const deliveredOrders = await Order.find(
     {
       ...baseMatch,
@@ -840,10 +869,16 @@ async function buildAgentClosingOrderData({ agentId, paidAt = new Date() }) {
     },
     "invoiceNumber invoiceId deliveredAt updatedAt createdAt total grandTotal subTotal productId quantity items agentCommissionPKR"
   )
-    .populate("productId", "price baseCurrency")
-    .populate("items.productId", "price baseCurrency")
+    .populate("productId", "name price baseCurrency")
+    .populate("items.productId", "name price baseCurrency")
     .lean();
+  const deliveredOrderValueAED = deliveredOrders.reduce((sum, order) => {
+    const amount = computeOrderGrossAmount(order);
+    const currency = resolveOrderCurrency(order, "AED");
+    return sum + convertAmountToAED(amount, currency, cfg);
+  }, 0);
   const orders = deliveredOrders.map((order) => ({
+    id: String(order._id || ""),
     orderId:
       order.invoiceNumber ||
       order.invoiceId ||
@@ -851,12 +886,27 @@ async function buildAgentClosingOrderData({ agentId, paidAt = new Date() }) {
     date: order.deliveredAt || order.updatedAt || order.createdAt,
     amount: computeOrderGrossAmount(order),
     currency: resolveOrderCurrency(order, "AED"),
+    productName:
+      Array.isArray(order?.items) && order.items.length
+        ? order.items
+            .map((item) => item?.productId?.name)
+            .filter(Boolean)
+            .join(", ")
+        : order?.productId?.name || "-",
     commission: Number(order.agentCommissionPKR || 0),
     commissionCurrency: "PKR",
   }));
+  const deliveredCommissionPKR = orders.reduce(
+    (sum, order) => sum + Number(order.commission || 0),
+    0
+  );
   return {
     totalSubmitted,
+    totalCancelled,
     totalDelivered: orders.length,
+    totalOrderValueAED,
+    deliveredOrderValueAED,
+    deliveredCommissionPKR,
     orders,
     rangeStart: lowerBound,
     rangeEnd: effectivePaidAt,
@@ -2178,7 +2228,6 @@ router.get(
         {
           $match: {
             createdBy: { $in: agentIds },
-            shipmentStatus: { $nin: ["cancelled", "returned"] },
           },
         },
         {
@@ -2319,6 +2368,9 @@ router.get(
             isDelivered: {
               $eq: [{ $toLower: "$shipmentStatus" }, "delivered"],
             },
+            isCancelled: {
+              $in: [{ $toLower: "$shipmentStatus" }, ["cancelled", "returned"]],
+            },
           },
         },
         {
@@ -2357,12 +2409,15 @@ router.get(
             _id: "$createdBy",
             ordersSubmitted: { $sum: 1 },
             ordersDelivered: { $sum: { $cond: ["$isDelivered", 1, 0] } },
+            ordersCancelled: { $sum: { $cond: ["$isCancelled", 1, 0] } },
             totalOrderValueAED: { $sum: "$valInAED" },
             deliveredOrderValueAED: {
               $sum: { $cond: ["$isDelivered", "$valInAED", 0] },
             },
             upcomingOrderValueAED: {
-              $sum: { $cond: ["$isDelivered", 0, "$valInAED"] },
+              $sum: {
+                $cond: [{ $or: ["$isDelivered", "$isCancelled"] }, 0, "$valInAED"],
+              },
             },
             deliveredCommissionPKR: {
               $sum: {
@@ -2371,7 +2426,11 @@ router.get(
             },
             upcomingCommissionPKR: {
               $sum: {
-                $cond: ["$isDelivered", 0, { $ifNull: ["$agentCommissionPKR", 0] }],
+                $cond: [
+                  { $or: ["$isDelivered", "$isCancelled"] },
+                  0,
+                  { $ifNull: ["$agentCommissionPKR", 0] },
+                ],
               },
             },
           },
@@ -2455,6 +2514,7 @@ router.get(
           payoutProfile: a.payoutProfile || {},
           ordersSubmitted: oStats.ordersSubmitted || 0,
           ordersDelivered: oStats.ordersDelivered || 0,
+          ordersCancelled: oStats.ordersCancelled || 0,
           totalOrderValueAED,
           deliveredOrderValueAED,
           upcomingOrderValueAED,
@@ -2469,6 +2529,39 @@ router.get(
       return res.json({ agents: out });
     } catch (err) {
       return res.status(500).json({ message: "Failed to compute commission" });
+    }
+  }
+);
+
+router.get(
+  "/agents/:id/commission-preview",
+  auth,
+  allowRoles("admin", "user"),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const agent = await User.findOne({ _id: id, role: "agent" }).select(
+        "firstName lastName phone createdBy"
+      );
+      if (!agent) return res.status(404).json({ message: "Agent not found" });
+      if (
+        req.user.role !== "admin" &&
+        String(agent.createdBy || "") !== String(req.user.id)
+      ) {
+        return res.status(403).json({ message: "Not allowed" });
+      }
+      const preview = await buildAgentClosingOrderData({ agentId: id, paidAt: new Date() });
+      return res.json({
+        agent: {
+          id: String(agent._id),
+          name: `${agent.firstName || ""} ${agent.lastName || ""}`.trim(),
+          phone: agent.phone || "",
+        },
+        preview,
+      });
+    } catch (err) {
+      console.error("Agent commission preview error:", err);
+      return res.status(500).json({ message: "Failed to load commission preview" });
     }
   }
 );
@@ -2556,26 +2649,7 @@ router.post(
   async (req, res) => {
     try {
       const { id } = req.params;
-      const {
-        amount,
-        baseCommissionAmount,
-        commissionRate,
-        totalOrderValueAED,
-      } = req.body || {};
-      const amt = Number(amount);
-      const baseAmt = Number(baseCommissionAmount || amt); // Default to full amount if not provided
-      const rate = Number(commissionRate || 12);
-      const orderValue = Number(totalOrderValueAED || 0);
-
-      // Validation
-      if (Number.isNaN(amt) || amt <= 0)
-        return res.status(400).json({ message: "Invalid amount" });
-      if (Number.isNaN(rate) || rate < 0 || rate > 100)
-        return res
-          .status(400)
-          .json({ message: "Commission rate must be between 0 and 100" });
-      if (Number.isNaN(orderValue) || orderValue < 0)
-        return res.status(400).json({ message: "Invalid order value" });
+      const requestedAmount = Number(req.body?.amount);
 
       const agent = await User.findOne({ _id: id, role: "agent" });
       if (!agent) return res.status(404).json({ message: "Agent not found" });
@@ -2586,22 +2660,27 @@ router.post(
         return res.status(403).json({ message: "Not allowed" });
       }
 
-      // Fetch agent's orders for PDF
-      let orders = [];
-      let totalSubmitted = 0;
-      let totalDelivered = 0;
       const paidAt = new Date();
-      try {
-        const closingData = await buildAgentClosingOrderData({
-          agentId: id,
-          paidAt,
+      const closingData = await buildAgentClosingOrderData({
+        agentId: id,
+        paidAt,
+      });
+      const amt = Number(closingData?.deliveredCommissionPKR || 0);
+      if (!Number.isFinite(amt) || amt <= 0) {
+        return res.status(400).json({
+          message: "No delivered agent commission is available to pay",
         });
-        orders = closingData.orders;
-        totalSubmitted = closingData.totalSubmitted;
-        totalDelivered = closingData.totalDelivered;
-      } catch (err) {
-        console.error("Error fetching agent orders:", err);
       }
+      if (
+        Number.isFinite(requestedAmount) &&
+        requestedAmount > 0 &&
+        Math.abs(requestedAmount - amt) > 1
+      ) {
+        return res.status(400).json({
+          message: "Commission total changed. Please review the latest delivered orders before paying.",
+        });
+      }
+      const baseAmt = amt;
 
       // Currency conversion (PKR to AED at ~76 PKR = 1 AED)
       const pkrToAed = 0.0132; // Approximate rate
@@ -2615,14 +2694,15 @@ router.post(
             `${agent.firstName || ""} ${agent.lastName || ""}`.trim() ||
             "Agent",
           agentPhone: agent.phone || "",
-          totalSubmitted,
-          totalDelivered,
+          totalSubmitted: closingData.totalSubmitted,
+          totalDelivered: closingData.totalDelivered,
+          totalCancelled: closingData.totalCancelled,
+          totalOrderValueAED: closingData.totalOrderValueAED,
+          deliveredOrderValueAED: closingData.deliveredOrderValueAED,
           amountAED,
           amountPKR: amt,
-          commissionRate: rate,
-          totalOrderValueAED: orderValue,
           paidAt,
-          orders,
+          orders: closingData.orders,
         });
       } catch (err) {
         console.error("Error generating commission receipt PDF:", err);
@@ -2677,16 +2757,11 @@ router.post(
       }
 
       // Create an agent remittance record marking commission payment
-      const pkrRate = 76;
-      const totalInPKR = orderValue * pkrRate;
-      const noteText =
-        orderValue > 0
-          ? `Commission payment: Total Orders AED ${orderValue.toFixed(
-              2
-            )} converted to PKR ${totalInPKR.toFixed(
-              2
-            )}, then ${rate}% commission = PKR ${amt.toFixed(2)}`
-          : `Commission payment (${rate}% commission rate)`;
+      const noteText = `Commission closing paid for ${closingData.totalDelivered} delivered orders out of ${closingData.totalSubmitted} total orders (${closingData.totalCancelled} cancelled). Total order amount AED ${Number(
+        closingData.totalOrderValueAED || 0
+      ).toFixed(2)}, delivered order amount AED ${Number(
+        closingData.deliveredOrderValueAED || 0
+      ).toFixed(2)}, paid commission PKR ${amt.toFixed(2)}`;
 
       const remit = new AgentRemit({
         agent: id,
@@ -2694,10 +2769,10 @@ router.post(
         approver: req.user.id,
         approverRole: req.user.role === "user" ? "user" : "manager",
         amount: amt,
-        baseCommissionAmount: baseAmt, // Base 12% portion deducted from balance
+        baseCommissionAmount: baseAmt,
         currency: "PKR",
-        commissionRate: rate,
-        totalOrderValueAED: orderValue,
+        commissionRate: 0,
+        totalOrderValueAED: Number(closingData.totalOrderValueAED || 0),
         note: noteText,
         status: "sent",
         sentAt: paidAt,

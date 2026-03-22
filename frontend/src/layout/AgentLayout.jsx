@@ -108,9 +108,8 @@ export default function AgentLayout() {
     { to: '/agent', label: 'Dashboard' },
     { to: '/agent/inbox/whatsapp', label: 'WhatsApp Inbox' },
     { to: '/agent/orders', label: 'Submit Orders' },
-    { to: '/agent/orders/delivered', label: 'Delivered Orders' },
+    { to: '/agent/delivered', label: 'Delivered' },
     { to: '/agent/closings', label: 'Closings' },
-    { to: '/agent/inhouse-products', label: 'Inhouse Products' },
     { to: '/agent/support', label: 'Support' },
   ]
 
@@ -195,8 +194,8 @@ export default function AgentLayout() {
       ),
     },
     {
-      to: '/agent/inhouse-products',
-      label: 'Products',
+      to: '/agent/delivered',
+      label: 'Delivered',
       icon: (
         <svg
           width="20"
@@ -208,8 +207,8 @@ export default function AgentLayout() {
           strokeLinecap="round"
           strokeLinejoin="round"
         >
-          <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
-          <line x1="7" y1="7" x2="7.01" y2="7" />
+          <path d="M9 11l3 3L22 4" />
+          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
         </svg>
       ),
     },
@@ -921,7 +920,7 @@ export default function AgentLayout() {
       </div>
       {/* Mobile bottom tabs (root only) */}
       {tabsVisible && (
-        <nav className="mobile-tabs" role="navigation" aria-label="Primary">
+        <nav className="mobile-tabs" data-tabs={String(mobileTabs.length)} role="navigation" aria-label="Primary">
           {mobileTabs.map((tab) => {
             const isInbox = tab.to.includes('/inbox/whatsapp')
             const count = isInbox ? unreadCount : 0

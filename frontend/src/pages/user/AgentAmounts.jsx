@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { apiGet, apiPost, API_BASE } from '../../api'
+import { apiGet, apiPatch, apiPost, API_BASE } from '../../api'
 import { useNavigate } from 'react-router-dom'
 import { useToast } from '../../ui/Toast.jsx'
 import Modal from '../../components/Modal.jsx'
@@ -15,8 +15,10 @@ export default function AgentAmounts() {
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [payingAgent, setPayingAgent] = useState(null)
   const [payModal, setPayModal] = useState(null)
-  const [commissionRate, setCommissionRate] = useState(null)
-  const [calculatedAmount, setCalculatedAmount] = useState(0)
+  const [payPreview, setPayPreview] = useState(null)
+  const [payPreviewLoading, setPayPreviewLoading] = useState(false)
+  const [payPreviewError, setPayPreviewError] = useState('')
+  const [editingPayCommissions, setEditingPayCommissions] = useState({})
 
   useEffect(() => {
     let alive = true
@@ -54,6 +56,19 @@ export default function AgentAmounts() {
     return Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })
   }
 
+  function getPayCommissionValue(order) {
+    const id = String(order?.id || order?._id || order?.orderId || '')
+    if (editingPayCommissions[id] !== undefined) {
+      return Math.max(0, Number(editingPayCommissions[id]) || 0)
+    }
+    return Math.max(0, Number(order?.commission || 0) || 0)
+  }
+
+  const calculatedAmount = useMemo(() => {
+    const list = Array.isArray(payPreview?.orders) ? payPreview.orders : []
+    return list.reduce((sum, order) => sum + getPayCommissionValue(order), 0)
+  }, [payPreview, editingPayCommissions])
+
   useEffect(() => {
     let socket
     try {
@@ -88,30 +103,69 @@ export default function AgentAmounts() {
     }
   }
 
+  async function openPayCommission(agent, balance) {
+    setPayModal({ agent, balance })
+    setPayPreview(null)
+    setPayPreviewError('')
+    setEditingPayCommissions({})
+    setPayPreviewLoading(true)
+    try {
+      const res = await apiGet(`/api/finance/agents/${agent.id}/commission-preview`)
+      const preview = res?.preview || null
+      setPayPreview(preview)
+      const initial = {}
+      ;(preview?.orders || []).forEach((order) => {
+        initial[String(order?.id || order?.orderId || '')] = Number(order?.commission || 0) || 0
+      })
+      setEditingPayCommissions(initial)
+    } catch (e) {
+      setPayPreviewError(e?.message || 'Failed to load commission preview')
+    } finally {
+      setPayPreviewLoading(false)
+    }
+  }
+
   async function handlePayCommission() {
-    if (!payModal || !calculatedAmount || calculatedAmount <= 0) {
-      toast.show('Please enter a valid amount', 'error')
+    if (!payModal?.agent || !payPreview) {
+      toast.show('Commission preview is not ready yet', 'error')
+      return
+    }
+    if (!calculatedAmount || calculatedAmount <= 0) {
+      toast.show('No delivered commission is available to pay', 'error')
       return
     }
 
     setPayingAgent(payModal.agent.id)
     try {
-      const finalRate = commissionRate !== null ? commissionRate : 12
-      const balance = Number(payModal.balance || 0)
-      const baseCommissionAmount =
-        finalRate <= 12
-          ? Math.round(calculatedAmount)
-          : Math.round(balance)
+      const changedOrders = (payPreview?.orders || []).filter(
+        (order) => Number(getPayCommissionValue(order)) !== Number(order?.commission || 0)
+      )
+      for (const order of changedOrders) {
+        await apiPatch(`/api/orders/${order.id}`, {
+          agentCommissionPKR: getPayCommissionValue(order),
+        })
+      }
+
+      const refreshed = await apiGet(`/api/finance/agents/${payModal.agent.id}/commission-preview`)
+      const latestPreview = refreshed?.preview || payPreview
+      setPayPreview(latestPreview)
+      const latestAmount = (latestPreview?.orders || []).reduce(
+        (sum, order) => sum + Math.max(0, Number(order?.commission || 0) || 0),
+        0
+      )
+      if (!latestAmount || latestAmount <= 0) {
+        throw new Error('No delivered commission is available to pay')
+      }
 
       await apiPost(`/api/finance/agents/${payModal.agent.id}/pay-commission`, {
-        amount: calculatedAmount,
-        baseCommissionAmount: baseCommissionAmount,
-        commissionRate: finalRate,
-        totalOrderValueAED: 0, // Not using this anymore
+        amount: latestAmount,
       })
 
       toast.show('Commission payment sent successfully!', 'success')
       setPayModal(null)
+      setPayPreview(null)
+      setEditingPayCommissions({})
+      setPayPreviewError('')
       fetchAgents() // Refresh the list
     } catch (err) {
       toast.show(err?.message || 'Failed to send commission', 'error')
@@ -586,15 +640,7 @@ export default function AgentAmounts() {
                                 textTransform: 'uppercase',
                                 letterSpacing: '0.5px',
                               }}
-                              onClick={() => {
-                                setPayModal({
-                                  agent: a,
-                                  balance: balance,
-                                  deliveredCommissionPKR: a.deliveredCommissionPKR,
-                                })
-                                setCommissionRate(12)
-                                setCalculatedAmount(Math.round(balance))
-                              }}
+                              onClick={() => openPayCommission(a, balance)}
                             >
                               Pay Commission
                             </button>
@@ -648,14 +694,20 @@ export default function AgentAmounts() {
         open={!!payModal}
         onClose={() => {
           setPayModal(null)
-          setCommissionRate(null)
-          setCalculatedAmount(0)
+          setPayPreview(null)
+          setEditingPayCommissions({})
+          setPayPreviewError('')
         }}
         footer={
           <>
             <button
               className="btn secondary"
-              onClick={() => setPayModal(null)}
+              onClick={() => {
+                setPayModal(null)
+                setPayPreview(null)
+                setEditingPayCommissions({})
+                setPayPreviewError('')
+              }}
               disabled={!!payingAgent}
             >
               Cancel
@@ -676,118 +728,132 @@ export default function AgentAmounts() {
               commission to <strong style={{ color: '#8b5cf6' }}>{payModal.agent.name}</strong>?
             </div>
 
-            {/* Commission Rate Selector */}
-            <div
-              style={{ marginBottom: 20, padding: 16, background: 'var(--panel)', borderRadius: 8 }}
-            >
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginBottom: 12,
-                }}
-              >
-                <label style={{ fontWeight: 600, fontSize: 14 }}>Commission Rate:</label>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="0.5"
-                    value={commissionRate !== null ? commissionRate : 12}
-                    onChange={(e) => {
-                      const val = Number(e.target.value) || 0
-                      setCommissionRate(val)
-                      const availableBalance = Number(payModal.balance || 0)
-                      setCalculatedAmount(Math.round((availableBalance * val) / 12))
-                    }}
-                    style={{
-                      width: 70,
-                      padding: '8px',
-                      textAlign: 'right',
-                      fontWeight: 700,
-                      fontSize: 16,
-                    }}
-                    className="input"
-                  />
-                  <span style={{ fontSize: 18, fontWeight: 700 }}>%</span>
-                </div>
-              </div>
-
-              {/* Quick Rate Buttons */}
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
-                {[8, 10, 12, 15, 18, 20, 25].map((rate) => (
-                  <button
-                    key={rate}
-                    className="btn"
-                    style={{
-                      fontSize: 12,
-                      padding: '6px 12px',
-                      background: (commissionRate || 12) === rate ? '#8b5cf6' : 'var(--panel-2)',
-                      color: (commissionRate || 12) === rate ? '#fff' : 'inherit',
-                    }}
-                    onClick={() => {
-                      setCommissionRate(rate)
-                      const availableBalance = Number(payModal.balance || 0)
-                      setCalculatedAmount(Math.round((availableBalance * rate) / 12))
-                    }}
-                  >
-                    {rate}%
-                  </button>
-                ))}
-                <button
-                  className="btn secondary"
-                  style={{ fontSize: 12, padding: '6px 12px' }}
-                  onClick={() => {
-                    setCommissionRate(12)
-                    const availableBalance = Number(payModal.balance || 0)
-                    setCalculatedAmount(Math.round(availableBalance))
+            {payPreviewLoading ? (
+              <div className="card" style={{ padding: 18 }}>Loading delivered commission preview...</div>
+            ) : payPreviewError ? (
+              <div className="card" style={{ padding: 18, color: '#dc2626' }}>{payPreviewError}</div>
+            ) : payPreview ? (
+              <div style={{ display: 'grid', gap: 16 }}>
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                    gap: 12,
                   }}
                 >
-                  Reset
-                </button>
-              </div>
+                  <div className="card" style={{ padding: 14, display: 'grid', gap: 4 }}>
+                    <div className="helper">Total Orders</div>
+                    <div style={{ fontSize: 22, fontWeight: 800 }}>{num(payPreview.totalSubmitted)}</div>
+                  </div>
+                  <div className="card" style={{ padding: 14, display: 'grid', gap: 4 }}>
+                    <div className="helper">Delivered Orders</div>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: '#16a34a' }}>{num(payPreview.totalDelivered)}</div>
+                  </div>
+                  <div className="card" style={{ padding: 14, display: 'grid', gap: 4 }}>
+                    <div className="helper">Cancelled Orders</div>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: '#dc2626' }}>{num(payPreview.totalCancelled)}</div>
+                  </div>
+                  <div className="card" style={{ padding: 14, display: 'grid', gap: 4 }}>
+                    <div className="helper">Total Order Amount</div>
+                    <div style={{ fontSize: 22, fontWeight: 800 }}>AED {num(payPreview.totalOrderValueAED)}</div>
+                  </div>
+                  <div className="card" style={{ padding: 14, display: 'grid', gap: 4 }}>
+                    <div className="helper">Delivered Order Amount</div>
+                    <div style={{ fontSize: 22, fontWeight: 800 }}>AED {num(payPreview.deliveredOrderValueAED)}</div>
+                  </div>
+                  <div className="card" style={{ padding: 14, display: 'grid', gap: 4 }}>
+                    <div className="helper">Payable Commission</div>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: '#10b981' }}>PKR {num(calculatedAmount)}</div>
+                  </div>
+                </div>
 
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>
-                Base balance: PKR {num(payModal.balance)} | Paying at{' '}
-                {commissionRate !== null ? commissionRate : 12}% ratio = PKR {num(calculatedAmount)}
-              </div>
-            </div>
+                <div style={{ background: 'var(--panel)', padding: 12, borderRadius: 8, fontSize: 14 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <span style={{ opacity: 0.7 }}>Agent:</span>
+                    <strong>{payModal.agent.name}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <span style={{ opacity: 0.7 }}>Phone:</span>
+                    <strong>{payModal.agent.phone}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <span style={{ opacity: 0.7 }}>Summary Balance:</span>
+                    <strong>PKR {num(payModal.balance)}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <span style={{ opacity: 0.7 }}>Preview Orders:</span>
+                    <strong>{num(payPreview.orders?.length || 0)}</strong>
+                  </div>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      paddingTop: 8,
+                      borderTop: '1px solid var(--border)',
+                    }}
+                  >
+                    <span style={{ opacity: 0.7, fontWeight: 600 }}>Total Amount:</span>
+                    <strong style={{ color: '#10b981', fontSize: 18 }}>
+                      PKR {num(calculatedAmount)}
+                    </strong>
+                  </div>
+                </div>
 
-            <div style={{ background: 'var(--panel)', padding: 12, borderRadius: 8, fontSize: 14 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                <span style={{ opacity: 0.7 }}>Agent:</span>
-                <strong>{payModal.agent.name}</strong>
+                <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                  <div className="card-header" style={{ padding: '14px 16px' }}>
+                    <div className="card-title">Delivered Orders</div>
+                    <div className="helper">Edit commission per order before paying</div>
+                  </div>
+                  <div style={{ maxHeight: 320, overflow: 'auto' }} className="premium-scroll">
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ position: 'sticky', top: 0, background: 'var(--panel-2)', zIndex: 1 }}>
+                          <th style={{ textAlign: 'left', padding: '10px 12px', borderBottom: '1px solid var(--border)' }}>Order</th>
+                          <th style={{ textAlign: 'left', padding: '10px 12px', borderBottom: '1px solid var(--border)' }}>Product</th>
+                          <th style={{ textAlign: 'right', padding: '10px 12px', borderBottom: '1px solid var(--border)' }}>Price</th>
+                          <th style={{ textAlign: 'right', padding: '10px 12px', borderBottom: '1px solid var(--border)' }}>Commission</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(payPreview.orders || []).map((order, idx) => {
+                          const rowId = String(order?.id || order?.orderId || idx)
+                          return (
+                            <tr key={rowId} style={{ background: idx % 2 ? 'transparent' : 'var(--panel)' }}>
+                              <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)' }}>
+                                <div style={{ fontWeight: 700 }}>{order.orderId}</div>
+                                <div className="helper">
+                                  {order?.date ? new Date(order.date).toLocaleString() : '-'}
+                                </div>
+                              </td>
+                              <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)' }}>
+                                <div style={{ fontWeight: 600 }}>{order.productName || '-'}</div>
+                              </td>
+                              <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                                {order.currency || 'AED'} {num(order.amount)}
+                              </td>
+                              <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)', textAlign: 'right' }}>
+                                <input
+                                  type="number"
+                                  className="input"
+                                  min="0"
+                                  step="1"
+                                  value={editingPayCommissions[rowId] ?? order.commission ?? 0}
+                                  onChange={(e) =>
+                                    setEditingPayCommissions((prev) => ({ ...prev, [rowId]: e.target.value }))
+                                  }
+                                  disabled={!!payingAgent}
+                                  style={{ width: 120, marginLeft: 'auto', textAlign: 'right', fontWeight: 700 }}
+                                />
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                <span style={{ opacity: 0.7 }}>Phone:</span>
-                <strong>{payModal.agent.phone}</strong>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                <span style={{ opacity: 0.7 }}>Available Balance:</span>
-                <strong>PKR {num(payModal.balance)}</strong>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                <span style={{ opacity: 0.7 }}>Commission Rate:</span>
-                <strong style={{ color: '#8b5cf6', fontSize: 16 }}>
-                  {commissionRate !== null ? commissionRate : 12}%
-                </strong>
-              </div>
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  paddingTop: 8,
-                  borderTop: '1px solid var(--border)',
-                }}
-              >
-                <span style={{ opacity: 0.7, fontWeight: 600 }}>Total Amount:</span>
-                <strong style={{ color: '#10b981', fontSize: 18 }}>
-                  PKR {num(calculatedAmount)}
-                </strong>
-              </div>
-            </div>
+            ) : null}
           </div>
         )}
       </Modal>

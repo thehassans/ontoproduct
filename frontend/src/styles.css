@@ -2060,13 +2060,20 @@ a {
     right: 0;
     bottom: 0;
     z-index: 1600;
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    display: flex;
+    align-items: stretch;
+    flex-wrap: nowrap;
     gap: 6px;
     background: var(--panel-2);
     border-top: 1px solid var(--border);
     padding: 8px 10px;
     padding-bottom: max(10px, env(safe-area-inset-bottom, 10px));
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+  .mobile-tabs::-webkit-scrollbar {
+    display: none;
   }
   .mobile-tabs .tab {
     display: flex;
@@ -2080,7 +2087,8 @@ a {
     border-radius: 10px;
     border: 1px solid transparent;
     white-space: nowrap;
-    min-width: 0;
+    min-width: 72px;
+    flex: 0 0 auto;
   }
   .mobile-tabs .tab.active {
     color: var(--fg);

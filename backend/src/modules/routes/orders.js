@@ -697,14 +697,20 @@ async function updateDriverCommission(driverId) {
 }
 
 function applyAgentCommissionToOrder(order, amountPKR, actor, options = {}) {
-  const normalizedAmount = Math.max(0, Number(amountPKR || 0));
+  const isAgentOrder = String(order?.createdByRole || "").toLowerCase() === "agent";
+  const normalizedAmount = isAgentOrder
+    ? Math.max(0, Number(amountPKR || 0))
+    : 0;
   const now = new Date();
   order.agentCommissionPKR = normalizedAmount;
   order.agentCommissionComputedAt = now;
   order.agentCommissionUpdatedAt = now;
   if (actor?.id) order.agentCommissionUpdatedBy = actor.id;
   if (actor?.role) order.agentCommissionUpdatedByRole = actor.role;
-  if (options?.setByAgent) {
+  if (!isAgentOrder) {
+    order.agentCommissionSetByAgent = false;
+    order.agentCommissionSetByAgentAt = undefined;
+  } else if (options?.setByAgent) {
     order.agentCommissionSetByAgent = true;
     if (!order.agentCommissionSetByAgentAt) {
       order.agentCommissionSetByAgentAt = now;
@@ -5150,6 +5156,11 @@ router.patch(
               "Manager cannot edit agent commission. Contact owner.",
           });
         }
+        if (String(ord.createdByRole || "").toLowerCase() !== "agent") {
+          return res.status(400).json({
+            message: "Only agent-created orders can have agent commission.",
+          });
+        }
         const parsedAgentCommission = Number(agentCommissionPKR);
         if (!Number.isFinite(parsedAgentCommission) || parsedAgentCommission < 0) {
           return res.status(400).json({
@@ -5448,6 +5459,11 @@ router.patch(
       if (String(ord.shipmentStatus || "").toLowerCase() !== "delivered") {
         return res.status(400).json({
           message: "Agent commission can only be set for delivered orders",
+        });
+      }
+      if (String(ord.createdByRole || "").toLowerCase() !== "agent") {
+        return res.status(400).json({
+          message: "Only agent-created delivered orders can use agent commission",
         });
       }
       if (ord.agentCommissionSetByAgent) {

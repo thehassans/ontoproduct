@@ -817,7 +817,7 @@ export default function UserOrders() {
         if (driverId !== undefined) payload.deliveryBoy = driverId || null
         if (status) payload.shipmentStatus = status
         if (commission !== undefined) payload.driverCommission = Number(commission) || 0
-        if (agentCommissionPKR !== undefined)
+        if (agentCommissionPKR !== undefined && agentCommissionPKR !== null)
           payload.agentCommissionPKR = Math.max(0, Number(agentCommissionPKR) || 0)
         const r = await apiPatch(`/api/orders/${orderId}`, payload)
         const updated = r?.order
@@ -1607,8 +1607,11 @@ export default function UserOrders() {
               editingCommission[id] !== undefined
                 ? editingCommission[id]
                 : o.driverCommission || driverCommissionRate
+            const isAgentCreatedOrder = String(o?.createdByRole || '').toLowerCase() === 'agent'
             const currentAgentCommissionPKR =
-              editingAgentCommission[id] !== undefined
+              !isAgentCreatedOrder
+                ? 0
+                : editingAgentCommission[id] !== undefined
                 ? editingAgentCommission[id]
                 : o.agentCommissionPKR || 0
             const saveKey = `save-${id}`
@@ -1616,7 +1619,8 @@ export default function UserOrders() {
               currentDriver !== (o.deliveryBoy?._id || o.deliveryBoy || '') ||
               currentStatus !== (o.shipmentStatus || 'pending') ||
               Number(currentCommission) !== Number(o.driverCommission || 0) ||
-              Number(currentAgentCommissionPKR) !== Number(o.agentCommissionPKR || 0)
+              (isAgentCreatedOrder &&
+                Number(currentAgentCommissionPKR) !== Number(o.agentCommissionPKR || 0))
             const isReturnSubmitted = o.returnSubmittedToCompany && !o.returnVerified
             const isReturnVerified = o.returnVerified
 
@@ -1907,22 +1911,46 @@ export default function UserOrders() {
                     >
                       Agent Commission
                     </div>
-                    <input
-                      type="number"
-                      className="input"
-                      value={currentAgentCommissionPKR}
-                      onChange={(e) =>
-                        setEditingAgentCommission((prev) => ({ ...prev, [id]: e.target.value }))
-                      }
-                      placeholder="0"
-                      min="0"
-                      step="1"
-                      disabled={updating[saveKey]}
-                      style={{ width: '100%', maxWidth: 180, fontSize: 16, fontWeight: 600 }}
-                    />
-                    <div className="helper" style={{ marginTop: 4, fontSize: 11 }}>
-                      PKR{o.agentCommissionSetByAgent ? ' • locked for agent edits' : ''}
-                    </div>
+                    {isAgentCreatedOrder ? (
+                      <>
+                        <input
+                          type="number"
+                          className="input"
+                          value={currentAgentCommissionPKR}
+                          onChange={(e) =>
+                            setEditingAgentCommission((prev) => ({ ...prev, [id]: e.target.value }))
+                          }
+                          placeholder="0"
+                          min="0"
+                          step="1"
+                          disabled={updating[saveKey]}
+                          style={{ width: '100%', maxWidth: 180, fontSize: 16, fontWeight: 600 }}
+                        />
+                        <div className="helper" style={{ marginTop: 4, fontSize: 11 }}>
+                          PKR{o.agentCommissionSetByAgent ? ' • locked for agent edits' : ''}
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div
+                          className="input"
+                          style={{
+                            width: '100%',
+                            maxWidth: 220,
+                            fontSize: 14,
+                            fontWeight: 700,
+                            display: 'flex',
+                            alignItems: 'center',
+                            color: 'var(--text-muted)',
+                          }}
+                        >
+                          Not applicable
+                        </div>
+                        <div className="helper" style={{ marginTop: 4, fontSize: 11 }}>
+                          Dropshipper and non-agent orders do not use agent commission.
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   {hasChanges && (
@@ -1934,7 +1962,7 @@ export default function UserOrders() {
                           editingDriver[id],
                           editingStatus[id],
                           editingCommission[id],
-                          editingAgentCommission[id]
+                          isAgentCreatedOrder ? editingAgentCommission[id] : null
                         )
                         setEditingDriver((prev) => {
                           const n = { ...prev }

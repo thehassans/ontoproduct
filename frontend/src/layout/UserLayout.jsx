@@ -10,10 +10,13 @@ import { io } from 'socket.io-client'
 export default function UserLayout() {
   const navigate = useNavigate()
   const [closed, setClosed] = useState(() =>
-    typeof window !== 'undefined' ? window.innerWidth <= 768 : false
+    typeof window !== 'undefined' ? window.innerWidth <= 1180 : false
   )
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth <= 768 : false
+  )
+  const [isCompact, setIsCompact] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth <= 1180 : false
   )
   const [theme, setTheme] = useState('dark')
   const location = useLocation()
@@ -1327,8 +1330,10 @@ export default function UserLayout() {
   useEffect(() => {
     function onResize() {
       const mobile = window.innerWidth <= 768
+      const compact = window.innerWidth <= 1180
       setIsMobile(mobile)
-      if (mobile) setClosed(true)
+      setIsCompact(compact)
+      if (compact) setClosed(true)
     }
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
@@ -1633,7 +1638,7 @@ export default function UserLayout() {
           }}
         >
           <div className="flex items-center gap-3" style={{ flex: '1 1 280px', minWidth: 0 }}>
-            {!isMobile && (
+            {!isCompact && (
               <div
                 style={{
                   display: 'inline-flex',
@@ -1725,8 +1730,10 @@ export default function UserLayout() {
               flex: '1 1 520px',
               minWidth: 0,
               justifyContent: 'flex-end',
-              flexWrap: 'wrap',
+              flexWrap: isCompact ? 'nowrap' : 'wrap',
               rowGap: '8px',
+              overflowX: isCompact ? 'auto' : 'visible',
+              scrollbarWidth: 'none',
             }}
           >
             {/* Quick Access Links */}
@@ -1746,6 +1753,7 @@ export default function UserLayout() {
                 fontWeight: 600,
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
+                flex: '0 0 auto',
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = 'linear-gradient(135deg, rgba(59, 130, 246, 0.25) 0%, rgba(37, 99, 235, 0.25) 100%)'
@@ -1780,6 +1788,7 @@ export default function UserLayout() {
                 fontWeight: 600,
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
+                flex: '0 0 auto',
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = 'linear-gradient(135deg, rgba(168, 85, 247, 0.25) 0%, rgba(139, 92, 246, 0.25) 100%)'
@@ -1813,6 +1822,7 @@ export default function UserLayout() {
                 fontWeight: 600,
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
+                flex: '0 0 auto',
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = 'linear-gradient(135deg, rgba(249, 115, 22, 0.24) 0%, rgba(234, 88, 12, 0.24) 100%)'
@@ -1845,6 +1855,7 @@ export default function UserLayout() {
                 fontWeight: 600,
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
+                flex: '0 0 auto',
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = 'linear-gradient(135deg, rgba(14, 165, 233, 0.24) 0%, rgba(2, 132, 199, 0.24) 100%)'
@@ -1886,6 +1897,7 @@ export default function UserLayout() {
                     : 'inset 0 2px 4px rgba(0,0,0,0.1), 0 2px 8px rgba(0,0,0,0.1)',
                 padding: 0,
                 overflow: 'hidden',
+                flex: '0 0 auto',
                 flexShrink: 0,
               }}
             >
@@ -2031,9 +2043,7 @@ export default function UserLayout() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  cursor: 'pointer',
-                  position: 'relative',
-                  overflow: 'hidden',
+                  flex: '0 0 auto',
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.transform = 'translateY(-2px)'
