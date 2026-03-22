@@ -1,9 +1,14 @@
-import React, { useEffect, useMemo, useState } from 'react'
-import { apiGet, apiPost } from '../../api'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { apiGet } from '../../api'
 
 function currentMonthKey() {
   const now = new Date()
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+}
+
+function currentDayKey() {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
 }
 
 function formatMonthLabel(monthKey) {
@@ -11,6 +16,12 @@ function formatMonthLabel(monthKey) {
   const date = new Date(safe)
   if (Number.isNaN(date.getTime())) return monthKey || ''
   return new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(date)
+}
+
+function formatDayLabel(dayKey) {
+  const date = new Date(`${dayKey || currentDayKey()}T00:00:00Z`)
+  if (Number.isNaN(date.getTime())) return dayKey || ''
+  return new Intl.DateTimeFormat('en-US', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(date)
 }
 
 function formatMoney(amount, currency) {
@@ -67,7 +78,7 @@ function ReportLine({ title, fields }) {
   )
 }
 
-function CountryBlock({ row, summary = false }) {
+function CountryBlock({ row, summary = false, periodType = 'monthly' }) {
   const moneyCode = row?.currency || 'AED'
   const netProfit = Number(row?.netProfitAmount || 0)
   const totalCost = Number(row?.totalCostAmount || 0)
@@ -77,7 +88,7 @@ function CountryBlock({ row, summary = false }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <div>
           <div style={{ fontSize: 20, fontWeight: 900, letterSpacing: '-0.03em' }}>{row?.country || 'Other'}</div>
-          <div className="helper">{summary ? 'Monthly summary' : 'Country summary'} • {moneyCode}</div>
+          <div className="helper">{summary ? `${periodType === 'daily' ? 'Daily' : 'Monthly'} summary` : 'Country summary'} • {moneyCode}</div>
         </div>
         <div style={{ textAlign: 'right' }}>
           <div className="helper">Total Amount</div>
@@ -147,20 +158,23 @@ function CountryBlock({ row, summary = false }) {
         ]}
       />
 
+      {periodType === 'monthly' ? (
       <ReportLine
         title="Expense"
         fields={[
           { label: 'Total Expense', value: formatMoney(row?.totalExpense, moneyCode) },
         ]}
       />
+      ) : null}
 
       <ReportLine
         title="Purchasing"
         fields={[
-          { label: 'Total Stock Purchased Amount', value: formatMoney(row?.totalStockPurchasedAmount, moneyCode) },
+          { label: 'Stock Purchased Amount', value: formatMoney(row?.totalStockPurchasedAmount, moneyCode) },
           { label: 'Stock Purchase Quantity', value: formatCount(row?.totalStockPurchasedQty) },
           { label: 'Current Stock Quantity', value: formatCount(row?.totalStockQuantity) },
-          { label: 'Stock Delivered', value: formatCount(row?.stockDeliveredQty) },
+          { label: 'Stock Delivered Quantity', value: formatCount(row?.stockDeliveredQty) },
+          { label: 'Delivered Stock Cost', value: formatMoney(row?.stockDeliveredCostAmount, moneyCode) },
         ]}
       />
 
@@ -177,77 +191,73 @@ function CountryBlock({ row, summary = false }) {
 }
 
 export default function TotalAmounts() {
+  const reportRef = useRef(null)
   const [loading, setLoading] = useState(true)
-  const [closingBusy, setClosingBusy] = useState(false)
+  const [generating, setGenerating] = useState(false)
   const [error, setError] = useState('')
-  const [message, setMessage] = useState('')
   const [rows, setRows] = useState([])
   const [summary, setSummary] = useState(null)
-  const [history, setHistory] = useState([])
   const [query, setQuery] = useState('')
   const [countryFilter, setCountryFilter] = useState('all')
+  const [periodType, setPeriodType] = useState('monthly')
   const [month, setMonth] = useState(currentMonthKey())
-  const [monthLabel, setMonthLabel] = useState(formatMonthLabel(currentMonthKey()))
-  const [source, setSource] = useState('saved')
-  const [closing, setClosing] = useState(null)
-  const [note, setNote] = useState(`Closing of ${formatMonthLabel(currentMonthKey())}`)
+  const [day, setDay] = useState(currentDayKey())
+  const [periodLabel, setPeriodLabel] = useState(formatMonthLabel(currentMonthKey()))
 
-  async function load({ selectedMonth = month, selectedSource = source } = {}) {
+  async function load({ nextPeriodType = periodType, nextMonth = month, nextDay = day } = {}) {
     setLoading(true)
     try {
-      const liveFlag = selectedSource === 'live' ? '&live=1' : ''
-      const res = await apiGet(`/api/users/total-amounts?month=${encodeURIComponent(selectedMonth)}${liveFlag}`)
+      const nextPeriodKey = nextPeriodType === 'daily' ? nextDay : nextMonth
+      const res = await apiGet(`/api/users/total-amounts/report?periodType=${encodeURIComponent(nextPeriodType)}&periodKey=${encodeURIComponent(nextPeriodKey)}`)
       setRows(Array.isArray(res?.countries) ? res.countries : [])
       setSummary(res?.summary || null)
-      setHistory(Array.isArray(res?.history) ? res.history : [])
-      setMonth(String(res?.monthKey || selectedMonth || currentMonthKey()))
-      setMonthLabel(String(res?.monthLabel || formatMonthLabel(selectedMonth)))
-      setSource(selectedSource)
-      setClosing(res?.closing || null)
-      setMessage(String(res?.message || ''))
+      setPeriodType(String(res?.periodType || nextPeriodType || 'monthly'))
+      setMonth(String(res?.monthKey || nextMonth || currentMonthKey()))
+      setDay(String(res?.periodType === 'daily' ? res?.periodKey || nextDay || currentDayKey() : nextDay || currentDayKey()))
+      setPeriodLabel(String(res?.periodLabel || (nextPeriodType === 'daily' ? formatDayLabel(nextDay) : formatMonthLabel(nextMonth))))
       setError('')
     } catch (err) {
       setRows([])
       setSummary(null)
-      setHistory([])
-      setClosing(null)
-      setMessage('')
-      setError(err?.message || 'Failed to load total amounts')
+      setError(err?.message || 'Failed to load closing report')
     } finally {
       setLoading(false)
     }
   }
 
-  async function closeMonth() {
-    setClosingBusy(true)
+  async function downloadPDF() {
+    if (!reportRef.current) return
+    setGenerating(true)
     try {
-      const res = await apiPost('/api/users/total-amounts/close-month', {
-        month,
-        note: note || `Closing of ${monthLabel}`,
+      const html2canvas = (await import('html2canvas')).default
+      const jsPDF = (await import('jspdf')).default
+      const canvas = await html2canvas(reportRef.current, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
       })
-      setRows(Array.isArray(res?.countries) ? res.countries : [])
-      setSummary(res?.summary || null)
-      setHistory(Array.isArray(res?.history) ? res.history : [])
-      setMonth(String(res?.monthKey || month))
-      setMonthLabel(String(res?.monthLabel || formatMonthLabel(month)))
-      setSource('saved')
-      setClosing(res?.closing || null)
-      setMessage(String(res?.message || ''))
-      setError('')
+      const imgData = canvas.toDataURL('image/png')
+      const pdf = new jsPDF('p', 'mm', 'a4')
+      const pdfWidth = pdf.internal.pageSize.getWidth()
+      const pdfHeight = pdf.internal.pageSize.getHeight()
+      const imgWidth = canvas.width
+      const imgHeight = canvas.height
+      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight)
+      const imgX = (pdfWidth - imgWidth * ratio) / 2
+      pdf.addImage(imgData, 'PNG', imgX, 10, imgWidth * ratio, imgHeight * ratio)
+      const selectedPeriodKey = periodType === 'daily' ? day : month
+      pdf.save(`Buysial-${periodType}-closing-${selectedPeriodKey}.pdf`)
     } catch (err) {
-      setError(err?.message || 'Failed to close month')
+      setError(err?.message || 'Failed to generate PDF')
     } finally {
-      setClosingBusy(false)
+      setGenerating(false)
     }
   }
 
   useEffect(() => {
-    load({ selectedMonth: month, selectedSource: source })
-  }, [month, source])
-
-  useEffect(() => {
-    setNote(`Closing of ${formatMonthLabel(month)}`)
-  }, [month])
+    load({ nextPeriodType: periodType, nextMonth: month, nextDay: day })
+  }, [periodType, month, day])
 
   const filteredRows = useMemo(() => {
     const q = String(query || '').trim().toLowerCase()
@@ -259,8 +269,6 @@ export default function TotalAmounts() {
     })
   }, [rows, query, countryFilter])
 
-  const historyOptions = useMemo(() => Array.isArray(history) ? history : [], [history])
-
   const countryOptions = useMemo(() => {
     const set = new Set(rows.map((row) => String(row?.country || '')).filter(Boolean))
     return Array.from(set)
@@ -271,75 +279,72 @@ export default function TotalAmounts() {
       totalAmount: 0,
       deliveredAmount: 0,
       totalOrders: 0,
+      deliveredOrders: 0,
       cancelledOrders: 0,
       agentTotalCommission: 0,
-      agentPaidCommission: 0,
-      driverPaidCommission: 0,
+      dropshipperTotalCommission: 0,
+      driverTotalCommission: 0,
       totalExpense: 0,
-      dropshipperPaidCommission: 0,
       totalStockPurchasedAmount: 0,
       netProfitAmount: 0,
       totalCostAmount: 0,
     }
-    const agentBalance = Math.max(0, Number(src.agentTotalCommission || 0) - Number(src.agentPaidCommission || 0))
     const netProfit = Number(src.netProfitAmount || 0)
-    return [
+    const baseCards = [
+      { label: 'Total Orders', value: formatCount(src.totalOrders) },
+      { label: 'Delivered Orders', value: formatCount(src.deliveredOrders) },
+      { label: 'Cancelled Orders', value: formatCount(src.cancelledOrders) },
       { label: 'Total Amount', value: formatMoney(src.totalAmount, 'AED') },
       { label: 'Delivered Amount', value: formatMoney(src.deliveredAmount, 'AED') },
-      { label: 'Total Orders', value: formatCount(src.totalOrders) },
-      { label: 'Cancelled Orders', value: formatCount(src.cancelledOrders) },
-      { label: 'Agent Commission Earned', value: formatMoney(src.agentTotalCommission, 'AED') },
-      { label: 'Agent Paid Commission', value: formatMoney(src.agentPaidCommission, 'AED') },
-      { label: 'Agent Commission Balance', value: formatMoney(agentBalance, 'AED') },
-      { label: 'Dropshipper Paid', value: formatMoney(src.dropshipperPaidCommission, 'AED') },
-      { label: 'Driver Paid Commission', value: formatMoney(src.driverPaidCommission, 'AED') },
-      { label: 'Total Expense', value: formatMoney(src.totalExpense, 'AED') },
+      { label: 'Agent Commission', value: formatMoney(src.agentTotalCommission, 'AED') },
+      { label: 'Dropshipper Commission', value: formatMoney(src.dropshipperTotalCommission, 'AED') },
+      { label: 'Driver Commission', value: formatMoney(src.driverTotalCommission, 'AED') },
       { label: 'Purchasing', value: formatMoney(src.totalStockPurchasedAmount, 'AED') },
       { label: 'Total Cost', value: formatMoney(src.totalCostAmount, 'AED') },
       { label: netProfit < 0 ? 'Net Loss' : 'Net Profit', value: formatMoney(Math.abs(netProfit), 'AED') },
     ]
-  }, [summary])
+    if (periodType === 'monthly') {
+      baseCards.splice(8, 0, { label: 'Total Expense', value: formatMoney(src.totalExpense, 'AED') })
+    }
+    return baseCards
+  }, [summary, periodType])
 
   return (
     <div className="section" style={{ display: 'grid', gap: 12 }}>
       <div className="page-header" style={{ alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
         <div>
-          <div className="page-title gradient heading-blue">Total Amount</div>
-          <div className="page-subtitle">Minimal monthly report with saved closings, live month view, country filters, commissions, and expenses.</div>
+          <div className="page-title gradient heading-blue">Closing Reports</div>
+          <div className="page-subtitle">Automatic daily and monthly financial closing reports with delivered amount, commissions, purchasing, expenses, and net profit.</div>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button className="btn secondary" type="button" onClick={() => load({ selectedMonth: month, selectedSource: source })} disabled={loading}>
+          <button className="btn secondary" type="button" onClick={() => load({ nextPeriodType: periodType, nextMonth: month, nextDay: day })} disabled={loading}>
             {loading ? 'Loading...' : 'Refresh'}
+          </button>
+          <button className="btn" type="button" onClick={downloadPDF} disabled={loading || generating} style={{ background: '#1d4ed8', border: 'none', color: '#fff' }}>
+            {generating ? 'Generating PDF...' : 'Download PDF'}
           </button>
         </div>
       </div>
 
       {error ? <div className="card error">{error}</div> : null}
-      {message ? <div className="card" style={{ border: '1px solid rgba(148,163,184,0.18)', background: '#ffffff', boxShadow: 'none' }}>{message}</div> : null}
 
       <div className="card" style={{ display: 'grid', gap: 12, padding: 16, borderRadius: 18, border: '1px solid rgba(148,163,184,0.18)', background: '#ffffff', boxShadow: 'none' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 10 }}>
           <label style={{ display: 'grid', gap: 6 }}>
-            <span className="helper">Month</span>
-            <input className="input" type="month" value={month} onChange={(e) => setMonth(e.target.value || currentMonthKey())} />
-          </label>
-
-          <label style={{ display: 'grid', gap: 6 }}>
-            <span className="helper">Report Source</span>
-            <select className="input" value={source} onChange={(e) => setSource(e.target.value || 'saved')}>
-              <option value="saved">Saved Monthly Report</option>
-              <option value="live">Live Monthly Report</option>
+            <span className="helper">Report Type</span>
+            <select className="input" value={periodType} onChange={(e) => setPeriodType(e.target.value === 'daily' ? 'daily' : 'monthly')}>
+              <option value="monthly">Monthly Report</option>
+              <option value="daily">Daily Report</option>
             </select>
           </label>
 
           <label style={{ display: 'grid', gap: 6 }}>
-            <span className="helper">Saved Month</span>
-            <select className="input" value={historyOptions.some((item) => item.monthKey === month) ? month : ''} onChange={(e) => { if (e.target.value) { setMonth(e.target.value); setSource('saved') } }}>
-              <option value="">Select saved month</option>
-              {historyOptions.map((item) => (
-                <option key={item.monthKey} value={item.monthKey}>{item.monthLabel || item.monthKey}</option>
-              ))}
-            </select>
+            <span className="helper">{periodType === 'daily' ? 'Day' : 'Month'}</span>
+            {periodType === 'daily' ? (
+              <input className="input" type="date" value={day} onChange={(e) => setDay(e.target.value || currentDayKey())} />
+            ) : (
+              <input className="input" type="month" value={month} onChange={(e) => setMonth(e.target.value || currentMonthKey())} />
+            )}
           </label>
 
           <label style={{ display: 'grid', gap: 6 }}>
@@ -356,67 +361,46 @@ export default function TotalAmounts() {
             <span className="helper">Search Country</span>
             <input className="input" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search by country name" />
           </label>
-
-          <label style={{ display: 'grid', gap: 6 }}>
-            <span className="helper">Closing Note</span>
-            <input className="input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Write closing note" />
-          </label>
         </div>
 
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            <span className="chip" style={{ fontWeight: 800 }}>{source === 'saved' ? 'Saved Monthly Report' : 'Live Monthly Report'}</span>
-            {closing?.closedAt ? <span className="helper">Closed at {formatDateTime(closing.closedAt)}</span> : null}
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <span className="chip" style={{ fontWeight: 800 }}>{periodType === 'daily' ? 'Daily Report' : 'Monthly Report'}</span>
+          <span className="helper">{periodLabel}</span>
+          {periodType === 'monthly' ? <span className="helper">Includes expenses for the selected month.</span> : null}
+        </div>
+      </div>
+
+      <div ref={reportRef} style={{ display: 'grid', gap: 12 }}>
+        <div className="card" style={{ display: 'grid', gap: 6, padding: 18, borderRadius: 18, border: '1px solid rgba(148,163,184,0.18)', background: '#ffffff', boxShadow: 'none' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontSize: 24, fontWeight: 900, color: '#0f172a' }}>{periodType === 'daily' ? 'Daily Closing Report' : 'Monthly Closing Report'}</div>
+              <div className="helper">{periodLabel}</div>
+            </div>
+            <div className="helper">Generated {formatDateTime(new Date())}</div>
           </div>
-          <button className="btn action-btn" type="button" onClick={closeMonth} disabled={closingBusy}>
-            {closingBusy ? 'Closing...' : `Close ${monthLabel}`}
-          </button>
         </div>
-      </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 10 }}>
-        {cards.map((item) => (
-          <SummaryStat key={item.label} label={item.label} value={item.value} />
-        ))}
-      </div>
-
-      {summary ? <CountryBlock row={{ ...summary, country: 'All Countries', currency: 'AED' }} summary /> : null}
-
-      <div className="card" style={{ display: 'grid', gap: 10, padding: 16, borderRadius: 18, border: '1px solid rgba(148,163,184,0.18)', background: '#ffffff', boxShadow: 'none' }}>
-        <div className="card-header">
-          <div className="card-title">Saved Monthly History</div>
-          <div className="helper">{history.length} saved months</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 10 }}>
+          {cards.map((item) => (
+            <SummaryStat key={item.label} label={item.label} value={item.value} />
+          ))}
         </div>
-        {history.length === 0 ? (
-          <div className="helper">No month closing history yet.</div>
+
+        {summary ? <CountryBlock row={{ ...summary, country: 'All Countries', currency: 'AED' }} summary periodType={periodType} /> : null}
+
+        {loading ? (
+          <div className="card"><div className="section">Loading closing report...</div></div>
+        ) : filteredRows.length === 0 ? (
+          <div className="card"><div className="section">No country totals found for {periodLabel}.</div></div>
         ) : (
-          <div style={{ display: 'grid', gap: 8 }}>
-            {history.map((item) => (
-              <div key={item.monthKey} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', borderBottom: '1px solid rgba(148,163,184,0.14)', padding: '8px 0' }}>
-                <div>
-                  <div style={{ fontWeight: 900 }}>{item.monthLabel || item.monthKey}</div>
-                  <div className="helper">{item.note || 'Closing saved'}{item.closedAt ? ` • ${formatDateTime(item.closedAt)}` : ''}</div>
-                </div>
-                <button className="btn secondary" type="button" onClick={() => { setMonth(item.monthKey); setSource('saved') }}>
-                  Open
-                </button>
-              </div>
+          <div style={{ display: 'grid', gap: 12 }}>
+            {filteredRows.map((row) => (
+              <CountryBlock key={row.country} row={row} periodType={periodType} />
             ))}
           </div>
         )}
       </div>
-
-      {loading ? (
-        <div className="card"><div className="section">Loading total amounts...</div></div>
-      ) : filteredRows.length === 0 ? (
-        <div className="card"><div className="section">No country totals found for {monthLabel}.</div></div>
-      ) : (
-        <div style={{ display: 'grid', gap: 12 }}>
-          {filteredRows.map((row) => (
-            <CountryBlock key={row.country} row={row} />
-          ))}
-        </div>
-      )}
     </div>
   )
 }

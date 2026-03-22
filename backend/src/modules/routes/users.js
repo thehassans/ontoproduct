@@ -32,9 +32,18 @@ import DriverCommissionRequest from "../models/DriverCommissionRequest.js";
 import Expense from "../models/Expense.js";
 import mongoose from "mongoose";
 import { createNotification } from "../routes/notifications.js";
+import {
+  buildTotalAmountSnapshot as buildLiveTotalAmountSnapshot,
+  createEmptySummaryTotals as createLiveEmptySummaryTotals,
+  formatMonthLabel as formatLiveMonthLabel,
+  hasCommissionSnapshotFields as hasLiveCommissionSnapshotFields,
+  normalizeDayKey as normalizeLiveDayKey,
+  normalizeMonthKey as normalizeLiveMonthKey,
+  TOTAL_AMOUNT_SNAPSHOT_VERSION as LIVE_TOTAL_AMOUNT_SNAPSHOT_VERSION,
+} from "../services/totalAmountReportService.js";
 
 const router = Router();
-const TOTAL_AMOUNT_SNAPSHOT_VERSION = 4;
+const TOTAL_AMOUNT_SNAPSHOT_VERSION = LIVE_TOTAL_AMOUNT_SNAPSHOT_VERSION;
 
 function defaultPerAED() {
   return {
@@ -281,6 +290,65 @@ function buildCountryCanonExpr(fieldPath = "$orderCountry") {
     }
   }
 
+  function normalizeDayKey(value) {
+    const raw = String(value || "").trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+    const date = raw ? new Date(raw) : new Date();
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(date.getUTCDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
+  function getDayRange(dayKey) {
+    const [yearStr, monthStr, dayStr] = normalizeDayKey(dayKey).split("-");
+    const year = Number(yearStr);
+    const monthIndex = Number(monthStr) - 1;
+    const day = Number(dayStr);
+    const start = new Date(Date.UTC(year, monthIndex, day, 0, 0, 0, 0));
+    const end = new Date(Date.UTC(year, monthIndex, day + 1, 0, 0, 0, 0));
+    return { start, end };
+  }
+
+  function formatDayLabel(dayKey) {
+    const { start } = getDayRange(dayKey);
+    try {
+      return new Intl.DateTimeFormat("en-US", {
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+        timeZone: "UTC",
+      }).format(start);
+    } catch {
+      return dayKey;
+    }
+  }
+
+  function resolveReportPeriod({ periodType = "monthly", periodKey, monthKey }) {
+    const normalizedType = String(periodType || "monthly").toLowerCase() === "daily" ? "daily" : "monthly";
+    const rawKey = periodKey ?? monthKey;
+    if (normalizedType === "daily") {
+      const normalizedKey = normalizeDayKey(rawKey);
+      const { start, end } = getDayRange(normalizedKey);
+      return {
+        periodType: normalizedType,
+        periodKey: normalizedKey,
+        periodLabel: formatDayLabel(normalizedKey),
+        start,
+        end,
+      };
+    }
+    const normalizedKey = normalizeMonthKey(rawKey);
+    const { start, end } = getMonthRange(normalizedKey);
+    return {
+      periodType: normalizedType,
+      periodKey: normalizedKey,
+      periodLabel: formatMonthLabel(normalizedKey),
+      start,
+      end,
+    };
+  }
+
   function createEmptyTotals(country = "Other") {
     const normalizedCountry = canonicalCountryName(country);
     return {
@@ -323,6 +391,7 @@ function buildCountryCanonExpr(fieldPath = "$orderCountry") {
       totalStockPurchasedQty: 0,
       totalStockQuantity: 0,
       stockDeliveredQty: 0,
+      stockDeliveredCostAmount: 0,
       totalCostAmount: 0,
       netProfitAmount: 0,
     };
@@ -350,6 +419,7 @@ function buildCountryCanonExpr(fieldPath = "$orderCountry") {
       "totalStockPurchasedQty",
       "totalStockQuantity",
       "stockDeliveredQty",
+      "stockDeliveredCostAmount",
       "totalCostAmount",
       "netProfitAmount",
     ];
@@ -4237,7 +4307,7 @@ router.post("/:id/impersonate", auth, allowRoles("admin", "user"), async (req, r
   async (req, res) => {
     try {
       const ownerId = new mongoose.Types.ObjectId(req.user.id);
-      const monthKey = normalizeMonthKey(req.query?.month);
+      const monthKey = normalizeLiveMonthKey(req.query?.month);
       const live = String(req.query?.live || "") === "1";
       const historyDocs = await TotalAmountClosing.find({ ownerId })
         .select("monthKey monthLabel note closedAt createdAt updatedAt")
@@ -4251,11 +4321,11 @@ router.post("/:id/impersonate", auth, allowRoles("admin", "user"), async (req, r
           const firstCountry = Array.isArray(closedDoc.countries) ? closedDoc.countries[0] : null;
           const needsRefresh =
             Number(closedDoc.snapshotVersion || 0) < TOTAL_AMOUNT_SNAPSHOT_VERSION ||
-            !hasCommissionSnapshotFields(closedDoc.summary) ||
-            (firstCountry ? !hasCommissionSnapshotFields(firstCountry) : false);
+            !hasLiveCommissionSnapshotFields(closedDoc.summary) ||
+            (firstCountry ? !hasLiveCommissionSnapshotFields(firstCountry) : false);
 
           if (needsRefresh) {
-            const snapshot = await buildTotalAmountSnapshot({ ownerId, monthKey });
+            const snapshot = await buildLiveTotalAmountSnapshot({ ownerId, periodType: "monthly", periodKey: monthKey });
             closedDoc = await TotalAmountClosing.findOneAndUpdate(
               { ownerId, monthKey },
               {
@@ -4274,11 +4344,11 @@ router.post("/:id/impersonate", auth, allowRoles("admin", "user"), async (req, r
 
           return res.json({
             monthKey: closedDoc.monthKey,
-            monthLabel: closedDoc.monthLabel || formatMonthLabel(closedDoc.monthKey),
+            monthLabel: closedDoc.monthLabel || formatLiveMonthLabel(closedDoc.monthKey),
             rangeStart: closedDoc.rangeStart,
             rangeEnd: closedDoc.rangeEnd,
             countries: Array.isArray(closedDoc.countries) ? closedDoc.countries : [],
-            summary: closedDoc.summary || createEmptySummaryTotals(),
+            summary: closedDoc.summary || createLiveEmptySummaryTotals(),
             source: "closed",
             closing: {
               note: closedDoc.note || "",
@@ -4287,7 +4357,7 @@ router.post("/:id/impersonate", auth, allowRoles("admin", "user"), async (req, r
             },
             history: historyDocs.map((item) => ({
               monthKey: item.monthKey,
-              monthLabel: item.monthLabel || formatMonthLabel(item.monthKey),
+              monthLabel: item.monthLabel || formatLiveMonthLabel(item.monthKey),
               note: item.note || "",
               closedAt: item.closedAt,
               updatedAt: item.updatedAt,
@@ -4298,16 +4368,16 @@ router.post("/:id/impersonate", auth, allowRoles("admin", "user"), async (req, r
         const { start, end } = getMonthRange(monthKey);
         return res.json({
           monthKey,
-          monthLabel: formatMonthLabel(monthKey),
+          monthLabel: formatLiveMonthLabel(monthKey),
           rangeStart: start,
           rangeEnd: end,
           countries: [],
-          summary: createEmptySummaryTotals(),
+          summary: createLiveEmptySummaryTotals(),
           source: "closed",
           closing: null,
           history: historyDocs.map((item) => ({
             monthKey: item.monthKey,
-            monthLabel: item.monthLabel || formatMonthLabel(item.monthKey),
+            monthLabel: item.monthLabel || formatLiveMonthLabel(item.monthKey),
             note: item.note || "",
             closedAt: item.closedAt,
             updatedAt: item.updatedAt,
@@ -4316,14 +4386,14 @@ router.post("/:id/impersonate", auth, allowRoles("admin", "user"), async (req, r
         });
       }
 
-      const snapshot = await buildTotalAmountSnapshot({ ownerId, monthKey });
+      const snapshot = await buildLiveTotalAmountSnapshot({ ownerId, periodType: "monthly", periodKey: monthKey });
       return res.json({
         ...snapshot,
         source: "live",
         closing: null,
         history: historyDocs.map((item) => ({
           monthKey: item.monthKey,
-          monthLabel: item.monthLabel || formatMonthLabel(item.monthKey),
+          monthLabel: item.monthLabel || formatLiveMonthLabel(item.monthKey),
           note: item.note || "",
           closedAt: item.closedAt,
           updatedAt: item.updatedAt,
@@ -4339,6 +4409,46 @@ router.post("/:id/impersonate", auth, allowRoles("admin", "user"), async (req, r
   }
 );
 
+  router.get(
+  "/total-amounts/report",
+  auth,
+  allowRoles("user"),
+  async (req, res) => {
+    try {
+      const ownerId = new mongoose.Types.ObjectId(req.user.id);
+      const periodType = String(req.query?.periodType || "monthly").toLowerCase() === "daily" ? "daily" : "monthly";
+      const periodKey = periodType === "daily"
+        ? normalizeLiveDayKey(req.query?.periodKey || req.query?.day)
+        : normalizeLiveMonthKey(req.query?.periodKey || req.query?.month);
+      const snapshot = await buildLiveTotalAmountSnapshot({ ownerId, periodType, periodKey });
+      const historyDocs = await TotalAmountClosing.find({ ownerId })
+        .select("monthKey monthLabel note closedAt createdAt updatedAt")
+        .sort({ monthKey: -1 })
+        .limit(24)
+        .lean();
+
+      return res.json({
+        ...snapshot,
+        source: "live",
+        closing: null,
+        history: historyDocs.map((item) => ({
+          monthKey: item.monthKey,
+          monthLabel: item.monthLabel || formatLiveMonthLabel(item.monthKey),
+          note: item.note || "",
+          closedAt: item.closedAt,
+          updatedAt: item.updatedAt,
+        })),
+      });
+    } catch (err) {
+      console.error("Failed to load live total amount report:", err);
+      return res.status(500).json({
+        message: "Failed to load live total amount report",
+        error: err?.message,
+      });
+    }
+  }
+);
+
   router.post(
     "/total-amounts/close-month",
     auth,
@@ -4346,9 +4456,9 @@ router.post("/:id/impersonate", auth, allowRoles("admin", "user"), async (req, r
     async (req, res) => {
       try {
         const ownerId = new mongoose.Types.ObjectId(req.user.id);
-        const monthKey = normalizeMonthKey(req.body?.month);
+        const monthKey = normalizeLiveMonthKey(req.body?.month);
         const note = String(req.body?.note || "").trim().slice(0, 300);
-        const snapshot = await buildTotalAmountSnapshot({ ownerId, monthKey });
+        const snapshot = await buildLiveTotalAmountSnapshot({ ownerId, periodType: "monthly", periodKey: monthKey });
 
         const closingDoc = await TotalAmountClosing.findOneAndUpdate(
           { ownerId, monthKey: snapshot.monthKey },
@@ -4384,7 +4494,7 @@ router.post("/:id/impersonate", auth, allowRoles("admin", "user"), async (req, r
           },
           history: historyDocs.map((item) => ({
             monthKey: item.monthKey,
-            monthLabel: item.monthLabel || formatMonthLabel(item.monthKey),
+            monthLabel: item.monthLabel || formatLiveMonthLabel(item.monthKey),
             note: item.note || "",
             closedAt: item.closedAt,
             updatedAt: item.updatedAt,
