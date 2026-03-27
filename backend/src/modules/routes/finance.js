@@ -992,22 +992,30 @@ async function buildAgentClosingOrderData({ agentId, paidAt = new Date() }) {
     commissionCurrency: "PKR",
     status: "cancelled",
   }));
+  const payableDeliveredRows = deliveredRows.filter(
+    (order) => Number(order.commission || 0) > 0
+  );
   const orders = [...deliveredRows, ...cancelledRows].sort(
     (left, right) =>
       new Date(left.eventDate || left.date || 0).getTime() -
       new Date(right.eventDate || right.date || 0).getTime()
   );
-  const deliveredCommissionPKR = deliveredRows.reduce(
+  const closingOrders = [...payableDeliveredRows, ...cancelledRows].sort(
+    (left, right) =>
+      new Date(left.eventDate || left.date || 0).getTime() -
+      new Date(right.eventDate || right.date || 0).getTime()
+  );
+  const deliveredCommissionPKR = payableDeliveredRows.reduce(
     (sum, order) => sum + Number(order.commission || 0),
     0
   );
   const deliveredOrderIds = uniqueIdStrings(
-    deliveredOrders.map((order) => order?._id)
+    payableDeliveredRows.map((order) => order?.id)
   );
   const cancelledOrderIds = uniqueIdStrings(
     cancelledOrders.map((order) => order?._id)
   );
-  const rangeStartCandidates = orders
+  const rangeStartCandidates = closingOrders
     .map((order) => order?.eventDate || order?.date)
     .filter(Boolean)
     .map((value) => new Date(value))
@@ -1017,12 +1025,14 @@ async function buildAgentClosingOrderData({ agentId, paidAt = new Date() }) {
     totalSubmitted,
     totalCancelled,
     totalDelivered: deliveredRows.length,
+    totalPayableDelivered: payableDeliveredRows.length,
     totalOrderValueAED,
     deliveredOrderValueAED,
     deliveredCommissionPKR,
     deliveredOrderIds,
     cancelledOrderIds,
     orders,
+    closingOrders,
     rangeStart: rangeStartCandidates[0] || lowerBound,
     rangeEnd: effectivePaidAt,
   };
@@ -1088,7 +1098,15 @@ async function buildAgentClosingOrderDataFromStoredOrders({
     commissionCurrency: "PKR",
     status: "cancelled",
   }));
+  const payableDeliveredRows = deliveredRows.filter(
+    (order) => Number(order.commission || 0) > 0
+  );
   const orders = [...deliveredRows, ...cancelledRows].sort(
+    (left, right) =>
+      new Date(left.eventDate || left.date || 0).getTime() -
+      new Date(right.eventDate || right.date || 0).getTime()
+  );
+  const closingOrders = [...payableDeliveredRows, ...cancelledRows].sort(
     (left, right) =>
       new Date(left.eventDate || left.date || 0).getTime() -
       new Date(right.eventDate || right.date || 0).getTime()
@@ -1106,11 +1124,11 @@ async function buildAgentClosingOrderDataFromStoredOrders({
     const currency = resolveOrderCurrency(order, "AED");
     return sum + convertAmountToAED(amount, currency, cfg);
   }, 0);
-  const deliveredCommissionPKR = deliveredRows.reduce(
+  const deliveredCommissionPKR = payableDeliveredRows.reduce(
     (sum, order) => sum + Number(order.commission || 0),
     0
   );
-  const rangeStartCandidates = orders
+  const rangeStartCandidates = closingOrders
     .map((order) => order?.eventDate || order?.date)
     .filter(Boolean)
     .map((value) => new Date(value))
@@ -1128,12 +1146,14 @@ async function buildAgentClosingOrderDataFromStoredOrders({
     totalSubmitted: orders.length,
     totalCancelled: cancelledRows.length,
     totalDelivered: deliveredRows.length,
+    totalPayableDelivered: payableDeliveredRows.length,
     totalOrderValueAED,
     deliveredOrderValueAED,
     deliveredCommissionPKR,
-    deliveredOrderIds: uniqueIdStrings(deliveredOrders.map((order) => order?._id)),
+    deliveredOrderIds: uniqueIdStrings(payableDeliveredRows.map((order) => order?.id)),
     cancelledOrderIds: uniqueIdStrings(cancelledOrders.map((order) => order?._id)),
     orders,
+    closingOrders,
     rangeStart: safeRangeStart || rangeStartCandidates[0] || new Date(0),
     rangeEnd: nextRangeEnd,
   };
@@ -3314,7 +3334,8 @@ router.post(
             "Agent",
           agentPhone: agent.phone || "",
           totalSubmitted: closingData.totalSubmitted,
-          totalDelivered: closingData.totalDelivered,
+          totalDelivered:
+            closingData.totalPayableDelivered ?? closingData.totalDelivered,
           totalCancelled: closingData.totalCancelled,
           totalOrderValueAED: closingData.totalOrderValueAED,
           deliveredOrderValueAED: closingData.deliveredOrderValueAED,
@@ -3323,7 +3344,7 @@ router.post(
           paidAt,
           rangeStart: closingData.rangeStart,
           rangeEnd: closingData.rangeEnd,
-          orders: closingData.orders,
+          orders: closingData.closingOrders || closingData.orders,
         });
       } catch (err) {
         console.error("Error generating commission receipt PDF:", err);
@@ -3378,7 +3399,10 @@ router.post(
       }
 
       // Create an agent remittance record marking commission payment
-      const noteText = `Commission closing paid for ${closingData.totalDelivered} delivered orders out of ${closingData.totalSubmitted} total orders (${closingData.totalCancelled} cancelled). Total order amount AED ${Number(
+      const payableDeliveredCount = Number(
+        closingData.totalPayableDelivered ?? closingData.totalDelivered ?? 0
+      );
+      const noteText = `Commission closing paid for ${payableDeliveredCount} delivered orders out of ${closingData.totalSubmitted} total orders (${closingData.totalCancelled} cancelled). Total order amount AED ${Number(
         closingData.totalOrderValueAED || 0
       ).toFixed(2)}, delivered order amount AED ${Number(
         closingData.deliveredOrderValueAED || 0
@@ -3402,7 +3426,7 @@ router.post(
         closingCancelledOrderIds: toObjectIdList(
           closingData.cancelledOrderIds || []
         ),
-        closingOrderCount: Number(closingData.totalDelivered || 0),
+        closingOrderCount: payableDeliveredCount,
         closingCancelledCount: Number(closingData.totalCancelled || 0),
         receiptPdf: pdfPath, // Save PDF path
       });
