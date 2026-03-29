@@ -622,7 +622,7 @@ export default function ProductDetail() {
         if (!pid || !ck) continue
         next[`${pid}-${ck}`] = {
           stock: String(Number(row?.stock || 0)),
-          price: String(Number(row?.pricePerPiece ?? row?.price || 0)),
+          price: String(Number((row?.pricePerPiece ?? row?.price) || 0)),
           currency: String(row?.currency || 'SAR')
         }
       }
@@ -3474,7 +3474,7 @@ export default function ProductDetail() {
                                   String(s.partnerId?._id || s.partnerId || '') === String(partner._id) && s.country === normalizedCountry
                                 )
                                 const currentStock = stockItem?.stock || 0
-                                const currentPrice = stockItem?.pricePerPiece ?? stockItem?.price || 0
+                                const currentPrice = (stockItem?.pricePerPiece ?? stockItem?.price) || 0
                                 const currentCcy = stockItem?.currency || 'SAR'
                                 
                                 const draft = partnerPurchasingDraft[key] || { stock: currentStock, price: currentPrice, currency: currentCcy }
