@@ -6,6 +6,79 @@ import Modal from '../../components/Modal.jsx'
 import ProductSEOPanel from '../products/ProductSEOPanel.jsx'
 import MapPreview from '../../components/MapPreview.jsx'
 
+function PartnerPurchasingRow({ partnerId, country, savedRow, defaultPrice, defaultCurrency, productId, onRefresh }) {
+  const toast = useToast()
+  const [stock, setStock] = React.useState(savedRow ? String(savedRow.stock ?? 0) : '')
+  const [price, setPrice] = React.useState(savedRow ? String(savedRow.pricePerPiece ?? savedRow.price ?? 0) : (defaultPrice || ''))
+  const [currency, setCurrency] = React.useState(savedRow?.currency || defaultCurrency || 'SAR')
+  const [saving, setSaving] = React.useState(false)
+
+  async function handleSave() {
+    setSaving(true)
+    try {
+      await apiPost('/api/partners/admin/purchasing/set', {
+        productId,
+        partnerId,
+        country,
+        stock: Number(stock || 0),
+        pricePerPiece: Number(price || defaultPrice || 0),
+        currency: currency || defaultCurrency || 'SAR',
+      })
+      toast.success('Stock assigned')
+      onRefresh()
+    } catch (err) {
+      toast.error(err?.message || 'Failed to save')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div style={{ padding: '10px 14px', borderBottom: '1px solid #f1f5f9' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <span style={{ fontWeight: 600, fontSize: 13 }}>{country}</span>
+        <span style={{ fontSize: 11, color: savedRow ? '#10b981' : '#94a3b8' }}>
+          {savedRow ? `Saved: ${savedRow.stock} units @ ${savedRow.pricePerPiece ?? savedRow.price}` : 'No allocation yet'}
+        </span>
+      </div>
+      <div style={{ display: 'flex', gap: 6 }}>
+        <input
+          type="number" min="0" placeholder="Stock"
+          value={stock}
+          onChange={e => setStock(e.target.value)}
+          className="input"
+          style={{ flex: 1, minHeight: 38 }}
+        />
+        <input
+          type="number" min="0" step="0.01" placeholder="Price/pc"
+          value={price}
+          onChange={e => setPrice(e.target.value)}
+          className="input"
+          style={{ flex: 1, minHeight: 38 }}
+        />
+        <select
+          className="input"
+          value={currency}
+          onChange={e => setCurrency(e.target.value)}
+          style={{ width: 76, minHeight: 38 }}
+        >
+          <option value="SAR">SAR</option>
+          <option value="AED">AED</option>
+          <option value="USD">USD</option>
+          <option value="PKR">PKR</option>
+          <option value="OMR">OMR</option>
+        </select>
+        <button
+          className="btn success"
+          onClick={handleSave}
+          disabled={saving}
+          style={{ minHeight: 38, padding: '0 14px', fontWeight: 700 }}
+        >{saving ? '...' : 'Save'}</button>
+      </div>
+    </div>
+  )
+}
+
 export default function ProductDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -600,37 +673,8 @@ export default function ProductDetail() {
         apiGet('/api/partners/admin/list'),
         apiGet(`/api/partners/admin/purchasing?productId=${encodeURIComponent(id)}`)
       ])
-      const partnerList = Array.isArray(partnersRes?.users) ? partnersRes.users : []
-      const purchasingList = Array.isArray(purRes?.rows) ? purRes.rows : []
-      setPartners(partnerList)
-      setPartnerPurchasing(purchasingList)
-      const defCurrency = product?.baseCurrency || 'SAR'
-      const defPrice = String(Number(product?.purchasePrice || 0) || '')
-      const draft = {}
-      for (const row of purchasingList) {
-        const pid = String(row?.partnerId?._id || row?.partnerId || '')
-        const ck = normalizeStockCountryKey(String(row?.country || ''))
-        if (!pid || !ck) continue
-        draft[`${pid}-${ck}`] = {
-          stock: String(row.stock ?? 0),
-          price: String(row.pricePerPiece ?? row.price ?? 0),
-          currency: row.currency || defCurrency,
-        }
-      }
-      for (const partner of partnerList) {
-        const pid = String(partner._id || '')
-        if (!pid) continue
-        const rawCountries = Array.isArray(partner.assignedCountries) && partner.assignedCountries.length
-          ? partner.assignedCountries
-          : [partner.assignedCountry || partner.country].filter(Boolean)
-        for (const c of rawCountries) {
-          const ck = normalizeStockCountryKey(c)
-          if (!ck) continue
-          const key = `${pid}-${ck}`
-          if (!draft[key]) draft[key] = { stock: '', price: defPrice, currency: defCurrency }
-        }
-      }
-      setPartnerPurchasingDraft(draft)
+      setPartners(Array.isArray(partnersRes?.users) ? partnersRes.users : [])
+      setPartnerPurchasing(Array.isArray(purRes?.rows) ? purRes.rows : [])
     } catch (err) {
       console.error('Failed to load partner purchasing:', err)
       toast.error('Failed to load partner purchasing')
@@ -638,28 +682,6 @@ export default function ProductDetail() {
       setPartnerPurchasing([])
     } finally {
       setLoadingPartnerPurchasing(false)
-    }
-  }
-
-  async function setPartnerPurchasingAllocation(partnerId, country, data) {
-    const key = `${partnerId}-${country}`
-    setSettingPartnerPurchasing(prev => ({ ...prev, [key]: true }))
-    try {
-      await apiPost('/api/partners/admin/purchasing/set', {
-        productId: id,
-        partnerId,
-        country,
-        stock: Number(data.stock || 0),
-        pricePerPiece: Number(data.price || product?.purchasePrice || 0),
-        currency: data.currency || product?.baseCurrency || 'SAR',
-      })
-      toast.success('Stock assigned to partner')
-      await loadPartnerPurchasing()
-    } catch (err) {
-      console.error('Failed to set partner purchasing:', err)
-      toast.error(err?.message || 'Failed to save')
-    } finally {
-      setSettingPartnerPurchasing(prev => ({ ...prev, [key]: false }))
     }
   }
 
@@ -3449,56 +3471,21 @@ export default function ProductDetail() {
                       <div key={partner._id} style={{ border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden' }}>
                         <div style={{ padding: '10px 14px', fontWeight: 700, fontSize: 14, background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>{pName}</div>
                         {countries.map(country => {
-                          const key = `${partner._id}-${country}`
                           const saved = partnerPurchasing.find(r =>
                             String(r.partnerId?._id || r.partnerId) === String(partner._id) &&
                             normalizeStockCountryKey(String(r.country || '')) === country
                           )
-                          const draft = partnerPurchasingDraft[key] || { stock: '', price: String(Number(product?.purchasePrice || 0) || ''), currency: product?.baseCurrency || 'SAR' }
-                          const isSaving = Boolean(settingPartnerPurchasing[key])
                           return (
-                            <div key={country} style={{ padding: '10px 14px', borderBottom: '1px solid #f1f5f9' }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                                <span style={{ fontWeight: 600, fontSize: 13 }}>{country}</span>
-                                <span style={{ fontSize: 11, color: saved ? '#10b981' : '#94a3b8' }}>
-                                  {saved ? `Saved: ${saved.stock} units @ ${saved.pricePerPiece ?? saved.price}` : 'No allocation yet'}
-                                </span>
-                              </div>
-                              <div style={{ display: 'flex', gap: 6 }}>
-                                <input
-                                  type="number" min="0" placeholder="Stock"
-                                  value={draft.stock}
-                                  onChange={e => setPartnerPurchasingDraft(prev => ({ ...prev, [key]: { ...(prev[key] || draft), stock: e.target.value } }))}
-                                  className="input"
-                                  style={{ flex: 1, minHeight: 38 }}
-                                />
-                                <input
-                                  type="number" min="0" step="0.01" placeholder="Price/pc"
-                                  value={draft.price}
-                                  onChange={e => setPartnerPurchasingDraft(prev => ({ ...prev, [key]: { ...(prev[key] || draft), price: e.target.value } }))}
-                                  className="input"
-                                  style={{ flex: 1, minHeight: 38 }}
-                                />
-                                <select
-                                  className="input"
-                                  value={draft.currency}
-                                  onChange={e => setPartnerPurchasingDraft(prev => ({ ...prev, [key]: { ...(prev[key] || draft), currency: e.target.value } }))}
-                                  style={{ width: 76, minHeight: 38 }}
-                                >
-                                  <option value="SAR">SAR</option>
-                                  <option value="AED">AED</option>
-                                  <option value="USD">USD</option>
-                                  <option value="PKR">PKR</option>
-                                  <option value="OMR">OMR</option>
-                                </select>
-                                <button
-                                  className="btn success"
-                                  onClick={() => setPartnerPurchasingAllocation(partner._id, country, draft)}
-                                  disabled={isSaving}
-                                  style={{ minHeight: 38, padding: '0 14px', fontWeight: 700 }}
-                                >{isSaving ? '...' : 'Save'}</button>
-                              </div>
-                            </div>
+                            <PartnerPurchasingRow
+                              key={`${partner._id}-${country}-${saved?._id || 'new'}`}
+                              partnerId={String(partner._id)}
+                              country={country}
+                              savedRow={saved}
+                              defaultPrice={String(Number(product?.purchasePrice || 0) || '')}
+                              defaultCurrency={product?.baseCurrency || 'SAR'}
+                              productId={id}
+                              onRefresh={loadPartnerPurchasing}
+                            />
                           )
                         })}
                       </div>
