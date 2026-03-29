@@ -90,28 +90,6 @@ export default function ProductDetail() {
     return c
   }
 
-  const partnerPurchasingCountries = useMemo(() => {
-    return Array.from(
-      new Set([
-        ...Object.keys(warehouseData?.stockLeft || {}),
-        ...Object.keys(product?.stockByCountry || {})
-      ].map((c) => normalizeStockCountryKey(c)).filter(Boolean))
-    )
-  }, [warehouseData?.stockLeft, product?.stockByCountry])
-
-  const defaultPartnerPricePerPiece = useMemo(() => {
-    const value = Number(product?.purchasePrice || 0)
-    return Number.isFinite(value) && value > 0 ? String(value) : ''
-  }, [product?.purchasePrice])
-
-  const defaultPartnerPurchasingCurrency = useMemo(() => String(product?.baseCurrency || 'SAR'), [product?.baseCurrency])
-
-  const getPartnerAssignedCountries = (partner) => {
-    const values = Array.isArray(partner?.assignedCountries) && partner.assignedCountries.length
-      ? partner.assignedCountries
-      : [partner?.assignedCountry || partner?.country].filter(Boolean)
-    return Array.from(new Set(values.map((c) => normalizeStockCountryKey(c)).filter(Boolean)))
-  }
 
   // Helper to resolve image URLs
   const resolveImageUrl = (imagePath) => {
@@ -622,8 +600,37 @@ export default function ProductDetail() {
         apiGet('/api/partners/admin/list'),
         apiGet(`/api/partners/admin/purchasing?productId=${encodeURIComponent(id)}`)
       ])
-      setPartners(Array.isArray(partnersRes?.users) ? partnersRes.users : [])
-      setPartnerPurchasing(Array.isArray(purRes?.rows) ? purRes.rows : [])
+      const partnerList = Array.isArray(partnersRes?.users) ? partnersRes.users : []
+      const purchasingList = Array.isArray(purRes?.rows) ? purRes.rows : []
+      setPartners(partnerList)
+      setPartnerPurchasing(purchasingList)
+      const defCurrency = product?.baseCurrency || 'SAR'
+      const defPrice = String(Number(product?.purchasePrice || 0) || '')
+      const draft = {}
+      for (const row of purchasingList) {
+        const pid = String(row?.partnerId?._id || row?.partnerId || '')
+        const ck = normalizeStockCountryKey(String(row?.country || ''))
+        if (!pid || !ck) continue
+        draft[`${pid}-${ck}`] = {
+          stock: String(row.stock ?? 0),
+          price: String(row.pricePerPiece ?? row.price ?? 0),
+          currency: row.currency || defCurrency,
+        }
+      }
+      for (const partner of partnerList) {
+        const pid = String(partner._id || '')
+        if (!pid) continue
+        const rawCountries = Array.isArray(partner.assignedCountries) && partner.assignedCountries.length
+          ? partner.assignedCountries
+          : [partner.assignedCountry || partner.country].filter(Boolean)
+        for (const c of rawCountries) {
+          const ck = normalizeStockCountryKey(c)
+          if (!ck) continue
+          const key = `${pid}-${ck}`
+          if (!draft[key]) draft[key] = { stock: '', price: defPrice, currency: defCurrency }
+        }
+      }
+      setPartnerPurchasingDraft(draft)
     } catch (err) {
       console.error('Failed to load partner purchasing:', err)
       toast.error('Failed to load partner purchasing')
@@ -634,74 +641,23 @@ export default function ProductDetail() {
     }
   }
 
-  useEffect(() => {
-    if (!showPartnerPurchasing) return
-    const next = {}
-    for (const row of partnerPurchasing || []) {
-      const pid = String(row?.partnerId?._id || row?.partnerId || '')
-      const ck = normalizeStockCountryKey(String(row?.country || ''))
-      if (!pid || !ck) continue
-      next[`${pid}-${ck}`] = {
-        stock: String(Number(row?.stock || 0)),
-        price: String(Number((row?.pricePerPiece ?? row?.price) || 0)),
-        currency: String(row?.currency || defaultPartnerPurchasingCurrency)
-      }
-    }
-    for (const partner of partners || []) {
-      const partnerId = String(partner?._id || '')
-      if (!partnerId) continue
-      const visibleCountries = partnerPurchasingCountries.filter((country) => getPartnerAssignedCountries(partner).includes(country))
-      for (const country of visibleCountries) {
-        const key = `${partnerId}-${country}`
-        if (next[key]) continue
-        next[key] = {
-          stock: '',
-          price: defaultPartnerPricePerPiece,
-          currency: defaultPartnerPurchasingCurrency,
-        }
-      }
-    }
-    setPartnerPurchasingDraft(next)
-  }, [
-    showPartnerPurchasing,
-    partnerPurchasing,
-    partners,
-    partnerPurchasingCountries,
-    defaultPartnerPricePerPiece,
-    defaultPartnerPurchasingCurrency,
-  ])
-
-  function updatePartnerPurchasingDraft(key, field, value) {
-    setPartnerPurchasingDraft((prev) => ({
-      ...prev,
-      [key]: {
-        ...(prev[key] || {
-          stock: '',
-          price: defaultPartnerPricePerPiece,
-          currency: defaultPartnerPurchasingCurrency,
-        }),
-        [field]: value,
-      },
-    }))
-  }
-
   async function setPartnerPurchasingAllocation(partnerId, country, data) {
     const key = `${partnerId}-${country}`
     setSettingPartnerPurchasing(prev => ({ ...prev, [key]: true }))
     try {
-      await apiPost(`/api/partners/admin/purchasing/set`, {
+      await apiPost('/api/partners/admin/purchasing/set', {
         productId: id,
         partnerId,
         country,
         stock: Number(data.stock || 0),
         pricePerPiece: Number(data.price || product?.purchasePrice || 0),
-        currency: data.currency || defaultPartnerPurchasingCurrency
+        currency: data.currency || product?.baseCurrency || 'SAR',
       })
-      toast.success('Partner purchasing updated')
+      toast.success('Stock assigned to partner')
       await loadPartnerPurchasing()
     } catch (err) {
       console.error('Failed to set partner purchasing:', err)
-      toast.error(err?.message || 'Failed to update partner purchasing')
+      toast.error(err?.message || 'Failed to save')
     } finally {
       setSettingPartnerPurchasing(prev => ({ ...prev, [key]: false }))
     }
@@ -3426,147 +3382,129 @@ export default function ProductDetail() {
         {/* Partner Purchasing Modal */}
       {showPartnerPurchasing && (
         <div
+          onMouseDown={() => setShowPartnerPurchasing(false)}
           style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(15, 23, 42, 0.4)',
-            backdropFilter: 'blur(8px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-            padding: 12
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0,0,0,0.45)',
+            zIndex: 9999,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 16,
           }}
-          onClick={() => setShowPartnerPurchasing(false)}
         >
           <div
-            className="card"
+            onMouseDown={e => e.stopPropagation()}
             style={{
-              maxWidth: 520,
-              width: '100%',
-              maxHeight: '88vh',
-              display: 'flex',
-              flexDirection: 'column',
-              padding: 0,
-              overflow: 'hidden',
-              background: '#f8fafc',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-              border: '1px solid rgba(255,255,255,0.6)'
+              background: '#fff', borderRadius: 16,
+              width: '100%', maxWidth: 480, maxHeight: '85vh',
+              display: 'flex', flexDirection: 'column',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
             }}
-            onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ padding: '18px 18px 14px', background: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <h2 style={{ fontSize: 22, fontWeight: 900, margin: 0, color: '#0f172a', letterSpacing: '-0.02em' }}>Partner Purchasing</h2>
-                  <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>Only the partner&apos;s assigned country is shown.</div>
-                </div>
-                <button
-                  className="btn secondary"
-                  onClick={() => setShowPartnerPurchasing(false)}
-                  style={{ width: 36, height: 36, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: '#f1f5f9', border: 'none', color: '#64748b', cursor: 'pointer' }}
-                >
-                  ✕
-                </button>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: 18, color: '#0f172a' }}>Assign Stock to Partners</div>
+                <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>Set stock per partner &amp; country</div>
               </div>
-              <div style={{ display: 'flex', gap: 10 }}>
-                <input
-                  type="text"
-                  className="input"
-                  value={partnerPurchasingSearch}
-                  onChange={(e) => setPartnerPurchasingSearch(e.target.value)}
-                  placeholder="Search partners"
-                  style={{ flex: 1, minWidth: 0, borderRadius: 10, minHeight: 40 }}
-                />
-                <button
-                  className="btn"
-                  onClick={loadPartnerPurchasing}
-                  disabled={loadingPartnerPurchasing}
-                  style={{ padding: '10px 14px', borderRadius: 10, fontWeight: 800, minWidth: 84 }}
-                >
-                  {loadingPartnerPurchasing ? '...' : 'Refresh'}
-                </button>
-              </div>
+              <button
+                onClick={() => setShowPartnerPurchasing(false)}
+                style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: 8, width: 34, height: 34, cursor: 'pointer', fontSize: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#374151', flexShrink: 0 }}
+              >×</button>
             </div>
-
-            <div style={{ padding: 12, overflowY: 'auto' }}>
+            <div style={{ padding: '10px 16px', borderBottom: '1px solid #f1f5f9', display: 'flex', gap: 8 }}>
+              <input
+                className="input"
+                type="text"
+                placeholder="Search partners..."
+                value={partnerPurchasingSearch}
+                onChange={e => setPartnerPurchasingSearch(e.target.value)}
+                style={{ flex: 1, minHeight: 38 }}
+              />
+              <button
+                className="btn"
+                onClick={loadPartnerPurchasing}
+                disabled={loadingPartnerPurchasing}
+                style={{ minHeight: 38, padding: '0 16px', fontWeight: 700 }}
+              >{loadingPartnerPurchasing ? '...' : 'Refresh'}</button>
+            </div>
+            <div style={{ overflowY: 'auto', flex: 1, padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
               {loadingPartnerPurchasing ? (
-                <div style={{ textAlign: 'center', padding: '44px 0', opacity: 0.6 }}>Loading partners...</div>
+                <div style={{ textAlign: 'center', padding: 32, color: '#94a3b8' }}>Loading...</div>
               ) : partners.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '44px 0', opacity: 0.6 }}>No partners found</div>
-              ) : (
-                <div style={{ display: 'grid', gap: 10 }}>
-                  {partners
-                    .filter((p) => {
-                      const q = String(partnerPurchasingSearch || '').trim().toLowerCase()
-                      if (!q) return true
-                      const name = `${p?.firstName || ''} ${p?.lastName || ''}`.trim().toLowerCase()
-                      const email = String(p?.email || '').toLowerCase()
-                      return name.includes(q) || email.includes(q)
-                    })
-                    .map((partner) => {
-                      const pName = `${partner.firstName || ''} ${partner.lastName || ''}`.trim() || partner.email
-                      const visibleCountries = partnerPurchasingCountries.filter((country) => getPartnerAssignedCountries(partner).includes(country))
-
-                      if (visibleCountries.length === 0) return null
-                      
-                      return (
-                        <div key={partner._id} style={{ border: '1px solid rgba(15,23,42,0.08)', borderRadius: 14, background: '#fff', overflow: 'hidden' }}>
-                          <div style={{ padding: '12px 14px', fontWeight: 850, fontSize: 14, borderBottom: '1px solid rgba(15,23,42,0.06)' }}>{pName}</div>
-                          <div style={{ padding: 12, display: 'grid', gap: 8 }}>
-                            {visibleCountries.map((normalizedCountry) => {
-                                const key = `${partner._id}-${normalizedCountry}`
-                                const stockItem = partnerPurchasing.find(s => 
-                                  String(s.partnerId?._id || s.partnerId || '') === String(partner._id) &&
-                                  normalizeStockCountryKey(String(s.country || '')) === normalizedCountry
-                                )
-                                const hasExistingAllocation = Boolean(stockItem)
-                                const currentStock = stockItem?.stock || 0
-                                const currentPrice = (stockItem?.pricePerPiece ?? stockItem?.price) || 0
-                                const currentCcy = stockItem?.currency || defaultPartnerPurchasingCurrency
-                                const draft = partnerPurchasingDraft[key] || {
-                                  stock: hasExistingAllocation ? String(Number(currentStock)) : '',
-                                  price: hasExistingAllocation ? String(Number(currentPrice)) : defaultPartnerPricePerPiece,
-                                  currency: currentCcy,
-                                }
-                                const draftStock = String(draft.stock ?? '')
-                                const draftPrice = String(draft.price ?? '')
-                                const isChanged = !hasExistingAllocation || (
-                                  Number(draftStock || 0) !== Number(currentStock) ||
-                                  Number(draftPrice || 0) !== Number(currentPrice) ||
-                                  draft.currency !== currentCcy
-                                )
-                                
-                                return (
-                                  <div key={normalizedCountry} style={{ border: '1px solid rgba(15,23,42,0.06)', borderRadius: 12, padding: 10, background: '#f8fafc' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
-                                      <div style={{ fontWeight: 700, fontSize: 13 }}>{normalizedCountry}</div>
-                                      <div style={{ fontSize: 11, opacity: 0.65 }}>{hasExistingAllocation ? `Current stock: ${currentStock}` : 'No allocation yet'}</div>
-                                    </div>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 78px 72px', gap: 8, alignItems: 'center' }}>
-                                      <input type="number" min="0" placeholder="Stock" value={draftStock} onChange={e => updatePartnerPurchasingDraft(key, 'stock', e.target.value)} className="input" style={{ width: '100%', minHeight: 40 }} />
-                                      <input type="number" min="0" step="0.01" placeholder="Per piece" value={draftPrice} onChange={e => updatePartnerPurchasingDraft(key, 'price', e.target.value)} className="input" style={{ width: '100%', minHeight: 40 }} />
-                                      <select className="input" value={draft.currency} onChange={e => updatePartnerPurchasingDraft(key, 'currency', e.target.value)} style={{ width: '100%', minHeight: 40 }}>
-                                        <option value="SAR">SAR</option>
-                                        <option value="AED">AED</option>
-                                        <option value="USD">USD</option>
-                                      </select>
-                                      <button className="btn success" onClick={() => setPartnerPurchasingAllocation(partner._id, normalizedCountry, draft)} disabled={settingPartnerPurchasing[key] || !isChanged} style={{ minHeight: 40, padding: '8px 10px', fontWeight: 800 }}>
-                                        {settingPartnerPurchasing[key] ? '...' : 'Save'}
-                                      </button>
-                                    </div>
-                                  </div>
-                                )
-                            })}
-                          </div>
-                        </div>
-                      )
-                    })}
-                </div>
-              )}
+                <div style={{ textAlign: 'center', padding: 32, color: '#94a3b8' }}>No partners found</div>
+              ) : partners
+                  .filter(p => {
+                    const q = partnerPurchasingSearch.trim().toLowerCase()
+                    if (!q) return true
+                    const name = `${p.firstName || ''} ${p.lastName || ''}`.toLowerCase()
+                    return name.includes(q) || (p.email || '').toLowerCase().includes(q)
+                  })
+                  .map(partner => {
+                    const pName = `${partner.firstName || ''} ${partner.lastName || ''}`.trim() || partner.email
+                    const rawCountries = Array.isArray(partner.assignedCountries) && partner.assignedCountries.length
+                      ? partner.assignedCountries
+                      : [partner.assignedCountry || partner.country].filter(Boolean)
+                    const countries = [...new Set(rawCountries.map(c => normalizeStockCountryKey(c)).filter(Boolean))]
+                    if (countries.length === 0) return null
+                    return (
+                      <div key={partner._id} style={{ border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden' }}>
+                        <div style={{ padding: '10px 14px', fontWeight: 700, fontSize: 14, background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>{pName}</div>
+                        {countries.map(country => {
+                          const key = `${partner._id}-${country}`
+                          const saved = partnerPurchasing.find(r =>
+                            String(r.partnerId?._id || r.partnerId) === String(partner._id) &&
+                            normalizeStockCountryKey(String(r.country || '')) === country
+                          )
+                          const draft = partnerPurchasingDraft[key] || { stock: '', price: String(Number(product?.purchasePrice || 0) || ''), currency: product?.baseCurrency || 'SAR' }
+                          const isSaving = Boolean(settingPartnerPurchasing[key])
+                          return (
+                            <div key={country} style={{ padding: '10px 14px', borderBottom: '1px solid #f1f5f9' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                <span style={{ fontWeight: 600, fontSize: 13 }}>{country}</span>
+                                <span style={{ fontSize: 11, color: saved ? '#10b981' : '#94a3b8' }}>
+                                  {saved ? `Saved: ${saved.stock} units @ ${saved.pricePerPiece ?? saved.price}` : 'No allocation yet'}
+                                </span>
+                              </div>
+                              <div style={{ display: 'flex', gap: 6 }}>
+                                <input
+                                  type="number" min="0" placeholder="Stock"
+                                  value={draft.stock}
+                                  onChange={e => setPartnerPurchasingDraft(prev => ({ ...prev, [key]: { ...(prev[key] || draft), stock: e.target.value } }))}
+                                  className="input"
+                                  style={{ flex: 1, minHeight: 38 }}
+                                />
+                                <input
+                                  type="number" min="0" step="0.01" placeholder="Price/pc"
+                                  value={draft.price}
+                                  onChange={e => setPartnerPurchasingDraft(prev => ({ ...prev, [key]: { ...(prev[key] || draft), price: e.target.value } }))}
+                                  className="input"
+                                  style={{ flex: 1, minHeight: 38 }}
+                                />
+                                <select
+                                  className="input"
+                                  value={draft.currency}
+                                  onChange={e => setPartnerPurchasingDraft(prev => ({ ...prev, [key]: { ...(prev[key] || draft), currency: e.target.value } }))}
+                                  style={{ width: 76, minHeight: 38 }}
+                                >
+                                  <option value="SAR">SAR</option>
+                                  <option value="AED">AED</option>
+                                  <option value="USD">USD</option>
+                                  <option value="PKR">PKR</option>
+                                  <option value="OMR">OMR</option>
+                                </select>
+                                <button
+                                  className="btn success"
+                                  onClick={() => setPartnerPurchasingAllocation(partner._id, country, draft)}
+                                  disabled={isSaving}
+                                  style={{ minHeight: 38, padding: '0 14px', fontWeight: 700 }}
+                                >{isSaving ? '...' : 'Save'}</button>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )
+                  })
+              }
             </div>
           </div>
         </div>
