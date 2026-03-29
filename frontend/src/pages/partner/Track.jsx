@@ -2,36 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { apiGet } from '../../api'
 import { heroStyle, pageWrapStyle, panelStyle, sectionTitle, secondaryButtonStyle } from './shared.jsx'
 
-const GOOGLE_MAPS_SCRIPT_ID = 'google-maps-script-partner-track'
-
-async function ensureGoogleMaps(apiKey) {
-  if (!apiKey) throw new Error('Missing Maps API key')
-  if (window.google?.maps?.importLibrary) {
-    await window.google.maps.importLibrary('maps')
-    await window.google.maps.importLibrary('marker')
-    return
-  }
-  await new Promise((resolve, reject) => {
-    const existing = document.getElementById(GOOGLE_MAPS_SCRIPT_ID)
-    if (existing) {
-      existing.addEventListener('load', resolve, { once: true })
-      existing.addEventListener('error', reject, { once: true })
-      return
-    }
-    const script = document.createElement('script')
-    script.id = GOOGLE_MAPS_SCRIPT_ID
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&v=weekly&libraries=places,geometry,marker`
-    script.async = true
-    script.defer = true
-    script.onload = resolve
-    script.onerror = reject
-    document.head.appendChild(script)
-  })
-  if (window.google?.maps?.importLibrary) {
-    await window.google.maps.importLibrary('maps')
-    await window.google.maps.importLibrary('marker')
-  }
-}
+// Removed google maps logic
 
 function getLatLng(entry) {
   const directLat = Number(entry?.lastLocation?.lat)
@@ -100,47 +71,68 @@ export default function PartnerTrack() {
   useEffect(() => {
     let alive = true
     ;(async () => {
-      if (!apiKey || !mapRef.current || !points.length) return
+      if (!mapRef.current || !points.length) return
       try {
-        await ensureGoogleMaps(apiKey)
-        if (!alive) return
-        const { Map } = await window.google.maps.importLibrary('maps')
-        const { AdvancedMarkerElement } = await window.google.maps.importLibrary('marker')
+        if (!alive || !window.L) return
+        const L = window.L
+
         if (!mapInstanceRef.current) {
-          mapInstanceRef.current = new Map(mapRef.current, {
-            center: points[0]?.position || { lat: 24.7136, lng: 46.6753 },
+          mapInstanceRef.current = L.map(mapRef.current, {
+            center: [points[0]?.position?.lat || 24.7136, points[0]?.position?.lng || 46.6753],
             zoom: 6,
-            mapId: 'partner-track-map',
-            disableDefaultUI: false,
           })
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors',
+          }).addTo(mapInstanceRef.current)
         }
-        markersRef.current.forEach((marker) => { try { marker.map = null } catch {} })
+
+        // Clear existing markers
+        markersRef.current.forEach((m) => {
+          try {
+            mapInstanceRef.current.removeLayer(m)
+          } catch {}
+        })
         markersRef.current = []
-        const bounds = new window.google.maps.LatLngBounds()
+
+        const bounds = L.latLngBounds()
         for (const point of points) {
-          bounds.extend(point.position)
-          const label = point.type === 'driver'
-            ? `${point.data?.firstName || ''} ${point.data?.lastName || ''}`.trim() || 'Driver'
-            : `#${point.data?.invoiceNumber || String(point.data?._id || '').slice(-6)}`
-          const marker = new AdvancedMarkerElement({
-            map: mapInstanceRef.current,
-            position: point.position,
-            title: label,
+          const latLng = [point.position.lat, point.position.lng]
+          bounds.extend(latLng)
+          
+          const label =
+            point.type === 'driver'
+              ? `${point.data?.firstName || ''} ${point.data?.lastName || ''}`.trim() || 'Driver'
+              : `#${point.data?.invoiceNumber || String(point.data?._id || '').slice(-6)}`
+
+          const color = point.type === 'driver' ? '#2563eb' : '#ea580c'
+          
+          const marker = L.circleMarker(latLng, {
+            radius: point.type === 'driver' ? 10 : 8,
+            fillColor: color,
+            color: '#ffffff',
+            weight: 2,
+            opacity: 1,
+            fillOpacity: 0.9,
           })
+            .bindPopup(`<b>${label}</b><br/><span style="text-transform:capitalize">${point.type}</span>`)
+            .addTo(mapInstanceRef.current)
+
           markersRef.current.push(marker)
         }
+
         if (points.length === 1) {
-          mapInstanceRef.current.setCenter(points[0].position)
-          mapInstanceRef.current.setZoom(11)
-        } else {
-          mapInstanceRef.current.fitBounds(bounds, 80)
+          mapInstanceRef.current.setView([points[0].position.lat, points[0].position.lng], 11)
+        } else if (points.length > 1) {
+          mapInstanceRef.current.fitBounds(bounds, { padding: [50, 50] })
         }
       } catch (err) {
-        if (alive) setMapError(err?.message || 'Google Maps failed to load')
+        if (alive) setMapError(err?.message || 'Maps failed to load')
       }
     })()
-    return () => { alive = false }
-  }, [apiKey, points])
+    return () => {
+      alive = false
+    }
+  }, [points])
 
   return (
     <div style={pageWrapStyle()}>

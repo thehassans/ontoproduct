@@ -9,6 +9,8 @@ import Shop from "../models/Shop.js";
 import Setting from "../models/Setting.js";
 import ManagerProductStock from "../models/ManagerProductStock.js";
 import Counter from "../models/Counter.js";
+import PartnerPurchasing from "../models/PartnerPurchasing.js";
+import PartnerDriverStock from "../models/PartnerDriverStock.js";
 import { auth, allowRoles } from "../middleware/auth.js";
 import User from "../models/User.js";
 import { getIO } from "../config/socket.js";
@@ -5026,6 +5028,9 @@ router.patch(
       const { id } = req.params;
       const ord = await Order.findById(id);
       if (!ord) return res.status(404).json({ message: "Order not found" });
+      
+      const oldShipmentStatus = ord.shipmentStatus;
+      const oldDeliveryBoy = ord.deliveryBoy ? String(ord.deliveryBoy) : null;
 
       // Access control: user role can only update their workspace orders
       if (req.user.role === "user") {
@@ -5360,6 +5365,48 @@ router.patch(
           } catch (err) {
             console.error("Failed to recalculate dropshipper profit:", err);
           }
+        }
+      }
+
+      // Partner and Driver stock auto-updates
+      if (shipmentStatus && shipmentStatus !== oldShipmentStatus) {
+        try {
+          const targetDriverId = String(ord.deliveryBoy || oldDeliveryBoy || "");
+          if (targetDriverId) {
+            const driverUser = await User.findById(targetDriverId).select('createdBy').lean();
+            if (driverUser && driverUser.createdBy) {
+              const partnerId = String(driverUser.createdBy);
+              const partnerUser = await User.findOne({ _id: partnerId, role: 'partner' }).lean();
+              
+              if (partnerUser) {
+                const orderProducts = [];
+                if (ord.productId) orderProducts.push({ id: ord.productId, qty: ord.quantity || 1 });
+                if (Array.isArray(ord.items)) {
+                  ord.items.forEach(it => orderProducts.push({ id: it.productId, qty: it.quantity || 1 }));
+                }
+
+                for (const item of orderProducts) {
+                  if (shipmentStatus === "delivered") {
+                    await PartnerDriverStock.findOneAndUpdate(
+                      { partnerId, driverId: targetDriverId, productId: item.id, country: ord.orderCountry },
+                      { $inc: { stock: -item.qty } }
+                    );
+                  } else if (shipmentStatus === "cancelled" || shipmentStatus === "returned") {
+                    await PartnerPurchasing.findOneAndUpdate(
+                      { partnerId, productId: item.id, country: ord.orderCountry },
+                      { $inc: { stock: item.qty } }
+                    );
+                    await PartnerDriverStock.findOneAndUpdate(
+                      { partnerId, driverId: targetDriverId, productId: item.id, country: ord.orderCountry },
+                      { $inc: { stock: -item.qty } }
+                    );
+                  }
+                }
+              }
+            }
+          }
+        } catch (stockErr) {
+          console.error("Partner stock auto-update error:", stockErr);
         }
       }
 

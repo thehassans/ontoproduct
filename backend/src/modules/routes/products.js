@@ -11,6 +11,7 @@ import { auth, allowRoles } from '../middleware/auth.js'
 import Product from '../models/Product.js'
 import User from '../models/User.js'
 import Setting from '../models/Setting.js'
+import PartnerPurchasing from '../models/PartnerPurchasing.js'
 import { createNotification } from './notifications.js'
 import geminiService from '../services/geminiService.js'
 import imageGenService from '../services/imageGenService.js'
@@ -2418,6 +2419,48 @@ router.post('/migrate/total-purchased', auth, allowRoles('admin'), async (req, r
       message: 'Migration failed', 
       error: error.message 
     })
+  }
+})
+
+// Owner sets partner purchasing baseline
+router.post('/:id/partner-purchasing/set', auth, allowRoles('admin', 'user'), async (req, res) => {
+  try {
+    const productId = req.params.id
+    const { partnerId, country, pricePerPiece, stock, currency } = req.body
+
+    if (!partnerId || !country) {
+      return res.status(400).json({ message: 'partnerId and country are required' })
+    }
+
+    const product = await Product.findOne({ _id: productId, createdBy: req.user.id })
+    if (!product && req.user.role !== 'admin') {
+      return res.status(404).json({ message: 'Product not found or not owned by you' })
+    }
+
+    const ownerId = product ? String(product.createdBy) : req.user.id
+
+    const partner = await User.findOne({ _id: partnerId, role: 'partner', createdBy: ownerId })
+    if (!partner && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Partner not found or not assigned to you' })
+    }
+
+    const doc = await PartnerPurchasing.findOneAndUpdate(
+      { ownerId, partnerId, productId, country },
+      {
+        $set: {
+          stock: Number(stock || 0),
+          pricePerPiece: Number(pricePerPiece || 0),
+          currency: String(currency || 'SAR'),
+          updatedBy: req.user.id,
+        }
+      },
+      { new: true, upsert: true }
+    )
+
+    res.json({ ok: true, data: doc })
+  } catch (error) {
+    console.error('Failed to set partner purchasing:', error)
+    res.status(500).json({ message: 'Failed to set partner purchasing', error: error.message })
   }
 })
 

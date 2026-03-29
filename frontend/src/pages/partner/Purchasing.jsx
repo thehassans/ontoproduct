@@ -1,11 +1,57 @@
 import React, { useEffect, useState } from 'react'
-import { mediaUrl, apiGet } from '../../api'
+import { mediaUrl, apiGet, apiPost } from '../../api'
+import { useToast } from '../../ui/Toast.jsx'
+import Modal from '../../components/Modal.jsx'
 import { formatMoney, heroStyle, inputStyle, pageWrapStyle, panelStyle, sectionTitle, statCardStyle } from './shared.jsx'
 
 export default function PartnerPurchasing() {
   const [query, setQuery] = useState('')
   const [data, setData] = useState({ rows: [], summary: { totalStock: 0, totalValue: 0 }, currency: 'SAR', country: '' })
   const [loading, setLoading] = useState(true)
+
+  const toast = useToast()
+  const [drivers, setDrivers] = useState([])
+  const [selectedProduct, setSelectedProduct] = useState(null)
+  const [assignForm, setAssignForm] = useState({})
+  const [assigning, setAssigning] = useState({})
+
+  useEffect(() => {
+    apiGet('/api/partners/me/tracking/drivers').then(res => {
+      setDrivers(Array.isArray(res?.users) ? res.users : [])
+    }).catch(() => setDrivers([]))
+  }, [])
+
+  async function handleAssignStock(driverId, productId) {
+    const qty = Number(assignForm[driverId] || 0)
+    if (qty <= 0) {
+      toast.error('Enter a valid quantity greater than 0')
+      return
+    }
+
+    setAssigning(prev => ({ ...prev, [driverId]: true }))
+    try {
+      await apiPost(`/api/partners/me/drivers/${driverId}/assign-stock`, {
+        productId,
+        quantity: qty
+      })
+      toast.success(`Assigned ${qty} units to driver`)
+      
+      setData(prev => {
+        const newRows = prev.rows.map(r => {
+          if (String(r.productId?._id) === String(productId)) {
+            return { ...r, stock: Number(r.stock) - qty }
+          }
+          return r
+        })
+        return { ...prev, rows: newRows }
+      })
+      setAssignForm(prev => ({ ...prev, [driverId]: '' }))
+    } catch (err) {
+      toast.error(err?.message || 'Failed to assign stock')
+    } finally {
+      setAssigning(prev => ({ ...prev, [driverId]: false }))
+    }
+  }
 
   useEffect(() => {
     let active = true
@@ -65,11 +111,57 @@ export default function PartnerPurchasing() {
                   <div><div style={{ color: '#64748b', fontSize: 12, fontWeight: 700 }}>Owner Purchase Price</div><div style={{ marginTop: 6, color: '#0f172a', fontWeight: 900 }}>{formatMoney(row?.productId?.purchasePrice, row?.productId?.baseCurrency || data.currency)}</div></div>
                   <div><div style={{ color: '#64748b', fontSize: 12, fontWeight: 700 }}>Total Value</div><div style={{ marginTop: 6, color: '#0f172a', fontWeight: 900 }}>{formatMoney(Number(row?.stock || 0) * Number(row?.pricePerPiece || 0), row?.currency || data.currency)}</div></div>
                 </div>
+                <div style={{ marginTop: 12, borderTop: '1px solid rgba(148,163,184,0.16)', paddingTop: 12 }}>
+                  <button className="btn secondary" onClick={() => setSelectedProduct(row)} style={{ padding: '8px 16px', fontSize: 13 }}>Assign Stock to Driver</button>
+                </div>
               </div>
             </div>
           ))}
         </div>
       </section>
+
+      {selectedProduct && (
+        <Modal title="Assign Stock to Driver" onClose={() => setSelectedProduct(null)}>
+          <div style={{ display: 'grid', gap: 16 }}>
+            <div style={{ background: '#f8fafc', padding: 16, borderRadius: 12, border: '1px solid #e2e8f0' }}>
+              <div style={{ fontWeight: 700 }}>{selectedProduct.productId?.name}</div>
+              <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>Available to assign: <strong style={{color:'#0f172a'}}>{selectedProduct.stock}</strong> units</div>
+            </div>
+            
+            <div style={{ display: 'grid', gap: 12, maxHeight: 400, overflowY: 'auto' }}>
+              {drivers.length === 0 ? <div style={{opacity:0.6}}>No drivers found</div> : null}
+              {drivers.map(driver => (
+                <div key={driver._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 12, border: '1px solid #e2e8f0', borderRadius: 12 }}>
+                  <div>
+                    <div style={{ fontWeight: 600 }}>{driver.firstName} {driver.lastName}</div>
+                    <div style={{ fontSize: 12, color: '#64748b' }}>{driver.email}</div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <input 
+                      type="number" 
+                      min="1" 
+                      max={selectedProduct.stock}
+                      placeholder="Qty" 
+                      className="input" 
+                      style={{ width: 80, padding: '8px 12px' }}
+                      value={assignForm[driver._id] || ''}
+                      onChange={e => setAssignForm(p => ({...p, [driver._id]: e.target.value}))}
+                    />
+                    <button 
+                      className="btn success" 
+                      disabled={assigning[driver._id] || !assignForm[driver._id] || Number(assignForm[driver._id]) > Number(selectedProduct.stock)} 
+                      onClick={() => handleAssignStock(driver._id, selectedProduct.productId?._id)}
+                      style={{ padding: '8px 12px' }}
+                    >
+                      {assigning[driver._id] ? '...' : 'Assign'}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }

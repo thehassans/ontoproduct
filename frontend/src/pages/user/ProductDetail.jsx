@@ -4,6 +4,7 @@ import { apiGet, apiPatch, apiPost, apiUploadPatch, API_BASE, clearApiCache } fr
 import { useToast } from '../../ui/Toast.jsx'
 import Modal from '../../components/Modal.jsx'
 import ProductSEOPanel from '../products/ProductSEOPanel.jsx'
+import MapPreview from '../../components/MapPreview.jsx'
 
 export default function ProductDetail() {
   const { id } = useParams()
@@ -588,6 +589,65 @@ export default function ProductDetail() {
       toast.error(err?.message || 'Failed to update manager stock')
     } finally {
       setSettingManagerStock(prev => ({ ...prev, [key]: false }))
+    }
+  }
+
+  async function loadPartnerPurchasing() {
+    setLoadingPartnerPurchasing(true)
+    try {
+      const [partnersRes, purRes] = await Promise.all([
+        apiGet('/api/users/partners'),
+        apiGet(`/api/products/${id}/partner-purchasing`)
+      ])
+      setPartners(Array.isArray(partnersRes?.users) ? partnersRes.users : [])
+      setPartnerPurchasing(Array.isArray(purRes?.records) ? purRes.records : [])
+    } catch (err) {
+      console.error('Failed to load partner purchasing:', err)
+      toast.error('Failed to load partner purchasing')
+      setPartners([])
+      setPartnerPurchasing([])
+    } finally {
+      setLoadingPartnerPurchasing(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!showPartnerPurchasing) return
+    setPartnerPurchasingDraft((prev) => {
+      if (prev && Object.keys(prev).length) return prev
+      const next = {}
+      for (const row of partnerPurchasing || []) {
+        const pid = String(row?.partnerId?._id || row?.partnerId || '')
+        const ck = String(row?.country || '')
+        if (!pid || !ck) continue
+        next[`${pid}-${ck}`] = {
+          stock: String(Number(row?.stock || 0)),
+          price: String(Number(row?.price || 0)),
+          currency: String(row?.currency || 'SAR')
+        }
+      }
+      return next
+    })
+  }, [showPartnerPurchasing, partnerPurchasing])
+
+  async function setPartnerPurchasingAllocation(partnerId, country, data) {
+    const key = `${partnerId}-${country}`
+    setSettingPartnerPurchasing(prev => ({ ...prev, [key]: true }))
+    try {
+      await apiPost(`/api/products/${id}/partner-purchasing/set`, {
+        partnerId,
+        country,
+        stock: Number(data.stock || 0),
+        price: Number(data.price || 0),
+        currency: data.currency || 'SAR'
+      })
+      toast.success('Partner purchasing updated')
+      await loadPartnerPurchasing()
+    } catch (err) {
+      console.error('Failed to set partner purchasing:', err)
+      toast.error(err?.message || 'Failed to update partner purchasing')
+    } finally {
+      setSettingPartnerPurchasing(prev => ({ ...prev, [key]: false }))
     }
   }
 
@@ -2197,6 +2257,17 @@ export default function ProductDetail() {
                     <strong>Country:</strong> {selectedOrder.orderCountry}
                   </div>
                 </div>
+                {selectedOrder.locationLat && selectedOrder.locationLng && (
+                  <div style={{ marginTop: 16 }}>
+                    <MapPreview 
+                      lat={selectedOrder.locationLat}
+                      lng={selectedOrder.locationLng}
+                      address={selectedOrder.customerAddress || selectedOrder.city || selectedOrder.orderCountry}
+                      readOnly={true}
+                      height="200px"
+                    />
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -3296,7 +3367,147 @@ export default function ProductDetail() {
             )}
           </div>
         </div>
-      </div>
+        {/* Partner Purchasing Modal */}
+      {showPartnerPurchasing && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(15, 23, 42, 0.4)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: 20
+          }}
+          onClick={() => setShowPartnerPurchasing(false)}
+        >
+          <div
+            className="card"
+            style={{
+              maxWidth: 600,
+              width: '100%',
+              maxHeight: '85vh',
+              display: 'flex',
+              flexDirection: 'column',
+              padding: 0,
+              overflow: 'hidden',
+              background: '#f8fafc',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              border: '1px solid rgba(255,255,255,0.6)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ padding: '24px 24px 20px', background: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <h2 style={{ fontSize: 24, fontWeight: 950, margin: 0, color: '#0f172a', letterSpacing: '-0.02em' }}>Partner Purchasing</h2>
+                  <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>Allocate stock and pricing to partners.</div>
+                </div>
+                <button
+                  className="btn secondary"
+                  onClick={() => setShowPartnerPurchasing(false)}
+                  style={{ width: 36, height: 36, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: '#f1f5f9', border: 'none', color: '#64748b', cursor: 'pointer' }}
+                >
+                  ✕
+                </button>
+              </div>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <input
+                  type="text"
+                  className="input"
+                  value={partnerPurchasingSearch}
+                  onChange={(e) => setPartnerPurchasingSearch(e.target.value)}
+                  placeholder="Search partners"
+                  style={{ flex: 1, minWidth: 0, borderRadius: 12 }}
+                />
+                <button
+                  className="btn"
+                  onClick={loadPartnerPurchasing}
+                  disabled={loadingPartnerPurchasing}
+                  style={{ padding: '10px 14px', borderRadius: 12, fontWeight: 800 }}
+                >
+                  {loadingPartnerPurchasing ? '...' : 'Refresh'}
+                </button>
+              </div>
+            </div>
+
+            <div style={{ padding: 16, overflowY: 'auto' }}>
+              {loadingPartnerPurchasing ? (
+                <div style={{ textAlign: 'center', padding: '44px 0', opacity: 0.6 }}>Loading partners...</div>
+              ) : partners.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '44px 0', opacity: 0.6 }}>No partners found</div>
+              ) : (
+                <div style={{ display: 'grid', gap: 12 }}>
+                  {partners
+                    .filter((p) => {
+                      const q = String(partnerPurchasingSearch || '').trim().toLowerCase()
+                      if (!q) return true
+                      const name = `${p?.firstName || ''} ${p?.lastName || ''}`.trim().toLowerCase()
+                      const email = String(p?.email || '').toLowerCase()
+                      return name.includes(q) || email.includes(q)
+                    })
+                    .map((partner) => {
+                      const pName = `${partner.firstName || ''} ${partner.lastName || ''}`.trim() || partner.email
+                      
+                      const allCountriesForProduct = Array.from(
+                        new Set([
+                            ...Object.keys(warehouseData?.stockLeft || {}),
+                            ...Object.keys(product?.stockByCountry || {})
+                        ].map((c) => normalizeStockCountryKey(c)).filter(Boolean))
+                      )
+                      
+                      if (allCountriesForProduct.length === 0) return null
+                      
+                      return (
+                        <div key={partner._id} style={{ border: '1px solid rgba(15,23,42,0.1)', borderRadius: 16, background: '#fff', overflow: 'hidden' }}>
+                          <div style={{ padding: 14, fontWeight: 950 }}>{pName}</div>
+                          <div style={{ padding: 14, borderTop: '1px solid rgba(15,23,42,0.06)', display: 'grid', gap: 10 }}>
+                            {allCountriesForProduct.map((normalizedCountry) => {
+                                const key = `${partner._id}-${normalizedCountry}`
+                                const stockItem = partnerPurchasing.find(s => 
+                                  String(s.partnerId?._id || s.partnerId || '') === String(partner._id) && s.country === normalizedCountry
+                                )
+                                const currentStock = stockItem?.stock || 0
+                                const currentPrice = stockItem?.price || 0
+                                const currentCcy = stockItem?.currency || 'SAR'
+                                
+                                const draft = partnerPurchasingDraft[key] || { stock: currentStock, price: currentPrice, currency: currentCcy }
+                                const isChanged = Number(draft.stock) !== Number(currentStock) || Number(draft.price) !== Number(currentPrice) || draft.currency !== currentCcy
+                                
+                                return (
+                                  <div key={normalizedCountry} style={{ border: '1px solid rgba(15,23,42,0.08)', borderRadius: 14, padding: 12, background: '#f8fafc' }}>
+                                    <div style={{ fontWeight: 600, marginBottom: 8 }}>{normalizedCountry} <span style={{fontSize: 12, fontWeight: 400, opacity: 0.7, marginLeft: 8}}>(Current Stock: {currentStock})</span></div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(80px, 1fr) minmax(80px, 1fr) 80px auto', gap: 8, alignItems: 'center' }}>
+                                      <input type="number" min="0" placeholder="Stock" value={draft.stock} onChange={e => setPartnerPurchasingDraft(p => ({...p, [key]: {...(p[key]||draft), stock: e.target.value}}))} className="input" style={{ width: '100%' }} />
+                                      <input type="number" min="0" step="0.01" placeholder="Price" value={draft.price} onChange={e => setPartnerPurchasingDraft(p => ({...p, [key]: {...(p[key]||draft), price: e.target.value}}))} className="input" style={{ width: '100%' }} />
+                                      <select className="input" value={draft.currency} onChange={e => setPartnerPurchasingDraft(p => ({...p, [key]: {...(p[key]||draft), currency: e.target.value}}))} style={{ width: '100%' }}>
+                                        <option value="SAR">SAR</option>
+                                        <option value="AED">AED</option>
+                                        <option value="USD">USD</option>
+                                      </select>
+                                      <button className="btn success" onClick={() => setPartnerPurchasingAllocation(partner._id, normalizedCountry, draft)} disabled={settingPartnerPurchasing[key] || !isChanged} style={{ padding: '8px 12px' }}>
+                                        {settingPartnerPurchasing[key] ? '...' : 'Save'}
+                                      </button>
+                                    </div>
+                                  </div>
+                                )
+                            })}
+                          </div>
+                        </div>
+                      )
+                    })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
     </div>
   )
 }

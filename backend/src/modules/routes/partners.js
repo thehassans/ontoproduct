@@ -10,6 +10,7 @@ import PartnerPurchasing from "../models/PartnerPurchasing.js";
 import PartnerDriverPayment from "../models/PartnerDriverPayment.js";
 import AgentRemit from "../models/AgentRemit.js";
 import PartnerClosing from "../models/PartnerClosing.js";
+import PartnerDriverStock from "../models/PartnerDriverStock.js";
 import { getIO } from "../config/socket.js";
 import { generatePartnerClosingPDF } from "../../utils/generatePartnerClosingPDF.js";
 import { generateCommissionPayoutPDF } from "../../utils/generateCommissionPayoutPDF.js";
@@ -1778,6 +1779,138 @@ router.get("/me/purchasing", auth, allowRoles("partner"), async (req, res) => {
     res.json({ rows: filtered, summary, currency: currencyFromCountry(scope.assignedCountry), country: scope.assignedCountry });
   } catch (error) {
     res.status(500).json({ message: "Failed to load purchasing", error: error.message });
+  }
+});
+
+router.get("/me/drivers/:driverId/stock", auth, allowRoles("partner"), async (req, res) => {
+  try {
+    const scope = await getPartnerScope(req.user.id);
+    if (!scope) return res.status(404).json({ message: "Partner not found" });
+
+    const { driverId } = req.params;
+    const driver = await User.findOne({ _id: driverId, role: "driver", createdBy: req.user.id });
+    if (!driver) return res.status(404).json({ message: "Driver not found" });
+
+    const rows = await PartnerDriverStock.find({ partnerId: req.user.id, driverId, country: scope.assignedCountry })
+      .populate("productId", "name imagePath images price")
+      .lean();
+    
+    res.json({ rows, currency: currencyFromCountry(scope.assignedCountry), country: scope.assignedCountry });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to load driver stock", error: error.message });
+  }
+});
+
+router.post("/me/drivers/:driverId/assign-stock", auth, allowRoles("partner"), async (req, res) => {
+  try {
+    const scope = await getPartnerScope(req.user.id);
+    if (!scope) return res.status(404).json({ message: "Partner not found" });
+
+    const { driverId } = req.params;
+    const { productId, quantity } = req.body;
+    const qty = Number(quantity);
+
+    if (!productId || qty <= 0 || !Number.isFinite(qty)) {
+      return res.status(400).json({ message: "Valid productId and positive quantity are required" });
+    }
+
+    const driver = await User.findOne({ _id: driverId, role: "driver", createdBy: req.user.id });
+    if (!driver) return res.status(404).json({ message: "Driver not found" });
+
+    const partnerStock = await PartnerPurchasing.findOne({
+      partnerId: req.user.id,
+      productId,
+      country: scope.assignedCountry,
+    });
+
+    if (!partnerStock || Number(partnerStock.stock || 0) < qty) {
+      return res.status(400).json({ message: "Insufficient partner stock in your purchasing ledger" });
+    }
+
+    partnerStock.stock = Number(partnerStock.stock || 0) - qty;
+    await partnerStock.save();
+
+    let driverStock = await PartnerDriverStock.findOne({
+      partnerId: req.user.id,
+      driverId,
+      productId,
+      country: scope.assignedCountry,
+    });
+
+    if (!driverStock) {
+      driverStock = new PartnerDriverStock({
+        partnerId: req.user.id,
+        driverId,
+        productId,
+        country: scope.assignedCountry,
+        stock: 0,
+        assignedBy: req.user.id,
+      });
+    }
+
+    driverStock.stock = Number(driverStock.stock || 0) + qty;
+    await driverStock.save();
+
+    res.json({ ok: true, message: "Stock assigned successfully", driverStock });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to assign stock", error: error.message });
+  }
+});
+
+router.post("/me/drivers/:driverId/reclaim-stock", auth, allowRoles("partner"), async (req, res) => {
+  try {
+    const scope = await getPartnerScope(req.user.id);
+    if (!scope) return res.status(404).json({ message: "Partner not found" });
+
+    const { driverId } = req.params;
+    const { productId, quantity } = req.body;
+    const qty = Number(quantity);
+
+    if (!productId || qty <= 0 || !Number.isFinite(qty)) {
+      return res.status(400).json({ message: "Valid productId and positive quantity are required" });
+    }
+
+    const driver = await User.findOne({ _id: driverId, role: "driver", createdBy: req.user.id });
+    if (!driver) return res.status(404).json({ message: "Driver not found" });
+
+    let driverStock = await PartnerDriverStock.findOne({
+      partnerId: req.user.id,
+      driverId,
+      productId,
+      country: scope.assignedCountry,
+    });
+
+    if (!driverStock || Number(driverStock.stock || 0) < qty) {
+      return res.status(400).json({ message: "Driver does not have enough stock to reclaim" });
+    }
+
+    driverStock.stock = Number(driverStock.stock || 0) - qty;
+    await driverStock.save();
+
+    const partnerStock = await PartnerPurchasing.findOne({
+      partnerId: req.user.id,
+      productId,
+      country: scope.assignedCountry,
+    });
+
+    if (partnerStock) {
+      partnerStock.stock = Number(partnerStock.stock || 0) + qty;
+      await partnerStock.save();
+    } else {
+      await PartnerPurchasing.create({
+        ownerId: scope.ownerId,
+        partnerId: req.user.id,
+        productId,
+        country: scope.assignedCountry,
+        stock: qty,
+        pricePerPiece: 0,
+        currency: currencyFromCountry(scope.assignedCountry),
+      });
+    }
+
+    res.json({ ok: true, message: "Stock reclaimed successfully", driverStock });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to reclaim stock", error: error.message });
   }
 });
 

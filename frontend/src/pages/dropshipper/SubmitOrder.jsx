@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom'
 import { apiGet, apiPost, API_BASE } from '../../api'
 import { io } from 'socket.io-client'
 import { getCurrencyConfig, convert as fxConvert } from '../../util/currency'
+import MapPreview from '../../components/MapPreview'
 
 export default function SubmitOrder() {
   const location = useLocation()
@@ -1451,6 +1452,27 @@ export default function SubmitOrder() {
                     >
                       Open in Maps
                     </a>
+                  </div>
+                )}
+                
+                {form.locationLat && form.locationLng && (
+                  <div style={{ marginTop: 12 }}>
+                    <MapPreview 
+                      lat={form.locationLat}
+                      lng={form.locationLng}
+                      address={form.customerAddress || form.city || form.orderCountry}
+                      onLocationSelect={async (newLat, newLng, newAddress) => {
+                        setForm(f => ({
+                          ...f,
+                          locationLat: newLat,
+                          locationLng: newLng,
+                          customerAddress: newAddress || f.customerAddress,
+                        }));
+                        setCoordsInput(`${Number(newLat).toFixed(6)}, ${Number(newLng).toFixed(6)}`);
+                        // Optional: could kick off resolveFromCoords to auto-fill city/area
+                        await resolveFromCoords(newLat, newLng);
+                      }}
+                    />
                   </div>
                 )}
               </div>
