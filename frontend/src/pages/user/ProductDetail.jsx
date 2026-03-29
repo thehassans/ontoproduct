@@ -639,7 +639,7 @@ export default function ProductDetail() {
     const next = {}
     for (const row of partnerPurchasing || []) {
       const pid = String(row?.partnerId?._id || row?.partnerId || '')
-      const ck = String(row?.country || '')
+      const ck = normalizeStockCountryKey(String(row?.country || ''))
       if (!pid || !ck) continue
       next[`${pid}-${ck}`] = {
         stock: String(Number(row?.stock || 0)),
@@ -3520,7 +3520,8 @@ export default function ProductDetail() {
                             {visibleCountries.map((normalizedCountry) => {
                                 const key = `${partner._id}-${normalizedCountry}`
                                 const stockItem = partnerPurchasing.find(s => 
-                                  String(s.partnerId?._id || s.partnerId || '') === String(partner._id) && s.country === normalizedCountry
+                                  String(s.partnerId?._id || s.partnerId || '') === String(partner._id) &&
+                                  normalizeStockCountryKey(String(s.country || '')) === normalizedCountry
                                 )
                                 const hasExistingAllocation = Boolean(stockItem)
                                 const currentStock = stockItem?.stock || 0
@@ -3533,9 +3534,11 @@ export default function ProductDetail() {
                                 }
                                 const draftStock = String(draft.stock ?? '')
                                 const draftPrice = String(draft.price ?? '')
-                                const isChanged = hasExistingAllocation
-                                  ? Number(draftStock || 0) !== Number(currentStock) || Number(draftPrice || 0) !== Number(currentPrice) || draft.currency !== currentCcy
-                                  : draftStock.trim() !== '' || Number(draftPrice || 0) !== Number(defaultPartnerPricePerPiece || 0) || draft.currency !== defaultPartnerPurchasingCurrency
+                                const isChanged = !hasExistingAllocation || (
+                                  Number(draftStock || 0) !== Number(currentStock) ||
+                                  Number(draftPrice || 0) !== Number(currentPrice) ||
+                                  draft.currency !== currentCcy
+                                )
                                 
                                 return (
                                   <div key={normalizedCountry} style={{ border: '1px solid rgba(15,23,42,0.06)', borderRadius: 12, padding: 10, background: '#f8fafc' }}>
