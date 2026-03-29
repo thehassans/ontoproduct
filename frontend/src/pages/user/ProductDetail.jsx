@@ -614,7 +614,6 @@ export default function ProductDetail() {
   useEffect(() => {
     if (!showPartnerPurchasing) return
     setPartnerPurchasingDraft((prev) => {
-      if (prev && Object.keys(prev).length) return prev
       const next = {}
       for (const row of partnerPurchasing || []) {
         const pid = String(row?.partnerId?._id || row?.partnerId || '')
@@ -3478,19 +3477,28 @@ export default function ProductDetail() {
                                 const stockItem = partnerPurchasing.find(s => 
                                   String(s.partnerId?._id || s.partnerId || '') === String(partner._id) && s.country === normalizedCountry
                                 )
+                                const hasExistingAllocation = Boolean(stockItem)
                                 const currentStock = stockItem?.stock || 0
                                 const currentPrice = (stockItem?.pricePerPiece ?? stockItem?.price) || 0
                                 const currentCcy = stockItem?.currency || 'SAR'
                                 
-                                const draft = partnerPurchasingDraft[key] || { stock: currentStock, price: currentPrice, currency: currentCcy }
-                                const isChanged = Number(draft.stock) !== Number(currentStock) || Number(draft.price) !== Number(currentPrice) || draft.currency !== currentCcy
+                                const draft = partnerPurchasingDraft[key] || {
+                                  stock: hasExistingAllocation ? String(Number(currentStock)) : '',
+                                  price: hasExistingAllocation ? String(Number(currentPrice)) : '',
+                                  currency: currentCcy,
+                                }
+                                const draftStock = String(draft.stock ?? '')
+                                const draftPrice = String(draft.price ?? '')
+                                const isChanged = hasExistingAllocation
+                                  ? Number(draftStock || 0) !== Number(currentStock) || Number(draftPrice || 0) !== Number(currentPrice) || draft.currency !== currentCcy
+                                  : draftStock.trim() !== '' || draftPrice.trim() !== ''
                                 
                                 return (
                                   <div key={normalizedCountry} style={{ border: '1px solid rgba(15,23,42,0.08)', borderRadius: 14, padding: 12, background: '#f8fafc' }}>
-                                    <div style={{ fontWeight: 600, marginBottom: 8 }}>{normalizedCountry} <span style={{fontSize: 12, fontWeight: 400, opacity: 0.7, marginLeft: 8}}>(Current Stock: {currentStock})</span></div>
+                                    <div style={{ fontWeight: 600, marginBottom: 8 }}>{normalizedCountry} <span style={{fontSize: 12, fontWeight: 400, opacity: 0.7, marginLeft: 8}}>{hasExistingAllocation ? `(Current Stock: ${currentStock})` : '(No allocation yet)'}</span></div>
                                     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(80px, 1fr) minmax(80px, 1fr) 80px auto', gap: 8, alignItems: 'center' }}>
-                                      <input type="number" min="0" placeholder="Stock" value={draft.stock} onChange={e => setPartnerPurchasingDraft(p => ({...p, [key]: {...(p[key]||draft), stock: e.target.value}}))} className="input" style={{ width: '100%' }} />
-                                      <input type="number" min="0" step="0.01" placeholder="Price" value={draft.price} onChange={e => setPartnerPurchasingDraft(p => ({...p, [key]: {...(p[key]||draft), price: e.target.value}}))} className="input" style={{ width: '100%' }} />
+                                      <input type="number" min="0" placeholder="Stock" value={draftStock} onChange={e => setPartnerPurchasingDraft(p => ({...p, [key]: {...(p[key]||draft), stock: e.target.value}}))} className="input" style={{ width: '100%' }} />
+                                      <input type="number" min="0" step="0.01" placeholder="Price" value={draftPrice} onChange={e => setPartnerPurchasingDraft(p => ({...p, [key]: {...(p[key]||draft), price: e.target.value}}))} className="input" style={{ width: '100%' }} />
                                       <select className="input" value={draft.currency} onChange={e => setPartnerPurchasingDraft(p => ({...p, [key]: {...(p[key]||draft), currency: e.target.value}}))} style={{ width: '100%' }}>
                                         <option value="SAR">SAR</option>
                                         <option value="AED">AED</option>
