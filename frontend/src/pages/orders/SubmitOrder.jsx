@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom'
 import { apiGet, apiPost, API_BASE } from '../../api'
 import { io } from 'socket.io-client'
 import { getCurrencyConfig, convert as fxConvert } from '../../util/currency'
+import { getLocalStockByCountry } from '../../utils/warehouse'
 
 export default function SubmitOrder() {
   const location = useLocation()
@@ -202,6 +203,10 @@ export default function SubmitOrder() {
     return byCode?.key || 'KSA'
   }, [form.orderCountry, form.phoneCountryCode])
   const cities = COUNTRY_CITIES[currentCountryKey] || []
+
+  function getSelectedCountryStock(product) {
+    return Math.max(0, Number(getLocalStockByCountry(product?.stockByCountry, currentCountryKey) || 0))
+  }
 
   useEffect(() => {
     function onResize() {
@@ -601,6 +606,16 @@ export default function SubmitOrder() {
           }`
         )
         return
+      }
+      for (const item of validItems) {
+        const selectedProduct = products.find((p) => String(p._id) === String(item.productId))
+        const availableStock = getSelectedCountryStock(selectedProduct)
+        const requestedQty = Math.max(1, Number(item.quantity || 1))
+        if (requestedQty > availableStock) {
+          setLoading(false)
+          setMsg(`Only ${availableStock} units available in ${form.orderCountry} for ${selectedProduct?.name || 'selected product'}`)
+          return
+        }
       }
       // Ensure we send a readable customerLocation even if using geolocation
       const locString =
@@ -1141,6 +1156,7 @@ export default function SubmitOrder() {
                   const selectedProduct = products.find(
                     (p) => String(p._id) === String(it.productId)
                   )
+                  const selectedProductStock = getSelectedCountryStock(selectedProduct)
                   const displayText = selectedProduct
                     ? `${selectedProduct.name} • ${selectedCurrency} ${convertPrice(Number(selectedProduct.price) || 0, selectedProduct.baseCurrency || 'SAR', selectedCurrency).toFixed(2)}`
                     : (it.searchText || '')
@@ -1221,10 +1237,12 @@ export default function SubmitOrder() {
                                 base,
                                 selectedCurrency
                               )
+                              const availableStock = getSelectedCountryStock(p)
                               return (
                                 <div
                                   key={p._id}
                                   onMouseDown={() => {
+                                    if (availableStock <= 0) return
                                     // Check if this product already exists in items
                                     const existingIndex = items.findIndex(
                                       (item, idx) =>
@@ -1235,7 +1253,7 @@ export default function SubmitOrder() {
                                       setItems((prev) => {
                                         const updated = prev.map((x, idx) =>
                                           idx === existingIndex
-                                            ? { ...x, quantity: (x.quantity || 1) + 1 }
+                                            ? { ...x, quantity: Math.min(availableStock, (x.quantity || 1) + 1) }
                                             : x
                                         )
                                         // Remove current row if it was empty
@@ -1261,9 +1279,10 @@ export default function SubmitOrder() {
                                   }}
                                   style={{
                                     padding: '10px 12px',
-                                    cursor: 'pointer',
+                                    cursor: availableStock > 0 ? 'pointer' : 'not-allowed',
                                     borderBottom: '1px solid var(--border)',
                                     transition: 'background 0.15s',
+                                    opacity: availableStock > 0 ? 1 : 0.55,
                                   }}
                                   onMouseEnter={(e) =>
                                     (e.currentTarget.style.background = 'var(--panel-2)')
@@ -1274,13 +1293,18 @@ export default function SubmitOrder() {
                                 >
                                   <div style={{ fontWeight: 500 }}>{p.name}</div>
                                   <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>
-                                    {selectedCurrency} {display.toFixed(2)}
+                                    {selectedCurrency} {display.toFixed(2)} • In {form.orderCountry}: {availableStock}
                                   </div>
                                 </div>
                               )
                             })}
                           </div>
                         )}
+                        {selectedProduct ? (
+                          <div className="helper" style={{ fontSize: 11, opacity: 0.8, marginTop: 4 }}>
+                            In {form.orderCountry}: {selectedProductStock}
+                          </div>
+                        ) : null}
                         {it.searchText && it.searchText.length > 0 && it.searchText.length < 3 && (
                           <div
                             className="helper"
@@ -1324,11 +1348,12 @@ export default function SubmitOrder() {
                           type="button"
                           className="btn secondary"
                           onClick={() => {
-                            const newQty = (it.quantity || 1) + 1
+                            const newQty = Math.min(Math.max(1, selectedProductStock || 0), (it.quantity || 1) + 1)
                             setItems((prev) =>
                               prev.map((x, idx) => (idx === i ? { ...x, quantity: newQty } : x))
                             )
                           }}
+                          disabled={!selectedProduct || selectedProductStock <= 0 || (it.quantity || 1) >= selectedProductStock}
                           style={{ padding: '6px 10px', minWidth: 32 }}
                           aria-label="Increase quantity"
                         >

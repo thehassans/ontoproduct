@@ -8,32 +8,67 @@ import MapPreview from '../../components/MapPreview.jsx'
 
 function PartnerPurchasingRow({ partnerId, country, savedRow, defaultPrice, defaultCurrency, productId, onRefresh }) {
   const toast = useToast()
-  const [addStock, setAddStock] = React.useState('')
+  const [stock, setStock] = React.useState(savedRow ? String(savedRow.stock ?? 0) : '')
   const [price, setPrice] = React.useState(savedRow ? String(savedRow.pricePerPiece ?? savedRow.price ?? 0) : (defaultPrice || ''))
   const [currency, setCurrency] = React.useState(savedRow?.currency || defaultCurrency || 'SAR')
   const [saving, setSaving] = React.useState(false)
 
+  React.useEffect(() => {
+    setStock(savedRow ? String(savedRow.stock ?? 0) : '')
+    setPrice(savedRow ? String(savedRow.pricePerPiece ?? savedRow.price ?? 0) : (defaultPrice || ''))
+    setCurrency(savedRow?.currency || defaultCurrency || 'SAR')
+  }, [savedRow, defaultPrice, defaultCurrency])
+
   async function handleSave() {
-    const stockNum = Number(addStock || 0)
-    if (stockNum <= 0) {
-      toast.error('Enter a valid quantity to add');
+    const stockNum = Math.max(0, Number(stock || 0))
+    if (!savedRow && stockNum <= 0) {
+      toast.error('Enter a valid partner stock quantity')
       return;
     }
     setSaving(true)
     try {
-      await apiPost('/api/partners/admin/purchasing/add', {
-        productId,
-        partnerId,
-        country,
-        addStock: stockNum,
-        pricePerPiece: Number(price || defaultPrice || 0),
-        currency: currency || defaultCurrency || 'SAR',
-      })
-      toast.success('Stock added to partner')
-      setAddStock('')
+      if (stockNum <= 0) {
+        await apiPost('/api/partners/admin/purchasing/delete', {
+          productId,
+          partnerId,
+          country,
+        })
+        toast.success('Partner stock deleted')
+      } else {
+        await apiPost('/api/partners/admin/purchasing/set', {
+          productId,
+          partnerId,
+          country,
+          stock: stockNum,
+          pricePerPiece: Number(price || defaultPrice || 0),
+          currency: currency || defaultCurrency || 'SAR',
+        })
+        toast.success('Partner stock saved')
+      }
       await onRefresh()
     } catch (err) {
       toast.error(err?.message || 'Failed to save')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleDelete() {
+    if (!savedRow) {
+      setStock('')
+      return
+    }
+    setSaving(true)
+    try {
+      await apiPost('/api/partners/admin/purchasing/delete', {
+        productId,
+        partnerId,
+        country,
+      })
+      toast.success('Partner stock deleted')
+      await onRefresh()
+    } catch (err) {
+      toast.error(err?.message || 'Failed to delete partner stock')
     } finally {
       setSaving(false)
     }
@@ -44,14 +79,14 @@ function PartnerPurchasingRow({ partnerId, country, savedRow, defaultPrice, defa
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
         <span style={{ fontWeight: 600, fontSize: 13 }}>{country}</span>
         <span style={{ fontSize: 11, color: savedRow ? '#10b981' : '#94a3b8' }}>
-          {savedRow ? `Allocated: ${savedRow.stock} units @ ${savedRow.pricePerPiece ?? savedRow.price}` : 'No allocation yet'}
+          {savedRow ? `In Stock (Partner): ${savedRow.stock} units @ ${savedRow.pricePerPiece ?? savedRow.price}` : 'No partner stock yet'}
         </span>
       </div>
       <div style={{ display: 'flex', gap: 6 }}>
         <input
-          type="number" min="1" placeholder="Qty to Add" title="Quantity to Add"
-          value={addStock}
-          onChange={e => setAddStock(e.target.value)}
+          type="number" min="0" placeholder="Partner stock" title="Partner stock"
+          value={stock}
+          onChange={e => setStock(e.target.value)}
           className="input"
           style={{ flex: 1, minHeight: 38, border: '1px solid #3b82f6', background: '#eff6ff' }}
         />
@@ -80,6 +115,12 @@ function PartnerPurchasingRow({ partnerId, country, savedRow, defaultPrice, defa
           disabled={saving}
           style={{ minHeight: 38, padding: '0 14px', fontWeight: 700 }}
         >{saving ? '...' : 'Save'}</button>
+        <button
+          className="btn secondary"
+          onClick={handleDelete}
+          disabled={saving || !savedRow}
+          style={{ minHeight: 38, padding: '0 14px', fontWeight: 700, background: savedRow ? '#fee2e2' : undefined, color: savedRow ? '#b91c1c' : undefined, borderColor: savedRow ? '#fecaca' : undefined }}
+        >Delete</button>
       </div>
     </div>
   )
@@ -727,6 +768,22 @@ export default function ProductDetail() {
       })
   }, [partners, partnerPurchasingSearch])
 
+  const partnerStockByCountry = useMemo(() => {
+    const next = {}
+    for (const row of partnerPurchasing || []) {
+      const countryKey = normalizeStockCountryKey(String(row?.country || ''))
+      const stock = Math.max(0, Number(row?.stock || 0))
+      if (!countryKey || stock <= 0) continue
+      next[countryKey] = (next[countryKey] || 0) + stock
+    }
+    return next
+  }, [partnerPurchasing])
+
+  const totalPartnerStock = useMemo(
+    () => Object.values(partnerStockByCountry).reduce((sum, value) => sum + Number(value || 0), 0),
+    [partnerStockByCountry]
+  )
+
   async function refreshPartnerPurchasingView() {
     await Promise.all([loadPartnerPurchasing(), loadProductAndOrders()])
   }
@@ -770,10 +827,11 @@ export default function ProductDetail() {
     setLoading(true)
     try {
       // Make all API calls in parallel for faster loading
-      const [productResult, warehouseResult, ordersResult] = await Promise.allSettled([
+      const [productResult, warehouseResult, ordersResult, partnerPurchasingResult] = await Promise.allSettled([
         apiGet(`/api/products/${id}`, { skipCache: true }),
         apiGet('/api/warehouse/summary', { skipCache: true }),
         apiGet(`/api/orders/by-product/${id}`, { skipCache: true }),
+        apiGet(`/api/partners/admin/purchasing?productId=${encodeURIComponent(id)}`, { skipCache: true }),
       ])
 
       // Handle product data
@@ -819,6 +877,13 @@ export default function ProductDetail() {
       } else {
         console.error('Failed to load orders:', ordersResult.reason)
         setOrders([])
+      }
+
+      if (partnerPurchasingResult.status === 'fulfilled') {
+        setPartnerPurchasing(Array.isArray(partnerPurchasingResult.value?.rows) ? partnerPurchasingResult.value.rows : [])
+      } else {
+        console.error('Failed to load partner purchasing summary:', partnerPurchasingResult.reason)
+        setPartnerPurchasing([])
       }
     } catch (err) {
       console.error('Unexpected error loading data:', err)
@@ -1468,6 +1533,9 @@ export default function ProductDetail() {
                 <div style={{ fontSize: 11, opacity: 0.5, marginTop: 4 }}>
                   Total Purchased: {getTotalStock()}
                 </div>
+                <div style={{ fontSize: 11, opacity: 0.75, marginTop: 2, color: totalPartnerStock > 0 ? '#2563eb' : '#9ca3af' }}>
+                  In Stock (Partner): {totalPartnerStock}
+                </div>
               </div>
             </div>
 
@@ -1501,34 +1569,49 @@ export default function ProductDetail() {
             {/* Stock by Country - Show All Countries */}
             <div>
               <div style={{ fontSize: 13, opacity: 0.6, marginBottom: 8 }}>
-                Stock by Country (Available)
+                Stock by Country (Warehouse / Partner)
               </div>
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                 {['UAE', 'Oman', 'KSA', 'Bahrain', 'India', 'Kuwait', 'Qatar', 'Australia', 'Canada', 'UK', 'USA', 'Pakistan'].map((country) => {
-                  const stock = warehouseData?.stockLeft?.[country] ?? product?.stockByCountry?.[country] ?? 0
+                  const warehouseStock = Number(warehouseData?.stockLeft?.[country] ?? product?.stockByCountry?.[country] ?? 0)
+                  const partnerStock = Number(partnerStockByCountry?.[country] || 0)
+                  const totalCountryStock = warehouseStock + partnerStock
                   return (
                     <div
                       key={country}
                       style={{
                         padding: '8px 16px',
                         borderRadius: 8,
-                        background: stock > 0 ? 'var(--panel)' : '#f9fafb',
+                        background: totalCountryStock > 0 ? 'var(--panel)' : '#f9fafb',
                         border: '1px solid var(--border)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8,
-                        opacity: stock > 0 ? 1 : 0.5,
+                        display: 'grid',
+                        gap: 4,
+                        opacity: totalCountryStock > 0 ? 1 : 0.5,
                       }}
                     >
-                      <span style={{ fontWeight: 600 }}>{country}:</span>
-                      <span
-                        style={{
-                          fontWeight: 800,
-                          color: stock === 0 ? '#9ca3af' : stock < 5 ? '#dc2626' : stock < 10 ? '#ea580c' : '#059669',
-                        }}
-                      >
-                        {stock}
-                      </span>
+                      <span style={{ fontWeight: 700 }}>{country}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 12, color: '#64748b' }}>Warehouse:</span>
+                        <span
+                          style={{
+                            fontWeight: 800,
+                            color: warehouseStock === 0 ? '#9ca3af' : warehouseStock < 5 ? '#dc2626' : warehouseStock < 10 ? '#ea580c' : '#059669',
+                          }}
+                        >
+                          {warehouseStock}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 12, color: '#64748b' }}>Partner:</span>
+                        <span
+                          style={{
+                            fontWeight: 800,
+                            color: partnerStock === 0 ? '#9ca3af' : '#2563eb',
+                          }}
+                        >
+                          {partnerStock}
+                        </span>
+                      </div>
                     </div>
                   )
                 })}

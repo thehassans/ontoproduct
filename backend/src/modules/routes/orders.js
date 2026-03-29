@@ -1097,20 +1097,8 @@ router.post(
 
     // Check stock availability in the order country BEFORE creating the order
     const getCountryStock = (product) => {
-      if (!product?.stockByCountry) return Number(product?.stockQty || 0);
-      const countryVal = getStockByCountry(product.stockByCountry, orderStockCountryKey);
-      // If per-country stock returns 0, check if ALL per-country values are 0
-      // but total stockQty is positive (legacy product without per-country breakdown)
-      if (countryVal <= 0 && Number(product.stockQty || 0) > 0) {
-        let sbc = product.stockByCountry;
-        if (typeof sbc.toObject === "function") sbc = sbc.toObject();
-        const total = Object.entries(sbc || {}).reduce((sum, [k, v]) => {
-          if (k === "_id" || k === "__v") return sum;
-          return sum + (Number(v) || 0);
-        }, 0);
-        if (total <= 0) return Number(product.stockQty || 0);
-      }
-      return countryVal;
+      if (!product?.stockByCountry) return 0;
+      return Math.max(0, Number(getStockByCountry(product.stockByCountry, orderStockCountryKey) || 0));
     };
 
     if (normItems.length > 0) {

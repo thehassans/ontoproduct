@@ -1179,6 +1179,80 @@ router.get("/admin/purchasing", auth, allowRoles("admin", "user"), async (req, r
   }
 });
 
+function recalculateProductStockTotals(product) {
+  let totalStock = 0;
+  const sbcJSON = typeof product.stockByCountry?.toJSON === 'function' ? product.stockByCountry.toJSON() : (product.stockByCountry || {});
+  Object.values(sbcJSON).forEach((val) => {
+    const num = Number(val);
+    if (!isNaN(num) && isFinite(num)) {
+      totalStock += num;
+    }
+  });
+  product.stockQty = Math.max(0, totalStock);
+  product.inStock = product.stockQty > 0;
+}
+
+function applyPartnerPurchasingWarehouseDelta({ product, country, delta, actorId, note }) {
+  const normalizedCountry = normalizeCountryKey(country);
+  if (!product.stockByCountry) product.stockByCountry = {};
+  const stockCountryCandidates = Array.from(
+    new Set(
+      expandCountryVariants(normalizedCountry)
+        .flatMap((item) => [item, normalizeCountryKey(item)])
+        .filter(Boolean)
+    )
+  );
+  const primaryStockCountry = stockCountryCandidates[0] || normalizedCountry;
+  const stockHistoryEntries = [];
+
+  if (delta > 0) {
+    const requiredQty = Math.max(0, Number(delta || 0));
+    const availableByCountry = stockCountryCandidates.reduce(
+      (sum, key) => sum + Math.max(0, Number(product.stockByCountry?.[key] || 0)),
+      0
+    );
+    if (availableByCountry < requiredQty) {
+      const err = new Error(`Insufficient warehouse stock for ${normalizedCountry}. Available: ${availableByCountry}`);
+      err.statusCode = 400;
+      throw err;
+    }
+
+    let remainingToDeduct = requiredQty;
+    for (const stockCountry of stockCountryCandidates) {
+      const available = Math.max(0, Number(product.stockByCountry?.[stockCountry] || 0));
+      if (available <= 0 || remainingToDeduct <= 0) continue;
+      const deductQty = Math.min(available, remainingToDeduct);
+      product.stockByCountry[stockCountry] = available - deductQty;
+      remainingToDeduct -= deductQty;
+      stockHistoryEntries.push({
+        country: stockCountry,
+        quantity: -deductQty,
+        notes: note,
+        addedBy: actorId,
+        date: new Date(),
+      });
+    }
+  } else if (delta < 0) {
+    const returnQty = Math.max(0, Number(Math.abs(delta) || 0));
+    const current = Math.max(0, Number(product.stockByCountry?.[primaryStockCountry] || 0));
+    product.stockByCountry[primaryStockCountry] = current + returnQty;
+    stockHistoryEntries.push({
+      country: primaryStockCountry,
+      quantity: returnQty,
+      notes: note,
+      addedBy: actorId,
+      date: new Date(),
+    });
+  }
+
+  if (stockHistoryEntries.length > 0) {
+    product.markModified('stockByCountry');
+    recalculateProductStockTotals(product);
+    if (!product.stockHistory) product.stockHistory = [];
+    product.stockHistory.push(...stockHistoryEntries);
+  }
+}
+
 router.post("/admin/purchasing/add", auth, allowRoles("admin", "user"), async (req, res) => {
   try {
     const ownerId = parseOwnerId(req);
@@ -1262,6 +1336,111 @@ router.post("/admin/purchasing/add", auth, allowRoles("admin", "user"), async (r
     res.json({ ok: true, row });
   } catch (error) {
     res.status(500).json({ message: "Failed to add partner purchasing stock", error: error.message });
+  }
+});
+
+router.post("/admin/purchasing/set", auth, allowRoles("admin", "user"), async (req, res) => {
+  try {
+    const ownerId = parseOwnerId(req);
+    if (!ownerId) return res.status(400).json({ message: "ownerId required" });
+    const productId = String(req.body?.productId || "").trim();
+    const partnerId = String(req.body?.partnerId || "").trim();
+    const country = normalizeCountryKey(req.body?.country || "");
+    const nextStock = Math.max(0, Number(req.body?.stock || 0));
+
+    if (!mongoose.Types.ObjectId.isValid(productId) || !mongoose.Types.ObjectId.isValid(partnerId) || !country) {
+      return res.status(400).json({ message: "Invalid product, partner, or country" });
+    }
+
+    const partner = await User.findOne({ _id: partnerId, role: "partner", createdBy: ownerId }).select("_id firstName lastName").lean();
+    if (!partner) return res.status(404).json({ message: "Partner not found" });
+
+    const product = await Product.findOne({ _id: productId, createdBy: ownerId });
+    if (!product) return res.status(404).json({ message: "Product not found" });
+
+    const existing = await PartnerPurchasing.findOne({ ownerId, partnerId, productId, country }).lean();
+    const currentStock = Math.max(0, Number(existing?.stock || 0));
+    const delta = nextStock - currentStock;
+
+    if (delta !== 0) {
+      applyPartnerPurchasingWarehouseDelta({
+        product,
+        country,
+        delta,
+        actorId: req.user.id,
+        note:
+          delta > 0
+            ? `Transferred to Partner: ${partner.firstName} ${partner.lastName || ''}`.trim()
+            : `Returned from Partner: ${partner.firstName} ${partner.lastName || ''}`.trim(),
+      });
+      await product.save();
+    }
+
+    if (nextStock <= 0) {
+      await PartnerPurchasing.deleteOne({ ownerId, partnerId, productId, country });
+      return res.json({ ok: true, row: null });
+    }
+
+    const row = await PartnerPurchasing.findOneAndUpdate(
+      { ownerId, partnerId, productId, country },
+      {
+        $set: {
+          stock: nextStock,
+          pricePerPiece: Math.max(0, Number(req.body?.pricePerPiece ?? existing?.pricePerPiece ?? 0)),
+          notes: String(req.body?.notes ?? existing?.notes ?? "").trim(),
+          currency: String(req.body?.currency || existing?.currency || product.baseCurrency || currencyFromCountry(country)),
+          updatedBy: req.user.id,
+        },
+      },
+      { new: true, upsert: true }
+    )
+      .populate("partnerId", "firstName lastName phone assignedCountry")
+      .populate("productId", "name imagePath images baseCurrency stockByCountry purchasePrice")
+      .lean();
+
+    res.json({ ok: true, row });
+  } catch (error) {
+    res.status(error?.statusCode || 500).json({ message: "Failed to set partner purchasing stock", error: error.message });
+  }
+});
+
+router.post("/admin/purchasing/delete", auth, allowRoles("admin", "user"), async (req, res) => {
+  try {
+    const ownerId = parseOwnerId(req);
+    if (!ownerId) return res.status(400).json({ message: "ownerId required" });
+    const productId = String(req.body?.productId || "").trim();
+    const partnerId = String(req.body?.partnerId || "").trim();
+    const country = normalizeCountryKey(req.body?.country || "");
+
+    if (!mongoose.Types.ObjectId.isValid(productId) || !mongoose.Types.ObjectId.isValid(partnerId) || !country) {
+      return res.status(400).json({ message: "Invalid product, partner, or country" });
+    }
+
+    const existing = await PartnerPurchasing.findOne({ ownerId, partnerId, productId, country }).lean();
+    if (!existing) return res.json({ ok: true, row: null });
+
+    const partner = await User.findOne({ _id: partnerId, role: "partner", createdBy: ownerId }).select("_id firstName lastName").lean();
+    const product = await Product.findOne({ _id: productId, createdBy: ownerId });
+    if (!partner || !product) {
+      return res.status(404).json({ message: "Partner or product not found" });
+    }
+
+    const currentStock = Math.max(0, Number(existing?.stock || 0));
+    if (currentStock > 0) {
+      applyPartnerPurchasingWarehouseDelta({
+        product,
+        country,
+        delta: -currentStock,
+        actorId: req.user.id,
+        note: `Returned from Partner: ${partner.firstName} ${partner.lastName || ''}`.trim(),
+      });
+      await product.save();
+    }
+
+    await PartnerPurchasing.deleteOne({ ownerId, partnerId, productId, country });
+    res.json({ ok: true, row: null });
+  } catch (error) {
+    res.status(error?.statusCode || 500).json({ message: "Failed to delete partner purchasing stock", error: error.message });
   }
 });
 
