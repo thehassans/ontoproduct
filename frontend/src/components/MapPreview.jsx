@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { toast } from "react-hot-toast";
-import api from "../../utils/api";
+import { useToast } from "../ui/Toast.jsx";
+import { apiGet } from "../api";
 
 export default function MapPreview({
   lat,
@@ -12,6 +12,7 @@ export default function MapPreview({
   className = "",
   zoom = 13
 }) {
+  const toast = useToast();
   const mapRef = useRef(null);
   const mapInstance = useRef(null);
   const markerInstance = useRef(null);
@@ -87,7 +88,7 @@ export default function MapPreview({
     let newAddress = address; // Fallback
     try {
       // Reverse geocode via backend
-      const { data } = await api.get(`/api/geocode/reverse?lat=${newLat}&lng=${newLng}`);
+      const data = await apiGet(`/api/geocode/reverse?lat=${newLat}&lng=${newLng}`);
       if (data && data.success && data.formatted_address) {
         newAddress = data.formatted_address;
       }
