@@ -1179,25 +1179,66 @@ router.get("/admin/purchasing", auth, allowRoles("admin", "user"), async (req, r
   }
 });
 
-router.post("/admin/purchasing/set", auth, allowRoles("admin", "user"), async (req, res) => {
+router.post("/admin/purchasing/add", auth, allowRoles("admin", "user"), async (req, res) => {
   try {
     const ownerId = parseOwnerId(req);
     if (!ownerId) return res.status(400).json({ message: "ownerId required" });
     const productId = String(req.body?.productId || "").trim();
     const partnerId = String(req.body?.partnerId || "").trim();
     const country = normalizeCountryKey(req.body?.country || "");
+    const addStock = Math.max(0, Number(req.body?.addStock || 0));
+
     if (!mongoose.Types.ObjectId.isValid(productId) || !mongoose.Types.ObjectId.isValid(partnerId) || !country) {
       return res.status(400).json({ message: "Invalid product, partner, or country" });
     }
-    const partner = await User.findOne({ _id: partnerId, role: "partner", createdBy: ownerId }).select("_id").lean();
+    if (addStock <= 0) {
+      return res.status(400).json({ message: "Stock to add must be greater than 0" });
+    }
+
+    const partner = await User.findOne({ _id: partnerId, role: "partner", createdBy: ownerId }).select("_id firstName lastName").lean();
     if (!partner) return res.status(404).json({ message: "Partner not found" });
-    const product = await Product.findOne({ _id: productId, createdBy: ownerId }).select("_id baseCurrency").lean();
+
+    const product = await Product.findOne({ _id: productId, createdBy: ownerId });
     if (!product) return res.status(404).json({ message: "Product not found" });
+
+    // Validate warehouse stock
+    if (!product.stockByCountry) product.stockByCountry = {};
+    const available = product.stockByCountry[country] || 0;
+    if (available < addStock) {
+      return res.status(400).json({ message: `Insufficient warehouse stock for ${country}. Available: ${available}` });
+    }
+
+    // Deduct from warehouse stock
+    product.stockByCountry[country] = available - addStock;
+    product.markModified('stockByCountry');
+
+    let totalStock = 0;
+    Object.values(product.stockByCountry).forEach(val => {
+      const num = Number(val);
+      if (!isNaN(num) && isFinite(num)) {
+        totalStock += num;
+      }
+    });
+    product.stockQty = Math.max(0, totalStock);
+    product.inStock = product.stockQty > 0;
+
+    // Track history
+    if (!product.stockHistory) product.stockHistory = [];
+    product.stockHistory.push({
+      country,
+      quantity: -addStock,
+      notes: `Transferred to Partner: ${partner.firstName} ${partner.lastName || ''}`.trim(),
+      addedBy: req.user.id,
+      date: new Date()
+    });
+
+    await product.save();
+
     const row = await PartnerPurchasing.findOneAndUpdate(
       { ownerId, partnerId, productId, country },
       {
+        $inc: { stock: addStock },
         $set: {
-          stock: Math.max(0, Number(req.body?.stock || 0)),
           pricePerPiece: Math.max(0, Number(req.body?.pricePerPiece || 0)),
           notes: String(req.body?.notes || "").trim(),
           currency: String(req.body?.currency || product.baseCurrency || currencyFromCountry(country)),
@@ -1209,9 +1250,10 @@ router.post("/admin/purchasing/set", auth, allowRoles("admin", "user"), async (r
       .populate("partnerId", "firstName lastName phone assignedCountry")
       .populate("productId", "name imagePath images baseCurrency stockByCountry purchasePrice")
       .lean();
+
     res.json({ ok: true, row });
   } catch (error) {
-    res.status(500).json({ message: "Failed to update partner purchasing", error: error.message });
+    res.status(500).json({ message: "Failed to add partner purchasing stock", error: error.message });
   }
 });
 

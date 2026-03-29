@@ -8,23 +8,28 @@ import MapPreview from '../../components/MapPreview.jsx'
 
 function PartnerPurchasingRow({ partnerId, country, savedRow, defaultPrice, defaultCurrency, productId, onRefresh }) {
   const toast = useToast()
-  const [stock, setStock] = React.useState(savedRow ? String(savedRow.stock ?? 0) : '')
+  const [addStock, setAddStock] = React.useState('')
   const [price, setPrice] = React.useState(savedRow ? String(savedRow.pricePerPiece ?? savedRow.price ?? 0) : (defaultPrice || ''))
   const [currency, setCurrency] = React.useState(savedRow?.currency || defaultCurrency || 'SAR')
   const [saving, setSaving] = React.useState(false)
 
   async function handleSave() {
+    if (!addStock || Number(addStock) <= 0) {
+      toast.error('Enter a valid quantity to add');
+      return;
+    }
     setSaving(true)
     try {
-      await apiPost('/api/partners/admin/purchasing/set', {
+      await apiPost('/api/partners/admin/purchasing/add', {
         productId,
         partnerId,
         country,
-        stock: Number(stock || 0),
+        addStock: Number(addStock || 0),
         pricePerPiece: Number(price || defaultPrice || 0),
         currency: currency || defaultCurrency || 'SAR',
       })
       toast.success('Stock assigned')
+      setAddStock('')
       onRefresh()
     } catch (err) {
       toast.error(err?.message || 'Failed to save')
@@ -38,14 +43,14 @@ function PartnerPurchasingRow({ partnerId, country, savedRow, defaultPrice, defa
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
         <span style={{ fontWeight: 600, fontSize: 13 }}>{country}</span>
         <span style={{ fontSize: 11, color: savedRow ? '#10b981' : '#94a3b8' }}>
-          {savedRow ? `Saved: ${savedRow.stock} units @ ${savedRow.pricePerPiece ?? savedRow.price}` : 'No allocation yet'}
+          {savedRow ? `Allocated: ${savedRow.stock} units @ ${savedRow.pricePerPiece ?? savedRow.price}` : 'No allocation yet'}
         </span>
       </div>
       <div style={{ display: 'flex', gap: 6 }}>
         <input
-          type="number" min="0" placeholder="Stock"
-          value={stock}
-          onChange={e => setStock(e.target.value)}
+          type="number" min="1" placeholder="Add Stock"
+          value={addStock}
+          onChange={e => setAddStock(e.target.value)}
           className="input"
           style={{ flex: 1, minHeight: 38 }}
         />
