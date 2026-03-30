@@ -151,7 +151,7 @@ const CURRENCY_SYMBOLS = (() => {
 let _sarSymbol = null
 function resolveSarSymbol() {
   if (_sarSymbol) return _sarSymbol
-  _sarSymbol = 'ر.س'
+  _sarSymbol = '﷼'
   return _sarSymbol
 }
 

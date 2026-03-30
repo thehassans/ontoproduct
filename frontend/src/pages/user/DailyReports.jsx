@@ -60,6 +60,18 @@ function personName(user) {
   return `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || user.phone || '-'
 }
 
+function titleCase(value) {
+  const raw = String(value || '').trim()
+  if (!raw) return ''
+  return raw.charAt(0).toUpperCase() + raw.slice(1)
+}
+
+function buildSubmitterLabel(type, name) {
+  const safeType = titleCase(type || 'order') || 'Order'
+  const safeName = String(name || '').trim() || '-'
+  return `${safeType} · ${safeName}`
+}
+
 function displayOrderNumber(order) {
   return order?.invoiceNumber ? `#${order.invoiceNumber}` : `#${String(order?._id || order?.id || '').slice(-6).toUpperCase()}`
 }
@@ -134,19 +146,25 @@ function buildInternalRow(order, cfg) {
   const currency = currencyFromCountry(country)
   const orderPrice = Number(order?.total || 0)
   const purchaseCost = buildInternalPurchaseCost(order, cfg)
-  const agentCommission = role === 'agent' ? safeConvert(order?.agentCommissionPKR || 0, 'PKR', currency, cfg) : 0
+  const submitterType = role === 'agent' ? 'agent' : role === 'dropshipper' ? 'dropshipper' : role === 'driver' ? 'driver' : 'owner'
+  const submitterName = role === 'agent' || role === 'dropshipper' || role === 'driver'
+    ? personName(order?.createdBy)
+    : personName(order?.createdBy) !== '-' ? personName(order?.createdBy) : 'BuySial'
+  const submitterCommission = role === 'agent'
+    ? safeConvert(order?.agentCommissionPKR || 0, 'PKR', currency, cfg)
+    : role === 'dropshipper'
+    ? Number(order?.dropshipperProfit?.amount || 0)
+    : 0
   const driverCommission = Number(order?.driverCommission || 0)
-  const dropshipperCommission = role === 'dropshipper' ? Number(order?.dropshipperProfit?.amount || 0) : 0
   return {
     id: String(order?._id || order?.id || ''),
     orderNumber: displayOrderNumber(order),
     createdAt: order?.createdAt,
     country,
     currency,
-    source: role === 'agent' ? 'Agent' : role === 'dropshipper' ? 'Dropshipper' : 'Order',
-    agentName: role === 'agent' ? personName(order?.createdBy) : '-',
-    dropshipperName: role === 'dropshipper' ? personName(order?.createdBy) : '-',
-    onlineLabel: '-',
+    submitterType,
+    submitterName,
+    submitterLabel: buildSubmitterLabel(submitterType, submitterName),
     driverName: order?.deliveryBoy ? personName(order.deliveryBoy) : '-',
     productName: order?.productName || '-',
     productQuantity: Math.max(1, Number(order?.productQuantity || order?.quantity || 1)),
@@ -154,9 +172,9 @@ function buildInternalRow(order, cfg) {
     orderPrice,
     status: String(order?.shipmentStatus || order?.status || 'pending').replaceAll('_', ' '),
     purchaseCost,
-    agentCommission,
+    submitterCommission,
     driverCommission,
-    profitBeforeAds: orderPrice - purchaseCost - agentCommission - driverCommission - dropshipperCommission,
+    profitBeforeAds: orderPrice - purchaseCost - submitterCommission - driverCommission,
   }
 }
 
@@ -174,10 +192,9 @@ function buildWebRow(order, cfg) {
     createdAt: order?.createdAt,
     country,
     currency,
-    source: 'Online',
-    agentName: '-',
-    dropshipperName: '-',
-    onlineLabel: 'Yes',
+    submitterType: 'online',
+    submitterName: 'BuySial Website',
+    submitterLabel: buildSubmitterLabel('online', 'BuySial Website'),
     driverName: order?.deliveryBoy ? personName(order.deliveryBoy) : '-',
     productName,
     productQuantity,
@@ -185,7 +202,7 @@ function buildWebRow(order, cfg) {
     orderPrice,
     status: String(order?.shipmentStatus || order?.status || 'pending').replaceAll('_', ' '),
     purchaseCost,
-    agentCommission: 0,
+    submitterCommission: 0,
     driverCommission,
     profitBeforeAds: orderPrice - purchaseCost - driverCommission,
   }
@@ -194,6 +211,7 @@ function buildWebRow(order, cfg) {
 export default function DailyReports() {
   const toast = useToast()
   const reportRef = useRef(null)
+  const logoSrc = '/logo.png'
   const [dayKey, setDayKey] = useState(todayKey())
   const [selectedCountry, setSelectedCountry] = useState('all')
   const [loading, setLoading] = useState(true)
@@ -298,12 +316,12 @@ export default function DailyReports() {
           acc.qty += Number(row.productQuantity || 0)
           acc.orderPrice += Number(row.orderPrice || 0)
           acc.purchaseCost += Number(row.purchaseCost || 0)
-          acc.agentCommission += Number(row.agentCommission || 0)
+          acc.submitterCommission += Number(row.submitterCommission || 0)
           acc.driverCommission += Number(row.driverCommission || 0)
           acc.adExpense += Number(row.adExpense || 0)
           acc.profit += Number(row.profit || 0)
           return acc
-        }, { orders: 0, qty: 0, orderPrice: 0, purchaseCost: 0, agentCommission: 0, driverCommission: 0, adExpense: 0, profit: 0 })
+        }, { orders: 0, qty: 0, orderPrice: 0, purchaseCost: 0, submitterCommission: 0, driverCommission: 0, adExpense: 0, profit: 0 })
         return { country, currency: currencyFromCountry(country), rows, totals }
       })
   }, [currencyCfg, dayKey, expenses, internalOrders, onlineOrders, selectedCountry])
@@ -349,17 +367,18 @@ export default function DailyReports() {
   async function downloadExcel() {
     setExportingExcel(true)
     try {
+      const logoUrl = `${window.location.origin}${logoSrc}`
       const tables = sections.map((section) => `
         <h2>${escapeHtml(section.country)} - ${escapeHtml(dayKey)}</h2>
-        <table border="1"><tr><th>Order</th><th>Source</th><th>Agent</th><th>Dropshipper</th><th>Online</th><th>Driver</th><th>Product</th><th>Payment</th><th>Price</th><th>Status</th></tr>
-        ${section.rows.map((row) => `<tr><td>${escapeHtml(row.orderNumber)}</td><td>${escapeHtml(row.source)}</td><td>${escapeHtml(row.agentName)}</td><td>${escapeHtml(row.dropshipperName)}</td><td>${escapeHtml(row.onlineLabel)}</td><td>${escapeHtml(row.driverName)}</td><td>${escapeHtml(row.productName)}</td><td>${escapeHtml(row.paymentLabel)}</td><td>${escapeHtml(row.orderPrice.toFixed(2))}</td><td>${escapeHtml(row.status)}</td></tr>`).join('')}
-        <tr><td colspan="8"><strong>Total Orders</strong></td><td><strong>${escapeHtml(section.totals.orderPrice.toFixed(2))}</strong></td><td><strong>${escapeHtml(String(section.totals.orders))}</strong></td></tr></table>
+        <table border="1"><tr><th>Order</th><th>Submitter</th><th>Product</th><th>Payment</th><th>Price</th><th>Status</th></tr>
+        ${section.rows.map((row) => `<tr><td>${escapeHtml(row.orderNumber)}</td><td>${escapeHtml(row.submitterLabel)}</td><td>${escapeHtml(row.productName)}</td><td>${escapeHtml(row.paymentLabel)}</td><td>${escapeHtml(row.orderPrice.toFixed(2))}</td><td>${escapeHtml(row.status)}</td></tr>`).join('')}
+        <tr><td colspan="4"><strong>Total Orders</strong></td><td><strong>${escapeHtml(section.totals.orderPrice.toFixed(2))}</strong></td><td><strong>${escapeHtml(String(section.totals.orders))} orders</strong></td></tr></table>
         <br/>
-        <table border="1"><tr><th>Order</th><th>Product</th><th>Qty</th><th>Agent</th><th>Agent Commission</th><th>Driver</th><th>Driver Commission</th><th>Purchase Price</th><th>Ad Expense</th><th>Order Price</th><th>Profit</th></tr>
-        ${section.rows.map((row) => `<tr><td>${escapeHtml(row.orderNumber)}</td><td>${escapeHtml(row.productName)}</td><td>${escapeHtml(row.productQuantity)}</td><td>${escapeHtml(row.agentName)}</td><td>${escapeHtml(row.agentCommission.toFixed(2))}</td><td>${escapeHtml(row.driverName)}</td><td>${escapeHtml(row.driverCommission.toFixed(2))}</td><td>${escapeHtml(row.purchaseCost.toFixed(2))}</td><td>${escapeHtml(row.adExpense.toFixed(2))}</td><td>${escapeHtml(row.orderPrice.toFixed(2))}</td><td>${escapeHtml(row.profit.toFixed(2))}</td></tr>`).join('')}
-        <tr><td colspan="2"><strong>Sum</strong></td><td><strong>${escapeHtml(String(section.totals.qty))}</strong></td><td></td><td><strong>${escapeHtml(section.totals.agentCommission.toFixed(2))}</strong></td><td></td><td><strong>${escapeHtml(section.totals.driverCommission.toFixed(2))}</strong></td><td><strong>${escapeHtml(section.totals.purchaseCost.toFixed(2))}</strong></td><td><strong>${escapeHtml(section.totals.adExpense.toFixed(2))}</strong></td><td><strong>${escapeHtml(section.totals.orderPrice.toFixed(2))}</strong></td><td><strong>${escapeHtml(section.totals.profit.toFixed(2))}</strong></td></tr></table>
+        <table border="1"><tr><th>Order</th><th>Product</th><th>Qty</th><th>Submitter</th><th>Submitter Commission</th><th>Driver</th><th>Driver Commission</th><th>Purchase Price</th><th>Ad Expense</th><th>Order Price</th><th>Profit</th></tr>
+        ${section.rows.map((row) => `<tr><td>${escapeHtml(row.orderNumber)}</td><td>${escapeHtml(row.productName)}</td><td>${escapeHtml(row.productQuantity)}</td><td>${escapeHtml(row.submitterLabel)}</td><td>${escapeHtml(row.submitterCommission.toFixed(2))}</td><td>${escapeHtml(row.driverName)}</td><td>${escapeHtml(row.driverCommission.toFixed(2))}</td><td>${escapeHtml(row.purchaseCost.toFixed(2))}</td><td>${escapeHtml(row.adExpense.toFixed(2))}</td><td>${escapeHtml(row.orderPrice.toFixed(2))}</td><td>${escapeHtml(row.profit.toFixed(2))}</td></tr>`).join('')}
+        <tr><td colspan="2"><strong>Sum</strong></td><td><strong>${escapeHtml(String(section.totals.qty))}</strong></td><td></td><td><strong>${escapeHtml(section.totals.submitterCommission.toFixed(2))}</strong></td><td></td><td><strong>${escapeHtml(section.totals.driverCommission.toFixed(2))}</strong></td><td><strong>${escapeHtml(section.totals.purchaseCost.toFixed(2))}</strong></td><td><strong>${escapeHtml(section.totals.adExpense.toFixed(2))}</strong></td><td><strong>${escapeHtml(section.totals.orderPrice.toFixed(2))}</strong></td><td><strong>${escapeHtml(section.totals.profit.toFixed(2))}</strong></td></tr></table>
       `).join('<br/><br/>')
-      const blob = new Blob([`<html><body>${tables}</body></html>`], { type: 'application/vnd.ms-excel;charset=utf-8;' })
+      const blob = new Blob([`<html><body><div style="text-align:center;margin-bottom:24px;"><img src="${escapeHtml(logoUrl)}" alt="BuySial" style="height:56px;display:block;margin:0 auto 12px;"/><div style="font-size:28px;font-weight:800;">Daily Report</div><div style="font-size:14px;color:#475569;">${escapeHtml(dayKey)}${selectedCountry === 'all' ? ' · All Countries' : ` · ${escapeHtml(selectedCountry)}`}</div></div>${tables}</body></html>`], { type: 'application/vnd.ms-excel;charset=utf-8;' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -402,6 +421,11 @@ export default function DailyReports() {
       </div>
 
       <div ref={reportRef} style={{ display: 'grid', gap: 18 }}>
+        <div className="card" style={{ padding: 20, textAlign: 'center', display: 'grid', gap: 10, justifyItems: 'center' }}>
+          <img src={logoSrc} alt="BuySial" style={{ width: 74, height: 74, objectFit: 'contain' }} />
+          <div style={{ fontSize: 30, fontWeight: 900, color: '#0f172a' }}>Daily Report</div>
+          <div className="helper">{dayKey}{selectedCountry === 'all' ? ' · All Countries' : ` · ${selectedCountry}`}</div>
+        </div>
         {loading ? <div className="card"><div className="section">Loading daily report…</div></div> : null}
         {!loading && !sections.length ? <div className="card"><div className="section">No orders found for the selected date and country.</div></div> : null}
         {sections.map((section) => (
@@ -415,21 +439,17 @@ export default function DailyReports() {
             </div>
 
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1080 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 860 }}>
                 <thead>
                   <tr style={{ background: 'var(--panel-2)' }}>
-                    {['Order', 'Source', 'Agent', 'Dropshipper', 'Online', 'Driver', 'Product', 'Payment', 'Price', 'Status'].map((label) => <th key={label} style={{ textAlign: 'left', padding: '10px 12px', borderBottom: '1px solid var(--border)' }}>{label}</th>)}
+                    {['Order', 'Submitter', 'Product', 'Payment', 'Price', 'Status'].map((label) => <th key={label} style={{ textAlign: 'left', padding: '10px 12px', borderBottom: '1px solid var(--border)' }}>{label}</th>)}
                   </tr>
                 </thead>
                 <tbody>
                   {section.rows.map((row) => (
                     <tr key={row.id}>
                       <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)' }}><div style={{ fontWeight: 700 }}>{row.orderNumber}</div><div className="helper">{formatDateTime(row.createdAt)}</div></td>
-                      <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)' }}>{row.source}</td>
-                      <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)' }}>{row.agentName}</td>
-                      <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)' }}>{row.dropshipperName}</td>
-                      <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)' }}>{row.onlineLabel}</td>
-                      <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)' }}>{row.driverName}</td>
+                      <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)', fontWeight: 700 }}>{row.submitterLabel}</td>
                       <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)' }}>{row.productName}</td>
                       <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)' }}>{row.paymentLabel}</td>
                       <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>{formatMoney(row.orderPrice, section.currency)}</td>
@@ -437,7 +457,7 @@ export default function DailyReports() {
                     </tr>
                   ))}
                   <tr style={{ background: 'rgba(15,23,42,0.04)', fontWeight: 800 }}>
-                    <td colSpan={8} style={{ padding: '10px 12px' }}>Total</td>
+                    <td colSpan={4} style={{ padding: '10px 12px' }}>Total</td>
                     <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>{formatMoney(section.totals.orderPrice, section.currency)}</td>
                     <td style={{ padding: '10px 12px' }}>{section.totals.orders} orders</td>
                   </tr>
@@ -449,7 +469,7 @@ export default function DailyReports() {
               <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1180 }}>
                 <thead>
                   <tr style={{ background: 'var(--panel-2)' }}>
-                    {['Order', 'Product', 'Qty', 'Agent', 'Agent Commission', 'Driver', 'Driver Commission', 'Purchase Price', 'Ad Expense', 'Order Price', 'Profit'].map((label) => <th key={label} style={{ textAlign: 'left', padding: '10px 12px', borderBottom: '1px solid var(--border)' }}>{label}</th>)}
+                    {['Order', 'Product', 'Qty', 'Submitter', 'Submitter Commission', 'Driver', 'Driver Commission', 'Purchase Price', 'Ad Expense', 'Order Price', 'Profit'].map((label) => <th key={label} style={{ textAlign: 'left', padding: '10px 12px', borderBottom: '1px solid var(--border)' }}>{label}</th>)}
                   </tr>
                 </thead>
                 <tbody>
@@ -458,8 +478,8 @@ export default function DailyReports() {
                       <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)' }}>{row.orderNumber}</td>
                       <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)' }}>{row.productName}</td>
                       <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)' }}>{row.productQuantity}</td>
-                      <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)' }}>{row.agentName}</td>
-                      <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>{formatMoney(row.agentCommission, section.currency)}</td>
+                      <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)' }}>{row.submitterLabel}</td>
+                      <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>{formatMoney(row.submitterCommission, section.currency)}</td>
                       <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)' }}>{row.driverName}</td>
                       <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>{formatMoney(row.driverCommission, section.currency)}</td>
                       <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>{formatMoney(row.purchaseCost, section.currency)}</td>
@@ -473,7 +493,7 @@ export default function DailyReports() {
                     <td style={{ padding: '10px 12px' }} />
                     <td style={{ padding: '10px 12px' }}>{section.totals.qty}</td>
                     <td style={{ padding: '10px 12px' }} />
-                    <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>{formatMoney(section.totals.agentCommission, section.currency)}</td>
+                    <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>{formatMoney(section.totals.submitterCommission, section.currency)}</td>
                     <td style={{ padding: '10px 12px' }} />
                     <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>{formatMoney(section.totals.driverCommission, section.currency)}</td>
                     <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>{formatMoney(section.totals.purchaseCost, section.currency)}</td>
