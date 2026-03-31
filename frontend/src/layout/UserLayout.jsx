@@ -1627,11 +1627,25 @@ export default function UserLayout() {
       localStorage.removeItem('navColors')
     } catch {}
     try {
+      sessionStorage.removeItem('customDomainStore')
+      const keysToRemove = []
+      for (let i = 0; i < sessionStorage.length; i += 1) {
+        const key = sessionStorage.key(i)
+        if (key && (key.startsWith('dashboard_') || key.startsWith('user_'))) keysToRemove.push(key)
+      }
+      keysToRemove.forEach((key) => sessionStorage.removeItem(key))
+    } catch {}
+    try {
+      setShowSettingsDropdown(false)
+      setShowSettings(false)
+      setClosed(true)
+    } catch {}
+    try {
       navigate('/login', { replace: true })
     } catch {}
     setTimeout(() => {
       try {
-        window.location.assign('/login')
+        window.location.replace('/login')
       } catch {}
     }, 30)
   }
@@ -2477,7 +2491,7 @@ export default function UserLayout() {
                         <button
                           onClick={() => {
                             navigate('/user/shopify-settings')
-                            setShowSettingsMenu(false)
+                            setShowSettingsDropdown(false)
                           }}
                           style={{
                             width: '100%',

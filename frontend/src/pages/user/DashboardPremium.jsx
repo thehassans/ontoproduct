@@ -88,6 +88,26 @@ function getCountryMetaFromName(name) {
   return COUNTRY_META.find((item) => item.match.some((value) => String(value).toLowerCase() === lower)) || null
 }
 
+function normalizeCountryCode(codeOrName) {
+  const raw = String(codeOrName || '').trim().toUpperCase()
+  if (!raw) return 'all'
+  if (raw === 'ALL') return 'all'
+  if (['SA', 'KSA', 'SAUDI ARABIA'].includes(raw)) return 'SA'
+  if (['AE', 'UAE', 'UNITED ARAB EMIRATES'].includes(raw)) return 'AE'
+  if (['OM', 'OMAN'].includes(raw)) return 'OM'
+  if (['BH', 'BAHRAIN'].includes(raw)) return 'BH'
+  if (['KW', 'KUWAIT'].includes(raw)) return 'KW'
+  if (['QA', 'QATAR'].includes(raw)) return 'QA'
+  if (['IN', 'INDIA'].includes(raw)) return 'IN'
+  if (['PK', 'PAKISTAN'].includes(raw)) return 'PK'
+  if (['JO', 'JORDAN'].includes(raw)) return 'JO'
+  if (['US', 'USA', 'UNITED STATES', 'UNITED STATES OF AMERICA'].includes(raw)) return 'US'
+  if (['GB', 'UK', 'UNITED KINGDOM'].includes(raw)) return 'GB'
+  if (['CA', 'CANADA'].includes(raw)) return 'CA'
+  if (['AU', 'AUSTRALIA'].includes(raw)) return 'AU'
+  return raw
+}
+
 function createEmptySummary() {
   return {
     currency: 'AED',
@@ -298,13 +318,14 @@ export default function DashboardPremium({ mode = 'user' } = {}) {
   useEffect(() => {
     if (!isPartner) return
     const countryName = report?.countries?.[0]?.country || report?.summary?.country
-    const code = getCountryMetaFromName(countryName)?.code
+    const code = normalizeCountryCode(getCountryMetaFromName(countryName)?.code || countryName)
     if (code && selectedCountryCode !== code) setSelectedCountryCode(code)
   }, [isPartner, report, selectedCountryCode])
 
   const activeRow = useMemo(() => {
     if (selectedCountryCode === 'all') return report.summary || createEmptySummary()
-    return report.countries.find((row) => getCountryMetaFromName(row?.country)?.code === selectedCountryCode) || createEmptySummary()
+    const normalizedSelectedCode = normalizeCountryCode(selectedCountryCode)
+    return report.countries.find((row) => normalizeCountryCode(getCountryMetaFromName(row?.country)?.code || row?.country) === normalizedSelectedCode) || createEmptySummary()
   }, [report, selectedCountryCode])
 
   const activeMeta = useMemo(() => COUNTRY_META.find((item) => item.code === selectedCountryCode) || null, [selectedCountryCode])
@@ -329,7 +350,8 @@ export default function DashboardPremium({ mode = 'user' } = {}) {
   const filteredPendingOrders = useMemo(() => {
     const list = Array.isArray(report?.pendingOrders) ? report.pendingOrders : []
     if (selectedCountryCode === 'all') return list
-    return list.filter((item) => getCountryMetaFromName(item?.country)?.code === selectedCountryCode)
+    const normalizedSelectedCode = normalizeCountryCode(selectedCountryCode)
+    return list.filter((item) => normalizeCountryCode(getCountryMetaFromName(item?.country)?.code || item?.country) === normalizedSelectedCode)
   }, [report, selectedCountryCode])
 
   const overviewCards = useMemo(() => {

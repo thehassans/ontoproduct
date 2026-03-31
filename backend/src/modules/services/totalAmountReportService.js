@@ -538,7 +538,7 @@ export async function buildTotalAmountSnapshot({ ownerId, periodType = "monthly"
       },
     ]),
     Order.aggregate([
-      { $match: { createdBy: { $in: creatorIds }, deliveredAt: { $gte: start, $lt: end } } },
+      { $match: { createdBy: { $in: creatorIds }, createdAt: { $gte: start, $lt: end } } },
       {
         $project: {
           orderCountryCanon: buildCountryCanonExpr("$orderCountry"),
@@ -606,7 +606,7 @@ export async function buildTotalAmountSnapshot({ ownerId, periodType = "monthly"
       },
     ]),
     WebOrder.aggregate([
-      { $match: { updatedAt: { $gte: start, $lt: end } } },
+      { $match: { createdAt: { $gte: start, $lt: end } } },
       {
         $project: {
           orderCountryCanon: buildCountryCanonExpr("$orderCountry"),
@@ -629,7 +629,7 @@ export async function buildTotalAmountSnapshot({ ownerId, periodType = "monthly"
       },
     ]),
     Order.aggregate([
-      { $match: { createdBy: { $in: creatorIds }, deliveredAt: { $gte: start, $lt: end } } },
+      { $match: { createdBy: { $in: creatorIds }, createdAt: { $gte: start, $lt: end } } },
       {
         $project: {
           orderCountryCanon: buildCountryCanonExpr("$orderCountry"),
@@ -709,7 +709,7 @@ export async function buildTotalAmountSnapshot({ ownerId, periodType = "monthly"
       { $group: { _id: { country: "$expenseCountryCanon", currency: "$currency" }, total: { $sum: "$amount" } } },
     ]),
     Order.aggregate([
-      { $match: { createdBy: { $in: creatorIds }, deliveredAt: { $gte: start, $lt: end } } },
+      { $match: { createdBy: { $in: creatorIds }, createdAt: { $gte: start, $lt: end } } },
       {
         $project: {
           orderCountryCanon: buildCountryCanonExpr("$orderCountry"),
@@ -723,7 +723,7 @@ export async function buildTotalAmountSnapshot({ ownerId, periodType = "monthly"
     ]),
     ownedProductIds.length
       ? WebOrder.aggregate([
-          { $match: { "items.productId": { $in: ownedProductIds }, updatedAt: { $gte: start, $lt: end } } },
+          { $match: { "items.productId": { $in: ownedProductIds }, createdAt: { $gte: start, $lt: end } } },
           {
             $project: {
               orderCountryCanon: buildCountryCanonExpr("$orderCountry"),
@@ -776,7 +776,7 @@ export async function buildTotalAmountSnapshot({ ownerId, periodType = "monthly"
       : [],
     agentIds.length
       ? Order.aggregate([
-          { $match: { createdBy: { $in: agentIds }, deliveredAt: { $gte: start, $lt: end } } },
+          { $match: { createdBy: { $in: agentIds }, createdAt: { $gte: start, $lt: end } } },
           {
             $project: {
               entityId: "$createdBy",
@@ -834,7 +834,7 @@ export async function buildTotalAmountSnapshot({ ownerId, periodType = "monthly"
       : [],
     driverIds.length
       ? Order.aggregate([
-          { $match: { deliveryBoy: { $in: driverIds }, deliveredAt: { $gte: start, $lt: end } } },
+          { $match: { deliveryBoy: { $in: driverIds }, createdAt: { $gte: start, $lt: end } } },
           {
             $project: {
               entityId: "$deliveryBoy",
