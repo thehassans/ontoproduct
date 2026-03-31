@@ -211,11 +211,30 @@ export default function SubmitOrder() {
     return Math.max(0, Number(getLocalStockByCountry(product?.partnerStockByCountry, currentCountryKey) || 0))
   }
 
-  function getSelectedCountryStock(product) {
-    if (usesPartnerInventory) {
-      return getSelectedCountryPartnerStock(product)
-    }
+  function getSelectedCountryCompanyStock(product) {
     return Math.max(0, Number(getLocalStockByCountry(product?.stockByCountry, currentCountryKey) || 0))
+  }
+
+  function getSelectedCountryStockSummary(product) {
+    const partnerStock = usesPartnerInventory ? getSelectedCountryPartnerStock(product) : 0
+    const companyWarehouseStock = getSelectedCountryCompanyStock(product)
+    return {
+      partnerStock,
+      companyWarehouseStock,
+      totalStock: usesPartnerInventory ? partnerStock + companyWarehouseStock : companyWarehouseStock,
+    }
+  }
+
+  function getSelectedCountryStock(product) {
+    return getSelectedCountryStockSummary(product).totalStock
+  }
+
+  function getSelectedCountryStockLabel(product) {
+    const { partnerStock, companyWarehouseStock, totalStock } = getSelectedCountryStockSummary(product)
+    if (usesPartnerInventory) {
+      return `${form.orderCountry} • Partner Stock: ${partnerStock} • Company Warehouse: ${companyWarehouseStock} • Total: ${totalStock}`
+    }
+    return `In ${form.orderCountry}: ${companyWarehouseStock}`
   }
 
   useEffect(() => {
@@ -1224,7 +1243,7 @@ export default function SubmitOrder() {
                           placeholder="Type to search products (min 3 characters)..."
                           style={{ width: '100%' }}
                         />
-                        {it.showDropdown && filteredProducts.length > 0 && (
+                        {it.showDropdown && String(it.searchText || '').trim().length >= 3 && (
                           <div
                             style={{
                               position: 'absolute',
@@ -1241,80 +1260,85 @@ export default function SubmitOrder() {
                               boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
                             }}
                           >
-                            {filteredProducts.map((p) => {
-                              const base = p.baseCurrency || 'SAR'
-                              const display = convertPrice(
-                                Number(p.price) || 0,
-                                base,
-                                selectedCurrency
-                              )
-                              const availableStock = getSelectedCountryStock(p)
-                              const partnerStock = getSelectedCountryPartnerStock(p)
-                              return (
-                                <div
-                                  key={p._id}
-                                  onMouseDown={() => {
-                                    if (availableStock <= 0) return
-                                    // Check if this product already exists in items
-                                    const existingIndex = items.findIndex(
-                                      (item, idx) =>
-                                        idx !== i && String(item.productId) === String(p._id)
-                                    )
-                                    if (existingIndex !== -1) {
-                                      // Product exists, increase its quantity and remove current empty row
-                                      setItems((prev) => {
-                                        const updated = prev.map((x, idx) =>
-                                          idx === existingIndex
-                                            ? { ...x, quantity: Math.min(availableStock, (x.quantity || 1) + 1) }
-                                            : x
-                                        )
-                                        // Remove current row if it was empty
-                                        return updated.filter(
-                                          (_, idx) => idx !== i || prev[i].productId
-                                        )
-                                      })
-                                    } else {
-                                      // Product doesn't exist, add it normally
-                                      setItems((prev) =>
-                                        prev.map((x, idx) =>
-                                          idx === i
-                                            ? {
-                                                ...x,
-                                                productId: p._id,
-                                                searchText: `${p.name} • ${selectedCurrency} ${display.toFixed(2)}`,
-                                                showDropdown: false,
-                                              }
-                                            : x
-                                        )
+                            {filteredProducts.length > 0 ? (
+                              filteredProducts.map((p) => {
+                                const base = p.baseCurrency || 'SAR'
+                                const display = convertPrice(
+                                  Number(p.price) || 0,
+                                  base,
+                                  selectedCurrency
+                                )
+                                const availableStock = getSelectedCountryStock(p)
+                                return (
+                                  <div
+                                    key={p._id}
+                                    onMouseDown={() => {
+                                      if (availableStock <= 0) return
+                                      // Check if this product already exists in items
+                                      const existingIndex = items.findIndex(
+                                        (item, idx) =>
+                                          idx !== i && String(item.productId) === String(p._id)
                                       )
+                                      if (existingIndex !== -1) {
+                                        // Product exists, increase its quantity and remove current empty row
+                                        setItems((prev) => {
+                                          const updated = prev.map((x, idx) =>
+                                            idx === existingIndex
+                                              ? { ...x, quantity: Math.min(availableStock, (x.quantity || 1) + 1) }
+                                              : x
+                                          )
+                                          // Remove current row if it was empty
+                                          return updated.filter(
+                                            (_, idx) => idx !== i || prev[i].productId
+                                          )
+                                        })
+                                      } else {
+                                        // Product doesn't exist, add it normally
+                                        setItems((prev) =>
+                                          prev.map((x, idx) =>
+                                            idx === i
+                                              ? {
+                                                  ...x,
+                                                  productId: p._id,
+                                                  searchText: `${p.name} • ${selectedCurrency} ${display.toFixed(2)}`,
+                                                  showDropdown: false,
+                                                }
+                                              : x
+                                          )
+                                        )
+                                      }
+                                    }}
+                                    style={{
+                                      padding: '10px 12px',
+                                      cursor: availableStock > 0 ? 'pointer' : 'not-allowed',
+                                      borderBottom: '1px solid var(--border)',
+                                      transition: 'background 0.15s',
+                                      opacity: availableStock > 0 ? 1 : 0.55,
+                                    }}
+                                    onMouseEnter={(e) =>
+                                      (e.currentTarget.style.background = 'var(--panel-2)')
                                     }
-                                  }}
-                                  style={{
-                                    padding: '10px 12px',
-                                    cursor: availableStock > 0 ? 'pointer' : 'not-allowed',
-                                    borderBottom: '1px solid var(--border)',
-                                    transition: 'background 0.15s',
-                                    opacity: availableStock > 0 ? 1 : 0.55,
-                                  }}
-                                  onMouseEnter={(e) =>
-                                    (e.currentTarget.style.background = 'var(--panel-2)')
-                                  }
-                                  onMouseLeave={(e) =>
-                                    (e.currentTarget.style.background = 'transparent')
-                                  }
-                                >
-                                  <div style={{ fontWeight: 500 }}>{p.name}</div>
-                                  <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>
-                                    {selectedCurrency} {display.toFixed(2)} • {usesPartnerInventory ? `Partner Stock: ${partnerStock}` : `In ${form.orderCountry}: ${availableStock}`}
+                                    onMouseLeave={(e) =>
+                                      (e.currentTarget.style.background = 'transparent')
+                                    }
+                                  >
+                                    <div style={{ fontWeight: 500 }}>{p.name}</div>
+                                    <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>
+                                      {selectedCurrency} {display.toFixed(2)} • {getSelectedCountryStockLabel(p)}
+                                    </div>
                                   </div>
-                                </div>
-                              )
-                            })}
+                                )
+                              })
+                            ) : (
+                              <div style={{ padding: '10px 12px', fontSize: 12, opacity: 0.75 }}>
+                                No stocked products found in {form.orderCountry} for this search.
+                              </div>
+                            )}
                           </div>
                         )}
                         {selectedProduct ? (
                           <div className="helper" style={{ fontSize: 11, opacity: 0.8, marginTop: 4 }}>
-                            {usesPartnerInventory ? `Partner Stock: ${selectedProductStock}` : `In ${form.orderCountry}: ${selectedProductStock}`}
+                            {getSelectedCountryStockLabel(selectedProduct)}
                           </div>
                         ) : null}
                         {it.searchText && it.searchText.length > 0 && it.searchText.length < 3 && (
