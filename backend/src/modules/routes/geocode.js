@@ -50,7 +50,7 @@ router.post('/reverse', auth, async (req, res) => {
   }
 })
 
-// POST /api/geocode/whatsapp - Resolve WhatsApp location code
+// POST /api/geocode/whatsapp - Resolve submit-order location input
 router.post('/whatsapp', auth, async (req, res) => {
   try {
     const { locationCode } = req.body
@@ -62,7 +62,7 @@ router.post('/whatsapp', auth, async (req, res) => {
       })
     }
     
-    const result = await googleMapsService.resolveWhatsAppLocation(locationCode)
+    const result = await googleMapsService.resolveGoogleMapsUrl(locationCode)
     res.json(result)
   } catch (err) {
     console.error('WhatsApp location resolution error:', err)
