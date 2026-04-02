@@ -41,6 +41,7 @@ import categoriesRoutes from "./modules/routes/categories.js";
 import brandsRoutes from "./modules/routes/brands.js";
 import exploreMoreRoutes from "./modules/routes/exploreMore.js";
 import waRoutes from "./modules/routes/wa.js";
+import { bootstrapSuperAdminFromEnv } from "./modules/services/bootstrapSuperAdmin.js";
 
 
 dotenv.config();
@@ -580,6 +581,15 @@ setTimeout(() => {
 connectDB()
   .then(async () => {
     console.log("Database connected");
+
+    try {
+      await bootstrapSuperAdminFromEnv();
+    } catch (bootstrapErr) {
+      console.error(
+        "[super-admin] Bootstrap failed (continuing anyway):",
+        bootstrapErr?.message || bootstrapErr
+      );
+    }
 
     // AUTO-CLEANUP: Delete corrupted remittances (one-time fix for calculation bug)
     try {
