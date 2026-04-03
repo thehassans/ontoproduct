@@ -10,6 +10,38 @@ function StatusBadge({ status }) {
   return <span className="chip" style={{ background: 'transparent', ...color }}>{status || '-'}</span>
 }
 
+function formatPhone(phoneCountryCode, customerPhone) {
+  const cc = String(phoneCountryCode || '').trim()
+  const rawPhone = String(customerPhone || '').trim()
+  if (!cc) return rawPhone
+  if (!rawPhone) return cc
+  const ccDigits = cc.replace(/\D/g, '')
+  const phoneDigits = rawPhone.replace(/\D/g, '')
+  if (ccDigits && phoneDigits && (phoneDigits === ccDigits || phoneDigits.startsWith(ccDigits))) {
+    return rawPhone.startsWith('+') ? rawPhone : `+${rawPhone}`
+  }
+  return `${cc} ${rawPhone}`.trim()
+}
+
+function formatAddress(order) {
+  const parts = [order?.customerAddress, order?.customerArea, order?.city, order?.orderCountry]
+    .map((part) => String(part || '').trim())
+    .filter(Boolean)
+  const seen = []
+  for (const part of parts) {
+    const normalizedPart = part.toLowerCase()
+    if (seen.some((existing) => existing === normalizedPart || existing.includes(normalizedPart) || normalizedPart.includes(existing))) continue
+    seen.push(normalizedPart)
+  }
+  return parts.filter((part) => {
+    const normalizedPart = part.toLowerCase()
+    const firstIndex = seen.findIndex((existing) => existing === normalizedPart || existing.includes(normalizedPart) || normalizedPart.includes(existing))
+    if (firstIndex === -1) return false
+    seen[firstIndex] = `__used__${firstIndex}`
+    return true
+  }).join(', ')
+}
+
 export default function PendingOrders() {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
@@ -78,7 +110,8 @@ export default function PendingOrders() {
       ) : (
         filteredOrders.map((order) => {
           const id = String(order?._id || order?.id)
-          const fullAddress = [order?.customerAddress, order?.customerArea, order?.city, order?.orderCountry].filter(Boolean).join(', ')
+          const fullAddress = formatAddress(order)
+          const phoneDisplay = formatPhone(order?.phoneCountryCode, order?.customerPhone)
           return (
             <div key={id} className="card" style={{ display: 'grid', gap: 12 }}>
               <div className="card-header" style={{ alignItems: 'center' }}>
@@ -94,7 +127,7 @@ export default function PendingOrders() {
                 <div>
                   <div className="label">Customer</div>
                   <div style={{ fontWeight: 700 }}>{order?.customerName || '-'}</div>
-                  <div className="helper">{`${order?.phoneCountryCode || ''} ${order?.customerPhone || ''}`.trim()}</div>
+                  <div className="helper">{phoneDisplay || '-'}</div>
                   <div className="helper">{fullAddress || '-'}</div>
                 </div>
                 <div>
