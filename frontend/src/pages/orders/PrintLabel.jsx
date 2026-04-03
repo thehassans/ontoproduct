@@ -361,12 +361,9 @@ export default function PrintLabel() {
   const savedTotal = order.total != null ? Number(order.total) : null
   const savedTotalConv = savedTotal != null ? convert(savedTotal, localCode, targetCode, curCfg) : null
   const calculatedTotal = Math.max(0, itemsSubtotalConv + shipConv - discountConv)
-  const hasReliableItemPricing = itemsSubtotalConv > 0
-  const computedTotalLocal = hasReliableItemPricing
-    ? calculatedTotal
-    : (savedTotalConv != null && Number.isFinite(savedTotalConv))
-      ? savedTotalConv
-      : calculatedTotal
+  const computedTotalLocal = savedTotalConv != null && Number.isFinite(savedTotalConv)
+    ? savedTotalConv
+    : calculatedTotal
   const codLocal = Number(order.codAmount || 0)
   const collectedLocal = Number(order.collectedAmount || 0)
   const balanceDueLocal = Math.max(0, codLocal - collectedLocal - shipLocal)

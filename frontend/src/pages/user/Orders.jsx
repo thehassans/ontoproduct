@@ -1607,12 +1607,9 @@ export default function UserOrders() {
             const savedTotal = o.total != null ? Number(o.total) : null
             const savedTotalConv = savedTotal != null ? convert(savedTotal, localCode, targetCode, curCfg) : null
             const calculatedPrice = Math.max(0, itemsSubtotalConv + shipConv - discountConv)
-            const hasReliableItemPricing = itemsSubtotalConv > 0
-            const price = hasReliableItemPricing
-              ? calculatedPrice
-              : (savedTotalConv != null && Number.isFinite(savedTotalConv))
-                ? savedTotalConv
-                : calculatedPrice
+            const price = savedTotalConv != null && Number.isFinite(savedTotalConv)
+              ? savedTotalConv
+              : calculatedPrice
 
             // Address
             const fullAddress = formatDisplayAddress(o)
