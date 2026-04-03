@@ -730,6 +730,38 @@ export default function UserOrders() {
     return `${cur} ${s}`
   }
 
+  function formatDisplayPhone(phoneCountryCode, customerPhone) {
+    const cc = String(phoneCountryCode || '').trim()
+    const rawPhone = String(customerPhone || '').trim()
+    if (!cc) return rawPhone
+    if (!rawPhone) return cc
+    const ccDigits = cc.replace(/\D/g, '')
+    const phoneDigits = rawPhone.replace(/\D/g, '')
+    if (ccDigits && phoneDigits && (phoneDigits === ccDigits || phoneDigits.startsWith(ccDigits))) {
+      return rawPhone.startsWith('+') ? rawPhone : `+${rawPhone}`
+    }
+    return `${cc} ${rawPhone}`.trim()
+  }
+
+  function formatDisplayAddress(order) {
+    const seen = new Set()
+    const tokens = []
+    const parts = [order?.customerAddress || order?.customerLocation, order?.customerArea, order?.city, order?.orderCountry]
+    for (const part of parts) {
+      const segments = String(part || '')
+        .split(',')
+        .map((segment) => segment.trim())
+        .filter(Boolean)
+      for (const segment of segments) {
+        const key = segment.toLowerCase()
+        if (seen.has(key)) continue
+        seen.add(key)
+        tokens.push(segment)
+      }
+    }
+    return tokens.join(', ')
+  }
+
   // Drivers loaded on-demand by country
 
   // Fetch drivers by country (with caching)
@@ -1382,11 +1414,11 @@ export default function UserOrders() {
                       <div style={{ display: 'grid', gap: 4, fontSize: 14 }}>
                         <div className="helper">
                           <strong>Customer:</strong> {order.customerName || '-'} •{' '}
-                          {order.customerPhone || '-'}
+                          {formatDisplayPhone(order.phoneCountryCode, order.customerPhone) || '-'}
                         </div>
                         <div className="helper">
                           <strong>Address:</strong>{' '}
-                          {order.customerAddress || order.customerLocation || '-'}
+                          {formatDisplayAddress(order) || '-'}
                         </div>
                         {order.returnReason && (
                           <div className="helper">
@@ -1583,9 +1615,8 @@ export default function UserOrders() {
                 : calculatedPrice
 
             // Address
-            const fullAddress = [o.customerAddress, o.customerArea, o.city, o.orderCountry]
-              .filter(Boolean)
-              .join(', ')
+            const fullAddress = formatDisplayAddress(o)
+            const phoneDisplay = formatDisplayPhone(o.phoneCountryCode, o.customerPhone)
 
             // Get drivers from the same country as the order
             const countryDrivers = driversByCountry[o.orderCountry] || []
@@ -1764,7 +1795,7 @@ export default function UserOrders() {
                     <div className="label">Customer</div>
                     <div style={{ fontWeight: 700 }}>{o.customerName || '-'}</div>
                     <div className="helper">
-                      {`${o.phoneCountryCode || ''} ${o.customerPhone || ''}`.trim()}
+                      {phoneDisplay || '-'}
                     </div>
                     <div
                       className="helper"
@@ -2250,13 +2281,13 @@ export default function UserOrders() {
                   >
                     <DetailRow
                       label="Customer"
-                      value={`${selected.customerName || '-'} (${selected.customerPhone || ''})`}
+                      value={`${selected.customerName || '-'} (${formatDisplayPhone(selected.phoneCountryCode, selected.customerPhone) || '-'})`}
                     />
                     <DetailRow
                       label="Location"
                       value={`${selected.orderCountry || ''} • ${selected.city || ''} • ${selected.customerArea || ''}`}
                     />
-                    <DetailRow label="Address" value={selected.customerAddress || '-'} />
+                    <DetailRow label="Address" value={formatDisplayAddress(selected) || '-'} />
                     <DetailRow label="Product(s)" value={productDisplay} />
                     <DetailRow
                       label="Agent"

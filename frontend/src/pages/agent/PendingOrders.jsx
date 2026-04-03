@@ -24,22 +24,22 @@ function formatPhone(phoneCountryCode, customerPhone) {
 }
 
 function formatAddress(order) {
-  const parts = [order?.customerAddress, order?.customerArea, order?.city, order?.orderCountry]
-    .map((part) => String(part || '').trim())
-    .filter(Boolean)
-  const seen = []
+  const seen = new Set()
+  const tokens = []
+  const parts = [order?.customerAddress || order?.customerLocation, order?.customerArea, order?.city, order?.orderCountry]
   for (const part of parts) {
-    const normalizedPart = part.toLowerCase()
-    if (seen.some((existing) => existing === normalizedPart || existing.includes(normalizedPart) || normalizedPart.includes(existing))) continue
-    seen.push(normalizedPart)
+    const segments = String(part || '')
+      .split(',')
+      .map((segment) => segment.trim())
+      .filter(Boolean)
+    for (const segment of segments) {
+      const key = segment.toLowerCase()
+      if (seen.has(key)) continue
+      seen.add(key)
+      tokens.push(segment)
+    }
   }
-  return parts.filter((part) => {
-    const normalizedPart = part.toLowerCase()
-    const firstIndex = seen.findIndex((existing) => existing === normalizedPart || existing.includes(normalizedPart) || normalizedPart.includes(existing))
-    if (firstIndex === -1) return false
-    seen[firstIndex] = `__used__${firstIndex}`
-    return true
-  }).join(', ')
+  return tokens.join(', ')
 }
 
 export default function PendingOrders() {
