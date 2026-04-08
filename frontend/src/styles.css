@@ -1325,21 +1325,38 @@ a {
   position: fixed;
   top: 0;
   left: 0;
-  height: 100%;
+  height: 100dvh;
   width: 240px;
   background: var(--sidebar-bg, var(--panel));
   border-right: 1px solid var(--sidebar-border, var(--border));
   transform: none;
   transition: width 0.2s ease;
   z-index: 100;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 .sidebar.closed {
   transform: none;
+}
+.sidebar .header {
+  flex: 0 0 auto;
+  position: sticky;
+  top: 0;
+  z-index: 2;
 }
 .sidebar .menu {
   padding: 8px;
   display: grid;
   gap: 4px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  align-content: start;
+  padding-bottom: 72px;
+  scrollbar-width: thin;
+  overscroll-behavior: contain;
 }
 /* Flat and nested nav items */
 .menu a,
@@ -1972,6 +1989,7 @@ a {
   /* Main content: default no offset; when sidebar is closed (rail visible), add a small left gutter */
   .main {
     margin-left: 0;
+    min-width: 0;
   }
   .main.full {
     margin-left: 56px;

@@ -148,6 +148,9 @@ export default function ProductDetail() {
   const [brandsList, setBrandsList] = useState([])
   const [displayCurrency, setDisplayCurrency] = useState('SAR')
   const [selectedMediaIndex, setSelectedMediaIndex] = useState(0)
+  const [viewportWidth, setViewportWidth] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth : 1440
+  )
   const mediaSwipeStartX = useRef(null)
   const [togglingPublish, setTogglingPublish] = useState(false)
   const [deletingProduct, setDeletingProduct] = useState(false)
@@ -234,6 +237,12 @@ export default function ProductDetail() {
       loadProductAndOrders()
     }
   }, [id])
+
+  useEffect(() => {
+    const onResize = () => setViewportWidth(window.innerWidth)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
 
   async function loadCategories() {
     try {
@@ -1147,6 +1156,51 @@ export default function ProductDetail() {
     return `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || 'Unknown'
   }
 
+  function getProductOrderMetrics(order) {
+    let quantity = 1
+    let productAmount = 0
+    const orderCountryCurrency = getOrderCountryCurrency(order?.orderCountry)
+    const orderTotal = Number(order?.total || 0)
+    const orderFinalAmount = orderTotal
+
+    if (Array.isArray(order?.items) && order.items.length > 0) {
+      const matchingItems = order.items.filter(
+        (item) => String(item.productId?._id || item.productId) === id
+      )
+      quantity = matchingItems.reduce((sum, item) => sum + Number(item.quantity || 1), 0)
+
+      const uniqueProducts = new Set(order.items.map((i) => String(i.productId?._id || i.productId)))
+
+      if (uniqueProducts.size === 1 && uniqueProducts.has(id)) {
+        productAmount = orderFinalAmount
+      } else {
+        const totalOrderQuantity = order.items.reduce((sum, i) => sum + Number(i.quantity || 1), 0)
+        productAmount = totalOrderQuantity > 0 ? (quantity / totalOrderQuantity) * orderFinalAmount : 0
+      }
+    } else if (String(order?.productId?._id || order?.productId) === id) {
+      quantity = Number(order?.quantity || 1)
+      productAmount = orderFinalAmount
+    }
+
+    const productAmountAED = productAmount * (currencyRates[orderCountryCurrency] || 1)
+    return { quantity, productAmount, productAmountAED, orderCountryCurrency }
+  }
+
+  const isCompactViewport = viewportWidth <= 1280
+  const isTabletViewport = viewportWidth <= 1024
+  const isMobileViewport = viewportWidth <= 768
+  const toolbarButtonBaseStyle = {
+    padding: isMobileViewport ? '10px 14px' : '10px 20px',
+    borderRadius: 8,
+    fontWeight: 600,
+    cursor: 'pointer',
+    display: 'inline-flex',
+    alignItems: 'center',
+    flex: isCompactViewport ? '1 1 180px' : '0 0 auto',
+    justifyContent: 'center',
+    whiteSpace: 'nowrap',
+  }
+
   if (loading) {
     return (
       <div style={{ padding: 40, textAlign: 'center' }}>
@@ -1167,26 +1221,26 @@ export default function ProductDetail() {
   }
 
   return (
-    <div style={{ display: 'grid', gap: 24, padding: 24 }}>
+    <div style={{ display: 'grid', gap: isMobileViewport ? 16 : 24, padding: isMobileViewport ? 12 : isTabletViewport ? 16 : 24 }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
         <button
           className="btn secondary"
           onClick={() => navigate('/user/products')}
-          style={{ padding: '8px 16px' }}
+          style={{ padding: isMobileViewport ? '8px 14px' : '8px 16px', flex: isMobileViewport ? '1 1 100%' : '0 0 auto' }}
         >
           ← Back
         </button>
         <div style={{ flex: '1 1 320px', minWidth: 240 }}>
-          <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0, marginBottom: 4, lineHeight: 1.12, maxWidth: '100%', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+          <h1 style={{ fontSize: 'clamp(24px, 3.2vw, 28px)', fontWeight: 800, margin: 0, marginBottom: 4, lineHeight: 1.12, maxWidth: '100%', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
             {product.name}
           </h1>
           <p style={{ margin: 0, opacity: 0.6, fontSize: 14, fontFamily: 'monospace' }}>
             SKU: {product.sku || 'N/A'}
           </p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', justifyContent: isCompactViewport ? 'flex-start' : 'flex-end', width: isCompactViewport ? '100%' : 'auto' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: isMobileViewport ? '1 1 100%' : '0 0 auto', flexWrap: 'wrap' }}>
             <span style={{ fontSize: 14, opacity: 0.7, fontWeight: 500 }}>View in:</span>
             <select
               value={displayCurrency}
@@ -1199,6 +1253,8 @@ export default function ProductDetail() {
                 fontSize: 14,
                 fontWeight: 600,
                 cursor: 'pointer',
+                minWidth: isMobileViewport ? 120 : 96,
+                flex: isMobileViewport ? '1 1 140px' : '0 0 auto',
               }}
             >
               <option value="SAR">SAR</option>
@@ -1223,12 +1279,10 @@ export default function ProductDetail() {
             onClick={togglePublish}
             disabled={togglingPublish}
             style={{
-              padding: '10px 20px',
+              ...toolbarButtonBaseStyle,
               background: (product.displayOnWebsite !== false) ? '#dc2626' : '#059669',
               color: 'white',
               border: 'none',
-              borderRadius: 8,
-              fontWeight: 600,
               cursor: togglingPublish ? 'not-allowed' : 'pointer',
               opacity: togglingPublish ? 0.7 : 1,
             }}
@@ -1245,20 +1299,20 @@ export default function ProductDetail() {
               setShowStockHistory(true)
               loadStockHistory()
             }}
-            style={{ padding: '10px 20px', background: '#f59e0b', color: 'white', border: 'none', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }}
+            style={{ ...toolbarButtonBaseStyle, background: '#f59e0b', color: 'white', border: 'none' }}
           >
             📊 Stock History
           </button>
           <button
             onClick={() => setShowEditHistory(true)}
-            style={{ padding: '10px 20px', background: '#8b5cf6', color: 'white', border: 'none', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }}
+            style={{ ...toolbarButtonBaseStyle, background: '#8b5cf6', color: 'white', border: 'none' }}
           >
             📝 Edit History
           </button>
           <button
             className="btn"
             onClick={() => setShowAddStock(true)}
-            style={{ padding: '10px 20px', background: '#10b981', color: 'white', border: 'none', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }}
+            style={{ ...toolbarButtonBaseStyle, background: '#10b981', color: 'white', border: 'none' }}
           >
             ➕ Add Stock
           </button>
@@ -1270,21 +1324,21 @@ export default function ProductDetail() {
               setManagerStockSearch('')
               loadManagerStock()
             }}
-            style={{ padding: '10px 20px', background: '#8b5cf6', color: 'white', border: 'none', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }}
+            style={{ ...toolbarButtonBaseStyle, background: '#8b5cf6', color: 'white', border: 'none' }}
           >
             Manager Stock
           </button>
           <button
             className="btn secondary"
             onClick={() => setShowPartnerPurchasing(true)}
-            style={{ padding: '10px 20px', background: '#111827', color: 'white', border: 'none', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }}
+            style={{ ...toolbarButtonBaseStyle, background: '#111827', color: 'white', border: 'none' }}
           >
             Partner Purchasing
           </button>
           <button
             className="btn"
             onClick={openEditModal}
-            style={{ padding: '10px 20px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }}
+            style={{ ...toolbarButtonBaseStyle, background: '#3b82f6', color: 'white', border: 'none' }}
           >
             ✏️ Edit Product
           </button>
@@ -1292,7 +1346,7 @@ export default function ProductDetail() {
             className="btn secondary"
             onClick={handleDeleteProduct}
             disabled={deletingProduct}
-            style={{ padding: '10px 20px', background: '#dc2626', color: 'white', border: 'none', borderRadius: 8, fontWeight: 600, cursor: deletingProduct ? 'not-allowed' : 'pointer', opacity: deletingProduct ? 0.7 : 1 }}
+            style={{ ...toolbarButtonBaseStyle, background: '#dc2626', color: 'white', border: 'none', cursor: deletingProduct ? 'not-allowed' : 'pointer', opacity: deletingProduct ? 0.7 : 1 }}
           >
             {deletingProduct ? 'Deleting...' : '🗑️ Delete Product'}
           </button>
@@ -1300,20 +1354,20 @@ export default function ProductDetail() {
       </div>
 
       {/* Product Overview Card */}
-      <div className="card" style={{ padding: 24 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 24 }}>
+      <div className="card" style={{ padding: isMobileViewport ? 16 : 24 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isCompactViewport ? '1fr' : 'minmax(280px, 360px) 1fr', gap: isMobileViewport ? 16 : 24 }}>
           {/* Media Gallery - Images + Video Swipeable */}
-          <div style={{ display: 'flex', gap: 12 }}>
+          <div style={{ display: 'flex', gap: 12, flexDirection: isTabletViewport ? 'column-reverse' : 'row' }}>
             {/* Thumbnails */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', flexDirection: isTabletViewport ? 'row' : 'column', gap: 8, overflowX: isTabletViewport ? 'auto' : 'visible', paddingBottom: isTabletViewport ? 4 : 0 }}>
               {/* Image Thumbnails */}
               {(product.images || []).map((img, idx) => (
                 <button
                   key={`img-${idx}`}
                   onClick={() => setSelectedMediaIndex(idx)}
                   style={{
-                    width: 60,
-                    height: 60,
+                    width: isMobileViewport ? 52 : 60,
+                    height: isMobileViewport ? 52 : 60,
                     borderRadius: 8,
                     overflow: 'hidden',
                     border: selectedMediaIndex === idx ? '2px solid #ea580c' : '2px solid var(--border)',
@@ -1335,8 +1389,8 @@ export default function ProductDetail() {
                 <button
                   onClick={() => setSelectedMediaIndex((product.images?.length || 0))}
                   style={{
-                    width: 60,
-                    height: 60,
+                    width: isMobileViewport ? 52 : 60,
+                    height: isMobileViewport ? 52 : 60,
                     borderRadius: 8,
                     overflow: 'hidden',
                     border: selectedMediaIndex === (product.images?.length || 0) ? '2px solid #ea580c' : '2px solid var(--border)',
@@ -1364,8 +1418,8 @@ export default function ProductDetail() {
                 <button
                   onClick={openEditModal}
                   style={{
-                    width: 60,
-                    height: 60,
+                    width: isMobileViewport ? 52 : 60,
+                    height: isMobileViewport ? 52 : 60,
                     borderRadius: 8,
                     border: '2px dashed var(--border)',
                     cursor: 'pointer',
@@ -1384,8 +1438,9 @@ export default function ProductDetail() {
             {/* Main Media Display */}
             <div
               style={{
-                width: 280,
-                height: 280,
+                width: '100%',
+                maxWidth: isCompactViewport ? '100%' : 280,
+                height: isCompactViewport ? 'clamp(260px, 42vw, 420px)' : 280,
                 borderRadius: 12,
                 overflow: 'hidden',
                 background: 'var(--panel)',
@@ -1472,7 +1527,7 @@ export default function ProductDetail() {
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                gridTemplateColumns: `repeat(auto-fit, minmax(${isTabletViewport ? 160 : 200}px, 1fr))`,
                 gap: 16,
               }}
             >
@@ -1577,7 +1632,7 @@ export default function ProductDetail() {
                 borderRadius: 8,
                 border: '1px solid rgba(99, 102, 241, 0.2)',
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                gridTemplateColumns: `repeat(auto-fit, minmax(${isTabletViewport ? 160 : 200}px, 1fr))`,
                 gap: 12,
               }}
             >
@@ -1601,7 +1656,7 @@ export default function ProductDetail() {
               <div style={{ fontSize: 13, opacity: 0.6, marginBottom: 8 }}>
                 Stock by Country (Warehouse / Partner)
               </div>
-              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fit, minmax(${isTabletViewport ? 140 : 160}px, 1fr))`, gap: 12 }}>
                 {['UAE', 'Oman', 'KSA', 'Bahrain', 'India', 'Kuwait', 'Qatar', 'Australia', 'Canada', 'UK', 'USA', 'Pakistan'].map((country) => {
                   const warehouseStock = Number(warehouseData?.stockLeft?.[country] ?? product?.stockByCountry?.[country] ?? 0)
                   const partnerStock = Number(partnerStockByCountry?.[country] || 0)
@@ -1655,7 +1710,7 @@ export default function ProductDetail() {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+          gridTemplateColumns: `repeat(auto-fit, minmax(${isTabletViewport ? 150 : 180}px, 1fr))`,
           gap: 16,
         }}
       >
@@ -1769,14 +1824,14 @@ export default function ProductDetail() {
 
       {/* Country-wise Breakdown */}
       {Object.keys(stats.countryStats).length > 0 && (
-        <div className="card" style={{ padding: 24 }}>
+        <div className="card" style={{ padding: isMobileViewport ? 16 : 24 }}>
           <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16, margin: 0 }}>
             Sales by Country
           </h3>
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
+              gridTemplateColumns: `repeat(auto-fill, minmax(${isTabletViewport ? 200 : 250}px, 1fr))`,
               gap: 16,
             }}
           >
@@ -1808,7 +1863,7 @@ export default function ProductDetail() {
       )}
 
       {/* Orders List */}
-      <div className="card" style={{ padding: 24 }}>
+      <div className="card" style={{ padding: isMobileViewport ? 16 : 24 }}>
         <div
           style={{
             display: 'flex',
@@ -1821,12 +1876,12 @@ export default function ProductDetail() {
         >
           <h2 style={{ fontSize: 20, fontWeight: 800, margin: 0 }}>Order History</h2>
 
-          <div style={{ display: 'flex', gap: 12 }}>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', width: isMobileViewport ? '100%' : 'auto' }}>
             <select
               className="input"
               value={countryFilter}
               onChange={(e) => setCountryFilter(e.target.value)}
-              style={{ minWidth: 180 }}
+              style={{ minWidth: isMobileViewport ? 0 : 180, flex: isMobileViewport ? '1 1 180px' : '0 0 auto' }}
             >
               <option value="all">All Countries</option>
               {Array.from(new Set(orders.map((o) => o.orderCountry).filter(Boolean)))
@@ -1842,7 +1897,7 @@ export default function ProductDetail() {
               className="input"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              style={{ minWidth: 180 }}
+              style={{ minWidth: isMobileViewport ? 0 : 180, flex: isMobileViewport ? '1 1 180px' : '0 0 auto' }}
             >
               <option value="all">All Status ({orders.length})</option>
               <option value="delivered">
@@ -1869,8 +1924,83 @@ export default function ProductDetail() {
           </div>
         </div>
 
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        {isTabletViewport ? (
+          <div style={{ display: 'grid', gap: 12 }}>
+            {filteredOrders.length === 0 ? (
+              <div className="card" style={{ padding: 24, textAlign: 'center', opacity: 0.6 }}>
+                No orders found
+              </div>
+            ) : (
+              filteredOrders.map((order) => {
+                const { quantity, productAmount, productAmountAED, orderCountryCurrency } = getProductOrderMetrics(order)
+                return (
+                  <div
+                    key={order._id}
+                    className="card"
+                    style={{
+                      padding: isMobileViewport ? 14 : 16,
+                      display: 'grid',
+                      gap: 12,
+                      border: '1px solid var(--border)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: 12, flexWrap: 'wrap' }}>
+                      <div style={{ display: 'grid', gap: 4 }}>
+                        <div style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 15 }}>
+                          #{order.invoiceNumber || String(order._id).slice(-5)}
+                        </div>
+                        <div className="helper">{formatDate(order.createdAt)}</div>
+                      </div>
+                      <div>{getStatusBadge(order.shipmentStatus)}</div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
+                      <div>
+                        <div className="helper">Country</div>
+                        <div style={{ fontWeight: 700 }}>{order.orderCountry || 'N/A'}</div>
+                      </div>
+                      <div>
+                        <div className="helper">Customer</div>
+                        <div style={{ fontWeight: 700 }}>{order.customerName || 'N/A'}</div>
+                        <div className="helper">{order.customerPhone || 'N/A'}</div>
+                      </div>
+                      <div>
+                        <div className="helper">Quantity</div>
+                        <div style={{ fontWeight: 700 }}>{quantity}</div>
+                      </div>
+                      <div>
+                        <div className="helper">Amount</div>
+                        <div style={{ fontWeight: 700 }}>{orderCountryCurrency} {productAmount.toFixed(2)}</div>
+                        <div className="helper">AED {productAmountAED.toFixed(2)}</div>
+                      </div>
+                      <div>
+                        <div className="helper">Submitted By</div>
+                        <div style={{ fontWeight: 700 }}>{getUserName(order.createdBy)}</div>
+                        <div className="helper" style={{ textTransform: 'capitalize' }}>{order.createdByRole || 'N/A'}</div>
+                      </div>
+                      <div>
+                        <div className="helper">Driver</div>
+                        <div style={{ fontWeight: 700 }}>{order.deliveryBoy ? getUserName(order.deliveryBoy) : 'Not assigned'}</div>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
+                      <button
+                        className="btn secondary"
+                        onClick={() => setSelectedOrder(order)}
+                        style={{ padding: '8px 14px', fontSize: 13, whiteSpace: 'nowrap' }}
+                      >
+                        View Details
+                      </button>
+                    </div>
+                  </div>
+                )
+              })
+            )}
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <table style={{ width: '100%', minWidth: isTabletViewport ? 960 : '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '2px solid var(--border)' }}>
                 <th
@@ -1994,56 +2124,7 @@ export default function ProductDetail() {
                 </tr>
               ) : (
                 filteredOrders.map((order, idx) => {
-                  // SIMPLIFIED CALCULATION: For product detail page, show full order amount
-                  // when viewing orders for this specific product
-                  let quantity = 1
-                  let productAmount = 0
-                  const orderCountryCurrency = getOrderCountryCurrency(order.orderCountry)
-
-                  // Use order.total directly - it's already the final amount
-                  const orderTotal = Number(order.total || 0)
-                  const orderDiscount = Number(order.discount || 0)
-                  const orderFinalAmount = orderTotal // Don't subtract discount, total is already final
-
-                  // Determine quantity for this product
-                  if (Array.isArray(order.items) && order.items.length > 0) {
-                    // Multi-item order - sum all quantities for this product
-                    const matchingItems = order.items.filter(
-                      (item) => String(item.productId?._id || item.productId) === id
-                    )
-                    quantity = matchingItems.reduce(
-                      (sum, item) => sum + Number(item.quantity || 1),
-                      0
-                    )
-
-                    // Count unique products in the order
-                    const uniqueProducts = new Set(
-                      order.items.map((i) => String(i.productId?._id || i.productId))
-                    )
-
-                    if (uniqueProducts.size === 1 && uniqueProducts.has(id)) {
-                      // Only this product in order - show full amount
-                      productAmount = orderFinalAmount
-                    } else {
-                      // Mixed products - distribute by quantity
-                      const totalOrderQuantity = order.items.reduce(
-                        (sum, i) => sum + Number(i.quantity || 1),
-                        0
-                      )
-                      productAmount =
-                        totalOrderQuantity > 0
-                          ? (quantity / totalOrderQuantity) * orderFinalAmount
-                          : 0
-                    }
-                  } else if (String(order.productId?._id || order.productId) === id) {
-                    // Legacy single product order
-                    quantity = Number(order.quantity || 1)
-                    productAmount = orderFinalAmount
-                  }
-
-                  // Convert to AED for comparison
-                  const productAmountAED =
-                    productAmount * (currencyRates[orderCountryCurrency] || 1)
+                  const { quantity, productAmount, productAmountAED, orderCountryCurrency } = getProductOrderMetrics(order)
 
                   return (
                     <tr
@@ -2124,8 +2205,9 @@ export default function ProductDetail() {
                 })
               )}
             </tbody>
-          </table>
-        </div>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Order Detail Modal */}
@@ -2142,7 +2224,7 @@ export default function ProductDetail() {
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 1000,
-            padding: 20,
+            padding: isMobileViewport ? 12 : 20,
           }}
           onClick={() => setSelectedOrder(null)}
         >
@@ -2153,7 +2235,7 @@ export default function ProductDetail() {
               width: '100%',
               maxHeight: '90vh',
               overflow: 'auto',
-              padding: 32,
+              padding: isMobileViewport ? 16 : 32,
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -2162,6 +2244,8 @@ export default function ProductDetail() {
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'start',
+                gap: 12,
+                flexWrap: 'wrap',
                 marginBottom: 24,
               }}
             >

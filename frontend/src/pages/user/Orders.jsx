@@ -117,6 +117,10 @@ export default function UserOrders() {
   const [editingAgentCommission, setEditingAgentCommission] = useState({})
   const [editingAdExpense, setEditingAdExpense] = useState({})
   const [curCfg, setCurCfg] = useState(null)
+  const [ordersTotal, setOrdersTotal] = useState(0)
+  const [viewportWidth, setViewportWidth] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth : 1440
+  )
   // Infinite scroll state
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
@@ -240,6 +244,16 @@ export default function UserOrders() {
       return Array.isArray(orders) ? orders : []
     }
   }, [orders, country, shipFilter])
+  const isCompactViewport = viewportWidth <= 1280
+  const isTabletViewport = viewportWidth <= 1024
+  const isMobileViewport = viewportWidth <= 768
+  const visibleOrderTotal = Number(ordersTotal || summary?.totalOrders || renderedOrders.length) || 0
+  const visibleLoadedCount = renderedOrders.length
+  useEffect(() => {
+    const onResize = () => setViewportWidth(window.innerWidth)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
   async function loadOptions(selectedCountry = '') {
     try {
       const qs = selectedCountry ? `?country=${encodeURIComponent(selectedCountry)}` : ''
@@ -362,6 +376,29 @@ export default function UserOrders() {
     }
   }
 
+  async function fetchAllMatchingOrders(params, firstPageOrders = [], totalCount = 0, firstPage = 1) {
+    const pageSize = Number(params.get('limit') || 20)
+    const expectedTotal = Math.max(Number(totalCount) || 0, firstPageOrders.length)
+    if (!expectedTotal || firstPageOrders.length >= expectedTotal) {
+      return { orders: firstPageOrders, lastPage: firstPage, hasMore: false }
+    }
+    let acc = [...firstPageOrders]
+    let nextPage = firstPage + 1
+    for (;;) {
+      if (acc.length >= expectedTotal) break
+      const loop = new URLSearchParams(params.toString())
+      loop.set('page', String(nextPage))
+      const rr = await apiGet(`/api/orders?${loop.toString()}`)
+      const arr = Array.isArray(rr?.orders) ? rr.orders : []
+      if (!arr.length) break
+      acc = acc.concat(arr)
+      if (!rr?.hasMore || arr.length < pageSize) break
+      nextPage += 1
+      if (nextPage > 25) break
+    }
+    return { orders: acc, lastPage: nextPage, hasMore: acc.length < expectedTotal }
+  }
+
   async function loadOrders(reset = false) {
     if (loadingMoreRef.current) return
     loadingMoreRef.current = true
@@ -369,6 +406,7 @@ export default function UserOrders() {
       if (reset) {
         setLoading(true)
         setOrders([])
+        setOrdersTotal(0)
         setPage(1)
         setHasMore(true)
       }
@@ -378,9 +416,18 @@ export default function UserOrders() {
       params.set('limit', '20')
       const r = await apiGet(`/api/orders?${params.toString()}`)
       const list = Array.isArray(r?.orders) ? r.orders : []
-      setOrders((prev) => (reset ? list : [...prev, ...list]))
-      setHasMore(!!r?.hasMore)
-      setPage(nextPage)
+      const totalMatches = Math.max(Number(r?.total) || 0, list.length)
+      setOrdersTotal(totalMatches)
+      if (reset && totalMatches > list.length && totalMatches <= 200) {
+        const hydrated = await fetchAllMatchingOrders(params, list, totalMatches, nextPage)
+        setOrders(hydrated.orders)
+        setHasMore(!!hydrated.hasMore)
+        setPage(hydrated.lastPage)
+      } else {
+        setOrders((prev) => (reset ? list : [...prev, ...list]))
+        setHasMore(!!r?.hasMore)
+        setPage(nextPage)
+      }
       setError('')
       // Fallback: if user came from dashboard with specific country/ship filter but server returned none,
       // refetch without restrictive filters and rely on client-side strict filter
@@ -418,6 +465,7 @@ export default function UserOrders() {
             if (p > 10) break // safety
           }
           setOrders(acc)
+          setOrdersTotal(acc.length)
           setHasMore(false)
         } catch {}
       }
@@ -909,7 +957,7 @@ export default function UserOrders() {
         <div>
           <div
             style={{
-              fontSize: '42px',
+              fontSize: 'clamp(30px, 4vw, 42px)',
               fontWeight: 900,
               letterSpacing: '-1px',
               marginBottom: '12px',
@@ -956,7 +1004,7 @@ export default function UserOrders() {
           className="section"
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+            gridTemplateColumns: `repeat(auto-fit, minmax(${isTabletViewport ? 150 : 180}px, 1fr))`,
             gap: 12,
           }}
         >
@@ -977,7 +1025,7 @@ export default function UserOrders() {
               Total Orders
             </div>
             <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: '-1px' }}>
-              {summary?.totalOrders ?? '-'}
+              {visibleOrderTotal}
             </div>
           </div>
           <div
@@ -1196,7 +1244,7 @@ export default function UserOrders() {
           className="section"
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+            gridTemplateColumns: `repeat(auto-fit, minmax(${isCompactViewport ? 140 : 160}px, 1fr))`,
             gap: 10,
           }}
         >
@@ -1455,6 +1503,31 @@ export default function UserOrders() {
 
       {/* Cards list */}
       <div style={{ display: 'grid', gap: 12 }}>
+        <div
+          className="card"
+          style={{
+            padding: isMobileViewport ? 12 : 14,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 10,
+            flexWrap: 'wrap',
+          }}
+        >
+          <div style={{ display: 'grid', gap: 2 }}>
+            <div style={{ fontWeight: 800, fontSize: isMobileViewport ? 14 : 15 }}>
+              Showing {visibleLoadedCount} of {visibleOrderTotal || visibleLoadedCount} orders
+            </div>
+            <div className="helper">
+              {hasMore
+                ? 'Scroll down to load more matching orders.'
+                : 'All matching orders are loaded.'}
+            </div>
+          </div>
+          <div className="helper" style={{ whiteSpace: 'nowrap' }}>
+            {country ? `Country: ${country}` : 'All countries'}
+          </div>
+        </div>
         {loading ? (
           <div className="card">
             <div className="section">Loading…</div>
@@ -1714,8 +1787,8 @@ export default function UserOrders() {
                   background: isReturnSubmitted ? 'rgba(251, 146, 60, 0.05)' : undefined,
                 }}
               >
-                <div className="card-header" style={{ alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div className="card-header" style={{ alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', minWidth: 0 }}>
                     <div className="badge">{o.orderCountry || '-'}</div>
                     <div className="chip" style={{ background: 'transparent' }}>
                       {o.city || '-'}
@@ -1754,21 +1827,30 @@ export default function UserOrders() {
                       </span>
                     )}
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      flexWrap: 'wrap',
+                      justifyContent: isTabletViewport ? 'flex-start' : 'flex-end',
+                    }}
+                  >
                     {o.invoiceNumber ? <div style={{ fontWeight: 800 }}>{ordNo}</div> : null}
-                    <button className="btn primary" onClick={() => openEditPopout(o)}>
+                    <button className="btn primary" onClick={() => openEditPopout(o)} style={{ whiteSpace: 'nowrap' }}>
                       ✏️ Edit
                     </button>
                     <button
                       className="btn secondary"
                       onClick={() => window.open(`/label/${id}`, '_blank', 'noopener,noreferrer')}
+                      style={{ whiteSpace: 'nowrap' }}
                     >
                       Print Label
                     </button>
                     <button
                       className="btn"
                       onClick={() => handleDeleteOrder(o)}
-                      style={{ background: '#ef4444', color: 'white', border: 'none' }}
+                      style={{ background: '#ef4444', color: 'white', border: 'none', whiteSpace: 'nowrap' }}
                     >
                       🗑️ Delete
                     </button>
@@ -1784,7 +1866,7 @@ export default function UserOrders() {
                   className="section"
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                    gridTemplateColumns: `repeat(auto-fit, minmax(${isTabletViewport ? 180 : 220}px, 1fr))`,
                     gap: 10,
                   }}
                 >
@@ -1897,7 +1979,7 @@ export default function UserOrders() {
                     padding: '16px 0',
                     borderTop: '1px solid var(--border)',
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                    gridTemplateColumns: `repeat(auto-fit, minmax(${isTabletViewport ? 170 : 200}px, 1fr))`,
                     gap: 16,
                     alignItems: 'start',
                   }}
