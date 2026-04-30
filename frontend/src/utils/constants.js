@@ -14,6 +14,35 @@ export const DEFAULT_COUNTRY_LIST = [
   { code: 'AU', name: 'Australia', aliases: [], flag: '🇦🇺', dial: '+61', currency: 'AUD', currencySymbol: 'A$', enabled: true, order: 13 },
 ]
 
+const EXTRA_COUNTRY_DETECTION = [
+  { code: 'MY', name: 'Malaysia', aliases: [], flag: '🇲🇾', dial: '+60', currency: 'MYR', currencySymbol: 'RM' },
+  { code: 'SG', name: 'Singapore', aliases: [], flag: '🇸🇬', dial: '+65', currency: 'SGD', currencySymbol: 'S$' },
+  { code: 'DE', name: 'Germany', aliases: [], flag: '🇩🇪', dial: '+49', currency: 'EUR', currencySymbol: '€' },
+  { code: 'FR', name: 'France', aliases: [], flag: '🇫🇷', dial: '+33', currency: 'EUR', currencySymbol: '€' },
+  { code: 'TR', name: 'Turkey', aliases: ['Türkiye'], flag: '🇹🇷', dial: '+90', currency: 'TRY', currencySymbol: '₺' },
+  { code: 'ID', name: 'Indonesia', aliases: [], flag: '🇮🇩', dial: '+62', currency: 'IDR', currencySymbol: 'Rp' },
+  { code: 'PH', name: 'Philippines', aliases: [], flag: '🇵🇭', dial: '+63', currency: 'PHP', currencySymbol: '₱' },
+  { code: 'BD', name: 'Bangladesh', aliases: [], flag: '🇧🇩', dial: '+880', currency: 'BDT', currencySymbol: '৳' },
+  { code: 'LK', name: 'Sri Lanka', aliases: [], flag: '🇱🇰', dial: '+94', currency: 'LKR', currencySymbol: 'Rs' },
+  { code: 'NP', name: 'Nepal', aliases: [], flag: '🇳🇵', dial: '+977', currency: 'NPR', currencySymbol: '₨' },
+  { code: 'ZA', name: 'South Africa', aliases: [], flag: '🇿🇦', dial: '+27', currency: 'ZAR', currencySymbol: 'R' },
+  { code: 'NG', name: 'Nigeria', aliases: [], flag: '🇳🇬', dial: '+234', currency: 'NGN', currencySymbol: '₦' },
+  { code: 'KE', name: 'Kenya', aliases: [], flag: '🇰🇪', dial: '+254', currency: 'KES', currencySymbol: 'KSh' },
+  { code: 'MA', name: 'Morocco', aliases: [], flag: '🇲🇦', dial: '+212', currency: 'MAD', currencySymbol: 'د.م.' },
+  { code: 'TN', name: 'Tunisia', aliases: [], flag: '🇹🇳', dial: '+216', currency: 'TND', currencySymbol: 'د.ت' },
+  { code: 'CN', name: 'China', aliases: [], flag: '🇨🇳', dial: '+86', currency: 'CNY', currencySymbol: '¥' },
+  { code: 'JP', name: 'Japan', aliases: [], flag: '🇯🇵', dial: '+81', currency: 'JPY', currencySymbol: '¥' },
+  { code: 'KR', name: 'South Korea', aliases: ['Korea, Republic of'], flag: '🇰🇷', dial: '+82', currency: 'KRW', currencySymbol: '₩' },
+  { code: 'TH', name: 'Thailand', aliases: [], flag: '🇹🇭', dial: '+66', currency: 'THB', currencySymbol: '฿' },
+  { code: 'VN', name: 'Vietnam', aliases: [], flag: '🇻🇳', dial: '+84', currency: 'VND', currencySymbol: '₫' },
+  { code: 'EG', name: 'Egypt', aliases: [], flag: '🇪🇬', dial: '+20', currency: 'EGP', currencySymbol: 'E£' },
+  { code: 'LB', name: 'Lebanon', aliases: [], flag: '🇱🇧', dial: '+961', currency: 'LBP', currencySymbol: 'ل.ل' },
+  { code: 'IQ', name: 'Iraq', aliases: [], flag: '🇮🇶', dial: '+964', currency: 'IQD', currencySymbol: 'ع.د' },
+  { code: 'YE', name: 'Yemen', aliases: [], flag: '🇾🇪', dial: '+967', currency: 'YER', currencySymbol: '﷼' },
+]
+
+const COUNTRY_DETECTION_SOURCE = [...DEFAULT_COUNTRY_LIST, ...EXTRA_COUNTRY_DETECTION]
+
 const CURRENCY_SYMBOLS = {
   AED: 'د.إ',
   SAR: '﷼',
@@ -42,20 +71,29 @@ function unique(values = []) {
   return Array.from(new Set(values.map((value) => String(value || '').trim()).filter(Boolean)))
 }
 
+function findCountryDetectionSeed(value, entries = COUNTRY_DETECTION_SOURCE) {
+  const raw = String(value || '').trim()
+  const upper = raw.toUpperCase()
+  if (!upper) return null
+  return (entries || []).find((entry) => unique([entry.code, entry.name, ...(entry.aliases || [])]).some((item) => String(item || '').trim().toUpperCase() === upper)) || null
+}
+
 export function normalizeCountryEntry(entry = {}, index = 0) {
-  const code = String(entry.code || '').trim().toUpperCase()
-  const name = String(entry.name || '').trim()
+  const detected = findCountryDetectionSeed(entry.code || entry.name)
+  const code = String(entry.code || detected?.code || '').trim().toUpperCase()
+  const name = String(entry.name || detected?.name || '').trim()
   if (!code || !name) return null
-  const currency = String(entry.currency || 'AED').trim().toUpperCase() || 'AED'
-  const dialRaw = String(entry.dial || '').trim()
+  const currency = String(entry.currency || detected?.currency || '').trim().toUpperCase()
+  if (!currency) return null
+  const dialRaw = String(entry.dial || detected?.dial || '').trim()
   return {
     code,
     name,
-    aliases: unique([...(Array.isArray(entry.aliases) ? entry.aliases : []), code, name]).map((value) => value.toUpperCase()),
-    flag: String(entry.flag || '🌍').trim() || '🌍',
+    aliases: unique([...(Array.isArray(entry.aliases) ? entry.aliases : []), ...(detected?.aliases || []), code, name]).map((value) => value.toUpperCase()),
+    flag: String(entry.flag || detected?.flag || '🌍').trim() || '🌍',
     dial: dialRaw ? (dialRaw.startsWith('+') ? dialRaw : `+${dialRaw}`) : '',
     currency,
-    currencySymbol: String(entry.currencySymbol || CURRENCY_SYMBOLS[currency] || currency).trim() || currency,
+    currencySymbol: String(entry.currencySymbol || detected?.currencySymbol || CURRENCY_SYMBOLS[currency] || currency).trim() || currency,
     enabled: entry.enabled !== false,
     order: Number.isFinite(Number(entry.order)) ? Number(entry.order) : index + 1,
   }
@@ -97,6 +135,12 @@ export function resolveCountryEntry(value, countries = COUNTRY_LIST) {
   const upper = raw.toUpperCase()
   if (!upper) return null
   return (countries || []).find((country) => (country.aliases || []).includes(upper) || country.code === upper || country.name.toUpperCase() === upper) || null
+}
+
+export const COUNTRY_DETECTION_LIST = normalizeCountryList(COUNTRY_DETECTION_SOURCE)
+
+export function detectCountryMetadata(value, countries = COUNTRY_DETECTION_LIST) {
+  return resolveCountryEntry(value, countries)
 }
 
 export function canonicalCountryName(value, countries = COUNTRY_LIST) {

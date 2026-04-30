@@ -322,7 +322,9 @@ export default function DashboardPremium({ mode = 'user' } = {}) {
   }, [report, selectedCountryCode])
 
   const activeMeta = useMemo(() => countryMetaOptions.find((item) => item.code === selectedCountryCode) || null, [countryMetaOptions, selectedCountryCode])
-  const activeCurrency = activeRow?.currency || activeMeta?.currency || report.summary?.currency || 'AED'
+  const activeCurrency = selectedCountryCode === 'all'
+    ? report.summary?.currency || 'AED'
+    : activeMeta?.currency || activeRow?.currency || report.summary?.currency || 'AED'
   const approvedAdExpenses = useMemo(() => expenses.filter((item) => item.type === 'advertisement' && item.status === 'approved'), [expenses])
   const filteredExpenses = useMemo(() => {
     if (selectedCountryCode === 'all') return approvedAdExpenses

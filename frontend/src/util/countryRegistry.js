@@ -2,9 +2,9 @@ import { apiGet, apiPost } from '../api'
 import {
   COUNTRY_LIST,
   DEFAULT_COUNTRY_LIST,
+  detectCountryMetadata,
   normalizeCountryList,
   replaceCountryList,
-  resolveCountryEntry,
 } from '../utils/constants'
 
 let inflight = null
@@ -47,5 +47,5 @@ export async function saveCountryRegistry(countries = []) {
 }
 
 export function autoDetectCountryMeta(value) {
-  return resolveCountryEntry(value, DEFAULT_COUNTRY_LIST)
+  return detectCountryMetadata(value) || detectCountryMetadata(value, DEFAULT_COUNTRY_LIST)
 }
