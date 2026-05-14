@@ -43,6 +43,7 @@ function emptyCountryForm() {
     dial: '',
     currency: '',
     currencySymbol: '',
+    domain: '',
   }
 }
 
@@ -85,6 +86,7 @@ function CountryManager() {
       dial: String(next.dial || ''),
       currency: String(next.currency || '').toUpperCase(),
       currencySymbol: String(next.currencySymbol || ''),
+      domain: String(next.domain || ''),
     })
   }
 
@@ -183,10 +185,10 @@ function CountryManager() {
       <div className="card" style={{ padding: 24, display: 'grid', gap: 10 }}>
         <div style={{ fontSize: 22, fontWeight: 800, color: '#0f172a' }}>Country Management</div>
         <div style={{ fontSize: 14, color: '#64748b' }}>
-          Add or edit countries for dashboards, product availability, orders, and storefront selection. Currency, symbol, dial code, and flag auto-fill for known countries and stay editable.
+          Add or edit countries for dashboards, product availability, orders, storefront selection, and optional country-specific domains. Currency, symbol, dial code, and flag auto-fill for known countries and stay editable.
         </div>
         <div style={{ fontSize: 13, color: '#92400e', background: '#fff7ed', border: '1px solid #fdba74', borderRadius: 12, padding: 12 }}>
-          After adding a country with a new currency, review the Currency tab and confirm the conversion rate for that currency.
+          After adding a country with a new currency, review the Currency tab and confirm the conversion rate for that currency. If you assign a domain like buysial.ae, that host will open the storefront with this country locked.
         </div>
       </div>
 
@@ -226,6 +228,10 @@ function CountryManager() {
               <div>Flag</div>
               <input value={form.flag} onChange={(e) => updateForm('flag', e.target.value)} placeholder="🇦🇪" />
             </label>
+            <label className="field">
+              <div>Storefront Domain</div>
+              <input value={form.domain} onChange={(e) => updateForm('domain', e.target.value)} placeholder="buysial.ae" />
+            </label>
           </div>
           <label className="field">
             <div>Aliases</div>
@@ -263,6 +269,7 @@ function CountryManager() {
                     <span className="badge">{country.code}</span>
                     <span className="badge">{country.currency}</span>
                     {country.dial && <span className="badge">{country.dial}</span>}
+                    {country.domain && <span className="badge">{country.domain}</span>}
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button type="button" className="btn secondary" onClick={() => handleEdit(country)}>Edit</button>

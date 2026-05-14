@@ -12,6 +12,12 @@ function supportedCodes() {
 export function CountryProvider({ children }) {
   const [country, setCountryState] = useState(() => {
     try {
+      const lockedCode = String(localStorage.getItem('country_domain_locked_code') || '').toUpperCase().trim()
+      if (lockedCode) {
+        localStorage.setItem('selected_country', lockedCode)
+        localStorage.removeItem('country_auto_defaulted')
+        return lockedCode
+      }
       // Check URL param first (?cc=AE or ?country=AE) — allows TikTok/FB campaign
       // links to force the correct country instantly with zero async delay.
       // This runs synchronously before any child component renders, so all
@@ -50,6 +56,12 @@ export function CountryProvider({ children }) {
   // If a URL param set the country, emit the event once on mount so all listeners update
   useEffect(() => {
     try {
+      const lockedCode = String(localStorage.getItem('country_domain_locked_code') || '').toUpperCase().trim()
+      if (lockedCode) {
+        setCountryState(lockedCode)
+        window.dispatchEvent(new CustomEvent('countryChanged', { detail: { code: lockedCode } }))
+        return
+      }
       const urlParams = new URLSearchParams(window.location.search)
       const ccParam = (urlParams.get('cc') || urlParams.get('country') || '').toUpperCase().trim()
       const SUPPORTED = supportedCodes()
@@ -61,6 +73,13 @@ export function CountryProvider({ children }) {
 
   // Auto-detect country on first load
   useEffect(() => {
+    const lockedCode = (() => {
+      try { return String(localStorage.getItem('country_domain_locked_code') || '').toUpperCase().trim() } catch { return '' }
+    })()
+    if (lockedCode) {
+      setCountryState(lockedCode)
+      return
+    }
     const hasSelectedBefore = (() => {
       try { return localStorage.getItem('country_selected_manually') } catch { return null }
     })()
@@ -124,8 +143,27 @@ export function CountryProvider({ children }) {
     detectCountry()
   }, [countriesVersion])
 
+  useEffect(() => {
+    const handleCountryChanged = (event) => {
+      const code = String(event?.detail?.code || '').toUpperCase().trim()
+      if (!code) return
+      setCountryState(code)
+    }
+    window.addEventListener('countryChanged', handleCountryChanged)
+    return () => window.removeEventListener('countryChanged', handleCountryChanged)
+  }, [])
+
   // Set country and emit event
   const setCountry = useCallback((code) => {
+    const lockedCode = (() => {
+      try { return String(localStorage.getItem('country_domain_locked_code') || '').toUpperCase().trim() } catch { return '' }
+    })()
+    if (lockedCode) {
+      setCountryState(lockedCode)
+      try { localStorage.setItem('selected_country', lockedCode) } catch {}
+      window.dispatchEvent(new CustomEvent('countryChanged', { detail: { code: lockedCode } }))
+      return
+    }
     setCountryState(code)
     localStorage.setItem('selected_country', code)
     localStorage.setItem('country_selected_manually', 'true')

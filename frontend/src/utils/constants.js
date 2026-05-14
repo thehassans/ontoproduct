@@ -71,6 +71,21 @@ function unique(values = []) {
   return Array.from(new Set(values.map((value) => String(value || '').trim()).filter(Boolean)))
 }
 
+export function normalizeCountryDomain(value = '') {
+  const raw = String(value || '').trim().toLowerCase()
+  if (!raw) return ''
+  const withoutProtocol = raw.replace(/^https?:\/\//, '')
+  const hostname = withoutProtocol
+    .split('/')[0]
+    .split('?')[0]
+    .split('#')[0]
+    .split(':')[0]
+    .replace(/^www\./, '')
+    .trim()
+  if (!hostname || hostname === 'localhost' || hostname === '127.0.0.1') return ''
+  return hostname
+}
+
 function findCountryDetectionSeed(value, entries = COUNTRY_DETECTION_SOURCE) {
   const raw = String(value || '').trim()
   const upper = raw.toUpperCase()
@@ -94,6 +109,7 @@ export function normalizeCountryEntry(entry = {}, index = 0) {
     dial: dialRaw ? (dialRaw.startsWith('+') ? dialRaw : `+${dialRaw}`) : '',
     currency,
     currencySymbol: String(entry.currencySymbol || detected?.currencySymbol || CURRENCY_SYMBOLS[currency] || currency).trim() || currency,
+    domain: normalizeCountryDomain(entry.domain),
     enabled: entry.enabled !== false,
     order: Number.isFinite(Number(entry.order)) ? Number(entry.order) : index + 1,
   }
@@ -135,6 +151,20 @@ export function resolveCountryEntry(value, countries = COUNTRY_LIST) {
   const upper = raw.toUpperCase()
   if (!upper) return null
   return (countries || []).find((country) => (country.aliases || []).includes(upper) || country.code === upper || country.name.toUpperCase() === upper) || null
+}
+
+export function resolveCountryEntryByDomain(value, countries = COUNTRY_LIST) {
+  const hostname = normalizeCountryDomain(value)
+  if (!hostname) return null
+  return (countries || []).find((country) => normalizeCountryDomain(country?.domain) === hostname) || null
+}
+
+export function resolveCountryDomainForCurrentHost(countries = COUNTRY_LIST) {
+  try {
+    return resolveCountryEntryByDomain(window.location.hostname, countries)
+  } catch {
+    return null
+  }
 }
 
 export const COUNTRY_DETECTION_LIST = normalizeCountryList(COUNTRY_DETECTION_SOURCE)

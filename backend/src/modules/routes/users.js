@@ -41,6 +41,7 @@ import {
   normalizeMonthKey as normalizeLiveMonthKey,
   TOTAL_AMOUNT_SNAPSHOT_VERSION as LIVE_TOTAL_AMOUNT_SNAPSHOT_VERSION,
 } from "../services/totalAmountReportService.js";
+import { resolveCountryEntryByDomain, getCountryRegistry } from "../utils/countries.js";
 
 const router = Router();
 const TOTAL_AMOUNT_SNAPSHOT_VERSION = LIVE_TOTAL_AMOUNT_SNAPSHOT_VERSION;
@@ -2194,6 +2195,22 @@ router.get("/by-domain/:domain", async (req, res) => {
         storeName: "BuySial",
         customDomain: normalizedDomain,
         isMainDomain: true
+      });
+    }
+
+    const countries = await getCountryRegistry();
+    const domainCountry = resolveCountryEntryByDomain(normalizedDomain, countries);
+    if (domainCountry) {
+      return res.json({
+        userId: null,
+        storeName: `BuySial ${domainCountry.name}`,
+        customDomain: normalizedDomain,
+        isCountryDomain: true,
+        country: {
+          code: domainCountry.code,
+          name: domainCountry.name,
+          domain: domainCountry.domain || normalizedDomain,
+        },
       });
     }
 

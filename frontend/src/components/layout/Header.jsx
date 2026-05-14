@@ -74,6 +74,10 @@ export default function Header({ onCartClick, editMode = false, editState = {}, 
   const { country: selectedCountry, setCountry: setSelectedCountry } = useCountry()
   const countryRef = useRef(null)
   const brandLogoSrc = isNativeMobileApp() ? '/mobile-app-launcher.png' : '/BSBackgroundremoved.png'
+  const lockedCountryCode = (() => {
+    try { return String(localStorage.getItem('country_domain_locked_code') || '').toUpperCase().trim() } catch { return '' }
+  })()
+  const isCountryLocked = !!lockedCountryCode
 
   useEffect(() => {
     // Load announcement bar from API
@@ -150,6 +154,7 @@ export default function Header({ onCartClick, editMode = false, editState = {}, 
   }, [])
 
   const handleCountryChange = (country) => {
+    if (isCountryLocked) return
     setSelectedCountry(country.code)
     setIsCountryOpen(false)
     try { localStorage.setItem('selected_country', country.code) } catch {}
@@ -282,17 +287,19 @@ export default function Header({ onCartClick, editMode = false, editState = {}, 
                 <div className="country-selector" ref={countryRef}>
                   <button 
                     className="country-btn"
-                    onClick={() => setIsCountryOpen(!isCountryOpen)}
+                    onClick={() => { if (!isCountryLocked) setIsCountryOpen(!isCountryOpen) }}
+                    disabled={isCountryLocked}
+                    title={isCountryLocked ? 'Country is locked to this domain' : undefined}
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{color:'#9ca3af',flexShrink:0}}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" /></svg>
                     <span className="deliver-label">Deliver to</span>
                     <span className="country-flag" key={currentCountry.code}>{currentCountry.flag}</span>
                     <span className="country-name">{currentCountry.name}</span>
-                    <svg className={`country-arrow ${isCountryOpen ? 'open' : ''}`} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    {!isCountryLocked && <svg className={`country-arrow ${isCountryOpen ? 'open' : ''}`} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M6 9l6 6 6-6" />
-                    </svg>
+                    </svg>}
                   </button>
-                  {isCountryOpen && (
+                  {isCountryOpen && !isCountryLocked && (
                     <div className="country-dropdown">
                       {COUNTRY_LIST.map((country) => (
                         <button

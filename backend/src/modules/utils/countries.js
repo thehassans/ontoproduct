@@ -48,6 +48,21 @@ function uniqueUpper(values = []) {
   );
 }
 
+export function normalizeCountryDomain(value = "") {
+  const raw = String(value || "").trim().toLowerCase();
+  if (!raw) return "";
+  const withoutProtocol = raw.replace(/^https?:\/\//, "");
+  const hostname = withoutProtocol
+    .split("/")[0]
+    .split("?")[0]
+    .split("#")[0]
+    .split(":")[0]
+    .replace(/^www\./, "")
+    .trim();
+  if (!hostname || hostname === "localhost" || hostname === "127.0.0.1") return "";
+  return hostname;
+}
+
 export function normalizeCountryEntry(entry = {}, index = 0) {
   const code = String(entry.code || "").trim().toUpperCase();
   const name = String(entry.name || "").trim();
@@ -66,6 +81,7 @@ export function normalizeCountryEntry(entry = {}, index = 0) {
     dial,
     currency,
     currencySymbol,
+    domain: normalizeCountryDomain(entry.domain),
     enabled: entry.enabled !== false,
     order,
   };
@@ -124,6 +140,12 @@ export function canonicalCountryName(value, registry = getCachedCountryRegistry(
 export function resolveCountryEntry(value, registry = getCachedCountryRegistry()) {
   const canonical = canonicalCountryName(value, registry);
   return (registry || []).find((entry) => entry.name === canonical) || null;
+}
+
+export function resolveCountryEntryByDomain(value, registry = getCachedCountryRegistry()) {
+  const hostname = normalizeCountryDomain(value);
+  if (!hostname) return null;
+  return (registry || []).find((entry) => normalizeCountryDomain(entry?.domain) === hostname) || null;
 }
 
 export function currencyFromCountry(value, registry = getCachedCountryRegistry()) {

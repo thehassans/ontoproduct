@@ -473,6 +473,11 @@ function CustomDomainRouter({ children }) {
           hostname === 'localhost' ||
           hostname === '127.0.0.1'
         ) {
+          try {
+            localStorage.removeItem('country_domain_locked')
+            localStorage.removeItem('country_domain_locked_code')
+            sessionStorage.removeItem('customDomainStore')
+          } catch {}
           writeCustomDomainCache(hostname, false)
           if (alive) {
             setIsCustomDomain(false)
@@ -484,15 +489,39 @@ function CustomDomainRouter({ children }) {
         // Check if this hostname is registered as a custom domain
         try {
           const response = await apiGet(`/api/users/by-domain/${hostname}`)
-          if (alive && response?.userId) {
+          if (alive && (response?.userId || response?.isCountryDomain)) {
             writeCustomDomainCache(hostname, true)
             setIsCustomDomain(true)
             sessionStorage.setItem('customDomainStore', JSON.stringify(response))
+            if (response?.isCountryDomain && response?.country?.code) {
+              try {
+                localStorage.setItem('selected_country', response.country.code)
+                localStorage.setItem('country_domain_locked', 'true')
+                localStorage.setItem('country_domain_locked_code', response.country.code)
+                localStorage.removeItem('country_selected_manually')
+                localStorage.removeItem('country_auto_defaulted')
+              } catch {}
+            } else {
+              try {
+                localStorage.removeItem('country_domain_locked')
+                localStorage.removeItem('country_domain_locked_code')
+              } catch {}
+            }
           } else {
+            try {
+              localStorage.removeItem('country_domain_locked')
+              localStorage.removeItem('country_domain_locked_code')
+              sessionStorage.removeItem('customDomainStore')
+            } catch {}
             writeCustomDomainCache(hostname, false)
             setIsCustomDomain(false)
           }
         } catch (err) {
+          try {
+            localStorage.removeItem('country_domain_locked')
+            localStorage.removeItem('country_domain_locked_code')
+            sessionStorage.removeItem('customDomainStore')
+          } catch {}
           writeCustomDomainCache(hostname, false)
           setIsCustomDomain(false)
         }
@@ -617,8 +646,8 @@ export default function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider>
-        <CountryProvider>
         <CustomDomainRouter>
+          <CountryProvider>
           <Suspense fallback={<AppFallback />}>
           <AppLaunchOverlay />
           <DeliveryDetailsPrompt />
@@ -1033,8 +1062,8 @@ export default function App() {
             </Route>
           </Routes>
           </Suspense>
+          </CountryProvider>
         </CustomDomainRouter>
-        </CountryProvider>
       </ThemeProvider>
     </ErrorBoundary>
   )
