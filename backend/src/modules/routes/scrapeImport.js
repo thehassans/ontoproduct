@@ -1,11 +1,40 @@
 import express from 'express'
+import { spawn } from 'child_process'
+import path from 'path'
+import { fileURLToPath } from 'url'
 import { auth, allowRoles } from '../middleware/auth.js'
 import Product from '../models/Product.js'
 import User from '../models/User.js'
 
 const router = express.Router()
 
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+const SCRAPER_SCRIPT = path.resolve(__dirname, '../../../../scraper/crawl_product.py')
+
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+
+// ── Python subprocess runner ──────────────────────────────────────────────────
+function runPython(params, timeoutMs = 90000) {
+  return new Promise((resolve, reject) => {
+    const py = spawn('python3', [SCRAPER_SCRIPT], { cwd: path.dirname(SCRAPER_SCRIPT) })
+    let out = '', err = ''
+    const timer = setTimeout(() => { py.kill(); reject(new Error('Scraper timed out after 90s')) }, timeoutMs)
+    py.stdout.on('data', d => { out += d })
+    py.stderr.on('data', d => { err += d })
+    py.on('close', code => {
+      clearTimeout(timer)
+      if (!out.trim()) {
+        reject(new Error(err.split('\n').filter(Boolean).pop() || `Python exited ${code}`))
+        return
+      }
+      try { resolve(JSON.parse(out)) } catch { reject(new Error('Invalid JSON from scraper')) }
+    })
+    py.on('error', e => { clearTimeout(timer); reject(new Error(`Python not found: ${e.message}`)) })
+    py.stdin.write(JSON.stringify(params))
+    py.stdin.end()
+  })
+}
 
 async function fetchHtml(url, extraHeaders = {}) {
   const controller = new AbortController()
@@ -147,11 +176,25 @@ function parseAliExpressProducts(html) {
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
 
-// Search products on a platform
+// Search products — Python crawl4ai primary, Node.js fetch fallback
 router.post('/search', auth, allowRoles('admin', 'user', 'manager'), async (req, res) => {
   const { platform, query, page = 1 } = req.body || {}
   if (!query || !platform) return res.status(400).json({ message: 'platform and query are required' })
 
+  // Try Python crawl4ai first
+  try {
+    const pyResult = await runPython({ mode: 'search', platform, query, page: Number(page) })
+    if (!pyResult.error && Array.isArray(pyResult.products)) {
+      return res.json(pyResult)
+    }
+    if (pyResult.warning && Array.isArray(pyResult.products)) {
+      return res.json(pyResult)
+    }
+  } catch (pyErr) {
+    console.warn('[scrape] Python unavailable, using Node.js fallback:', pyErr.message)
+  }
+
+  // Node.js fetch fallback
   try {
     let products = []
     let hasMore = false
@@ -259,10 +302,22 @@ router.post('/fetch-url', auth, allowRoles('admin', 'user', 'manager'), async (r
   }
 })
 
-// Fetch multiple URLs in batch
+// Fetch multiple URLs — Python crawl4ai primary, Node.js fetch fallback
 router.post('/fetch-urls', auth, allowRoles('admin', 'user', 'manager'), async (req, res) => {
   const { urls } = req.body || {}
   if (!Array.isArray(urls) || urls.length === 0) return res.status(400).json({ message: 'urls array is required' })
+
+  // Try Python crawl4ai first
+  try {
+    const pyResult = await runPython({ mode: 'fetch-urls', urls: urls.slice(0, 20) })
+    if (Array.isArray(pyResult.results) && pyResult.results.length > 0) {
+      return res.json(pyResult)
+    }
+  } catch (pyErr) {
+    console.warn('[scrape] Python unavailable for fetch-urls, falling back:', pyErr.message)
+  }
+
+  // Node.js fetch fallback
   const results = []
   for (const url of urls.slice(0, 20)) {
     try {

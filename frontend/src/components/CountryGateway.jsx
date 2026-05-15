@@ -4,10 +4,14 @@ import { loadCountryRegistry } from '../util/countryRegistry'
 
 const GATEWAY_SEEN_KEY = 'country_gateway_seen'
 
+const PANEL_PREFIXES = ['/user', '/manager', '/admin', '/dropshipper', '/shop-vendor', '/seo', '/inbox', '/customer', '/login', '/signup', '/register']
+
 function shouldShowGateway() {
   try {
     const hostname = window.location.hostname.toLowerCase()
     if (hostname !== 'buysial.com' && hostname !== 'localhost' && hostname !== '127.0.0.1') return false
+    const path = window.location.pathname
+    if (PANEL_PREFIXES.some(p => path === p || path.startsWith(p + '/'))) return false
     if (localStorage.getItem('country_domain_locked_code')) return false
     if (sessionStorage.getItem(GATEWAY_SEEN_KEY)) return false
     if (localStorage.getItem('country_selected_manually')) return false

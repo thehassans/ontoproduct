@@ -1,5 +1,5 @@
 import React, { useEffect, useState, Suspense, lazy, memo } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { ThemeProvider } from './contexts/ThemeContext.jsx'
 import { CountryProvider } from './contexts/CountryContext.jsx'
 import './styles/theme.css'
@@ -580,10 +580,14 @@ function CustomDomainRouter({ children }) {
   )
 }
 
-// Renders CountryGateway only on the main domain (not on country/user storefronts)
+const GATEWAY_BLOCKED_PREFIXES = ['/user', '/manager', '/admin', '/dropshipper', '/shop-vendor', '/seo', '/inbox', '/customer', '/login', '/signup', '/register']
+
+// Renders CountryGateway only on the main domain storefront (not on any panel routes)
 function CountryGatewayMounter() {
   const isCustomDomain = useIsCustomDomain()
+  const { pathname } = useLocation()
   if (isCustomDomain) return null
+  if (GATEWAY_BLOCKED_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return null
   return (
     <Suspense fallback={null}>
       <CountryGateway />

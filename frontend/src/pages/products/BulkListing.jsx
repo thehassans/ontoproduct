@@ -258,9 +258,14 @@ export default function BulkListing() {
 
       {/* Header */}
       <div style={{ marginBottom: 28 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 800, color: '#0f172a', margin: 0 }}>🔍 Bulk Listing Import</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <h1 style={{ fontSize: 28, fontWeight: 800, color: '#0f172a', margin: 0 }}>🔍 Bulk Listing Import</h1>
+          <span style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', color: '#fff', fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20 }}>
+            Powered by crawl4ai
+          </span>
+        </div>
         <p style={{ fontSize: 14, color: '#64748b', marginTop: 6 }}>
-          Search & scrape products from external platforms, review them, then add to your store.
+          Uses a real browser (Playwright) to bypass anti-bot protection. Search takes 15–30 seconds per request.
         </p>
       </div>
 
@@ -368,7 +373,7 @@ export default function BulkListing() {
               }}
             >
               {loading
-                ? <><div style={{ width: 16, height: 16, border: '2.5px solid rgba(255,255,255,.4)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin .65s linear infinite' }} />Searching…</>
+                ? <><div style={{ width: 16, height: 16, border: '2.5px solid rgba(255,255,255,.4)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin .65s linear infinite' }} />Crawling… (15–30s)</>
                 : '🔍 Search Products'}
             </button>
           </div>
