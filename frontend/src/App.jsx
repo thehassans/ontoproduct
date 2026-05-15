@@ -6,6 +6,7 @@ import './styles/theme.css'
 import './styles/premium-ecommerce.css'
 
 import { apiGet } from './api.js'
+import { resolveCountryDomainForCurrentHost, DEFAULT_COUNTRY_LIST } from './utils/constants.js'
 import DynamicPixels from './components/DynamicPixels.jsx'
 import AppLaunchOverlay from './components/AppLaunchOverlay.jsx'
 import DeliveryDetailsPrompt from './components/DeliveryDetailsPrompt.jsx'
@@ -453,7 +454,24 @@ function CustomDomainRouter({ children }) {
     try {
       const hostname = window.location.hostname.toLowerCase()
       if (hostname === 'buysial.com' || hostname === 'localhost' || hostname === '127.0.0.1') {
+        try {
+          localStorage.removeItem('country_domain_locked')
+          localStorage.removeItem('country_domain_locked_code')
+          sessionStorage.removeItem('customDomainStore')
+        } catch {}
         return { isCustomDomain: false, checking: false }
+      }
+      // Synchronously detect country-mapped domain from built-in list (no async needed)
+      const countryMatch = resolveCountryDomainForCurrentHost(DEFAULT_COUNTRY_LIST)
+      if (countryMatch) {
+        try {
+          localStorage.setItem('selected_country', countryMatch.code)
+          localStorage.setItem('country_domain_locked', 'true')
+          localStorage.setItem('country_domain_locked_code', countryMatch.code)
+          localStorage.removeItem('country_selected_manually')
+          localStorage.removeItem('country_auto_defaulted')
+        } catch {}
+        return { isCustomDomain: true, checking: false }
       }
       const cached = readCustomDomainCache(hostname)
       if (cached) return { isCustomDomain: cached.isCustomDomain, checking: false }
@@ -497,11 +515,13 @@ function CustomDomainRouter({ children }) {
             sessionStorage.setItem('customDomainStore', JSON.stringify(response))
             if (response?.isCountryDomain && response?.country?.code) {
               try {
-                localStorage.setItem('selected_country', response.country.code)
+                const lockedCode = response.country.code
+                localStorage.setItem('selected_country', lockedCode)
                 localStorage.setItem('country_domain_locked', 'true')
-                localStorage.setItem('country_domain_locked_code', response.country.code)
+                localStorage.setItem('country_domain_locked_code', lockedCode)
                 localStorage.removeItem('country_selected_manually')
                 localStorage.removeItem('country_auto_defaulted')
+                window.dispatchEvent(new CustomEvent('countryChanged', { detail: { code: lockedCode } }))
               } catch {}
             } else {
               try {

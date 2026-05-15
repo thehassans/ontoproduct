@@ -10,7 +10,7 @@ function shouldShowGateway() {
     if (hostname !== 'buysial.com' && hostname !== 'localhost' && hostname !== '127.0.0.1') return false
     if (localStorage.getItem('country_domain_locked_code')) return false
     if (sessionStorage.getItem(GATEWAY_SEEN_KEY)) return false
-    if (localStorage.getItem('selected_country')) return false
+    if (localStorage.getItem('country_selected_manually')) return false
     return true
   } catch {
     return false
