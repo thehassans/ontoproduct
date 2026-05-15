@@ -1,5 +1,5 @@
 export const DEFAULT_COUNTRY_LIST = [
-  { code: 'SA', name: 'KSA', aliases: ['Saudi Arabia', 'SA'], flag: '🇸🇦', dial: '+966', currency: 'SAR', currencySymbol: '﷼', enabled: true, order: 1 },
+  { code: 'SA', name: 'KSA', aliases: ['Saudi Arabia', 'SA'], flag: '🇸🇦', dial: '+966', currency: 'SAR', currencySymbol: '﷼', domain: 'ar.buysial.com', enabled: true, order: 1 },
   { code: 'AE', name: 'UAE', aliases: ['United Arab Emirates'], flag: '🇦🇪', dial: '+971', currency: 'AED', currencySymbol: 'د.إ', enabled: true, order: 2 },
   { code: 'OM', name: 'Oman', aliases: [], flag: '🇴🇲', dial: '+968', currency: 'OMR', currencySymbol: 'ر.ع.', enabled: true, order: 3 },
   { code: 'BH', name: 'Bahrain', aliases: [], flag: '🇧🇭', dial: '+973', currency: 'BHD', currencySymbol: 'د.ب', enabled: true, order: 4 },

@@ -38,6 +38,8 @@ const lazyWithRetry = (importer) => {
   )
 }
 
+const CountryGateway = lazyWithRetry(() => import('./components/CountryGateway.jsx'))
+
 // Layouts - loaded when accessing that section
 const AdminLayout = lazy(() => import('./layout/AdminLayout.jsx'))
 const UserLayout = lazy(() => import('./layout/UserLayout.jsx'))
@@ -557,6 +559,17 @@ function CustomDomainRouter({ children }) {
   )
 }
 
+// Renders CountryGateway only on the main domain (not on country/user storefronts)
+function CountryGatewayMounter() {
+  const isCustomDomain = useIsCustomDomain()
+  if (isCustomDomain) return null
+  return (
+    <Suspense fallback={null}>
+      <CountryGateway />
+    </Suspense>
+  )
+}
+
 // Smart Login component - redirects to customer login on e-commerce sites, shows staff login on admin
 function SmartLogin() {
   const isCustomDomain = useIsCustomDomain()
@@ -648,6 +661,7 @@ export default function App() {
       <ThemeProvider>
         <CustomDomainRouter>
           <CountryProvider>
+          <CountryGatewayMounter />
           <Suspense fallback={<AppFallback />}>
           <AppLaunchOverlay />
           <DeliveryDetailsPrompt />
