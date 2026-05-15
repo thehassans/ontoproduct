@@ -325,9 +325,14 @@ try {
     path.resolve(process.cwd(), "../frontend/dist"),
     path.resolve(process.cwd(), "frontend/dist"),
     path.resolve(__dirname, "../../frontend/dist"),
+    path.resolve(__dirname, "../../../frontend/dist"),
     // Plesk typical docroot layout: if app root is /httpdocs/backend, this is redundant with ../frontend/dist
     // but we include it for clarity/explicitness
     path.resolve("/httpdocs/frontend/dist"),
+    // Common Plesk vhosts absolute paths
+    path.resolve("/var/www/vhosts/buysial.com/httpdocs/frontend/dist"),
+    path.resolve("/home/buysial.com/httpdocs/frontend/dist"),
+    path.resolve("/srv/www/vhosts/buysial.com/httpdocs/frontend/dist"),
   ];
   for (const c of candidates) {
     try {
@@ -540,11 +545,13 @@ app.get("*", (req, res, next) => {
       return res.sendFile(INDEX_HTML);
     }
     // If no index.html found, return helpful error
+    const _cwdDbg = (() => { try { return process.cwd() } catch { return 'n/a' } })()
+    const _dirnameDbg = (() => { try { return path.dirname(fileURLToPath(import.meta.url)) } catch { return 'n/a' } })()
     return res.status(200).send(`
       <!DOCTYPE html>
       <html>
         <head><title>Frontend Not Built</title></head>
-        <body style="font-family:system-ui;padding:40px;max-width:600px;margin:0 auto;">
+        <body style="font-family:system-ui;padding:40px;max-width:700px;margin:0 auto;">
           <h1>⚠️ Frontend Not Built</h1>
           <p>The frontend application hasn't been built yet.</p>
           <p><strong>To fix this:</strong></p>
@@ -554,7 +561,11 @@ app.get("*", (req, res, next) => {
             <li>Build for production: <code>npm run build</code></li>
             <li>Restart the backend server</li>
           </ol>
-          <p style="color:#666;margin-top:30px;">Backend API is running on port ${PORT}</p>
+          <details style="margin-top:24px;background:#f5f5f5;padding:16px;border-radius:8px;">
+            <summary style="cursor:pointer;font-weight:bold;">Debug info (click to expand)</summary>
+            <pre style="margin-top:12px;font-size:12px;overflow:auto;">process.cwd() = ${_cwdDbg}\n__dirname     = ${_dirnameDbg}\n\nSearched paths:\n${(() => { try { const _f = fileURLToPath(import.meta.url); const _d = path.dirname(_f); return [path.resolve(process.cwd(),'../frontend/dist'),path.resolve(process.cwd(),'frontend/dist'),path.resolve(_d,'../../frontend/dist'),path.resolve(_d,'../../../frontend/dist'),'/httpdocs/frontend/dist','/var/www/vhosts/buysial.com/httpdocs/frontend/dist','/home/buysial.com/httpdocs/frontend/dist'].map((p,i)=>`  ${i+1}. ${p}  [${(()=>{try{return fs.existsSync(p)?'EXISTS':'missing'}catch{return'err'}})()}]`).join('\n') } catch(e){return String(e)} })()}</pre>
+          </details>
+          <p style="color:#666;margin-top:20px;">Backend API is running on port ${PORT}</p>
         </body>
       </html>
     `);
