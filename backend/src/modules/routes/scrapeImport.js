@@ -2,6 +2,7 @@ import express from 'express'
 import { spawn } from 'child_process'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import fs from 'fs'
 import { auth, allowRoles } from '../middleware/auth.js'
 import Product from '../models/Product.js'
 import User from '../models/User.js'
@@ -11,13 +12,19 @@ const router = express.Router()
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const SCRAPER_SCRIPT = path.resolve(__dirname, '../../../scraper/crawl_product.py')
+const VENV_PYTHON   = path.resolve(__dirname, '../../../scraper/.venv/bin/python')
+
+function getPython() {
+  try { if (fs.existsSync(VENV_PYTHON)) return VENV_PYTHON } catch {}
+  return 'python3'
+}
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
 
 // ── Python subprocess runner ──────────────────────────────────────────────────
 function runPython(params, timeoutMs = 90000) {
   return new Promise((resolve, reject) => {
-    const py = spawn('python3', [SCRAPER_SCRIPT], { cwd: path.dirname(SCRAPER_SCRIPT) })
+    const py = spawn(getPython(), [SCRAPER_SCRIPT], { cwd: path.dirname(SCRAPER_SCRIPT) })
     let out = '', err = ''
     const timer = setTimeout(() => { py.kill(); reject(new Error('Scraper timed out after 90s')) }, timeoutMs)
     py.stdout.on('data', d => { out += d })

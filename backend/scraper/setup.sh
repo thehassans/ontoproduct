@@ -1,13 +1,18 @@
 #!/bin/bash
-# Run once on the server to install crawl4ai + Playwright
+# Run once on the server to install crawl4ai + Playwright into a venv
 # Usage: bash backend/scraper/setup.sh  (from project root / httpdocs)
+set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+VENV="$SCRIPT_DIR/.venv"
 
-echo "[setup] Installing Python dependencies from $SCRIPT_DIR/requirements.txt..."
-python3 -m pip install --upgrade pip
-python3 -m pip install -r "$SCRIPT_DIR/requirements.txt"
+echo "[setup] Creating virtual environment at $VENV ..."
+python3 -m venv "$VENV"
+
+echo "[setup] Installing dependencies..."
+"$VENV/bin/pip" install --upgrade pip
+"$VENV/bin/pip" install -r "$SCRIPT_DIR/requirements.txt"
 
 echo "[setup] Installing Playwright Chromium browser..."
-python3 -m playwright install chromium
+"$VENV/bin/python" -m playwright install chromium
 
-echo "[setup] Scraper setup complete."
+echo "[setup] Done. Python: $VENV/bin/python"
