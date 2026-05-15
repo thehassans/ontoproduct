@@ -217,6 +217,7 @@ const WhatsAppInbox = lazy(() => import('./pages/inbox/WhatsAppInbox.jsx'))
 
 // Products & Warehouse
 const InhouseProducts = lazy(() => import('./pages/products/InhouseProducts.jsx'))
+const BulkListing = lazy(() => import('./pages/products/BulkListing.jsx'))
 const Warehouse = lazy(() => import('./pages/warehouse/Warehouse.jsx'))
 const Shipments = lazy(() => import('./pages/shipments/Shipments.jsx'))
 
@@ -974,6 +975,7 @@ export default function App() {
               <Route path="explore-more" element={<UserExploreMore />} />
               <Route path="inhouse-products" element={<InhouseProducts />} />
               <Route path="products" element={<UserProducts />} />
+              <Route path="products/bulk-listing" element={<BulkListing />} />
               <Route path="products/:id" element={<UserProductDetail />} />
               <Route path="shops" element={<UserShops />} />
               <Route path="shop-logistics" element={<ShopLogistics />} />

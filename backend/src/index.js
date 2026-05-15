@@ -42,6 +42,7 @@ import brandsRoutes from "./modules/routes/brands.js";
 import exploreMoreRoutes from "./modules/routes/exploreMore.js";
 import waRoutes from "./modules/routes/wa.js";
 import { bootstrapSuperAdminFromEnv } from "./modules/services/bootstrapSuperAdmin.js";
+import scrapeImportRoutes from "./modules/routes/scrapeImport.js";
 
 
 dotenv.config();
@@ -184,6 +185,7 @@ app.use("/api/users", requireDbReady, userRoutes);
 app.use("/api/orders", requireDbReady, ordersRoutes);
 app.use("/api/manager-stock", requireDbReady, managerStockRoutes);
 app.use("/api/products", requireDbReady, productsRoutes);
+app.use("/api/scrape", requireDbReady, scrapeImportRoutes);
 app.use("/api/warehouse", requireDbReady, warehouseRoutes);
 app.use("/api/finance", requireDbReady, financeRoutes);
 app.use("/api/support", requireDbReady, supportRoutes);
