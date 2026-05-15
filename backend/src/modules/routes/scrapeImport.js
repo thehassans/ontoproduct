@@ -214,8 +214,8 @@ router.post('/search', auth, allowRoles('admin', 'user', 'manager'), async (req,
         products = parseNoonProducts(html)
         hasMore = products.length >= 20
         if (products.length === 0) warning = 'Noon returned no results for this query. Try different keywords.'
-      } catch (e) {
-        warning = `Noon search unavailable (${e.message}). Paste product URLs in the URL Import tab.`
+      } catch {
+        warning = 'Noon search unavailable. Paste product URLs in the URL Import tab.'
       }
     }
 
@@ -226,41 +226,32 @@ router.post('/search', auth, allowRoles('admin', 'user', 'manager'), async (req,
         products = parseAliExpressProducts(html)
         hasMore = products.length >= 20
         if (products.length === 0) warning = 'AliExpress results could not be parsed. Paste product URLs in the URL Import tab.'
-      } catch (e) {
-        warning = `AliExpress blocked the request. Paste product URLs in the URL Import tab.`
+      } catch {
+        warning = 'AliExpress search unavailable. Paste product URLs in the URL Import tab.'
       }
     }
 
     else if (platform === 'shein') {
-      warning = 'Shein uses bot protection. Copy product page URLs from Shein and paste them in the URL Import tab below.'
+      // Python crawl4ai handles Shein with a real browser; Node.js fallback cannot
+      warning = 'Shein search requires the crawl4ai browser scraper. Paste product URLs in the URL Import tab below.'
     }
 
     else if (platform === 'amazon') {
       const url = `https://www.amazon.sa/s?k=${encodeURIComponent(query)}&page=${page}`
       try {
         const html = await fetchHtml(url, { 'Accept-Language': 'ar-SA,ar;q=0.9,en;q=0.8' })
-        // Amazon embeds products in data-component-type="s-search-result"
         const blocks = [...html.matchAll(/data-asin="([^"]+)"[\s\S]*?class="[^"]*s-image[^"]*"[^>]*src="([^"]+)"[\s\S]*?<span[^>]*a-price[^>]*>[\s\S]*?<span[^>]*a-offscreen[^>]*>([^<]+)/g)]
         products = blocks.slice(0, 20).map(([, asin, img, price]) => ({
-          name: '',
-          price: parseFloat(price.replace(/[^0-9.]/g, '')) || 0,
-          images: [img],
-          category: '',
-          brand: '',
-          stock: 100,
-          delivery: '',
-          description: '',
-          sourceUrl: `https://www.amazon.sa/dp/${asin}`,
-          sku: asin,
-          platform: 'amazon',
+          name: '', price: parseFloat(price.replace(/[^0-9.]/g, '')) || 0,
+          images: [img], category: '', brand: '', stock: 100, delivery: '', description: '',
+          sourceUrl: `https://www.amazon.sa/dp/${asin}`, sku: asin, platform: 'amazon',
         }))
-        // Names come from separate regex
         const names = [...html.matchAll(/class="[^"]*s-title[^"]*"[^>]*>([\s\S]*?)<\/[^>]+>/g)]
         products.forEach((p, i) => { if (names[i]) p.name = cleanHtml(names[i][1]) })
         products = products.filter(p => p.name)
         if (products.length === 0) warning = 'Amazon SA could not be parsed. Try pasting product URLs directly.'
-      } catch (e) {
-        warning = `Amazon SA blocked the request. Try pasting product URLs in the URL Import tab.`
+      } catch {
+        warning = 'Amazon SA search unavailable. Paste product URLs in the URL Import tab.'
       }
     }
 

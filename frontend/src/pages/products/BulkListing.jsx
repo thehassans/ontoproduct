@@ -115,7 +115,7 @@ function ProductCard({ product, selected, onToggle, onImportSingle }) {
           )}
         </div>
         {product.delivery && (
-          <div style={{ fontSize: 11, color: '#10b981', fontWeight: 600 }}>🚚 {product.delivery}</div>
+          <div style={{ fontSize: 11, color: '#10b981', fontWeight: 600, display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>🚚 {product.delivery}</div>
         )}
         <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
           {product.sourceUrl && (

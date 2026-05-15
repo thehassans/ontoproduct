@@ -1,26 +1,20 @@
 #!/usr/bin/env python3
 """
-BuySial Product Scraper — powered by crawl4ai
+BuySial Product Scraper — powered by crawl4ai + direct API fallbacks
 Reads JSON params from stdin, writes JSON result to stdout.
-
-Params schema:
-  { "mode": "search" | "fetch-urls",
-    "platform": "noon" | "aliexpress" | "shein" | "amazon",
-    "query": "...",
-    "page": 1,
-    "urls": ["https://..."] }
 """
 import asyncio
 import json
 import re
 import sys
+import urllib.request
 from urllib.parse import quote_plus
 
 # ── Platform search URL templates ────────────────────────────────────────────
 SEARCH_URLS = {
     "noon":       "https://www.noon.com/saudi-en/search/?q={q}&page={p}",
     "aliexpress": "https://www.aliexpress.com/wholesale?SearchText={q}&page={p}",
-    "shein":      "https://www.shein.com/search?q={q}&page={p}",
+    "shein":      "https://ar.shein.com/search?q={q}&page={p}",
     "amazon":     "https://www.amazon.sa/s?k={q}&page={p}",
 }
 
@@ -82,7 +76,7 @@ def clean(s):
 def parse_price(raw):
     if not raw:
         return 0.0
-    nums = re.findall(r'[\d,.]+', str(raw).replace(',', '.'))
+    nums = re.findall(r'\d+(?:[.,]\d+)?', str(raw).replace(',', '.'))
     for n in nums:
         try:
             v = float(n.replace(',', '.'))
@@ -91,6 +85,108 @@ def parse_price(raw):
         except ValueError:
             continue
     return 0.0
+
+
+def extract_images_from_html(html, max_imgs=8):
+    """Scrape all product-looking images from raw HTML."""
+    imgs = []
+    seen = set()
+    for m in re.finditer(
+        r'<img[^>]+(?:src|data-src|data-original|data-lazy-src)=["\']([^"\']+\.(?:jpg|jpeg|png|webp)[^"\']*)["\']',
+        html, re.I
+    ):
+        u = m.group(1).split('?')[0]
+        if u.startswith('//'):
+            u = 'https:' + u
+        if (u.startswith('http') and u not in seen
+                and 'icon' not in u.lower() and 'logo' not in u.lower()
+                and 'avatar' not in u.lower() and 'sprite' not in u.lower()):
+            seen.add(u)
+            imgs.append(u)
+            if len(imgs) >= max_imgs:
+                break
+    return imgs
+
+
+def extract_delivery(html):
+    """Extract first delivery/shipping text snippet from page."""
+    patterns = [
+        r'((?:Free|Express|Standard|Next.Day|Same.Day)\s+(?:delivery|shipping)[^<.\n]{0,80})',
+        r'(Delivered\s+(?:by|in|within)\s+[^<.\n]{0,60})',
+        r'(Ships?\s+(?:in|within|by)\s+[^<.\n]{0,60})',
+        r'((?:delivery|shipping)\s+(?:within|in|by)\s+[^<.\n]{0,60})',
+        r'((?:التوصيل|الشحن)[^<.\n]{0,80})',
+    ]
+    for pat in patterns:
+        m = re.search(pat, html, re.I)
+        if m:
+            return clean(m.group(1))
+    return ''
+
+
+# ── Direct REST API (no Playwright) ──────────────────────────────────────────
+def fetch_json_api(url, headers=None, timeout=12):
+    h = {
+        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36',
+        'Accept': 'application/json, */*',
+        'Accept-Language': 'en-US,en;q=0.9',
+    }
+    if headers:
+        h.update(headers)
+    req = urllib.request.Request(url, headers=h)
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return json.loads(r.read().decode('utf-8'))
+
+
+def search_noon_api(query, page=1):
+    """Call Noon's internal JSON catalog API — no Playwright needed."""
+    try:
+        data = fetch_json_api(
+            f"https://www.noon.com/_svc/catalog/api/v3/u/search/?q={quote_plus(query)}&limit=20&start={(page-1)*20}&lang=en&country=SAU",
+            headers={'x-country': 'SAU', 'x-language': 'en', 'x-platform': 'web'},
+        )
+        hits = data.get('data', {}).get('hits') or data.get('hits') or []
+        products = []
+        for item in hits:
+            imgs = [
+                f"https://f.nooncdn.com/p/{k}/n/com/1000/A01.jpg"
+                for k in (item.get('image_keys') or [])
+            ]
+            if not imgs and item.get('thumbnail'):
+                imgs = [item['thumbnail']]
+
+            pi = item.get('price') or {}
+            if isinstance(pi, (int, float, str)):
+                price_now, price_was = parse_price(pi), 0.0
+            else:
+                price_now = parse_price(pi.get('now') or pi.get('sale_price') or 0)
+                price_was = parse_price(pi.get('was') or pi.get('old') or 0)
+
+            di = item.get('delivery') or {}
+            delivery = di.get('label', '') if isinstance(di, dict) else str(di)
+
+            name = item.get('name') or item.get('title') or ''
+            if not name:
+                continue
+            sku = item.get('sku') or item.get('id') or ''
+            products.append({
+                'name': name,
+                'price': price_now,
+                'originalPrice': price_was,
+                'images': imgs[:8],
+                'currency': 'SAR',
+                'brand': item.get('brand') or '',
+                'category': item.get('category_name') or '',
+                'delivery': delivery,
+                'stock': 100,
+                'description': '',
+                'sourceUrl': f"https://www.noon.com/product/{sku}" if sku else '',
+                'sku': sku,
+                'platform': 'noon',
+            })
+        return products
+    except Exception:
+        return []  # silent fail → fall through to crawl4ai
 
 
 def extract_jsonld(html):
@@ -111,23 +207,42 @@ def extract_jsonld(html):
 
 
 def jsonld_to_product(p, source_url=""):
+    if not isinstance(p, dict):
+        return None
+    ptype = str(p.get('@type', ''))
+    if 'Product' not in ptype and 'product' not in ptype:
+        return None
+    # Images — can be string, list of strings, or list of ImageObjects
+    imgs_raw = p.get('image', [])
+    if isinstance(imgs_raw, str):
+        imgs_raw = [imgs_raw]
+    elif isinstance(imgs_raw, dict):
+        imgs_raw = [imgs_raw.get('url') or imgs_raw.get('contentUrl') or '']
+    out_imgs = []
+    for i in imgs_raw:
+        if isinstance(i, dict):
+            i = i.get('url') or i.get('contentUrl') or ''
+        if i and str(i).startswith('http'):
+            out_imgs.append(str(i))
+
     offer = p.get('offers') or {}
     if isinstance(offer, list):
         offer = offer[0] if offer else {}
-    imgs = p.get('image', [])
-    if isinstance(imgs, str):
-        imgs = [imgs]
-    price_raw = offer.get('price', 0)
+    if not isinstance(offer, dict):
+        offer = {}
+    price_raw = offer.get('price') or offer.get('lowPrice') or 0
+
     return {
         "name":        clean(p.get('name', '')),
         "description": clean(p.get('description', '')),
-        "images":      [i for i in imgs if i and str(i).startswith('http')][:8],
+        "images":      out_imgs[:8],
         "price":       parse_price(price_raw),
         "currency":    offer.get('priceCurrency', 'SAR'),
-        "stock":       100 if 'InStock' in str(offer.get('availability', '')) else 0,
+        "stock":       100 if 'InStock' in str(offer.get('availability', '')) else 50,
         "sku":         p.get('sku') or p.get('mpn') or '',
         "brand":       clean(p.get('brand', {}).get('name', '') if isinstance(p.get('brand'), dict) else p.get('brand', '')),
         "category":    clean(p.get('category', '')),
+        "delivery":    '',
         "sourceUrl":   source_url,
         "platform":    "url",
     }
@@ -236,6 +351,12 @@ async def arun(crawler, url, strategy=None, api="new"):
 
 # ── Search mode ───────────────────────────────────────────────────────────────
 async def do_search(platform, query, page):
+    # Noon: hit internal JSON REST API first — no Playwright, no timeouts
+    if platform == "noon":
+        products = search_noon_api(query, page)
+        if products:
+            return {"products": products, "hasMore": len(products) >= 20, "warning": None, "platform": "noon"}
+
     from crawl4ai.extraction_strategy import JsonCssExtractionStrategy
 
     url_tpl = SEARCH_URLS.get(platform)
@@ -251,7 +372,7 @@ async def do_search(platform, query, page):
         try:
             result = await arun(crawler, url, strategy=strategy, api=api)
         except Exception as e:
-            return {"products": [], "error": str(e), "warning": f"Crawl failed: {e}"}
+            return {"products": [], "warning": f"Search unavailable for {platform}. Try URL Import tab.", "platform": platform}
 
         # Try structured extraction first
         products = []
@@ -326,23 +447,28 @@ async def do_fetch_urls(urls):
                 html = result.html or ''
 
                 product = None
-                # 1. JSON-LD
-                lds = extract_jsonld(html)
-                if lds:
-                    product = jsonld_to_product(lds[0], url)
+                # 1. JSON-LD — most reliable when present
+                for ld in extract_jsonld(html):
+                    p = jsonld_to_product(ld, url)
+                    if p and p.get('name'):
+                        product = p
+                        break
 
-                # 2. Open Graph + microdata fallback
-                og = extract_og(html)
+                # 2. OG + microdata
+                og    = extract_og(html)
                 micro = extract_microdata(html)
+
                 if not product or not product.get('name'):
                     raw_title = og.get('title') or micro.get('name') or ''
                     product = {
                         "name":        raw_title.split('|')[0].split(' - ')[0].strip(),
                         "description": og.get('description') or micro.get('description') or '',
-                        "images":      [og['image']] if og.get('image') else ([micro['image']] if micro.get('image') else []),
+                        "images":      ([og['image']] if og.get('image') else
+                                        ([micro['image']] if micro.get('image') else [])),
                         "price":       parse_price(og.get('price') or micro.get('price') or 0),
                         "currency":    og.get('currency') or micro.get('currency') or 'SAR',
                         "stock":       100,
+                        "delivery":    '',
                         "sku":         micro.get('sku') or '',
                         "brand":       micro.get('brand') or '',
                         "category":    '',
@@ -350,26 +476,43 @@ async def do_fetch_urls(urls):
                         "platform":    "url",
                     }
                 else:
-                    # Patch missing fields from OG / microdata
-                    if not product.get('price') or product['price'] == 0:
+                    # Patch zero/missing fields
+                    if not product.get('price'):
                         product['price'] = parse_price(og.get('price') or micro.get('price') or 0)
                     if not product.get('images'):
-                        if og.get('image'):   product['images'] = [og['image']]
+                        if og.get('image'):      product['images'] = [og['image']]
                         elif micro.get('image'): product['images'] = [micro['image']]
-                    if not product.get('currency') or product['currency'] == 'SAR':
+                    if not product.get('currency'):
                         product['currency'] = og.get('currency') or micro.get('currency') or 'SAR'
 
-                # 3. <title> tag fallback for name
+                # 3. Supplement images from raw HTML (get up to 8 total)
+                if len(product.get('images', [])) < 8:
+                    extra = extract_images_from_html(html, max_imgs=8)
+                    seen  = set(product.get('images', []))
+                    for img in extra:
+                        if img not in seen:
+                            product.setdefault('images', []).append(img)
+                            seen.add(img)
+                            if len(product['images']) >= 8:
+                                break
+
+                # 4. Delivery info
+                if not product.get('delivery'):
+                    product['delivery'] = extract_delivery(html)
+
+                # 5. Title fallback for name
                 if not product.get('name'):
                     m = re.search(r'<title[^>]*>([\s\S]*?)</title>', html, re.I)
                     if m:
                         product['name'] = clean(m.group(1)).split('|')[0].split(' - ')[0].strip()
 
-                # Use crawl4ai's clean markdown for description if empty
+                # 6. Description from markdown (longer, cleaner than raw HTML)
                 if not product.get('description') and result.markdown:
-                    lines = [l.strip() for l in result.markdown.splitlines() if l.strip()]
-                    product['description'] = ' '.join(lines[:5])[:500]
+                    lines = [l.strip() for l in result.markdown.splitlines()
+                             if l.strip() and len(l.strip()) > 30]
+                    product['description'] = ' '.join(lines[:8])[:1000]
 
+                product['sourceUrl'] = url
                 if product.get('name'):
                     results.append({"url": url, "success": True, "product": product})
                 else:
