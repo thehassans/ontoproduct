@@ -10,7 +10,7 @@ const router = express.Router()
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
-const SCRAPER_SCRIPT = path.resolve(__dirname, '../../../../scraper/crawl_product.py')
+const SCRAPER_SCRIPT = path.resolve(__dirname, '../../../scraper/crawl_product.py')
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
 
