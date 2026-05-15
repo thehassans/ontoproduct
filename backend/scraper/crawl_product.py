@@ -134,16 +134,41 @@ def jsonld_to_product(p, source_url=""):
 
 
 def extract_og(html):
-    def get(prop):
-        m = re.search(rf'<meta[^>]*property=["\']og:{prop}["\'][^>]*content=["\']([^"\']*)', html, re.I) \
-            or re.search(rf'<meta[^>]*content=["\']([^"\']*)[^>]*property=["\']og:{prop}["\']', html, re.I)
-        return m.group(1).strip() if m else None
+    def get(*keys):
+        for key in keys:
+            # Matches og:KEY or product:KEY or just KEY in property attribute
+            for prefix in ('og:', 'product:', ''):
+                m = re.search(rf'<meta[^>]*property=["\'][^"\']{{0,30}}{re.escape(prefix + key)}["\'][^>]*content=["\']([^"\']*)', html, re.I) \
+                    or re.search(rf'<meta[^>]*content=["\']([^"\']*)["\'][^>]*property=["\'][^"\']{{0,30}}{re.escape(prefix + key)}["\']', html, re.I)
+                if m and m.group(1).strip():
+                    return m.group(1).strip()
+        return None
     return {
         "title":       get('title'),
         "description": get('description'),
         "image":       get('image'),
-        "price":       get('price:amount'),
+        "price":       get('price:amount', 'price'),
         "currency":    get('price:currency'),
+    }
+
+
+def extract_microdata(html):
+    """Extract Schema.org microdata itemprop attributes."""
+    def get_attr(prop):
+        m = re.search(rf'itemprop=["\'{prop}"\'\s][^>]*content=["\']([^"\']*)', html, re.I) \
+            or re.search(rf'itemprop=["\'{prop}"\'\s][^>]*>[\s]*([^<]{{1,200}})', html, re.I)
+        return m.group(1).strip() if m else None
+    def get_src(prop):
+        m = re.search(rf'itemprop=["\'{prop}"\'\s][^>]*src=["\']([^"\']*)', html, re.I)
+        return m.group(1).strip() if m else None
+    return {
+        "name":     get_attr('name'),
+        "price":    get_attr('price'),
+        "currency": get_attr('priceCurrency'),
+        "image":    get_src('image') or get_attr('image'),
+        "description": get_attr('description'),
+        "sku":      get_attr('sku') or get_attr('mpn'),
+        "brand":    get_attr('brand'),
     }
 
 
@@ -306,22 +331,33 @@ async def do_fetch_urls(urls):
                 if lds:
                     product = jsonld_to_product(lds[0], url)
 
-                # 2. Open Graph fallback
+                # 2. Open Graph + microdata fallback
+                og = extract_og(html)
+                micro = extract_microdata(html)
                 if not product or not product.get('name'):
-                    og = extract_og(html)
+                    raw_title = og.get('title') or micro.get('name') or ''
                     product = {
-                        "name":        og.get('title', '').split('|')[0].split(' - ')[0].strip(),
-                        "description": og.get('description', ''),
-                        "images":      [og['image']] if og.get('image') else [],
-                        "price":       parse_price(og.get('price', 0)),
-                        "currency":    og.get('currency', 'SAR'),
+                        "name":        raw_title.split('|')[0].split(' - ')[0].strip(),
+                        "description": og.get('description') or micro.get('description') or '',
+                        "images":      [og['image']] if og.get('image') else ([micro['image']] if micro.get('image') else []),
+                        "price":       parse_price(og.get('price') or micro.get('price') or 0),
+                        "currency":    og.get('currency') or micro.get('currency') or 'SAR',
                         "stock":       100,
-                        "sku":         '',
-                        "brand":       '',
+                        "sku":         micro.get('sku') or '',
+                        "brand":       micro.get('brand') or '',
                         "category":    '',
                         "sourceUrl":   url,
                         "platform":    "url",
                     }
+                else:
+                    # Patch missing fields from OG / microdata
+                    if not product.get('price') or product['price'] == 0:
+                        product['price'] = parse_price(og.get('price') or micro.get('price') or 0)
+                    if not product.get('images'):
+                        if og.get('image'):   product['images'] = [og['image']]
+                        elif micro.get('image'): product['images'] = [micro['image']]
+                    if not product.get('currency') or product['currency'] == 'SAR':
+                        product['currency'] = og.get('currency') or micro.get('currency') or 'SAR'
 
                 # 3. <title> tag fallback for name
                 if not product.get('name'):

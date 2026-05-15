@@ -1,5 +1,8 @@
-import React, { useState, useRef, useCallback } from 'react'
+import React, { useState, useRef } from 'react'
 import { apiPost } from '../../api'
+
+const proxyImg = (url) =>
+  url ? `/api/scrape/img?url=${encodeURIComponent(url)}` : null
 
 const PLATFORMS = [
   { id: 'noon',        label: 'Noon.com',    flag: '🌙', color: '#f1c40f', desc: 'Saudi & UAE products' },
@@ -29,9 +32,16 @@ function Toast({ msg, type }) {
   )
 }
 
+function fmt(price, currency) {
+  if (!price || price <= 0) return 'N/A'
+  try { return `${currency || 'SAR'} ${Number(price).toFixed(2)}` } catch { return `${currency || 'SAR'} ${price}` }
+}
+
 function ProductCard({ product, selected, onToggle, onImportSingle }) {
   const [imgErr, setImgErr] = useState(false)
-  const img = product.images?.[0]
+  const [useProxy, setUseProxy] = useState(false)
+  const rawImg = product.images?.[0]
+  const img = rawImg ? (useProxy ? proxyImg(rawImg) : rawImg) : null
   return (
     <div
       onClick={() => onToggle(product._bulkId)}
@@ -65,7 +75,12 @@ function ProductCard({ product, selected, onToggle, onImportSingle }) {
           <img
             src={img}
             alt={product.name}
-            onError={() => setImgErr(true)}
+            referrerPolicy="no-referrer"
+            crossOrigin="anonymous"
+            onError={() => {
+              if (!useProxy && rawImg) { setUseProxy(true) }  // retry via backend proxy
+              else { setImgErr(true) }                         // give up
+            }}
             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
           />
         ) : (
@@ -91,7 +106,7 @@ function ProductCard({ product, selected, onToggle, onImportSingle }) {
         )}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 'auto' }}>
           <span style={{ fontSize: 16, fontWeight: 800, color: '#6366f1' }}>
-            {product.price > 0 ? `${product.currency || 'SAR'} ${product.price.toFixed(2)}` : 'N/A'}
+            {fmt(product.price, product.currency)}
           </span>
           {product.originalPrice > product.price && (
             <span style={{ fontSize: 12, color: '#94a3b8', textDecoration: 'line-through' }}>

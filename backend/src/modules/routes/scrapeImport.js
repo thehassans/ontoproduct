@@ -393,4 +393,37 @@ router.post('/import', auth, allowRoles('admin', 'user', 'manager'), async (req,
   return res.json({ imported: saved, total: products.length, results })
 })
 
+// Image proxy — fetches external CDN images server-side to bypass hotlink protection
+router.get('/img', auth, async (req, res) => {
+  const raw = req.query.url
+  if (!raw) return res.status(400).end()
+  const url = decodeURIComponent(raw)
+  if (!url.startsWith('http')) return res.status(400).end()
+  try {
+    const controller = new AbortController()
+    const t = setTimeout(() => controller.abort(), 12000)
+    const r = await fetch(url, {
+      headers: {
+        'User-Agent': UA,
+        'Accept': 'image/webp,image/avif,image/*,*/*',
+        'Referer': '',           // no referrer — bypasses hotlink check
+        'Origin': '',
+      },
+      signal: controller.signal,
+      redirect: 'follow',
+    })
+    clearTimeout(t)
+    if (!r.ok) return res.status(r.status).end()
+    const ct = r.headers.get('content-type') || 'image/jpeg'
+    if (!ct.startsWith('image/')) return res.status(415).end()
+    res.setHeader('Content-Type', ct)
+    res.setHeader('Cache-Control', 'public, max-age=86400')
+    res.setHeader('Access-Control-Allow-Origin', '*')
+    const buf = await r.arrayBuffer()
+    return res.send(Buffer.from(buf))
+  } catch (err) {
+    return res.status(500).end()
+  }
+})
+
 export default router
