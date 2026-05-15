@@ -431,6 +431,88 @@ async def do_search(platform, query, page):
         return {"products": products, "hasMore": len(products) >= 20, "warning": warning, "platform": platform}
 
 
+# ── Shein-specific extractor ─────────────────────────────────────────────────
+def extract_shein_product(html, url):
+    """Parse Shein's embedded JS product data (window.gbData / PRELOADED_STATE)."""
+    # Try to find product goods_id from URL
+    gid_m = re.search(r'-p-(\d+)\.html', url)
+    goods_id = gid_m.group(1) if gid_m else None
+
+    # Try window.gbData.product or similar inline objects
+    for pat in (
+        r'window\.gbData\s*=\s*(\{[\s\S]{50,200000}?\})\s*;?\s*(?:window|var|let|const|$)',
+        r'"product"\s*:\s*(\{[^{}]{0,5000}(?:\{[^{}]*\}[^{}]{0,5000})*\})',
+        r'SH_PAGE_CONTEXT\s*=\s*(\{[\s\S]{20,100000}?\})\s*;',
+    ):
+        m = re.search(pat, html)
+        if not m:
+            continue
+        try:
+            data = json.loads(m.group(1))
+        except Exception:
+            continue
+
+        # Walk known paths
+        prod = (
+            data.get('product') or
+            data.get('goods_info') or
+            data.get('detail') or
+            data
+        )
+        if not isinstance(prod, dict):
+            continue
+
+        name = clean(prod.get('goods_name') or prod.get('name') or prod.get('goodsName') or '')
+        if not name or len(name) < 5:
+            continue
+
+        # Price
+        price_raw = (
+            prod.get('salePrice', {}).get('amount') or
+            prod.get('retailPrice', {}).get('amount') or
+            prod.get('price') or
+            prod.get('salePrice') or
+            0
+        )
+        currency = (
+            prod.get('salePrice', {}).get('currency') or
+            prod.get('currency') or 'SAR'
+        )
+
+        # Images
+        imgs = []
+        img_list = prod.get('images') or prod.get('goods_imgs') or prod.get('detail_image') or []
+        if isinstance(img_list, list):
+            for im in img_list[:8]:
+                u = im if isinstance(im, str) else (im.get('src') or im.get('url') or im.get('image_url') or '')
+                if u and not u.startswith('http'):
+                    u = 'https:' + u
+                if u.startswith('http'):
+                    imgs.append(u)
+        main_img = prod.get('goods_img') or prod.get('main_image') or ''
+        if main_img and not main_img.startswith('http'):
+            main_img = 'https:' + main_img
+        if main_img and main_img not in imgs:
+            imgs.insert(0, main_img)
+
+        return {
+            "name":        name,
+            "description": clean(prod.get('goods_desc') or prod.get('description') or ''),
+            "images":      imgs[:8],
+            "price":       parse_price(price_raw),
+            "currency":    currency,
+            "stock":       100,
+            "delivery":    '',
+            "sku":         str(prod.get('goods_sn') or prod.get('sku') or goods_id or ''),
+            "brand":       '',
+            "category":    clean(prod.get('cat_name') or ''),
+            "sourceUrl":   url,
+            "platform":    "shein",
+        }
+
+    return None  # fallback to JSON-LD / OG
+
+
 # ── URL fetch mode ────────────────────────────────────────────────────────────
 async def do_fetch_urls(urls):
     crawler, api = await make_crawler()
@@ -447,12 +529,18 @@ async def do_fetch_urls(urls):
                 html = result.html or ''
 
                 product = None
+
+                # 0. Shein-specific: parse window.gbData / __PRELOADED_STATE__
+                if 'shein.com' in url:
+                    product = extract_shein_product(html, url)
+
                 # 1. JSON-LD — most reliable when present
-                for ld in extract_jsonld(html):
-                    p = jsonld_to_product(ld, url)
-                    if p and p.get('name'):
-                        product = p
-                        break
+                if not product:
+                    for ld in extract_jsonld(html):
+                        p = jsonld_to_product(ld, url)
+                        if p and p.get('name'):
+                            product = p
+                            break
 
                 # 2. OG + microdata
                 og    = extract_og(html)
