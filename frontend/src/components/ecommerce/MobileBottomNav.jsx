@@ -121,13 +121,13 @@ export default function MobileBottomNav({ onCartClick }) {
 
   const handleNavClick = (item) => {
     if (item.action === 'profile') {
-      // Navigate to customer dashboard if logged in, otherwise to login
       if (isCustomerLoggedIn()) {
         navigate('/customer')
       } else {
         navigate('/customer/login')
       }
     } else if (item.id === 'cart') {
+      // Always navigate to the full cart page — never open a drawer on mobile
       navigate('/cart')
     } else if (item.path) {
       navigate(item.path)

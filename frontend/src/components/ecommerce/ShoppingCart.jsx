@@ -372,7 +372,17 @@ export default function ShoppingCart({ isOpen, onClose }) {
     }
   }
 
+  // On mobile viewports redirect to the cart page instead of showing the drawer
+  useEffect(() => {
+    if (isOpen && window.innerWidth < 1024) {
+      if (typeof onClose === 'function') onClose()
+      navigate('/cart')
+    }
+  }, [isOpen])
+
   if (!isOpen) return null
+  // Don't render the drawer on mobile (the useEffect above already navigated away)
+  if (window.innerWidth < 1024) return null
 
   return (
     <>
