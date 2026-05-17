@@ -10,6 +10,7 @@ import { resolveCountryDomainForCurrentHost, DEFAULT_COUNTRY_LIST } from './util
 import DynamicPixels from './components/DynamicPixels.jsx'
 import AppLaunchOverlay from './components/AppLaunchOverlay.jsx'
 import DeliveryDetailsPrompt from './components/DeliveryDetailsPrompt.jsx'
+import CountrySEO from './components/CountrySEO.jsx'
 
 // =============================================================================
 // LAZY LOADING - All components loaded on demand for faster initial load
@@ -687,6 +688,7 @@ export default function App() {
         <CustomDomainRouter>
           <CountryProvider>
           <CountryGatewayMounter />
+          <CountrySEO />
           <Suspense fallback={<AppFallback />}>
           <AppLaunchOverlay />
           <DeliveryDetailsPrompt />

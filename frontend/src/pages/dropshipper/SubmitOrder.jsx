@@ -5,6 +5,7 @@ import { io } from 'socket.io-client'
 import { getCurrencyConfig, convert as fxConvert } from '../../util/currency'
 import MapPreview from '../../components/MapPreview'
 import { getLocalStockByCountry } from '../../utils/warehouse'
+import { COUNTRY_LIST } from '../../utils/constants'
 
 export default function SubmitOrder() {
   const location = useLocation()
@@ -571,9 +572,20 @@ export default function SubmitOrder() {
     '+965': 'KWD',
     '+974': 'QAR',
     '+91': 'INR',
+    '+92': 'PKR',
+    '+962': 'JOD',
+    '+1': 'USD',
+    '+44': 'GBP',
+    '+61': 'AUD',
   }
   const PHONE_CODE_TO_COUNTRYKEY = { '+966': 'KSA', '+971': 'UAE', '+968': 'OM', '+973': 'BH' }
-  const selectedCurrency = PHONE_CODE_TO_CCY[form.phoneCountryCode] || 'SAR'
+  // Prefer country-based currency lookup (covers all countries); phone code as fallback
+  const selectedCurrency = useMemo(() => {
+    const fromCountry = COUNTRY_LIST.find(
+      (c) => c.name === form.orderCountry || c.code === form.orderCountry
+    )?.currency
+    return fromCountry || PHONE_CODE_TO_CCY[form.phoneCountryCode] || 'SAR'
+  }, [form.orderCountry, form.phoneCountryCode])
   // Pricing with multiple items
   const itemsDetailed = useMemo(() => {
     try {
