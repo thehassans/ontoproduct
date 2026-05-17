@@ -189,7 +189,7 @@ const PREMIUM_STYLES = `
     }
     .dropshipper-content {
       margin-left: 0;
-      padding: 16px;
+      padding: 8px 4px;
       padding-bottom: 88px;
       width: 100%;
     }

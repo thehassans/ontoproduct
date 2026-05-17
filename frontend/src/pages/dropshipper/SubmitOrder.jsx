@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useLocation } from 'react-router-dom'
-import { apiGet, apiPost, API_BASE } from '../../api'
+import { apiGet, apiPost, API_BASE, mediaUrl } from '../../api'
 import { io } from 'socket.io-client'
 import { getCurrencyConfig, convert as fxConvert } from '../../util/currency'
 import MapPreview from '../../components/MapPreview'
@@ -223,6 +223,13 @@ export default function SubmitOrder() {
       companyWarehouseStock,
       totalStock: usesPartnerInventory ? partnerStock + companyWarehouseStock : companyWarehouseStock,
     }
+  }
+
+  function getProductImage(product) {
+    if (!product) return null
+    const raw = (Array.isArray(product.images) && product.images[0]) || product.imagePath || product.image || ''
+    if (!raw) return null
+    try { return mediaUrl(raw) || raw } catch { return raw }
   }
 
   function getSelectedCountryStock(product) {
@@ -1322,9 +1329,21 @@ export default function SubmitOrder() {
                                       (e.currentTarget.style.background = 'transparent')
                                     }
                                   >
-                                    <div style={{ fontWeight: 500 }}>{p.name}</div>
-                                    <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>
-                                      {selectedCurrency} {display.toFixed(2)} • {getSelectedCountryStockLabel(p)}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                      {getProductImage(p) && (
+                                        <img
+                                          src={getProductImage(p)}
+                                          alt={p.name}
+                                          style={{ width: 36, height: 36, borderRadius: 4, objectFit: 'cover', flexShrink: 0, border: '1px solid var(--border)' }}
+                                          onError={(e) => { e.target.style.display = 'none' }}
+                                        />
+                                      )}
+                                      <div>
+                                        <div style={{ fontWeight: 500 }}>{p.name}</div>
+                                        <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>
+                                          {selectedCurrency} {display.toFixed(2)} • {getSelectedCountryStockLabel(p)}
+                                        </div>
+                                      </div>
                                     </div>
                                   </div>
                                 )
@@ -1611,19 +1630,52 @@ export default function SubmitOrder() {
                 </div>
                 <div style={{ display: 'grid', gap: 6 }}>
                   {itemsDetailed.length ? (
-                    itemsDetailed.map((r) => (
-                      <div
-                        key={r.idx}
-                        style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}
-                      >
-                        <span style={{ opacity: 0.9 }}>
-                          {r.product?.name || 'Item'} × {r.qty}
-                        </span>
-                        <span>
-                          {selectedCurrency} {r.amount.toFixed(2)}
-                        </span>
-                      </div>
-                    ))
+                    itemsDetailed.map((r) => {
+                      const imgSrc = getProductImage(r.product)
+                      return (
+                        <div
+                          key={r.idx}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 10,
+                            padding: '8px',
+                            background: 'var(--panel-2)',
+                            borderRadius: 8,
+                            border: '1px solid var(--border)',
+                          }}
+                        >
+                          {imgSrc && (
+                            <img
+                              src={imgSrc}
+                              alt={r.product?.name || ''}
+                              style={{
+                                width: 52,
+                                height: 52,
+                                borderRadius: 6,
+                                objectFit: 'cover',
+                                flexShrink: 0,
+                                border: '1px solid var(--border)',
+                                background: 'var(--panel)',
+                              }}
+                              onError={(e) => { e.target.style.display = 'none' }}
+                            />
+                          )}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: 600, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {r.product?.name || 'Item'}
+                            </div>
+                            <div style={{ fontSize: 12, opacity: 0.65, marginTop: 2 }}>Qty: {r.qty}</div>
+                            {r.isSalePrice && (
+                              <div style={{ fontSize: 11, color: '#10b981', fontWeight: 600, marginTop: 1 }}>Sale Price</div>
+                            )}
+                          </div>
+                          <div style={{ fontWeight: 700, whiteSpace: 'nowrap', fontSize: 13 }}>
+                            {selectedCurrency} {r.amount.toFixed(2)}
+                          </div>
+                        </div>
+                      )
+                    })
                   ) : (
                     <div style={{ opacity: 0.7 }}>No items added</div>
                   )}
