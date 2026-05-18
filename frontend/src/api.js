@@ -22,8 +22,14 @@ export const API_BASE = (() => {
 
       if (isCapacitor || (isLocalhost && !isDevPort)) {
           base = 'https://buysial.com/api'
+      } else if (isLocalhost) {
+          base = 'http://localhost:4000'
       } else {
-          base = isLocalhost ? 'http://localhost:4000' : '/api'
+          // Country-specific subdomains (e.g. ar.buysial.com, ae.buysial.com) only serve
+          // the frontend; the API backend runs exclusively on buysial.com.
+          const MAIN = 'buysial.com'
+          const isBuysialSub = host !== MAIN && (host.endsWith('.' + MAIN) || host.endsWith(MAIN))
+          base = isBuysialSub ? `https://${MAIN}/api` : '/api'
       }
     }
   } catch {}

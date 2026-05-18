@@ -112,8 +112,15 @@ const corsOptions = {
     // Android: http://localhost, https://localhost
     // iOS: capacitor://localhost
     const isMobileOrigin = origin.startsWith('http://localhost') || origin.startsWith('https://localhost') || origin.startsWith('capacitor://');
+
+    // Always allow any buysial.com subdomain (country-specific storefronts)
+    let isBuysialSubdomain = false;
+    try {
+      const originHost = new URL(origin).hostname.toLowerCase();
+      isBuysialSubdomain = originHost === 'buysial.com' || originHost.endsWith('.buysial.com');
+    } catch {}
     
-    if (isWildcard || isListed || isMobileOrigin) return cb(null, true);
+    if (isWildcard || isListed || isMobileOrigin || isBuysialSubdomain) return cb(null, true);
     return cb(new Error("Not allowed by CORS: " + origin));
   },
   credentials: true,

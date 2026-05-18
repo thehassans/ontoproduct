@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { apiGet, apiPost, apiUpload, mediaUrl } from '../../api'
+import { apiGet, apiPost, apiUploadWithProgress, mediaUrl } from '../../api'
 
 import { categories as STATIC_CATEGORY_LIST } from '../../components/ecommerce/CategoryFilter'
 
 export default function HomeBanners() {
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
   const [banners, setBanners] = useState([])
   const [notice, setNotice] = useState('')
   const [categoriesApi, setCategoriesApi] = useState([])
@@ -96,6 +97,9 @@ export default function HomeBanners() {
     load()
   }, [])
 
+  const MAX_FILE_MB = 15
+  const MAX_FILE_BYTES = MAX_FILE_MB * 1024 * 1024
+
   async function handleUpload(e) {
     e?.preventDefault?.()
     setNotice('')
@@ -104,8 +108,17 @@ export default function HomeBanners() {
       setNotice('Please upload a Desktop banner image')
       return
     }
+    if (form.bannerDesktop.size > MAX_FILE_BYTES) {
+      setNotice(`Desktop image is too large (max ${MAX_FILE_MB} MB). Please compress or resize it first.`)
+      return
+    }
+    if (form.bannerMobile && form.bannerMobile.size > MAX_FILE_BYTES) {
+      setNotice(`Mobile image is too large (max ${MAX_FILE_MB} MB). Please compress or resize it first.`)
+      return
+    }
 
     setUploading(true)
+    setUploadProgress(0)
     try {
       const fd = new FormData()
       fd.append('banner', form.bannerDesktop)
@@ -119,27 +132,31 @@ export default function HomeBanners() {
         fd.append('linkCategory', String(form.linkCategory))
       }
 
-      const res = await apiUpload('/api/settings/website/banners', fd)
+      const res = await apiUploadWithProgress('/api/settings/website/banners', fd, ({ percent }) => {
+        setUploadProgress(Math.min(99, Math.round(percent || 0)))
+      })
+      setUploadProgress(100)
       if (res?.banner) {
         await load()
         setForm((p) => ({ ...p, title: '', bannerDesktop: null, bannerMobile: null }))
         setNotice('Saved')
-        try {
-          const desktopInput = document.getElementById('homeBannerDesktop')
-          if (desktopInput) desktopInput.value = ''
-        } catch {}
-        try {
-          const mobileInput = document.getElementById('homeBannerMobile')
-          if (mobileInput) mobileInput.value = ''
-        } catch {}
+        try { document.getElementById('homeBannerDesktop').value = '' } catch {}
+        try { document.getElementById('homeBannerMobile').value = '' } catch {}
       } else {
-        setNotice('Upload completed but banner not returned')
+        setNotice('Upload completed but no banner was returned — please reload.')
       }
     } catch (err) {
       console.error(err)
-      setNotice(err?.message || 'Upload failed')
+      const raw = String(err?.message || '')
+      const isFetchFail = raw.toLowerCase().includes('failed to fetch') || raw.toLowerCase().includes('networkerror') || raw.toLowerCase().includes('network request failed')
+      setNotice(
+        isFetchFail
+          ? 'Upload failed — could not reach the server. Check your internet connection or try a smaller image.'
+          : raw || 'Upload failed'
+      )
     } finally {
       setUploading(false)
+      setTimeout(() => setUploadProgress(0), 1500)
     }
   }
 
@@ -294,9 +311,19 @@ export default function HomeBanners() {
             </div>
           </div>
 
+          {uploading && uploadProgress > 0 && (
+            <div style={{ display: 'grid', gap: 6 }}>
+              <div style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 600 }}>
+                Uploading… {uploadProgress}%
+              </div>
+              <div style={{ height: 6, borderRadius: 99, background: 'var(--border)', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${uploadProgress}%`, background: 'linear-gradient(90deg, #10b981, #059669)', borderRadius: 99, transition: 'width 0.2s ease' }} />
+              </div>
+            </div>
+          )}
           <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
             <button className="btn" disabled={uploading} onClick={handleUpload}>
-              {uploading ? 'Uploading...' : 'Upload Banner'}
+              {uploading ? `Uploading${uploadProgress > 0 ? ` ${uploadProgress}%` : '…'}` : 'Upload Banner'}
             </button>
             <button className="btn secondary" disabled={loading} onClick={load}>
               Refresh
