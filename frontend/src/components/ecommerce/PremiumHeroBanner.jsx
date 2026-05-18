@@ -1,8 +1,11 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { apiGet, mediaUrl } from '../../api'
+import { useCountry } from '../../contexts/CountryContext'
+import { COUNTRY_LIST } from '../../utils/constants'
 
 export default function PremiumHeroBanner() {
+  const { country } = useCountry()
   const [currentSlide, setCurrentSlide] = useState(0)
   const [imagesLoaded, setImagesLoaded] = useState([])
   const [banners, setBanners] = useState([])
@@ -35,7 +38,10 @@ export default function PremiumHeroBanner() {
     let alive = true
     ;(async () => {
       try {
-        const res = await apiGet('/api/settings/website/banners?page=home', { skipCache: true })
+        const countryName = COUNTRY_LIST.find((c) => c.code === country)?.name || country || ''
+        const qs = new URLSearchParams({ page: 'home' })
+        if (countryName) qs.set('country', countryName)
+        const res = await apiGet(`/api/settings/website/banners?${qs}`, { skipCache: true })
         const list = Array.isArray(res?.banners) ? res.banners : []
         if (alive) setBanners(list)
       } catch {
@@ -45,7 +51,7 @@ export default function PremiumHeroBanner() {
     return () => {
       alive = false
     }
-  }, [])
+  }, [country])
 
   const slides = useMemo(() => {
     const list = Array.isArray(banners) ? banners : []

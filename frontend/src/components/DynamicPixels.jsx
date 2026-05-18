@@ -228,11 +228,22 @@ export default function DynamicPixels() {
   useEffect(() => {
     if (isStaffRoute) return
     if (!pixelsReady) return
-    const handler = (e) => {
+    const handler = async (e) => {
       try {
         const seo = window._seoSettings || {}
-        const countrySeo = window._countrySeoSettings || {}
+        let countrySeo = window._countrySeoSettings || {}
         const raw = e?.detail?.code || localStorage.getItem('selected_country') || ''
+
+        // Re-fetch country SEO if we have no data or country not found in cache
+        const cachedKey = resolveCountryKey(countrySeo, raw)
+        if (!cachedKey || !Object.keys(countrySeo).length) {
+          try {
+            const freshRes = await apiGet('/api/settings/country-seo').catch(() => ({ countrySeo: {} }))
+            countrySeo = freshRes?.countrySeo || {}
+            window._countrySeoSettings = countrySeo
+          } catch {}
+        }
+
         const key = resolveCountryKey(countrySeo, raw)
         if (!key) return
         const countryPixels = countrySeo[key] || {}
