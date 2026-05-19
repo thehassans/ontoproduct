@@ -101,44 +101,40 @@ export default function CategoryBrowser({ selectedCountry = 'GB' }) {
   const products = catProducts[catKey] || []
 
   return (
-    <section className="cb-section">
-      {/* Header */}
-      <div className="cb-header">
-        <h2 className="cb-title">Categories</h2>
-        <Link to="/categories" className="cb-see-all">
-          See all
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
-        </Link>
-      </div>
+    <section className="quick-cats">
+      <div className="shein-container">
+        {/* Header */}
+        <div className="cb-header" style={{ marginBottom: '16px' }}>
+          <h2 className="cb-title">Categories</h2>
+        </div>
 
-      {/* Horizontal category image blocks */}
-      <div className="cb-cats-scroll">
-        {categories.map((cat, idx) => {
-          const isActive = idx === activeIdx
-          const catImg = cat.image ? mediaUrl(cat.image) : cat.icon ? mediaUrl(cat.icon) : getDefaultCategoryImage(cat.name)
-          return (
-            <button
-              key={cat._id || idx}
-              onClick={() => setActiveIdx(idx)}
-              className={`cb-cat-block ${isActive ? 'cb-cat-active' : ''}`}
-            >
-              <div className="cb-cat-img-wrap">
-                <img
-                  src={catImg}
-                  alt={cat.name}
-                  className="cb-cat-img"
-                  loading="lazy"
-                  onError={e => { e.target.src = getDefaultCategoryImage(cat.name) }}
-                />
-                {isActive && <div className="cb-cat-ring" />}
-              </div>
-              <span className={`cb-cat-label ${isActive ? 'cb-cat-label-active' : ''}`}>
-                {cat.name}
-              </span>
-            </button>
-          )
-        })}
-      </div>
+        {/* Category image blocks (Shein style) */}
+        <div className="quick-cats-grid" style={{ overflowX: 'auto', flexWrap: 'nowrap', justifyContent: 'flex-start', scrollbarWidth: 'none', paddingBottom: '16px' }}>
+          {categories.map((cat, idx) => {
+            const isActive = idx === activeIdx
+            const catImg = cat.image ? mediaUrl(cat.image) : cat.icon ? mediaUrl(cat.icon) : getDefaultCategoryImage(cat.name)
+            return (
+              <button
+                key={cat._id || idx}
+                onClick={() => setActiveIdx(idx)}
+                className="qcat"
+                style={{ minWidth: '72px', border: 'none', background: 'none' }}
+              >
+                <div className="qcat-circle" style={{ borderColor: isActive ? 'var(--shein-primary)' : 'var(--shein-border)' }}>
+                  <img
+                    src={catImg}
+                    alt={cat.name}
+                    loading="lazy"
+                    onError={e => { e.target.src = getDefaultCategoryImage(cat.name) }}
+                  />
+                </div>
+                <span style={{ color: isActive ? 'var(--shein-primary)' : 'var(--shein-text)' }}>
+                  {cat.name}
+                </span>
+              </button>
+            )
+          })}
+        </div>
 
       {/* Horizontal product scroll */}
       {products.length > 0 ? (
@@ -194,6 +190,7 @@ export default function CategoryBrowser({ selectedCountry = 'GB' }) {
         <div className="cb-empty" style={{ color: '#d1d5db' }}>Loading...</div>
       )}
 
+      </div>
       <style>{`
         .cb-section {
           max-width: 1280px;

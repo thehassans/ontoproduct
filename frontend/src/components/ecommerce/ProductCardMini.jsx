@@ -411,7 +411,7 @@ const ProductCardMini = memo(function ProductCardMini({ product, selectedCountry
 
   return (
     <div 
-      className="product-card-taobao"
+      className="shein-product-card"
       onClick={handleCardClick}
       onMouseEnter={() => {
         setIsHovered(true)
@@ -421,10 +421,10 @@ const ProductCardMini = memo(function ProductCardMini({ product, selectedCountry
       onTouchStart={() => preloadProductDetail()}
     >
       {/* Image Container */}
-      <div className="image-container">
+      <div className="product-img-wrap">
         {isCustomer && (
           <button
-            className={`wishlist-btn ${wishlisted ? 'active' : ''}`}
+            className={`product-wishlist ${wishlisted ? 'active' : ''}`}
             onClick={onToggleWishlist}
             aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
             title={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
@@ -498,7 +498,7 @@ const ProductCardMini = memo(function ProductCardMini({ product, selectedCountry
 
         {/* Discount Badge */}
         {discountPercent > 0 && (
-          <div className="discount-badge">
+          <div className="product-badge">
             <span>-{discountPercent}%</span>
           </div>
         )}
@@ -515,27 +515,29 @@ const ProductCardMini = memo(function ProductCardMini({ product, selectedCountry
 
       {/* Product Info */}
       <div className="product-info">
-        <h3 className="product-name">{product.name}</h3>
+        <h3 className="product-title">{product.name}</h3>
         
-        <div className="price-section">
-          <div className="price-row">
-            <span className="currency-symbol">{displayCurrency === 'SAR' ? <SarIcon size={13} /> : currencySymbol(displayCurrency)}</span>
-            <span className="price-main">{convertedPrice.toFixed(2).split('.')[0]}</span>
-            <span className="price-decimal">.{convertedPrice.toFixed(2).split('.')[1]}</span>
-            {showDiscount && (
-              <span className="original-price">
-                {convertPrice(basePrice, product.baseCurrency || 'SAR', displayCurrency).toFixed(0)}
-              </span>
-            )}
-          </div>
+        <div className="product-price">
+          <span className="price-current">{displayCurrency === 'SAR' ? <SarIcon size={13} /> : currencySymbol(displayCurrency)}{convertedPrice.toFixed(2)}</span>
+          {showDiscount && (
+            <span className="price-original">
+              {convertPrice(basePrice, product.baseCurrency || 'SAR', displayCurrency).toFixed(0)}
+            </span>
+          )}
+          {discountPercent > 0 && (
+            <span className="price-discount">-{discountPercent}%</span>
+          )}
+        </div>
+        <div className="product-rating">
           <RotatingInfo productId={product._id} salesCount={salesCount} />
         </div>
 
       {showActions ? (
-          <div className="actions-row">
+          <div className="actions-row" style={{ marginTop: '8px', display: 'flex', gap: '8px' }}>
             <button
               type="button"
-              className={`mini-add-btn ${addingToCart ? 'adding' : ''}`}
+              className="add-to-cart"
+              style={{ marginTop: 0, flex: 1 }}
               onClick={handleAddToCart}
               disabled={addingToCart || !product.stockQty}
             >

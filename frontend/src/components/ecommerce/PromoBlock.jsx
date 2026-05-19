@@ -39,82 +39,38 @@ const PROMO_ITEMS = [
 
 export default function PromoBlock() {
   return (
-    <section className="max-w-7xl mx-auto px-2 sm:px-3 lg:px-4" style={{ marginTop: 20, marginBottom: 16 }}>
-      <div style={{
-        background: 'linear-gradient(135deg, #111827 0%, #1f2937 50%, #111827 100%)',
-        borderRadius: 18,
-        padding: '24px 20px 20px',
-        position: 'relative',
-        overflow: 'hidden',
-      }}>
-        {/* Subtle accent glow */}
-        <div style={{
-          position: 'absolute', top: -40, right: -40, width: 160, height: 160,
-          background: 'radial-gradient(circle, rgba(249,115,22,0.15) 0%, transparent 70%)',
-          borderRadius: '50%', pointerEvents: 'none',
-        }} />
-        <div style={{
-          position: 'absolute', bottom: -30, left: -30, width: 120, height: 120,
-          background: 'radial-gradient(circle, rgba(249,115,22,0.1) 0%, transparent 70%)',
-          borderRadius: '50%', pointerEvents: 'none',
-        }} />
-
+    <section className="promo-banners">
+      <div className="shein-container">
         {/* Title */}
         <h2 style={{
-          fontSize: 18,
+          fontSize: 22,
           fontWeight: 800,
-          color: '#fff',
+          color: '#111827',
           textAlign: 'center',
-          marginBottom: 16,
+          marginBottom: 24,
           lineHeight: 1.3,
-          position: 'relative',
-          zIndex: 1,
         }}>
           Instant <span style={{ color: '#f97316', fontStyle: 'italic' }}>Cashback</span> on everything,{' '}
-          <span style={{ display: 'block', fontSize: 15, fontWeight: 600, color: '#d1d5db', marginTop: 2 }}>every time you shop!</span>
+          <span style={{ display: 'block', fontSize: 15, fontWeight: 600, color: '#6b7280', marginTop: 4 }}>every time you shop!</span>
         </h2>
 
         {/* Cards */}
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 10,
-          position: 'relative',
-          zIndex: 1,
-        }}>
+        <div className="promo-grid">
           {PROMO_ITEMS.map((item, i) => (
             <div
               key={i}
+              className="promo-card"
               style={{
-                background: 'rgba(255,255,255,0.97)',
-                borderRadius: 14,
-                padding: '16px 18px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 16,
-                transition: 'transform 0.2s ease',
+                background: 'linear-gradient(135deg, #111827 0%, #1f2937 100%)',
               }}
             >
-              <div style={{
-                flex: '0 0 auto',
-                width: 52,
-                height: 52,
-                borderRadius: 14,
-                background: '#fff7ed',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}>
-                {item.icon}
+              <div className="promo-text" style={{ flex: 1 }}>
+                <span>{item.title}</span>
+                <strong style={{ fontSize: '20px' }}>{item.highlight}</strong>
+                <p>{item.desc}</p>
               </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <h3 style={{ fontSize: 17, fontWeight: 800, color: '#111827', margin: '0 0 2px', lineHeight: 1.2 }}>
-                  {item.title}
-                </h3>
-                <p style={{ fontSize: 13, color: '#374151', margin: 0, lineHeight: 1.4 }}>
-                  <span style={{ fontWeight: 700, color: '#111827' }}>{item.highlight}</span>{' '}
-                  {item.desc}
-                </p>
+              <div style={{ flex: '0 0 auto', marginLeft: '16px' }}>
+                {item.icon}
               </div>
             </div>
           ))}

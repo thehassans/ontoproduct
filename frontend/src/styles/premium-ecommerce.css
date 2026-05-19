@@ -418,3 +418,187 @@ body {
 .animate-fadeInUp {
   animation: fadeInUp 0.8s ease-out forwards;
 }
+
+/* --- SHEIN UI UX --- */
+:root{
+  --shein-black:#000;--shein-white:#fff;--shein-primary:#e02020;--shein-bg:#f5f5f5;
+  --shein-text:#1a1a1a;--shein-muted:#666;--shein-border:#e0e0e0;
+  --shein-card-bg:#fff;--shein-radius:8px;--shein-shadow:0 2px 12px rgba(0,0,0,.08);
+}
+.shein-container{max-width:1280px;margin:0 auto;padding:0 20px}
+
+/* ANNOUNCEMENT BAR */
+.shein-announcement-bar{background:#e02020;color:#fff;font-size:12px;padding:8px 0;overflow:hidden;white-space:nowrap}
+.shein-announcement-track{display:inline-flex;gap:80px;animation:shein-marquee 22s linear infinite}
+.shein-announcement-track span{display:inline-block;padding:0 40px}
+@keyframes shein-marquee{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+
+/* HEADER */
+.site-header{background:#fff;border-bottom:1px solid var(--shein-border);position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.header-inner{max-width:1280px;margin:0 auto;padding:0 20px;display:grid;grid-template-columns:auto 1fr auto auto;align-items:center;gap:24px;height:64px}
+.header-left-nav{display:flex;gap:20px;font-size:13px;font-weight:500;white-space:nowrap}
+.header-left-nav a{color:var(--shein-text);transition:color .2s}
+.header-left-nav a:hover{color:var(--shein-primary)}
+.logo{font-size:28px;font-weight:800;letter-spacing:-1px;color:var(--shein-black);justify-self:center}
+.logo:hover{opacity:.85}
+
+/* SEARCH */
+.search-wrap{position:relative;width:100%}
+.search-input{width:100%;height:40px;border:2px solid var(--shein-black);border-radius:20px;padding:0 48px 0 18px;font-size:13px;font-family:inherit;outline:none;transition:border-color .2s}
+.search-input:focus{border-color:var(--shein-primary)}
+.search-btn{position:absolute;right:4px;top:50%;transform:translateY(-50%);background:var(--shein-black);border:none;border-radius:16px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;transition:background .2s}
+.search-btn:hover{background:var(--shein-primary)}
+
+/* HEADER ICONS */
+.header-icons{display:flex;gap:8px;align-items:center}
+.icon-btn{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 10px;border-radius:6px;transition:background .2s;font-size:10px;color:var(--shein-text);white-space:nowrap}
+.icon-btn:hover{background:var(--shein-bg)}
+.cart-wrap{position:relative;display:inline-block}
+.cart-badge{position:absolute;top:-6px;right:-8px;background:var(--shein-primary);color:#fff;font-size:10px;font-weight:700;border-radius:50%;width:17px;height:17px;display:flex;align-items:center;justify-content:center}
+
+/* CATEGORY NAV */
+.category-nav{background:#1a1a1a;position:sticky;top:64px;z-index:99}
+.category-nav-inner{max-width:1280px;margin:0 auto;padding:0 20px;display:flex;gap:0;overflow-x:auto;scrollbar-width:none}
+.category-nav-inner::-webkit-scrollbar{display:none}
+.cat-link{color:#ccc;font-size:13px;font-weight:500;padding:12px 16px;white-space:nowrap;transition:all .2s;border-bottom:2px solid transparent}
+.cat-link:hover,.cat-link.active{color:#fff;border-bottom-color:#fff}
+.sale-link{color:#ff6b6b!important}
+.sale-link:hover{border-bottom-color:#ff6b6b!important}
+
+/* HERO */
+.shein-hero-section{background:#fff;padding:0}
+.shein-hero-main{display:grid;grid-template-columns:1fr 1fr;min-height:460px}
+.shein-hero-left{position:relative;overflow:hidden;display:flex;align-items:flex-end;padding:40px}
+.shein-hero-left-content{z-index:2;position:relative}
+.shein-hero-tag{background:rgba(0,0,0,.15);color:#fff;font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;text-transform:uppercase;letter-spacing:1px;display:inline-block;margin-bottom:12px;backdrop-filter:blur(4px)}
+.shein-hero-title{font-size:52px;font-weight:900;line-height:1;color:#3d1a6b;margin-bottom:12px}
+.shein-hero-title em{font-style:normal;color:#8b5cf6}
+.shein-hero-subtitle{font-size:16px;color:#555;margin-bottom:24px}
+.shein-hero-cta{display:inline-block;background:#1a1a1a;color:#fff;padding:12px 28px;border-radius:30px;font-size:14px;font-weight:600;transition:all .2s}
+.shein-hero-cta:hover{background:var(--shein-primary);transform:translateY(-2px)}
+.shein-hero-model{position:absolute;right:0;bottom:0;height:90%;object-fit:cover;object-position:top}
+.shein-hero-right{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:3px}
+.shein-hero-card{position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;cursor:pointer}
+.shein-hero-card img{width:100%;height:220px;object-fit:cover;transition:transform .4s}
+.shein-hero-card:hover img{transform:scale(1.05)}
+.shein-hero-card-label{padding:12px;background:rgba(0,0,0,.3);backdrop-filter:blur(4px);position:absolute;bottom:0;left:0;right:0}
+.shein-hero-card-label span{font-size:12px;color:rgba(255,255,255,.85);display:block}
+.shein-hero-card-label strong{font-size:14px;color:#fff}
+
+/* QUICK CATS */
+.quick-cats{background:#fff;padding:32px 0;border-bottom:1px solid var(--shein-border)}
+.quick-cats-grid{display:flex;justify-content:space-around;flex-wrap:wrap;gap:16px}
+.qcat{display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;transition:transform .2s}
+.qcat:hover{transform:translateY(-4px)}
+.qcat-circle{width:72px;height:72px;border-radius:50%;overflow:hidden;border:2px solid var(--shein-border);transition:border-color .2s;box-shadow:0 4px 12px rgba(0,0,0,.1)}
+.qcat:hover .qcat-circle{border-color:var(--shein-primary)}
+.qcat-circle img{width:100%;height:100%;object-fit:cover}
+.qcat span{font-size:12px;font-weight:600;color:var(--shein-text)}
+
+/* FLASH SALE */
+.flash-sale{background:#fff;padding:40px 0;border-bottom:1px solid var(--shein-border)}
+.flash-header{display:flex;align-items:center;gap:20px;margin-bottom:24px;flex-wrap:wrap}
+.flash-title-wrap{display:flex;align-items:center;gap:8px}
+.flash-icon{font-size:24px}
+.flash-title{font-size:22px;font-weight:800}
+.countdown{display:flex;align-items:center;gap:4px;background:#1a1a1a;border-radius:8px;padding:8px 14px}
+.countdown-unit{display:flex;flex-direction:column;align-items:center}
+.countdown-unit span{color:#fff;font-size:20px;font-weight:700;line-height:1}
+.countdown-unit label{color:#aaa;font-size:9px;text-transform:uppercase;margin-top:2px}
+.countdown-sep{color:#e02020;font-size:20px;font-weight:700;margin:0 2px}
+.see-all-link{margin-left:auto;color:var(--shein-primary);font-size:13px;font-weight:600;border-bottom:1px solid var(--shein-primary)}
+
+/* PRODUCT GRID */
+.product-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+.shein-product-card{background:var(--shein-card-bg);border-radius:var(--shein-radius);overflow:hidden;box-shadow:var(--shein-shadow);transition:transform .25s,box-shadow .25s;cursor:pointer;position:relative}
+.shein-product-card:hover{transform:translateY(-4px);box-shadow:0 12px 28px rgba(0,0,0,.13)}
+.product-img-wrap{position:relative;overflow:hidden;aspect-ratio:3/4}
+.product-img-wrap img{width:100%;height:100%;object-fit:cover;transition:transform .4s}
+.shein-product-card:hover .product-img-wrap img{transform:scale(1.06)}
+.product-badge{position:absolute;top:8px;left:8px;background:var(--shein-primary);color:#fff;font-size:10px;font-weight:700;padding:3px 8px;border-radius:4px}
+.product-badge.new{background:#22c55e}
+.product-wishlist{position:absolute;top:8px;right:8px;background:rgba(255,255,255,.9);border:none;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;transition:all .2s;opacity:0}
+.shein-product-card:hover .product-wishlist{opacity:1}
+.product-wishlist.active{color:var(--shein-primary)}
+.product-info{padding:10px}
+.product-title{font-size:12px;color:var(--shein-text);line-height:1.4;margin-bottom:6px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.product-price{display:flex;align-items:center;gap:8px}
+.price-current{font-size:14px;font-weight:700;color:var(--shein-primary)}
+.price-original{font-size:12px;color:var(--shein-muted);text-decoration:line-through}
+.price-discount{font-size:11px;color:#22c55e;font-weight:600}
+.product-rating{font-size:11px;color:var(--shein-muted);margin-top:4px}
+.add-to-cart{width:100%;background:var(--shein-black);color:#fff;border:none;padding:8px;font-size:12px;font-weight:600;cursor:pointer;transition:background .2s;margin-top:8px;border-radius:4px}
+.add-to-cart:hover{background:var(--shein-primary)}
+
+/* PROMO BANNERS */
+.promo-banners{padding:40px 0;background:var(--shein-bg)}
+.promo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.promo-card{border-radius:12px;overflow:hidden;display:flex;align-items:center;justify-content:space-between;padding:28px;position:relative;min-height:180px;cursor:pointer;transition:transform .25s}
+.promo-card:hover{transform:scale(1.02)}
+.promo-text{z-index:2}
+.promo-text span{font-size:11px;font-weight:700;color:rgba(255,255,255,.85);text-transform:uppercase;letter-spacing:1px;display:block}
+.promo-text strong{font-size:26px;font-weight:900;color:#fff;display:block;line-height:1.1;margin:4px 0}
+.promo-text p{font-size:13px;color:rgba(255,255,255,.85);margin-bottom:14px}
+.promo-text a{background:rgba(255,255,255,.2);backdrop-filter:blur(8px);color:#fff;padding:8px 20px;border-radius:20px;font-size:12px;font-weight:600;border:1px solid rgba(255,255,255,.4);transition:background .2s}
+.promo-text a:hover{background:rgba(255,255,255,.4)}
+.promo-card img{height:150px;object-fit:cover;border-radius:8px;flex-shrink:0}
+
+/* NEW ARRIVALS */
+.new-arrivals{background:#fff;padding:48px 0}
+.section-header{display:flex;align-items:center;gap:20px;margin-bottom:24px;flex-wrap:wrap}
+.section-header h2{font-size:22px;font-weight:800}
+.filter-tabs{display:flex;gap:8px;flex-wrap:wrap}
+.filter-tab{background:none;border:1px solid var(--shein-border);border-radius:20px;padding:6px 16px;font-size:12px;font-weight:500;cursor:pointer;transition:all .2s;font-family:inherit}
+.filter-tab.active,.filter-tab:hover{background:var(--shein-black);color:#fff;border-color:var(--shein-black)}
+
+/* REVIEWS */
+.reviews-section{background:var(--shein-bg);padding:48px 0;overflow:hidden}
+.section-title-center{font-size:22px;font-weight:800;text-align:center;margin-bottom:28px}
+.reviews-track-wrap{overflow:hidden}
+.reviews-track{display:flex;gap:16px;animation:shein-slide 28s linear infinite}
+.review-card{background:#fff;border-radius:12px;padding:20px;min-width:280px;box-shadow:var(--shein-shadow)}
+.review-stars{font-size:14px;margin-bottom:8px}
+.review-text{font-size:13px;color:var(--shein-text);line-height:1.5;margin-bottom:12px}
+.review-author{font-size:11px;color:var(--shein-muted);display:flex;align-items:center;gap:8px}
+.review-author img{width:28px;height:28px;border-radius:50%;object-fit:cover}
+@keyframes shein-slide{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+
+/* FOOTER */
+.site-footer{background:#111;color:#ccc}
+.footer-top{padding:48px 0}
+.footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px}
+.footer-logo{color:#fff;font-size:24px;margin-bottom:12px;display:block}
+.footer-col p{font-size:13px;line-height:1.7;color:#999;margin-bottom:16px}
+.social-links{display:flex;gap:12px;margin-bottom:20px;font-size:20px}
+.social-links a{transition:transform .2s;display:inline-block}
+.social-links a:hover{transform:scale(1.2)}
+.newsletter{display:flex;gap:0;border-radius:6px;overflow:hidden;border:1px solid #333}
+.newsletter input{flex:1;background:#1a1a1a;border:none;padding:10px 14px;color:#fff;font-size:13px;outline:none}
+.newsletter button{background:var(--shein-primary);color:#fff;border:none;padding:10px 16px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
+.footer-col h4{color:#fff;font-size:14px;font-weight:700;margin-bottom:16px;text-transform:uppercase;letter-spacing:.5px}
+.footer-col ul{list-style:none}
+.footer-col ul li{margin-bottom:10px}
+.footer-col ul li a{color:#999;font-size:13px;transition:color .2s}
+.footer-col ul li a:hover{color:#fff}
+.footer-bottom{border-top:1px solid #222;padding:20px 0}
+.footer-bottom .shein-container{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
+.footer-bottom p{font-size:12px;color:#666}
+.payment-icons{display:flex;gap:12px;font-size:12px;color:#666}
+
+/* RESPONSIVE */
+@media(max-width:1100px){.product-grid{grid-template-columns:repeat(4,1fr)}}
+@media(max-width:900px){
+  .shein-hero-main{grid-template-columns:1fr}
+  .shein-hero-right{display:grid;grid-template-columns:repeat(2,1fr)}
+  .promo-grid{grid-template-columns:1fr}
+  .footer-grid{grid-template-columns:1fr 1fr}
+  .product-grid{grid-template-columns:repeat(3,1fr)}
+  .header-left-nav{display:none}
+}
+@media(max-width:600px){
+  .header-inner{grid-template-columns:1fr auto;gap:12px}
+  .logo{display:none}
+  .product-grid{grid-template-columns:repeat(2,1fr)}
+  .footer-grid{grid-template-columns:1fr}
+  .shein-hero-title{font-size:36px}
+}
