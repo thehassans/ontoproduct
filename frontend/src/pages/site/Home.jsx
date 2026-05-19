@@ -32,6 +32,7 @@ export default function Home(){
   const viewedSectionsRef = useRef(new Set())
   const [cartCount, setCartCount] = useState(() => { try { const c = readCartItems(); return c.reduce((s, i) => s + (i.quantity || 1), 0) } catch { return 0 } })
   const [catNav, setCatNav] = useState({ enabled: false, categories: [] })
+  const [catTiles, setCatTiles] = useState([])
   const [activeCat, setActiveCat] = useState('All')
   const [newArrivals, setNewArrivals] = useState([])
   const [annBar, setAnnBar] = useState(() => {
@@ -148,6 +149,11 @@ export default function Home(){
             textColor
           })
           setCatNav({ enabled: catNavEnabled, categories: catNavList })
+
+          // Parse category image tiles
+          let tilesData = []
+          try { tilesData = JSON.parse(getText('catTiles_json', '[]') || '[]') } catch {}
+          setCatTiles(Array.isArray(tilesData) ? tilesData : [])
 
           // Parse announcement bar
           const annEnabled = getText('annBar_enabled', 'true') !== 'false'
@@ -320,8 +326,8 @@ export default function Home(){
               placeholder="Search for styles, brands, and more"
               style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 13, color: '#222', minWidth: 0 }}
             />
-            <button type="submit" style={{ background: '#f97316', color: '#fff', border: 'none', height: '100%', padding: '0 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
-              Search
+            <button type="submit" style={{ width: 34, height: 34, borderRadius: '50%', background: '#222', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, margin: '0 3px' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
             </button>
           </form>
 
@@ -375,6 +381,28 @@ export default function Home(){
       {/* Hero Banner */}
       <div className="relative lg:hidden">
         <PremiumHeroBanner />
+
+        {/* ── Shein-style 2x2 category image tiles ── */}
+        {catTiles.length > 0 && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3, padding: '3px 3px 0' }}>
+            {catTiles.slice(0, 4).map((tile, i) => (
+              <div
+                key={i}
+                onClick={() => navigate(tile.link || '/catalog')}
+                style={{ position: 'relative', aspectRatio: '3/4', overflow: 'hidden', cursor: 'pointer', background: tile.imageUrl ? '#000' : '#d1d5db' }}
+              >
+                {tile.imageUrl
+                  ? <img src={tile.imageUrl} alt={tile.name || ''} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                  : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: '#9ca3af' }}>No image</div>
+                }
+                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(transparent, rgba(0,0,0,0.6))', padding: '28px 10px 10px' }}>
+                  <div style={{ color: '#fff', fontWeight: 700, fontSize: 13, lineHeight: 1.3 }}>{tile.name}</div>
+                  {tile.fromPrice && <div style={{ color: 'rgba(255,255,255,0.85)', fontSize: 12, marginTop: 2 }}>from {tile.fromPrice}</div>}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
         {/* Search bar — slides in from top when search icon clicked */}
         <div className={`absolute bottom-3 left-3 right-3 z-30 transition-all duration-300 ${mobileSearchOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
           <form onSubmit={e => { e.preventDefault(); if (searchQuery.trim()) { navigate(`/catalog?search=${encodeURIComponent(searchQuery.trim())}`); setSearchQuery(''); setMobileSearchOpen(false) } }} className="flex items-center gap-2.5 bg-black/30 backdrop-blur-xl rounded-full px-4 py-2.5 shadow-lg border border-white/20">

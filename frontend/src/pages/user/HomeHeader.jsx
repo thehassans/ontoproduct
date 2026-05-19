@@ -1,6 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { apiGet, apiPost, clearApiCache } from '../../api'
 
+const DEFAULT_TILES = [
+  { name: 'Boho Dresses', fromPrice: '$8.99', link: '/catalog?category=Dresses', imageUrl: '' },
+  { name: 'Casual Chic', fromPrice: '$5.99', link: '/catalog?category=Tops', imageUrl: '' },
+  { name: 'Accessories', fromPrice: '$3.99', link: '/catalog?category=Accessories', imageUrl: '' },
+  { name: 'Night Out', fromPrice: '$12.99', link: '/catalog?category=Dresses', imageUrl: '' },
+]
+
 const DEFAULTS = {
   annEnabled: true,
   annText: 'Free Shipping on Orders over $75 · Easy Returns · Trusted Quality',
@@ -18,6 +25,7 @@ export default function HomeHeader() {
   const [form, setForm] = useState(DEFAULTS)
   const [catList, setCatList] = useState([])
   const [catInput, setCatInput] = useState('')
+  const [catTiles, setCatTiles] = useState(DEFAULT_TILES)
   const [allCats, setAllCats] = useState([])
   const dragIdx = useRef(null)
 
@@ -38,6 +46,9 @@ export default function HomeHeader() {
         navCategories: get('catNav_categories', DEFAULTS.navCategories),
         logoUrl: get('logo_url', ''),
       }
+      let tiles = DEFAULT_TILES
+      try { const raw = get('catTiles_json', ''); if (raw) tiles = JSON.parse(raw) } catch {}
+      setCatTiles(Array.isArray(tiles) && tiles.length ? tiles : DEFAULT_TILES)
       setForm(next)
       setCatList(next.navCategories ? next.navCategories.split(',').map(s => s.trim()).filter(Boolean) : [])
     } catch (err) { console.error(err) }
@@ -64,6 +75,7 @@ export default function HomeHeader() {
         { id: 'catNav_enabled', type: 'text', text: form.navEnabled ? 'true' : 'false' },
         { id: 'catNav_categories', type: 'text', text: catList.join(',') },
         { id: 'logo_url', type: 'text', text: form.logoUrl || '' },
+        { id: 'catTiles_json', type: 'text', text: JSON.stringify(catTiles) },
       ]
       const existing = await apiGet('/api/settings/website/content?page=home', { skipCache: true }).catch(() => null)
       const existingEls = Array.isArray(existing?.content?.elements) ? existing.content.elements : []
@@ -100,6 +112,38 @@ export default function HomeHeader() {
       </div>
 
       <div style={{ display: 'grid', gap: 20 }}>
+
+        {/* ── Category Image Tiles ── */}
+        <Section title="Category Image Tiles" subtitle="2x2 photo tiles shown on home page (Shein-style). Upload lifestyle images and set labels.">
+          {catTiles.map((tile, i) => (
+            <div key={i} style={{ border: '1px solid #e5e7eb', borderRadius: 10, padding: 14, marginBottom: 12, background: '#fafafa' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#374151' }}>Tile {i + 1}</span>
+                {tile.imageUrl && (
+                  <img src={tile.imageUrl} alt="" style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 6, border: '1px solid #e5e7eb' }} onError={e => e.target.style.display='none'} />
+                )}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: 4 }}>CATEGORY NAME</label>
+                  <input value={tile.name} onChange={e => { const t = [...catTiles]; t[i] = { ...t[i], name: e.target.value }; setCatTiles(t) }} style={inp} placeholder="e.g. Boho Dresses" />
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: 4 }}>FROM PRICE</label>
+                  <input value={tile.fromPrice} onChange={e => { const t = [...catTiles]; t[i] = { ...t[i], fromPrice: e.target.value }; setCatTiles(t) }} style={inp} placeholder="e.g. $8.99" />
+                </div>
+              </div>
+              <div style={{ marginBottom: 8 }}>
+                <label style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: 4 }}>IMAGE URL</label>
+                <input value={tile.imageUrl} onChange={e => { const t = [...catTiles]; t[i] = { ...t[i], imageUrl: e.target.value }; setCatTiles(t) }} style={inp} placeholder="https://cdn.example.com/image.jpg" />
+              </div>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: 4 }}>LINK URL</label>
+                <input value={tile.link} onChange={e => { const t = [...catTiles]; t[i] = { ...t[i], link: e.target.value }; setCatTiles(t) }} style={inp} placeholder="/catalog?category=Dresses" />
+              </div>
+            </div>
+          ))}
+        </Section>
 
         {/* ── Logo ── */}
         <Section title="Site Logo" subtitle="URL of the logo image shown in the header and footer">
