@@ -305,70 +305,61 @@ export default function Home(){
         <Header onCartClick={() => setIsCartOpen(true)} />
       </div>
 
-      <div className="lg:hidden sticky top-0 z-40 bg-white/96 backdrop-blur-xl border-b border-slate-200/80 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
-        <div className="px-3 pt-3 pb-2 flex items-center gap-3">
-          <Link to="/" className="flex items-center gap-2.5 min-w-0" aria-label="BuySial home">
-            <img src={mobileBrandLogo} alt="BuySial" style={{ width: 42, height: 42, borderRadius: 14, objectFit: 'cover', flexShrink: 0, boxShadow: '0 8px 20px rgba(15,23,42,0.10)' }} />
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.03em', color: '#0f172a', lineHeight: 1.05 }}>Buysial</div>
-              <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', lineHeight: 1.1, whiteSpace: 'nowrap' }}>Premium mobile shopping</div>
-            </div>
+      {/* ── Shein-style mobile header ── */}
+      <div className="lg:hidden" style={{ position: 'sticky', top: 0, zIndex: 200, background: '#fff', borderBottom: '1px solid #e8e8e8' }}>
+        {/* Search row */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 10px' }}>
+          <form
+            onSubmit={e => { e.preventDefault(); if (searchQuery.trim()) { navigate(`/catalog?search=${encodeURIComponent(searchQuery.trim())}`); setSearchQuery(''); setMobileSearchOpen(false) } }}
+            style={{ flex: 1, display: 'flex', alignItems: 'center', background: '#f5f5f5', borderRadius: 8, height: 40, overflow: 'hidden', border: '1px solid #e5e5e5' }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" style={{ margin: '0 8px', flexShrink: 0 }}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Search for styles, brands, and more"
+              style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 13, color: '#222', minWidth: 0 }}
+            />
+            <button type="submit" style={{ background: '#f97316', color: '#fff', border: 'none', height: '100%', padding: '0 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
+              Search
+            </button>
+          </form>
+
+          <Link to="/customer" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, textDecoration: 'none', color: '#333', padding: '4px 5px', flexShrink: 0 }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <span style={{ fontSize: 10, fontWeight: 600, whiteSpace: 'nowrap' }}>Account</span>
           </Link>
 
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-            <button
-              onClick={() => setMobileSearchOpen(true)}
-              className="w-10 h-10 rounded-full flex items-center justify-center"
-              style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}
-              aria-label="Open search"
-            >
-              <svg className="w-[18px] h-[18px]" style={{ color: '#334155' }} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
-            </button>
-            <button
-              onClick={() => navigate('/cart')}
-              className="w-10 h-10 rounded-full flex items-center justify-center relative"
-              style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}
-              aria-label="Open cart"
-            >
-              <svg className="w-[18px] h-[18px]" style={{ color: '#334155' }} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-              {cartCount > 0 && <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-[9px] font-bold rounded-full min-w-[16px] h-[16px] flex items-center justify-center px-0.5">{cartCount > 99 ? '99+' : cartCount}</span>}
-            </button>
-            <button
-              onClick={() => setMobileMenuOpen(true)}
-              className="w-10 h-10 rounded-full flex items-center justify-center"
-              style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}
-              aria-label="Open menu"
-            >
-              <svg className="w-[18px] h-[18px]" style={{ color: '#334155' }} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <line x1="4" y1="7" x2="20" y2="7" /><line x1="4" y1="12" x2="20" y2="12" /><line x1="4" y1="17" x2="20" y2="17" />
-              </svg>
-            </button>
-          </div>
+          <Link to="/customer/wishlist" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, textDecoration: 'none', color: '#333', padding: '4px 5px', flexShrink: 0 }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+            <span style={{ fontSize: 10, fontWeight: 600, whiteSpace: 'nowrap' }}>Wishlist</span>
+          </Link>
+
+          <button onClick={() => navigate('/cart')} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, background: 'none', border: 'none', cursor: 'pointer', color: '#333', padding: '4px 5px', flexShrink: 0, position: 'relative' }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+            {cartCount > 0 && <span style={{ position: 'absolute', top: 0, right: 0, background: '#ef4444', color: '#fff', fontSize: 8, fontWeight: 700, borderRadius: 99, minWidth: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 2px' }}>{cartCount > 99 ? '99+' : cartCount}</span>}
+            <span style={{ fontSize: 10, fontWeight: 600 }}>Cart</span>
+          </button>
         </div>
 
+        {/* Dark category nav bar */}
         {catNav.enabled && catNav.categories.length > 0 && (
-          <div className="px-2 pb-2 overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-            <div className="flex items-center gap-2 min-w-max">
+          <div style={{ background: '#222', overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none', whiteSpace: 'nowrap' }}>
+            <div style={{ display: 'inline-flex', padding: '0 8px' }}>
               {['All', ...catNav.categories].map((cat, i) => (
                 <button
                   key={i}
-                  onClick={() => {
-                    setActiveCat(cat)
-                    if (cat === 'All') { navigate('/catalog') }
-                    else { navigate(`/catalog?category=${encodeURIComponent(cat)}`) }
-                  }}
-                  className="flex-shrink-0"
+                  onClick={() => { setActiveCat(cat); if (cat === 'All') navigate('/catalog'); else navigate(`/catalog?category=${encodeURIComponent(cat)}`) }}
                   style={{
-                    minHeight: 34,
-                    padding: '0 14px',
-                    borderRadius: 999,
-                    border: activeCat === cat ? '1px solid #fdba74' : '1px solid #e2e8f0',
-                    background: activeCat === cat ? 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)' : '#ffffff',
-                    color: activeCat === cat ? '#c2410c' : '#475569',
+                    padding: '9px 12px',
+                    background: 'none',
+                    border: 'none',
+                    borderBottom: activeCat === cat ? '2px solid #f97316' : '2px solid transparent',
+                    color: activeCat === cat ? '#fff' : 'rgba(255,255,255,0.72)',
                     fontSize: 13,
-                    fontWeight: 700,
+                    fontWeight: 600,
                     whiteSpace: 'nowrap',
-                    boxShadow: activeCat === cat ? '0 6px 16px rgba(249,115,22,0.10)' : 'none',
+                    cursor: 'pointer',
                   }}
                 >
                   {cat}
