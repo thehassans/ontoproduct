@@ -291,21 +291,6 @@ export default function Home(){
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#f4f4f4' }}>
-      {/* Announcement bar — mobile only (desktop gets it from Header.jsx) */}
-      {annBar?.text && (
-        <div className="lg:hidden" style={{
-          background: annBar.bg || '#111827',
-          color: annBar.color || '#fff',
-          textAlign: 'center',
-          padding: '8px 16px',
-          fontSize: 12,
-          fontWeight: 500,
-          lineHeight: 1.4,
-          letterSpacing: '0.01em',
-        }}>
-          {annBar.text}
-        </div>
-      )}
       {/* Desktop Header only (hidden on tablet & mobile) */}
       <div className="hidden lg:block">
         <Header onCartClick={() => setIsCartOpen(true)} />
@@ -313,6 +298,12 @@ export default function Home(){
 
       {/* ── Shein-style mobile header ── */}
       <div className="lg:hidden" style={{ position: 'sticky', top: 0, zIndex: 200, background: '#fff', borderBottom: '1px solid #e8e8e8' }}>
+        {/* Announcement bar — at very top, straight edges */}
+        {annBar?.text && (
+          <div style={{ background: annBar.bg || '#111827', color: annBar.color || '#fff', padding: '7px 14px', fontSize: 11, fontWeight: 500, textAlign: 'center', letterSpacing: '0.02em', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+            {annBar.text}
+          </div>
+        )}
         {/* Search row */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 10px' }}>
           <form

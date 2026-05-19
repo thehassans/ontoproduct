@@ -155,21 +155,19 @@ export default function MobileBottomNav({ onCartClick }) {
           >
             {tab.isCenter ? (
               <div style={{
-                width: 46, height: 46,
+                width: 50, height: 50,
                 borderRadius: '50%',
-                background: active ? '#f97316' : '#222',
+                background: '#fff',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: '0 4px 14px rgba(0,0,0,0.18)',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.22)',
                 marginBottom: 0,
                 position: 'relative',
+                border: active ? '2.5px solid #f97316' : '2.5px solid #e8e8e8',
+                overflow: 'hidden',
               }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2">
-                  <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
-                  <line x1="3" y1="6" x2="21" y2="6"/>
-                  <path d="M16 10a4 4 0 01-8 0"/>
-                </svg>
+                <img src="/mobile-app-launcher.png" alt="BuySial" style={{ width: 46, height: 46, objectFit: 'cover', borderRadius: '50%' }} />
                 {cartCount > 0 && (
                   <span style={{
                     position: 'absolute', top: -4, right: -4,
