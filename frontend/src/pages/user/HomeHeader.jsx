@@ -8,6 +8,7 @@ const DEFAULTS = {
   annColor: '#ffffff',
   navEnabled: true,
   navCategories: 'Fashion,Skincare,Electronics,Women,Men,Kids,Home,Beauty',
+  logoUrl: '',
 }
 
 export default function HomeHeader() {
@@ -35,6 +36,7 @@ export default function HomeHeader() {
         annColor: get('annBar_color', DEFAULTS.annColor),
         navEnabled: get('catNav_enabled', 'true') !== 'false',
         navCategories: get('catNav_categories', DEFAULTS.navCategories),
+        logoUrl: get('logo_url', ''),
       }
       setForm(next)
       setCatList(next.navCategories ? next.navCategories.split(',').map(s => s.trim()).filter(Boolean) : [])
@@ -61,6 +63,7 @@ export default function HomeHeader() {
         { id: 'annBar_color', type: 'text', text: form.annColor || '#ffffff' },
         { id: 'catNav_enabled', type: 'text', text: form.navEnabled ? 'true' : 'false' },
         { id: 'catNav_categories', type: 'text', text: catList.join(',') },
+        { id: 'logo_url', type: 'text', text: form.logoUrl || '' },
       ]
       const existing = await apiGet('/api/settings/website/content?page=home', { skipCache: true }).catch(() => null)
       const existingEls = Array.isArray(existing?.content?.elements) ? existing.content.elements : []
@@ -97,6 +100,27 @@ export default function HomeHeader() {
       </div>
 
       <div style={{ display: 'grid', gap: 20 }}>
+
+        {/* ── Logo ── */}
+        <Section title="Site Logo" subtitle="URL of the logo image shown in the header and footer">
+          <Row>
+            <Label>Logo Image URL</Label>
+          </Row>
+          <input
+            value={form.logoUrl}
+            onChange={e => set('logoUrl', e.target.value)}
+            placeholder="https://cdn.example.com/logo.png or /BSBackgroundremoved.png"
+            style={inp}
+          />
+          {form.logoUrl && (
+            <div>
+              <span style={previewLabel}>PREVIEW</span>
+              <div style={{ marginTop: 6, padding: '12px 16px', border: '1px solid #e5e7eb', borderRadius: 10, background: '#fafafa', display: 'inline-block' }}>
+                <img src={form.logoUrl} alt="Logo preview" style={{ height: 52, objectFit: 'contain', maxWidth: 220 }} onError={e => e.target.style.display='none'} />
+              </div>
+            </div>
+          )}
+        </Section>
 
         {/* ── Announcement Bar Card ── */}
         <Section

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Capacitor } from '@capacitor/core'
 import { COUNTRY_LIST } from '../../utils/constants'
 import { useCountry } from '../../contexts/CountryContext'
@@ -74,6 +74,11 @@ export default function Header({ onCartClick, editMode = false, editState = {}, 
   const { country: selectedCountry, setCountry: setSelectedCountry } = useCountry()
   const countryRef = useRef(null)
   const brandLogoSrc = isNativeMobileApp() ? '/mobile-app-launcher.png' : '/BSBackgroundremoved.png'
+  const navigate = useNavigate()
+  const [logoUrl, setLogoUrl] = useState(null)
+  const [catNavItems, setCatNavItems] = useState([])
+  const [catNavEnabled, setCatNavEnabled] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('')
   const lockedCountryCode = (() => {
     try { return String(localStorage.getItem('country_domain_locked_code') || '').toUpperCase().trim() } catch { return '' }
   })()
@@ -96,6 +101,12 @@ export default function Header({ onCartClick, editMode = false, editState = {}, 
       } else {
         setAnnBar(null)
       }
+      const lu = get('logo_url', '')
+      if (lu) setLogoUrl(lu)
+      const catEnabled = get('catNav_enabled', 'true') !== 'false'
+      setCatNavEnabled(catEnabled)
+      const catStr = get('catNav_categories', '')
+      if (catStr) setCatNavItems(catStr.split(',').map(s => s.trim()).filter(Boolean))
     }).catch(() => {})
     return () => { alive = false }
   }, [])
@@ -180,6 +191,16 @@ export default function Header({ onCartClick, editMode = false, editState = {}, 
     window.location.href = '/customer/login'
   }
 
+  const handleSearch = (e) => {
+    e.preventDefault()
+    if (searchQuery.trim()) {
+      navigate(`/catalog?search=${encodeURIComponent(searchQuery.trim())}`)
+      setSearchQuery('')
+    }
+  }
+
+  const displayLogo = logoUrl || brandLogoSrc
+
   return (
     <>
     {annBar?.text && (
@@ -187,8 +208,8 @@ export default function Header({ onCartClick, editMode = false, editState = {}, 
         background: annBar.bg || '#111827',
         color: annBar.color || '#fff',
         textAlign: 'center',
-        padding: '8px 16px',
-        fontSize: 13,
+        padding: '7px 16px',
+        fontSize: 12,
         fontWeight: 500,
         letterSpacing: '0.01em',
         lineHeight: 1.4,
@@ -198,280 +219,191 @@ export default function Header({ onCartClick, editMode = false, editState = {}, 
         {annBar.text}
       </div>
     )}
-    <header className="ecommerce-header">
-      <div className="header-container">
-        <div className="header-left">
-          <button className="mobile-menu-btn" onClick={toggleMobileMenu}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="3" y1="6" x2="21" y2="6"></line>
-              <line x1="3" y1="12" x2="21" y2="12"></line>
-              <line x1="3" y1="18" x2="21" y2="18"></line>
-            </svg>
-          </button>
-          <Link to="/" className="logo">
-            <img src={brandLogoSrc} alt="BuySial" className="logo-img" />
-          </Link>
-        </div>
+    <header className="sh-header">
+      {/* ── Main Row ── */}
+      <div className="sh-main-row">
+        {/* Hamburger – mobile only */}
+        <button className="sh-ham" onClick={toggleMobileMenu} aria-label="Menu">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+          </svg>
+        </button>
 
-        <div className="header-center">
-          <nav className="main-nav">
-            <Link to="/" className="nav-link">Home</Link>
-            <Link to="/catalog" className="nav-link">Products</Link>
-            <Link to="/categories" className="nav-link">Categories</Link>
-            <Link to="/about" className="nav-link">About</Link>
-            <Link to="/contact" className="nav-link">Contact</Link>
-          </nav>
-        </div>
+        {/* Logo */}
+        <Link to="/" className="sh-logo-link">
+          <img src={displayLogo} alt="BuySial" className="sh-logo-img" />
+        </Link>
 
-        <div className="header-right">
-          <div className="header-actions">
-            {/* Search button */}
-            <button className="search-btn" onClick={toggleSearch} aria-label="Search">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
-            </button>
-            {/* Edit Mode Controls */}
-            {editMode ? (
-              <>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 12px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', borderRadius: '20px', marginRight: '8px' }}>
-                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', animation: 'pulse 2s infinite' }} />
-                  <span style={{ color: 'white', fontSize: '13px', fontWeight: 600 }}>Edit Mode</span>
-                  {editState.elementCount > 0 && (
-                    <span style={{ background: 'rgba(255,255,255,0.25)', color: 'white', fontSize: '11px', padding: '2px 8px', borderRadius: '10px', fontWeight: 600 }}>{editState.elementCount}</span>
-                  )}
-                </div>
-                <button 
-                  onClick={() => editState.handleSave && editState.handleSave()} 
-                  disabled={!editState.canSave || editState.saving}
-                  style={{
-                    padding: '8px 16px',
-                    background: editState.canSave && !editState.saving ? '#10b981' : '#d1d5db',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    cursor: editState.canSave && !editState.saving ? 'pointer' : 'not-allowed',
-                    marginRight: '8px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px'
-                  }}
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-                    <polyline points="17 21 17 13 7 13 7 21"/>
-                    <polyline points="7 3 7 8 15 8"/>
-                  </svg>
-                  {editState.saving ? 'Saving...' : 'Save'}
+        {/* Search bar – desktop */}
+        <form className="sh-search-form" onSubmit={handleSearch}>
+          <svg className="sh-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input
+            className="sh-search-input"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Search for styles, brands, and more"
+          />
+          <button type="submit" className="sh-search-submit">Search</button>
+        </form>
+
+        {/* Right icons cluster */}
+        <div className="sh-right-icons">
+          {/* Edit mode controls */}
+          {editMode && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ display:'flex',alignItems:'center',gap:8,padding:'0 12px',background:'linear-gradient(135deg,#667eea,#764ba2)',borderRadius:20,height:34 }}>
+                <div style={{ width:6,height:6,borderRadius:'50%',background:'#10b981',animation:'sh-pulse 2s infinite' }}/>
+                <span style={{ color:'#fff',fontSize:13,fontWeight:600 }}>Edit Mode</span>
+                {editState.elementCount > 0 && <span style={{ background:'rgba(255,255,255,0.25)',color:'#fff',fontSize:11,padding:'2px 8px',borderRadius:10,fontWeight:600 }}>{editState.elementCount}</span>}
+              </div>
+              <button onClick={() => editState.handleSave && editState.handleSave()} disabled={!editState.canSave||editState.saving} style={{ padding:'7px 16px',background:editState.canSave&&!editState.saving?'#10b981':'#d1d5db',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:editState.canSave&&!editState.saving?'pointer':'not-allowed' }}>
+                {editState.saving ? 'Saving…' : 'Save'}
+              </button>
+              <button onClick={onExitEdit} style={{ padding:'7px 16px',background:'#ef4444',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer' }}>Exit</button>
+            </div>
+          )}
+
+          {!editMode && (
+            <>
+              {/* Country Selector */}
+              <div className="sh-country-wrap" ref={countryRef}>
+                <button className="sh-icon-btn" onClick={() => { if (!isCountryLocked) setIsCountryOpen(v => !v) }} title={isCountryLocked ? 'Locked to this country domain' : 'Choose country'}>
+                  <span className="sh-icon-emoji">{currentCountry.flag}</span>
+                  <span className="sh-icon-lbl">{currentCountry.code}</span>
+                  {!isCountryLocked && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{marginTop:1}}><path d="M6 9l6 6 6-6"/></svg>}
                 </button>
-                <button 
-                  onClick={onExitEdit}
-                  style={{
-                    padding: '8px 16px',
-                    background: '#ef4444',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    marginRight: '8px'
-                  }}
-                >
-                  Exit
-                </button>
-              </>
-            ) : (
-              <>
-                {/* Deliver to Country Selector */}
-                <div className="country-selector" ref={countryRef}>
-                  <button 
-                    className="country-btn"
-                    onClick={() => { if (!isCountryLocked) setIsCountryOpen(!isCountryOpen) }}
-                    disabled={isCountryLocked}
-                    title={isCountryLocked ? 'Country is locked to this domain' : undefined}
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{color:'#9ca3af',flexShrink:0}}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" /></svg>
-                    <span className="deliver-label">Deliver to</span>
-                    <span className="country-flag" key={currentCountry.code}>{currentCountry.flag}</span>
-                    <span className="country-name">{currentCountry.name}</span>
-                    {!isCountryLocked && <svg className={`country-arrow ${isCountryOpen ? 'open' : ''}`} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M6 9l6 6 6-6" />
-                    </svg>}
-                  </button>
-                  {isCountryOpen && !isCountryLocked && (
-                    <div className="country-dropdown">
-                      {COUNTRY_LIST.map((country) => (
-                        <button
-                          key={country.code}
-                          className={`country-option ${selectedCountry === country.code ? 'active' : ''}`}
-                          onClick={() => handleCountryChange(country)}
-                        >
-                          <span className="country-flag" key={country.code}>{country.flag}</span>
-                          <span className="country-name">{country.name}</span>
-                          {selectedCountry === country.code && (
-                            <svg className="check-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                              <path d="M20 6L9 17l-5-5" />
-                            </svg>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Wishlist button (customers only) */}
-                {customer && (
-                  <Link to="/customer/wishlist" className="wishlist-btn flex" aria-label="Wishlist" title="Wishlist">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                    </svg>
-                    {wishlistCount > 0 && <span className="wishlist-count">{wishlistCount > 99 ? '99+' : wishlistCount}</span>}
-                  </Link>
+                {isCountryOpen && !isCountryLocked && (
+                  <div className="sh-country-drop">
+                    {COUNTRY_LIST.map(c => (
+                      <button key={c.code} className={`sh-country-opt ${selectedCountry===c.code?'sh-co-active':''}`} onClick={() => handleCountryChange(c)}>
+                        <span>{c.flag}</span>
+                        <span style={{flex:1,textAlign:'left'}}>{c.name}</span>
+                        {selectedCountry===c.code && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth="3"><path d="M20 6L9 17l-5-5"/></svg>}
+                      </button>
+                    ))}
+                  </div>
                 )}
+              </div>
 
-                {/* Cart button - visible on both mobile and desktop */}
-                <Link to="/cart" className="cart-btn flex">
-                  {cartImage && cartCount > 0 ? (
-                    <div className="cart-preview-img">
-                      <img src={cartImage.startsWith('http') ? cartImage : `${window.location.origin}${cartImage.startsWith('/') ? '' : '/'}${cartImage}`} alt="" onError={(e) => { e.target.style.display = 'none' }} />
-                    </div>
-                  ) : (
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M9 22C9.55228 22 10 21.5523 10 21C10 20.4477 9.55228 20 9 20C8.44772 20 8 20.4477 8 21C8 21.5523 8.44772 22 9 22Z"></path>
-                      <path d="M20 22C20.5523 22 21 21.5523 21 21C21 20.4477 20.5523 20 20 20C19.4477 20 19 20.4477 19 21C19 21.5523 19.4477 22 20 22Z"></path>
-                      <path d="M1 1H5L7.68 14.39C7.77144 14.8504 8.02191 15.264 8.38755 15.5583C8.75318 15.8526 9.2107 16.009 9.68 16H19.4C19.8693 16.009 20.3268 15.8526 20.6925 15.5583C21.0581 15.264 21.3086 14.8504 21.4 14.39L23 6H6"></path>
-                    </svg>
-                  )}
-                  {cartCount > 0 && (
-                    <span className="cart-count">{cartCount}</span>
-                  )}
+              {/* Wishlist – logged-in customers */}
+              {customer && (
+                <Link to="/customer/wishlist" className="sh-icon-btn" title="Wishlist">
+                  <div style={{position:'relative'}}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+                    {wishlistCount > 0 && <span className="sh-badge">{wishlistCount > 99 ? '99+' : wishlistCount}</span>}
+                  </div>
+                  <span className="sh-icon-lbl">Wishlist</span>
                 </Link>
+              )}
 
-                <div className="auth-buttons">
-                  {customer ? (
-                    <>
-                      <Link to="/customer" className="dashboard-btn">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                          <polyline points="9,22 9,12 15,12 15,22"></polyline>
-                        </svg>
-                        Dashboard
-                      </Link>
-                      <div className="user-menu">
-                        <span className="user-name">{customer.firstName || 'Customer'}</span>
-                      </div>
-                      <button className="logout-btn" onClick={handleLogout}>Logout</button>
-                    </>
-                  ) : (
-                    <>
-                      <Link to="/customer/login" className="login-btn">Login</Link>
-                      <Link to="/register" className="register-btn">Sign Up</Link>
-                    </>
-                  )}
+              {/* Cart */}
+              <Link to="/cart" className="sh-icon-btn" title="Cart">
+                <div style={{position:'relative'}}>
+                  {cartImage && cartCount > 0
+                    ? <div className="sh-cart-thumb"><img src={cartImage.startsWith('http') ? cartImage : `${window.location.origin}${cartImage.startsWith('/')?'':'/'}${cartImage}`} alt="" onError={e=>e.target.style.display='none'}/></div>
+                    : <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+                  }
+                  {cartCount > 0 && <span className="sh-badge sh-badge-cart">{cartCount > 99 ? '99+' : cartCount}</span>}
                 </div>
-              </>
-            )}
-          </div>
+                <span className="sh-icon-lbl">Cart</span>
+              </Link>
+
+              {/* Account */}
+              {customer ? (
+                <div style={{display:'flex',alignItems:'center',gap:6}}>
+                  <Link to="/customer" className="sh-icon-btn" title={customer.firstName||'My Account'}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    <span className="sh-icon-lbl">{customer.firstName||'Me'}</span>
+                  </Link>
+                  <button className="sh-logout-btn" onClick={handleLogout}>Logout</button>
+                </div>
+              ) : (
+                <div className="sh-auth-row">
+                  <Link to="/customer/login" className="sh-login-btn">Login</Link>
+                  <Link to="/register" className="sh-signup-btn">Sign Up</Link>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Mobile search + cart (right side on mobile) */}
+        <div className="sh-mobile-right">
+          <button className="sh-mobile-icon-btn" onClick={toggleSearch} aria-label="Search">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          </button>
+          <Link to="/cart" className="sh-mobile-icon-btn" style={{position:'relative'}}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+            {cartCount > 0 && <span className="sh-badge sh-badge-cart">{cartCount > 99 ? '99+' : cartCount}</span>}
+          </Link>
         </div>
       </div>
 
-      {/* Glass Search Overlay */}
+      {/* ── Category Nav ── */}
+      {catNavEnabled && catNavItems.length > 0 && (
+        <nav className="sh-catnav">
+          <div className="sh-catnav-inner">
+            <Link to="/catalog" className="sh-cat-tab">All</Link>
+            {catNavItems.map(cat => (
+              <Link key={cat} to={`/catalog?category=${encodeURIComponent(cat)}`} className="sh-cat-tab">{cat}</Link>
+            ))}
+          </div>
+        </nav>
+      )}
+
+      {/* ── Search Overlay ── */}
       {isSearchOpen && (
-        <div className="glass-search-overlay" onClick={toggleSearch}>
-          <div className="glass-search-bar" onClick={e => e.stopPropagation()}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{color:'#9ca3af',flexShrink:0}}><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
-            <input 
-              type="text" 
-              placeholder="Search products..." 
-              className="glass-search-input"
+        <div className="sh-overlay" onClick={toggleSearch}>
+          <div className="sh-overlay-modal" onClick={e => e.stopPropagation()}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" style={{flexShrink:0}}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input
               autoFocus
-              onKeyDown={e => { if (e.key === 'Enter' && e.target.value.trim()) { window.location.href = `/catalog?search=${encodeURIComponent(e.target.value.trim())}`; } }}
+              placeholder="Search products, brands, categories…"
+              className="sh-overlay-input"
+              onKeyDown={e => { if (e.key==='Enter' && e.target.value.trim()) { navigate(`/catalog?search=${encodeURIComponent(e.target.value.trim())}`); toggleSearch() } }}
             />
-            <button className="glass-search-close" onClick={toggleSearch}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
+            <button className="sh-overlay-close" onClick={toggleSearch}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
           </div>
         </div>
       )}
 
-      {/* Mobile Menu */}
+      {/* ── Mobile Drawer ── */}
       {isMobileMenuOpen && (
-        <div className="mobile-menu">
-          <div className="mobile-menu-overlay" onClick={toggleMobileMenu}></div>
-          <div className="mobile-menu-content">
-            <div className="mobile-menu-header">
-              <img src={brandLogoSrc} alt="BuySial" className="mobile-logo" />
-              <button className="mobile-menu-close" onClick={toggleMobileMenu}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="18" y1="6" x2="6" y2="18"></line>
-                  <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
+        <div className="sh-drawer">
+          <div className="sh-drawer-overlay" onClick={toggleMobileMenu}/>
+          <div className="sh-drawer-panel">
+            <div className="sh-drawer-head">
+              <img src={displayLogo} alt="BuySial" style={{height:36,objectFit:'contain'}}/>
+              <button className="sh-drawer-close" onClick={toggleMobileMenu}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
             </div>
-            <nav className="mobile-nav">
-              <Link to="/" className="mobile-nav-link" onClick={toggleMobileMenu}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                  <polyline points="9,22 9,12 15,12 15,22"></polyline>
-                </svg>
-                Home
-              </Link>
-              <Link to="/catalog" className="mobile-nav-link" onClick={toggleMobileMenu}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
-                  <line x1="3" y1="6" x2="21" y2="6"></line>
-                  <path d="M16 10a4 4 0 0 1-8 0"></path>
-                </svg>
-                Products
-              </Link>
-              <Link to="/categories" className="mobile-nav-link" onClick={toggleMobileMenu}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="3" y="3" width="7" height="7"></rect>
-                  <rect x="14" y="3" width="7" height="7"></rect>
-                  <rect x="14" y="14" width="7" height="7"></rect>
-                  <rect x="3" y="14" width="7" height="7"></rect>
-                </svg>
-                Categories
-              </Link>
-              <Link to="/about" className="mobile-nav-link" onClick={toggleMobileMenu}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-                  <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                </svg>
-                About
-              </Link>
-              <Link to="/contact" className="mobile-nav-link" onClick={toggleMobileMenu}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                  <polyline points="22,6 12,13 2,6"></polyline>
-                </svg>
-                Contact
-              </Link>
+            {customer && (
+              <div className="sh-drawer-user">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <span>Hi, <strong>{customer.firstName||'Customer'}</strong></span>
+              </div>
+            )}
+            <nav className="sh-drawer-nav">
+              {[['/', 'Home'],['catalog','Products'],['/categories','Categories'],['/about','About'],['/contact','Contact']].map(([to, label]) => (
+                <Link key={to} to={to} className="sh-drawer-link" onClick={toggleMobileMenu}>{label}</Link>
+              ))}
+              {catNavItems.map(cat => (
+                <Link key={cat} to={`/catalog?category=${encodeURIComponent(cat)}`} className="sh-drawer-link sh-drawer-cat" onClick={toggleMobileMenu}>{cat}</Link>
+              ))}
             </nav>
-            <div className="mobile-auth">
+            <div className="sh-drawer-foot">
               {customer ? (
                 <>
-                  <Link to="/customer" className="mobile-dashboard-btn" onClick={toggleMobileMenu}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                      <polyline points="9,22 9,12 15,12 15,22"></polyline>
-                    </svg>
-                    Dashboard
-                  </Link>
-                  <div className="mobile-user-info">
-                    <span>Hi, {customer.firstName || 'Customer'}</span>
-                  </div>
-                  <button className="mobile-logout-btn" onClick={() => { toggleMobileMenu(); handleLogout(); }}>Logout</button>
+                  <Link to="/customer" className="sh-drawer-btn sh-drawer-btn-primary" onClick={toggleMobileMenu}>My Account</Link>
+                  <button className="sh-drawer-btn sh-drawer-btn-danger" onClick={() => { toggleMobileMenu(); handleLogout() }}>Logout</button>
                 </>
               ) : (
                 <>
-                  <Link to="/customer/login" className="mobile-login-btn" onClick={toggleMobileMenu}>Login</Link>
-                  <Link to="/register" className="mobile-register-btn" onClick={toggleMobileMenu}>Sign Up</Link>
+                  <Link to="/customer/login" className="sh-drawer-btn sh-drawer-btn-outline" onClick={toggleMobileMenu}>Login</Link>
+                  <Link to="/register" className="sh-drawer-btn sh-drawer-btn-primary" onClick={toggleMobileMenu}>Sign Up</Link>
                 </>
               )}
             </div>
@@ -480,801 +412,371 @@ export default function Header({ onCartClick, editMode = false, editState = {}, 
       )}
 
       <style>{`
-        .ecommerce-header {
-          background: white;
-          border-bottom: 1px solid #e5e7eb;
+        /* ── Shein-inspired Header ── */
+        .sh-header {
+          background: #fff;
+          border-bottom: 1px solid #e8e8e8;
           position: sticky;
           top: 0;
-          z-index: 100;
-          box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+          z-index: 200;
           padding-top: env(safe-area-inset-top, 0px);
-          backdrop-filter: blur(14px);
-          -webkit-backdrop-filter: blur(14px);
         }
-
-        .header-container {
-          max-width: 1200px;
+        .sh-main-row {
+          max-width: 1280px;
           margin: 0 auto;
-          padding: 0 20px;
+          padding: 10px 24px;
           display: flex;
           align-items: center;
-          justify-content: space-between;
-          height: 90px;
-          gap: 16px;
-          min-width: 0;
+          gap: 14px;
         }
-
-        .header-left {
-          flex-shrink: 0;
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          min-width: 0;
-        }
-
-        .mobile-menu-btn {
+        .sh-ham {
           display: none;
           background: none;
           border: none;
           padding: 8px;
           cursor: pointer;
+          color: #333;
           border-radius: 6px;
-          color: #6b7280;
-          transition: all 0.2s;
-        }
-
-        .mobile-menu-btn:hover {
-          background: #f3f4f6;
-          color: #374151;
-        }
-
-        .logo {
-          display: flex;
-          align-items: center;
-          text-decoration: none;
-          min-width: 0;
-        }
-
-        .logo-img {
-          height: 72px;
-          width: auto;
-          max-width: min(36vw, 220px);
-          object-fit: contain;
-        }
-
-        .header-center {
-          flex: 1;
-          display: flex;
-          justify-content: center;
-        }
-
-        .main-nav {
-          display: flex;
-          gap: 32px;
-        }
-
-        .nav-link {
-          text-decoration: none;
-          color: #374151;
-          font-weight: 500;
-          font-size: 15px;
-          transition: color 0.2s;
-          position: relative;
-        }
-
-        .nav-link:hover {
-          color: #007bff;
-        }
-
-        .nav-link:hover::after {
-          content: '';
-          position: absolute;
-          bottom: -8px;
-          left: 0;
-          right: 0;
-          height: 2px;
-          background: #007bff;
-          border-radius: 1px;
-        }
-
-        .header-right {
           flex-shrink: 0;
-          min-width: 0;
         }
+        .sh-ham:hover { background: #f5f5f5; }
+        .sh-logo-link { display: flex; align-items: center; flex-shrink: 0; text-decoration: none; }
+        .sh-logo-img { height: 52px; width: auto; max-width: 200px; object-fit: contain; }
 
-        .header-actions {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          min-width: 0;
-        }
-
-        /* Country Selector */
-        .country-selector {
-          position: relative;
-        }
-
-        .country-btn {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          padding: 8px 14px;
-          background: transparent;
-          border: 1px solid #e5e7eb;
-          border-radius: 10px;
-          cursor: pointer;
-          transition: all 0.2s;
-          font-size: 13px;
-        }
-
-        .deliver-label {
-          color: #9ca3af;
-          font-size: 11px;
-          font-weight: 500;
-        }
-
-        .country-btn:hover {
-          background: #f3f4f6;
-          border-color: #d1d5db;
-        }
-
-        .country-flag {
-          font-size: 18px;
-          line-height: 1;
-        }
-
-        .country-name {
-          font-weight: 500;
-          color: #374151;
-        }
-
-        .country-arrow {
-          color: #6b7280;
-          transition: transform 0.2s;
-        }
-
-        .country-arrow.open {
-          transform: rotate(180deg);
-        }
-
-        .country-dropdown {
-          position: absolute;
-          top: calc(100% + 8px);
-          right: 0;
-          min-width: 180px;
-          max-height: 400px;
-          overflow-y: auto;
-          background: white;
-          border: 1px solid #e5e7eb;
-          border-radius: 12px;
-          box-shadow: 0 10px 40px rgba(0,0,0,0.12);
-          padding: 8px;
-          min-width: 280px;
-          z-index: 100;
-        }
-
-        .country-option {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          width: 100%;
-          padding: 10px 14px;
-          background: none;
-          border: none;
-          cursor: pointer;
-          text-align: left;
-          transition: background 0.15s;
-        }
-
-        .country-option:hover {
-          background: #f9fafb;
-        }
-
-        .country-option.active {
-          background: #f0f9ff;
-        }
-
-        .country-option .country-name {
+        /* Search bar */
+        .sh-search-form {
           flex: 1;
-        }
-
-        .country-option .check-icon {
-          color: #3b82f6;
-        }
-
-        .search-btn,
-        .cart-btn,
-        .wishlist-btn {
-          background: none;
-          border: none;
-          padding: 10px;
-          cursor: pointer;
-          border-radius: 8px;
-          color: #6b7280;
-          transition: all 0.2s;
-          position: relative;
-        }
-
-        .search-btn:hover,
-        .wishlist-btn:hover,
-        .cart-btn:hover {
-          background: #f3f4f6;
-          color: #374151;
-          transform: translateY(-1px);
-        }
-
-        .wishlist-count {
-          position: absolute;
-          top: 2px;
-          right: 2px;
-          background: #ea580c;
-          color: white;
-          font-size: 11px;
-          font-weight: 600;
-          padding: 2px 6px;
-          border-radius: 10px;
-          min-width: 18px;
-          height: 18px;
           display: flex;
           align-items: center;
-          justify-content: center;
-          animation: bounce 0.3s ease;
-        }
-
-        .cart-count {
-          position: absolute;
-          top: 2px;
-          right: 2px;
-          background: #dc2626;
-          color: white;
-          font-size: 11px;
-          font-weight: 600;
-          padding: 2px 6px;
-          border-radius: 10px;
-          min-width: 18px;
-          height: 18px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          animation: bounce 0.3s ease;
-        }
-
-        .cart-preview-img {
-          width: 24px;
-          height: 24px;
-          border-radius: 6px;
+          border: 2px solid #222;
+          border-radius: 4px;
+          height: 44px;
           overflow: hidden;
-          border: 2px solid #f97316;
+          max-width: 640px;
+          min-width: 0;
         }
-
-        .cart-preview-img img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-        }
-
-        @keyframes bounce {
-          0%, 20%, 60%, 100% { transform: translateY(0); }
-          40% { transform: translateY(-3px); }
-          80% { transform: translateY(-1px); }
-        }
-
-        .auth-buttons {
-          display: flex;
-          gap: 12px;
-          margin-left: 8px;
-          align-items: center;
-        }
-
-        .dashboard-btn {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          text-decoration: none;
-          padding: 10px 16px;
-          border-radius: 8px;
-          font-weight: 500;
-          font-size: 14px;
-          color: #374151;
-          border: 1px solid #d1d5db;
-          background: white;
-          transition: all 0.2s;
-        }
-
-        .dashboard-btn:hover {
-          background: #f9fafb;
-          border-color: #9ca3af;
-          transform: translateY(-1px);
-        }
-
-        .user-menu {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-
-        .user-name {
-          font-size: 14px;
-          font-weight: 500;
-          color: #374151;
-          padding: 0 8px;
-        }
-
-        .logout-btn {
-          background: #fef2f2;
-          color: #dc2626;
-          border: 1px solid #fecaca;
-          padding: 8px 14px;
-          border-radius: 8px;
-          font-size: 13px;
-          font-weight: 500;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .logout-btn:hover {
-          background: #fee2e2;
-          border-color: #fca5a5;
-        }
-
-        .login-btn,
-        .register-btn {
-          text-decoration: none;
-          padding: 10px 18px;
-          border-radius: 8px;
-          font-weight: 500;
-          font-size: 14px;
-          transition: all 0.2s;
-        }
-
-        .login-btn {
-          color: #374151;
-          border: 1px solid #d1d5db;
-          background: white;
-        }
-
-        .login-btn:hover {
-          background: #f9fafb;
-          border-color: #9ca3af;
-          transform: translateY(-1px);
-        }
-
-        .register-btn {
-          background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
-          color: white;
-          border: 1px solid #007bff;
-        }
-
-        .register-btn:hover {
-          background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
-          border-color: #0056b3;
-          transform: translateY(-1px);
-          box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
-        }
-
-        /* Glass Search Overlay */
-        .glass-search-overlay {
-          position: fixed;
-          inset: 0;
-          z-index: 999;
-          background: rgba(0,0,0,0.35);
-          backdrop-filter: blur(8px);
-          -webkit-backdrop-filter: blur(8px);
-          display: flex;
-          justify-content: center;
-          padding-top: 100px;
-          animation: fadeIn 0.2s ease;
-        }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        .glass-search-bar {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          width: 90%;
-          max-width: 600px;
-          height: 56px;
-          padding: 0 20px;
-          background: rgba(255,255,255,0.92);
-          backdrop-filter: blur(20px);
-          -webkit-backdrop-filter: blur(20px);
-          border-radius: 16px;
-          border: 1px solid rgba(255,255,255,0.6);
-          box-shadow: 0 16px 48px rgba(0,0,0,0.18);
-          animation: slideDown 0.25s cubic-bezier(0.16,1,0.3,1);
-        }
-        @keyframes slideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
-        .glass-search-input {
+        .sh-search-icon { margin: 0 10px; color: #888; flex-shrink: 0; }
+        .sh-search-input {
           flex: 1;
           border: none;
           outline: none;
           background: transparent;
+          font-size: 14px;
+          color: #222;
+          min-width: 0;
+        }
+        .sh-search-input::placeholder { color: #aaa; }
+        .sh-search-submit {
+          background: #222;
+          color: #fff;
+          border: none;
+          padding: 0 20px;
+          height: 100%;
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+          white-space: nowrap;
+          flex-shrink: 0;
+          letter-spacing: 0.02em;
+        }
+        .sh-search-submit:hover { background: #000; }
+
+        /* Right icons */
+        .sh-right-icons {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          flex-shrink: 0;
+        }
+        .sh-icon-btn {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 2px;
+          padding: 6px 10px;
+          background: none;
+          border: none;
+          cursor: pointer;
+          text-decoration: none;
+          color: #222;
+          border-radius: 4px;
+          transition: background 0.15s;
+          position: relative;
+          min-width: 52px;
+        }
+        .sh-icon-btn:hover { background: #f5f5f5; }
+        .sh-icon-emoji { font-size: 18px; line-height: 1; }
+        .sh-icon-lbl { font-size: 11px; color: #555; white-space: nowrap; font-weight: 500; }
+        .sh-badge {
+          position: absolute;
+          top: 0;
+          right: 4px;
+          background: #f97316;
+          color: #fff;
+          font-size: 10px;
+          font-weight: 700;
+          border-radius: 99px;
+          min-width: 16px;
+          height: 16px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0 3px;
+        }
+        .sh-badge-cart { background: #ef4444; }
+        .sh-cart-thumb { width: 22px; height: 22px; border-radius: 4px; overflow: hidden; border: 1.5px solid #f97316; }
+        .sh-cart-thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+        /* Country dropdown */
+        .sh-country-wrap { position: relative; }
+        .sh-country-drop {
+          position: absolute;
+          top: calc(100% + 6px);
+          right: 0;
+          background: #fff;
+          border: 1px solid #e8e8e8;
+          border-radius: 8px;
+          box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+          min-width: 220px;
+          max-height: 360px;
+          overflow-y: auto;
+          padding: 6px;
+          z-index: 300;
+        }
+        .sh-country-opt {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          width: 100%;
+          padding: 9px 12px;
+          background: none;
+          border: none;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 13px;
+          color: #333;
+          transition: background 0.12s;
+        }
+        .sh-country-opt:hover { background: #f5f5f5; }
+        .sh-co-active { background: #fff7ed; }
+
+        /* Auth buttons */
+        .sh-auth-row { display: flex; align-items: center; gap: 8px; }
+        .sh-login-btn {
+          text-decoration: none;
+          padding: 8px 16px;
+          border: 1.5px solid #222;
+          border-radius: 4px;
+          font-size: 13px;
+          font-weight: 600;
+          color: #222;
+          background: #fff;
+          transition: all 0.15s;
+          white-space: nowrap;
+        }
+        .sh-login-btn:hover { background: #f5f5f5; }
+        .sh-signup-btn {
+          text-decoration: none;
+          padding: 8px 16px;
+          border: 1.5px solid #222;
+          border-radius: 4px;
+          font-size: 13px;
+          font-weight: 600;
+          color: #fff;
+          background: #222;
+          transition: all 0.15s;
+          white-space: nowrap;
+        }
+        .sh-signup-btn:hover { background: #000; }
+        .sh-logout-btn {
+          font-size: 12px;
+          color: #dc2626;
+          background: none;
+          border: 1px solid #fecaca;
+          border-radius: 4px;
+          padding: 5px 10px;
+          cursor: pointer;
+          font-weight: 600;
+        }
+        .sh-logout-btn:hover { background: #fef2f2; }
+
+        /* Mobile right icons (search + cart only) */
+        .sh-mobile-right { display: none; align-items: center; gap: 4px; margin-left: auto; flex-shrink: 0; }
+        .sh-mobile-icon-btn {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 40px;
+          height: 40px;
+          background: none;
+          border: none;
+          cursor: pointer;
+          color: #222;
+          border-radius: 6px;
+          position: relative;
+          text-decoration: none;
+        }
+        .sh-mobile-icon-btn:hover { background: #f5f5f5; }
+
+        /* Category nav */
+        .sh-catnav {
+          border-top: 1px solid #f0f0f0;
+          background: #fff;
+        }
+        .sh-catnav-inner {
+          max-width: 1280px;
+          margin: 0 auto;
+          padding: 0 24px;
+          display: flex;
+          align-items: center;
+          overflow-x: auto;
+          gap: 0;
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+        }
+        .sh-catnav-inner::-webkit-scrollbar { display: none; }
+        .sh-cat-tab {
+          text-decoration: none;
+          font-size: 13px;
+          font-weight: 600;
+          color: #444;
+          padding: 10px 16px;
+          white-space: nowrap;
+          border-bottom: 2px solid transparent;
+          transition: color 0.15s, border-color 0.15s;
+          letter-spacing: 0.01em;
+        }
+        .sh-cat-tab:hover { color: #f97316; border-bottom-color: #f97316; }
+
+        /* Search overlay */
+        .sh-overlay {
+          position: fixed;
+          inset: 0;
+          z-index: 999;
+          background: rgba(0,0,0,0.4);
+          backdrop-filter: blur(6px);
+          display: flex;
+          justify-content: center;
+          padding-top: 80px;
+          animation: shFadeIn 0.18s ease;
+        }
+        @keyframes shFadeIn { from{opacity:0} to{opacity:1} }
+        .sh-overlay-modal {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          width: 90%;
+          max-width: 580px;
+          height: 52px;
+          padding: 0 18px;
+          background: #fff;
+          border-radius: 8px;
+          box-shadow: 0 16px 48px rgba(0,0,0,0.18);
+          animation: shSlideDown 0.22s cubic-bezier(0.16,1,0.3,1);
+        }
+        @keyframes shSlideDown { from{opacity:0;transform:translateY(-16px)} to{opacity:1;transform:translateY(0)} }
+        .sh-overlay-input {
+          flex: 1;
+          border: none;
+          outline: none;
           font-size: 16px;
-          color: #1f2937;
+          color: #222;
+          background: transparent;
         }
-        .glass-search-input::placeholder {
-          color: #9ca3af;
-        }
-        .glass-search-close {
+        .sh-overlay-input::placeholder { color: #aaa; }
+        .sh-overlay-close {
           background: #f3f4f6;
           border: none;
-          width: 32px;
-          height: 32px;
-          border-radius: 8px;
+          width: 28px;
+          height: 28px;
+          border-radius: 6px;
           display: flex;
           align-items: center;
           justify-content: center;
           cursor: pointer;
-          color: #6b7280;
-          transition: all 0.15s;
+          color: #555;
           flex-shrink: 0;
         }
-        .glass-search-close:hover {
-          background: #e5e7eb;
-          color: #374151;
-        }
+        .sh-overlay-close:hover { background: #e5e7eb; }
 
-        /* Mobile Menu */
-        .mobile-menu {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          z-index: 1000;
-        }
-
-        .mobile-menu-overlay {
+        /* Mobile drawer */
+        .sh-drawer { position: fixed; inset: 0; z-index: 1000; }
+        .sh-drawer-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.45); backdrop-filter: blur(3px); }
+        .sh-drawer-panel {
           position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: rgba(0, 0, 0, 0.5);
-          backdrop-filter: blur(4px);
-        }
-
-        .mobile-menu-content {
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 280px;
+          top: 0; left: 0;
+          width: 300px;
           height: 100%;
-          background: white;
-          box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+          background: #fff;
           display: flex;
           flex-direction: column;
-          animation: slideIn 0.3s ease;
+          animation: shDrawerIn 0.25s cubic-bezier(0.16,1,0.3,1);
           z-index: 1;
+          overflow-y: auto;
         }
-
-        @keyframes slideIn {
-          from { transform: translateX(-100%); }
-          to { transform: translateX(0); }
-        }
-
-        .mobile-menu-header {
+        @keyframes shDrawerIn { from{transform:translateX(-100%)} to{transform:translateX(0)} }
+        .sh-drawer-head {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 20px;
-          border-bottom: 1px solid #e5e7eb;
-        }
-
-        .mobile-logo {
-          height: 52px;
-          width: auto;
-        }
-
-        .mobile-menu-close {
-          background: none;
-          border: none;
-          padding: 8px;
-          cursor: pointer;
-          border-radius: 6px;
-          color: #6b7280;
-          transition: all 0.2s;
-        }
-
-        .mobile-menu-close:hover {
-          background: #f3f4f6;
-          color: #374151;
-        }
-
-        .mobile-nav {
-          flex: 1;
-          padding: 20px 0;
-        }
-
-        .mobile-nav-link {
-          display: flex;
-          align-items: center;
-          gap: 12px;
           padding: 16px 20px;
-          text-decoration: none;
-          color: #374151;
-          font-weight: 500;
-          transition: all 0.2s;
+          border-bottom: 1px solid #f0f0f0;
         }
-
-        .mobile-nav-link:hover {
-          background: #f8fafc;
-          color: #007bff;
-        }
-
-        .mobile-auth {
-          padding: 20px;
-          border-top: 1px solid #e5e7eb;
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
-        }
-
-        .mobile-login-btn,
-        .mobile-register-btn {
-          text-decoration: none;
-          padding: 12px 16px;
-          border-radius: 8px;
-          font-weight: 500;
-          text-align: center;
-          transition: all 0.2s;
-        }
-
-        .mobile-login-btn {
-          color: #374151;
-          border: 1px solid #d1d5db;
-          background: white;
-        }
-
-        .mobile-login-btn:hover {
-          background: #f9fafb;
-          border-color: #9ca3af;
-        }
-
-        .mobile-register-btn {
-          background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
-          color: white;
-          border: 1px solid #007bff;
-        }
-
-        .mobile-register-btn:hover {
-          background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
-          border-color: #0056b3;
-        }
-
-        .mobile-dashboard-btn {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-          text-decoration: none;
-          padding: 12px 16px;
-          border-radius: 8px;
-          font-weight: 500;
-          background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
-          color: white;
-          border: 1px solid #007bff;
-          transition: all 0.2s;
-        }
-
-        .mobile-dashboard-btn:hover {
-          background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
-        }
-
-        .mobile-user-info {
-          text-align: center;
-          font-size: 14px;
-          color: #374151;
-          padding: 8px 0;
-          font-weight: 500;
-        }
-
-        .mobile-logout-btn {
-          width: 100%;
-          padding: 12px 16px;
-          border-radius: 8px;
-          font-weight: 500;
-          text-align: center;
-          background: #fef2f2;
-          color: #dc2626;
-          border: 1px solid #fecaca;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .mobile-logout-btn:hover {
-          background: #fee2e2;
-          border-color: #fca5a5;
-        }
-
-        @media (max-width: 768px) {
-          .header-container {
-            padding: 0 12px;
-            min-height: 64px;
-            height: auto;
-            display: grid;
-            grid-template-columns: auto minmax(0, 1fr) auto;
-            gap: 10px;
-          }
-
-          .header-left {
-            gap: 10px;
-          }
-
-          .logo-img {
-            height: 34px;
-            max-width: min(40vw, 148px);
-          }
-
-          .mobile-logo {
-            height: 28px;
-          }
-
-          .mobile-menu-btn {
-            display: block;
-          }
-
-          .header-center {
-            display: none;
-          }
-
-          .country-selector {
-            display: none;
-          }
-
-          .auth-buttons {
-            display: none;
-          }
-
-          .header-actions {
-            gap: 6px;
-            justify-content: flex-end;
-          }
-
-          .search-btn,
-          .cart-btn,
-          .wishlist-btn,
-          .mobile-menu-btn {
-            width: 40px;
-            height: 40px;
-            padding: 0;
-            display: grid;
-            place-items: center;
-            border-radius: 12px;
-          }
-
-          .cart-preview-img {
-            width: 20px;
-            height: 20px;
-          }
-        }
-
-        @media (max-width: 480px) {
-          .header-container {
-            padding: 0 10px;
-            min-height: 60px;
-            gap: 8px;
-          }
-
-          .logo-img {
-            height: 32px;
-            max-width: min(38vw, 132px);
-          }
-
-          .mobile-menu-content {
-            width: 100vw;
-          }
-        }
-
-        @media (max-width: 380px) {
-          .search-btn {
-            display: none;
-          }
-
-          .logo-img {
-            max-width: min(42vw, 124px);
-          }
-        }
-
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.5; }
-        }
-
-        /* Edit Website Dropdown */
-        .nav-dropdown {
-          position: relative;
-          display: inline-block;
-        }
-
-        .dropdown-trigger {
+        .sh-drawer-close {
           background: none;
           border: none;
+          padding: 6px;
           cursor: pointer;
+          color: #555;
+          border-radius: 6px;
+        }
+        .sh-drawer-close:hover { background: #f5f5f5; }
+        .sh-drawer-user {
           display: flex;
           align-items: center;
-          color: inherit;
-          font-size: inherit;
-          font-weight: inherit;
-          font-family: inherit;
-          padding: 0;
-        }
-
-        .dropdown-menu {
-          position: absolute;
-          top: 100%;
-          left: 50%;
-          transform: translateX(-50%);
-          margin-top: 12px;
-          background: white;
-          border-radius: 12px;
-          box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
-          padding: 8px;
-          min-width: 280px;
-          z-index: 1000;
-          animation: dropdownSlide 0.2s ease;
-        }
-
-        @keyframes dropdownSlide {
-          from {
-            opacity: 0;
-            transform: translateX(-50%) translateY(-10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateX(-50%) translateY(0);
-          }
-        }
-
-        .dropdown-item {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          padding: 12px;
-          border-radius: 8px;
-          text-decoration: none;
-          color: #374151;
-          transition: all 0.2s;
-          cursor: pointer;
-        }
-
-        .dropdown-item:hover {
-          background: linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(118, 75, 162, 0.08));
-        }
-
-        .dropdown-icon {
-          font-size: 20px;
-          width: 32px;
-          height: 32px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: #f3f4f6;
-          border-radius: 8px;
-          flex-shrink: 0;
-        }
-
-        .dropdown-title {
-          font-weight: 600;
+          gap: 8px;
+          padding: 12px 20px;
           font-size: 14px;
-          color: #111827;
-          margin-bottom: 2px;
+          color: #444;
+          border-bottom: 1px solid #f0f0f0;
+          background: #fffbf7;
         }
-
-        .dropdown-desc {
-          font-size: 11px;
-          color: #6b7280;
+        .sh-drawer-nav { flex: 1; padding: 8px 0; }
+        .sh-drawer-link {
+          display: block;
+          padding: 13px 20px;
+          text-decoration: none;
+          font-size: 14px;
+          font-weight: 600;
+          color: #222;
+          border-bottom: 1px solid #f8f8f8;
+          transition: background 0.12s;
         }
+        .sh-drawer-link:hover { background: #f9f9f9; color: #f97316; }
+        .sh-drawer-cat { font-weight: 500; color: #555; font-size: 13px; }
+        .sh-drawer-foot { padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; border-top: 1px solid #f0f0f0; }
+        .sh-drawer-btn { display: block; text-align: center; padding: 12px; border-radius: 6px; font-weight: 600; font-size: 14px; text-decoration: none; border: none; cursor: pointer; }
+        .sh-drawer-btn-primary { background: #222; color: #fff; }
+        .sh-drawer-btn-primary:hover { background: #000; }
+        .sh-drawer-btn-outline { border: 1.5px solid #222; color: #222; background: #fff; }
+        .sh-drawer-btn-outline:hover { background: #f5f5f5; }
+        .sh-drawer-btn-danger { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+        .sh-drawer-btn-danger:hover { background: #fee2e2; }
 
-        .dropdown-divider {
-          height: 1px;
-          background: #e5e7eb;
-          margin: 8px 4px;
+        @keyframes sh-pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+
+        /* ── RESPONSIVE ── */
+        @media (max-width: 900px) {
+          .sh-search-form { display: none; }
+          .sh-right-icons { display: none; }
+          .sh-ham { display: flex; }
+          .sh-mobile-right { display: flex; }
+          .sh-logo-img { height: 38px; }
+          .sh-main-row { padding: 8px 14px; gap: 10px; }
         }
-
-        @media (max-width: 768px) {
-          .nav-dropdown {
-            display: none;
-          }
+        @media (max-width: 480px) {
+          .sh-logo-img { height: 34px; max-width: 140px; }
+          .sh-drawer-panel { width: 100vw; }
         }
       `}</style>
     </header>

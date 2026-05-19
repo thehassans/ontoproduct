@@ -1,3 +1,4 @@
+// Shein-inspired flat 5-tab bottom nav
 import React, { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate, useLocation } from 'react-router-dom'
@@ -51,202 +52,168 @@ export default function MobileBottomNav({ onCartClick }) {
     }
   }
   
-  const navItems = [
-    { 
-      id: 'home', 
-      label: 'Home', 
-      path: '/',
-      icon: (active) => (
-        <div className="relative w-7 h-7 flex items-center justify-center">
-          {active && (
-            <span className="absolute inset-0 rounded-full bg-orange-500/30 blur-md" />
-          )}
-          <div
-            className={`relative w-7 h-7 rounded-full flex items-center justify-center bg-white ${
-              active ? 'shadow-[0_0_18px_rgba(249,115,22,0.45)]' : 'opacity-90'
-            }`}
-          >
-            <img src="/BSBackgroundremoved.png" alt="BuySial" className="w-5 h-5 object-contain" />
-          </div>
-        </div>
-      )
-    },
-    { 
-      id: 'discover', 
-      label: 'Discover', 
-      path: '/catalog',
-      icon: (active) => (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+  const TABS = [
+    {
+      id: 'home', label: 'Home', path: '/',
+      icon: (a) => (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill={a ? '#f97316' : 'none'} stroke={a ? '#f97316' : '#555'} strokeWidth="2">
+          <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+          <polyline points="9,22 9,12 15,12 15,22"/>
         </svg>
-      )
+      ),
     },
-    { 
-      id: 'cart', 
-      label: 'Cart', 
-      path: '/cart',
-      icon: (active) => (
-        <div className="relative">
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-          </svg>
-        </div>
-      )
-    },
-    ...(isCustomerLoggedIn() ? [
-      {
-        id: 'wishlist',
-        label: 'Wishlist',
-        path: '/customer/wishlist',
-        icon: (active) => (
-          <div className="relative">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-            </svg>
-          </div>
-        )
-      }
-    ] : []),
-    { 
-      id: 'profile', 
-      label: 'Profile', 
-      action: 'profile',
-      icon: (active) => (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+    {
+      id: 'categories', label: 'Categories', path: '/categories',
+      icon: (a) => (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={a ? '#f97316' : '#555'} strokeWidth="2">
+          <rect x="3" y="3" width="7" height="7" rx="1"/>
+          <rect x="14" y="3" width="7" height="7" rx="1"/>
+          <rect x="3" y="14" width="7" height="7" rx="1"/>
+          <rect x="14" y="14" width="7" height="7" rx="1"/>
         </svg>
-      )
-    }
+      ),
+    },
+    {
+      id: 'cart', label: 'Cart', path: '/cart',
+      icon: (a) => (
+        <svg width="26" height="26" viewBox="0 0 24 24" fill={a ? '#f97316' : 'none'} stroke={a ? '#f97316' : '#555'} strokeWidth="2">
+          <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
+          <line x1="3" y1="6" x2="21" y2="6"/>
+          <path d="M16 10a4 4 0 01-8 0"/>
+        </svg>
+      ),
+      isCenter: true,
+    },
+    {
+      id: 'wishlist', label: 'Wishlist', path: '/customer/wishlist',
+      icon: (a) => (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill={a ? '#f97316' : 'none'} stroke={a ? '#f97316' : '#555'} strokeWidth="2">
+          <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
+        </svg>
+      ),
+    },
+    {
+      id: 'profile', label: 'Me', action: 'profile',
+      icon: (a) => (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={a ? '#f97316' : '#555'} strokeWidth="2">
+          <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+      ),
+    },
   ]
 
-  const handleNavClick = (item) => {
-    if (item.action === 'profile') {
-      if (isCustomerLoggedIn()) {
-        navigate('/customer')
-      } else {
-        navigate('/customer/login')
-      }
-    } else if (item.id === 'cart') {
-      // Always navigate to the full cart page — never open a drawer on mobile
-      navigate('/cart')
-    } else if (item.path) {
-      navigate(item.path)
+  const handleClick = (tab) => {
+    if (tab.action === 'profile') {
+      try {
+        const token = localStorage.getItem('token')
+        const me = JSON.parse(localStorage.getItem('me') || 'null')
+        if (token && me?.role === 'customer') { navigate('/customer'); return }
+      } catch {}
+      navigate('/customer/login')
+    } else if (tab.path) {
+      navigate(tab.path)
     }
   }
 
-  const isActive = (item) => {
-    if (item.id === 'profile') return location.pathname.startsWith('/customer')
-    if (item.path === '/') return location.pathname === '/'
-    if (!item.path) return false
-    return location.pathname.startsWith(item.path)
+  const isActive = (tab) => {
+    if (tab.action === 'profile') return location.pathname.startsWith('/customer')
+    if (tab.path === '/') return location.pathname === '/'
+    return tab.path ? location.pathname.startsWith(tab.path) : false
   }
+
+  const nav = (
+    <nav style={{
+      position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 500,
+      background: '#fff',
+      borderTop: '1px solid #e8e8e8',
+      boxShadow: '0 -2px 12px rgba(0,0,0,0.06)',
+      paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+      display: 'flex',
+      alignItems: 'center',
+    }}>
+      {TABS.map(tab => {
+        const active = isActive(tab)
+        return (
+          <button
+            key={tab.id}
+            onClick={() => handleClick(tab)}
+            style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 3,
+              height: tab.isCenter ? 60 : 56,
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              position: 'relative',
+              padding: '8px 4px',
+            }}
+          >
+            {tab.isCenter ? (
+              <div style={{
+                width: 46, height: 46,
+                borderRadius: '50%',
+                background: active ? '#f97316' : '#222',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 4px 14px rgba(0,0,0,0.18)',
+                marginBottom: 0,
+                position: 'relative',
+              }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2">
+                  <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
+                  <line x1="3" y1="6" x2="21" y2="6"/>
+                  <path d="M16 10a4 4 0 01-8 0"/>
+                </svg>
+                {cartCount > 0 && (
+                  <span style={{
+                    position: 'absolute', top: -4, right: -4,
+                    background: '#ef4444', color: '#fff',
+                    fontSize: 9, fontWeight: 700,
+                    borderRadius: 99, minWidth: 16, height: 16,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    padding: '0 3px', border: '1.5px solid #fff',
+                  }}>{cartCount > 99 ? '99+' : cartCount}</span>
+                )}
+              </div>
+            ) : (
+              <div style={{ position: 'relative' }}>
+                {tab.icon(active)}
+                {tab.id === 'wishlist' && wishlistCount > 0 && (
+                  <span style={{
+                    position: 'absolute', top: -4, right: -6,
+                    background: '#f97316', color: '#fff',
+                    fontSize: 9, fontWeight: 700,
+                    borderRadius: 99, minWidth: 14, height: 14,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    padding: '0 2px',
+                  }}>{wishlistCount > 99 ? '99+' : wishlistCount}</span>
+                )}
+              </div>
+            )}
+            {!tab.isCenter && (
+              <span style={{
+                fontSize: 10, fontWeight: 600, lineHeight: 1,
+                color: active ? '#f97316' : '#888',
+              }}>{tab.label}</span>
+            )}
+          </button>
+        )
+      })}
+    </nav>
+  )
 
   return (
     <>
-      {/* Spacer to prevent content from being hidden behind fixed nav */}
-      <div className="h-24 md:hidden" />
-      
-      {/* Bottom Navigation */}
-      {(typeof document !== 'undefined' && document.body)
-        ? createPortal(
-            <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden safe-area-bottom">
-              <div className="px-3 pb-2">
-                <div className="bg-gradient-to-r from-orange-500 via-orange-500 to-orange-600 rounded-2xl p-[2px] shadow-[0_-8px_30px_rgba(249,115,22,0.25)]">
-                  <div className="bg-white/95 backdrop-blur rounded-[14px]">
-                    <div className="flex items-center justify-around h-16">
-                      {navItems.map((item) => {
-                        const active = isActive(item)
-                        const isHomeGlow = active && item.id === 'home'
-                        return (
-                          <button
-                            key={item.id}
-                            onClick={() => handleNavClick(item)}
-                            className="flex items-center justify-center flex-1 h-full"
-                          >
-                            <div
-                              className={`flex flex-col items-center justify-center gap-1 rounded-xl px-3 py-2 transition-all ${
-                                active ? 'text-orange-600 bg-orange-50' : 'text-gray-600'
-                              } ${isHomeGlow ? 'shadow-[0_0_20px_rgba(249,115,22,0.30)]' : ''}`}
-                            >
-                              <div className="relative">
-                                {item.icon(active)}
-                                {item.id === 'cart' && cartCount > 0 && (
-                                  <span className="absolute -top-2 -right-2 bg-orange-500 text-white text-xs font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
-                                    {cartCount > 99 ? '99+' : cartCount}
-                                  </span>
-                                )}
-                                {item.id === 'wishlist' && wishlistCount > 0 && (
-                                  <span className="absolute -top-2 -right-2 bg-orange-500 text-white text-xs font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
-                                    {wishlistCount > 99 ? '99+' : wishlistCount}
-                                  </span>
-                                )}
-                              </div>
-                              <span className="text-[11px] font-semibold leading-none">
-                                {item.label}
-                              </span>
-                            </div>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </nav>,
-            document.body
-          )
-        : (
-            <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden safe-area-bottom">
-              <div className="px-3 pb-2">
-                <div className="bg-gradient-to-r from-orange-500 via-orange-500 to-orange-600 rounded-2xl p-[2px] shadow-[0_-8px_30px_rgba(249,115,22,0.25)]">
-                  <div className="bg-white/95 backdrop-blur rounded-[14px]">
-                    <div className="flex items-center justify-around h-16">
-                      {navItems.map((item) => {
-                        const active = isActive(item)
-                        const isHomeGlow = active && item.id === 'home'
-                        return (
-                          <button
-                            key={item.id}
-                            onClick={() => handleNavClick(item)}
-                            className="flex items-center justify-center flex-1 h-full"
-                          >
-                            <div
-                              className={`flex flex-col items-center justify-center gap-1 rounded-xl px-3 py-2 transition-all ${
-                                active ? 'text-orange-600 bg-orange-50' : 'text-gray-600'
-                              } ${isHomeGlow ? 'shadow-[0_0_20px_rgba(249,115,22,0.30)]' : ''}`}
-                            >
-                              <div className="relative">
-                                {item.icon(active)}
-                                {item.id === 'cart' && cartCount > 0 && (
-                                  <span className="absolute -top-2 -right-2 bg-orange-500 text-white text-xs font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
-                                    {cartCount > 99 ? '99+' : cartCount}
-                                  </span>
-                                )}
-                                {item.id === 'wishlist' && wishlistCount > 0 && (
-                                  <span className="absolute -top-2 -right-2 bg-orange-500 text-white text-xs font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
-                                    {wishlistCount > 99 ? '99+' : wishlistCount}
-                                  </span>
-                                )}
-                              </div>
-                              <span className="text-[11px] font-semibold leading-none">
-                                {item.label}
-                              </span>
-                            </div>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </nav>
-          )}
-
-      <style>{`
-        .safe-area-bottom {
-          padding-bottom: calc(env(safe-area-inset-bottom, 0) + 8px);
-        }
-      `}</style>
+      <div style={{ height: 60 }} className="md:hidden" />
+      {typeof document !== 'undefined' && document.body
+        ? createPortal(nav, document.body)
+        : nav}
     </>
   )
 }
