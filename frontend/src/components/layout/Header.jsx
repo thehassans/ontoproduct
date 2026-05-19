@@ -448,14 +448,17 @@ export default function Header({ onCartClick, editMode = false, editState = {}, 
           flex: 1;
           display: flex;
           align-items: center;
-          border: 2px solid #222;
-          border-radius: 4px;
-          height: 44px;
+          border: 1.5px solid #ddd;
+          border-radius: 999px;
+          height: 42px;
           overflow: hidden;
+          background: #f7f7f7;
           max-width: 640px;
           min-width: 0;
+          transition: border-color 0.15s;
         }
-        .sh-search-icon { margin: 0 10px; color: #888; flex-shrink: 0; }
+        .sh-search-form:focus-within { border-color: #222; background: #fff; }
+        .sh-search-icon { margin: 0 10px; color: #999; flex-shrink: 0; }
         .sh-search-input {
           flex: 1;
           border: none;
@@ -465,7 +468,7 @@ export default function Header({ onCartClick, editMode = false, editState = {}, 
           color: #222;
           min-width: 0;
         }
-        .sh-search-input::placeholder { color: #aaa; }
+        .sh-search-input::placeholder { color: #bbb; }
         .sh-search-submit {
           background: #222;
           color: #fff;
@@ -477,6 +480,7 @@ export default function Header({ onCartClick, editMode = false, editState = {}, 
           cursor: pointer;
           white-space: nowrap;
           flex-shrink: 0;
+          border-radius: 0 999px 999px 0;
           letter-spacing: 0.02em;
         }
         .sh-search-submit:hover { background: #000; }
@@ -620,13 +624,12 @@ export default function Header({ onCartClick, editMode = false, editState = {}, 
 
         /* Category nav */
         .sh-catnav {
-          border-top: 1px solid #f0f0f0;
-          background: #fff;
+          background: #222;
         }
         .sh-catnav-inner {
           max-width: 1280px;
           margin: 0 auto;
-          padding: 0 24px;
+          padding: 0 16px;
           display: flex;
           align-items: center;
           overflow-x: auto;
@@ -638,15 +641,15 @@ export default function Header({ onCartClick, editMode = false, editState = {}, 
         .sh-cat-tab {
           text-decoration: none;
           font-size: 13px;
-          font-weight: 600;
-          color: #444;
-          padding: 10px 16px;
+          font-weight: 500;
+          color: rgba(255,255,255,0.82);
+          padding: 10px 14px;
           white-space: nowrap;
           border-bottom: 2px solid transparent;
           transition: color 0.15s, border-color 0.15s;
           letter-spacing: 0.01em;
         }
-        .sh-cat-tab:hover { color: #f97316; border-bottom-color: #f97316; }
+        .sh-cat-tab:hover { color: #fff; border-bottom-color: #f97316; }
 
         /* Search overlay */
         .sh-overlay {
@@ -767,16 +770,25 @@ export default function Header({ onCartClick, editMode = false, editState = {}, 
 
         /* ── RESPONSIVE ── */
         @media (max-width: 900px) {
-          .sh-search-form { display: none; }
           .sh-right-icons { display: none; }
           .sh-ham { display: flex; }
           .sh-mobile-right { display: flex; }
-          .sh-logo-img { height: 38px; }
-          .sh-main-row { padding: 8px 14px; gap: 10px; }
+          .sh-logo-img { height: 36px; }
+          .sh-main-row { padding: 8px 12px; gap: 8px; }
+          .sh-search-form { height: 38px; }
+          .sh-search-submit { display: none; }
+          .sh-search-input { font-size: 13px; }
+        }
+        @media (max-width: 640px) {
+          .sh-ham { display: none; }
+          .sh-logo-link { display: none; }
+          .sh-search-form { max-width: none; border-radius: 8px; }
+          .sh-search-submit { display: flex; border-radius: 0 8px 8px 0; padding: 0 14px; font-size: 12px; background: #f97316; }
         }
         @media (max-width: 480px) {
-          .sh-logo-img { height: 34px; max-width: 140px; }
+          .sh-logo-img { height: 32px; max-width: 130px; }
           .sh-drawer-panel { width: 100vw; }
+          .sh-main-row { gap: 6px; }
         }
       `}</style>
     </header>
