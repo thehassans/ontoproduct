@@ -1278,7 +1278,9 @@ export default function SubmitOrder() {
                               position: 'absolute',
                               top: '100%',
                               left: 0,
-                              right: 0,
+                              minWidth: '100%',
+                              width: 'max-content',
+                              maxWidth: 'calc(100vw - 32px)',
                               zIndex: 1000,
                               background: 'var(--panel)',
                               border: '1px solid var(--border)',
@@ -1351,18 +1353,20 @@ export default function SubmitOrder() {
                                       (e.currentTarget.style.background = 'transparent')
                                     }
                                   >
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                       {getProductImage(p) && (
                                         <img
                                           src={getProductImage(p)}
                                           alt={p.name}
-                                          style={{ width: 36, height: 36, borderRadius: 4, objectFit: 'cover', flexShrink: 0, border: '1px solid var(--border)' }}
+                                          style={{ width: 32, height: 32, borderRadius: 6, objectFit: 'cover', flexShrink: 0, border: '1px solid var(--border)' }}
                                           onError={(e) => { e.target.style.display = 'none' }}
                                         />
                                       )}
-                                      <div>
-                                        <div style={{ fontWeight: 500 }}>{p.name}</div>
-                                        <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>
+                                      <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ fontWeight: 500, fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                          {p.name}
+                                        </div>
+                                        <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                           {selectedCurrency} {display.toFixed(2)} • {getSelectedCountryStockLabel(p)}
                                         </div>
                                       </div>
