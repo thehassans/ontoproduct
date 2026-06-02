@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useLocation } from 'react-router-dom'
-import { apiGet, apiPost, API_BASE } from '../../api'
+import { apiGet, apiPost, API_BASE, mediaUrl } from '../../api'
 import { io } from 'socket.io-client'
 import { getCurrencyConfig, convert as fxConvert } from '../../util/currency'
 import { getLocalStockByCountry } from '../../utils/warehouse'
@@ -222,6 +222,13 @@ export default function SubmitOrder() {
       companyWarehouseStock,
       totalStock: usesPartnerInventory ? partnerStock + companyWarehouseStock : companyWarehouseStock,
     }
+  }
+
+  function getProductImage(product) {
+    if (!product) return null
+    const raw = (Array.isArray(product.images) && product.images[0]) || product.imagePath || product.image || ''
+    if (!raw) return null
+    try { return mediaUrl(raw) || raw } catch { return raw }
   }
 
   function getSelectedCountryStock(product) {
@@ -1203,6 +1210,16 @@ export default function SubmitOrder() {
                       }}
                     >
                       <div style={{ position: 'relative' }}>
+                        {selectedProduct && getProductImage(selectedProduct) && !it.showDropdown && (
+                          <div style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', zIndex: 1, pointerEvents: 'none' }}>
+                            <img 
+                              src={getProductImage(selectedProduct)} 
+                              alt="product" 
+                              style={{ width: 24, height: 24, borderRadius: 4, objectFit: 'cover' }}
+                              onError={(e) => { e.target.style.display = 'none' }}
+                            />
+                          </div>
+                        )}
                         <input
                           className="input"
                           value={displayText}
@@ -1240,7 +1257,7 @@ export default function SubmitOrder() {
                             }, 200)
                           }}
                           placeholder="Type to search products (min 3 characters)..."
-                          style={{ width: '100%' }}
+                          style={{ width: '100%', paddingLeft: (selectedProduct && getProductImage(selectedProduct) && !it.showDropdown) ? 40 : undefined }}
                         />
                         {it.showDropdown && String(it.searchText || '').trim().length >= 3 && (
                           <div
@@ -1321,9 +1338,21 @@ export default function SubmitOrder() {
                                       (e.currentTarget.style.background = 'transparent')
                                     }
                                   >
-                                    <div style={{ fontWeight: 500 }}>{p.name}</div>
-                                    <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>
-                                      {selectedCurrency} {display.toFixed(2)} • {getSelectedCountryStockLabel(p)}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                      {getProductImage(p) && (
+                                        <img
+                                          src={getProductImage(p)}
+                                          alt={p.name}
+                                          style={{ width: 36, height: 36, borderRadius: 4, objectFit: 'cover', flexShrink: 0, border: '1px solid var(--border)' }}
+                                          onError={(e) => { e.target.style.display = 'none' }}
+                                        />
+                                      )}
+                                      <div>
+                                        <div style={{ fontWeight: 500 }}>{p.name}</div>
+                                        <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>
+                                          {selectedCurrency} {display.toFixed(2)} • {getSelectedCountryStockLabel(p)}
+                                        </div>
+                                      </div>
                                     </div>
                                   </div>
                                 )

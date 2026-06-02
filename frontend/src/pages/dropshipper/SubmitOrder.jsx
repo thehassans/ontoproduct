@@ -1223,6 +1223,16 @@ export default function SubmitOrder() {
                       }}
                     >
                       <div style={{ position: 'relative' }}>
+                        {selectedProduct && getProductImage(selectedProduct) && !it.showDropdown && (
+                          <div style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', zIndex: 1, pointerEvents: 'none' }}>
+                            <img 
+                              src={getProductImage(selectedProduct)} 
+                              alt="product" 
+                              style={{ width: 24, height: 24, borderRadius: 4, objectFit: 'cover' }}
+                              onError={(e) => { e.target.style.display = 'none' }}
+                            />
+                          </div>
+                        )}
                         <input
                           className="input"
                           value={displayText}
@@ -1260,7 +1270,7 @@ export default function SubmitOrder() {
                             }, 200)
                           }}
                           placeholder="Type to search products (min 3 characters)..."
-                          style={{ width: '100%' }}
+                          style={{ width: '100%', paddingLeft: (selectedProduct && getProductImage(selectedProduct) && !it.showDropdown) ? 40 : undefined }}
                         />
                         {it.showDropdown && String(it.searchText || '').trim().length >= 3 && (
                           <div
