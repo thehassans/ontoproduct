@@ -1216,13 +1216,13 @@ export default function SubmitOrder() {
                       style={{
                         display: 'grid',
                         gridTemplateColumns: isMobile
-                          ? '1fr auto auto'
+                          ? '1fr auto'
                           : 'minmax(300px,1fr) 160px 90px',
                         gap: 8,
                         alignItems: 'start',
                       }}
                     >
-                      <div style={{ position: 'relative' }}>
+                      <div style={{ position: 'relative', gridColumn: isMobile ? '1 / -1' : undefined }}>
                         {selectedProduct && getProductImage(selectedProduct) && !it.showDropdown && (
                           <div style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', zIndex: 1, pointerEvents: 'none' }}>
                             <img 
@@ -1395,7 +1395,7 @@ export default function SubmitOrder() {
                           </div>
                         )}
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifySelf: isMobile ? 'start' : undefined }}>
                         <button
                           type="button"
                           className="btn secondary"
@@ -1447,6 +1447,7 @@ export default function SubmitOrder() {
                         onClick={() => setItems((prev) => prev.filter((_, idx) => idx !== i))}
                         disabled={items.length <= 1}
                         title={items.length <= 1 ? 'At least one product is required' : 'Remove'}
+                        style={{ justifySelf: isMobile ? 'end' : undefined }}
                       >
                         Remove
                       </button>
