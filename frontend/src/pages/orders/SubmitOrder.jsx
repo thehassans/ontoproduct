@@ -570,8 +570,13 @@ export default function SubmitOrder() {
     '+965': 'KWD',
     '+974': 'QAR',
     '+91': 'INR',
+    '+92': 'PKR',
+    '+962': 'JOD',
+    '+1': 'USD',
+    '+44': 'GBP',
+    '+61': 'AUD',
   }
-  const PHONE_CODE_TO_COUNTRYKEY = { '+966': 'KSA', '+971': 'UAE', '+968': 'OM', '+973': 'BH' }
+  const PHONE_CODE_TO_COUNTRYKEY = { '+966': 'KSA', '+971': 'UAE', '+968': 'OM', '+973': 'BH', '+92': 'PK' }
   const selectedCurrency = PHONE_CODE_TO_CCY[form.phoneCountryCode] || 'SAR'
   // Pricing with multiple items
   const itemsDetailed = useMemo(() => {
