@@ -258,7 +258,7 @@ export default function CountryGateway() {
               <img
                 src="/BSBackgroundremoved.png"
                 alt="BuySial"
-                style={{ height: 38, objectFit: 'contain' }}
+                style={{ height: 76, objectFit: 'contain' }}
                 onError={(e) => { e.target.style.display = 'none' }}
               />
             </div>
