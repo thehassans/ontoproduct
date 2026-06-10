@@ -455,8 +455,8 @@ export default function PremiumFooter() {
           box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.2);
         }
         .sf-news-btn {
-          background: var(--theme-accent, #f97316);
-          color: var(--theme-secondary, #ffffff);
+          background: #f97316;
+          color: #ffffff;
           border: none;
           border-radius: 6px;
           padding: 10px 14px;

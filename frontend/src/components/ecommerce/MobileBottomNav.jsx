@@ -56,7 +56,7 @@ export default function MobileBottomNav({ onCartClick }) {
     {
       id: 'home', label: 'Home', path: '/',
       icon: (a) => (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill={a ? '#f97316' : 'none'} stroke={a ? '#f97316' : '#555'} strokeWidth="2">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={a ? '#f97316' : '#555'} strokeWidth="2">
           <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
           <polyline points="9,22 9,12 15,12 15,22"/>
         </svg>
