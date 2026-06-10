@@ -37,24 +37,12 @@ const SECTIONS = [
   },
 ]
 
-function ChevronDown({ open }) {
-  return (
-    <svg
-      width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-      style={{ transition: 'transform 0.25s', transform: open ? 'rotate(180deg)' : 'rotate(0)' }}
-    >
-      <polyline points="6 9 12 15 18 9" />
-    </svg>
-  )
-}
-
 const SOCIAL_ICONS = [
   {
     key: 'facebook',
     label: 'Facebook',
     icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
         <path d="M24 12c0-6.627-5.373-12-12-12S0 5.373 0 12c0 5.99 4.388 10.954 10.125 11.854V15.47H7.078V12h3.047V9.356c0-3.007 1.792-4.668 4.533-4.668 1.312 0 2.686.234 2.686.234v2.953H15.83c-1.491 0-1.956.925-1.956 1.875V12h3.328l-.532 3.469h-2.796v8.385C19.612 22.954 24 17.99 24 12z"/>
       </svg>
     ),
@@ -63,7 +51,7 @@ const SOCIAL_ICONS = [
     key: 'instagram',
     label: 'Instagram',
     icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
         <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
       </svg>
     ),
@@ -72,7 +60,7 @@ const SOCIAL_ICONS = [
     key: 'whatsapp',
     label: 'WhatsApp',
     icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
         <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
       </svg>
     ),
@@ -81,7 +69,7 @@ const SOCIAL_ICONS = [
     key: 'twitter',
     label: 'Twitter',
     icon: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
         <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
       </svg>
     ),
@@ -90,7 +78,7 @@ const SOCIAL_ICONS = [
     key: 'pinterest',
     label: 'Pinterest',
     icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
         <path d="M12 0C5.373 0 0 5.373 0 12c0 5.084 3.163 9.426 7.627 11.174-.105-.949-.2-2.405.042-3.441.218-.937 1.407-5.965 1.407-5.965s-.359-.719-.359-1.782c0-1.668.967-2.914 2.171-2.914 1.023 0 1.518.769 1.518 1.69 0 1.029-.655 2.568-.993 3.995-.282 1.193.599 2.165 1.775 2.165 2.128 0 3.768-2.245 3.768-5.487 0-2.861-2.063-4.869-5.008-4.869-3.41 0-5.409 2.562-5.409 5.199 0 1.033.394 2.143.889 2.741.099.118.112.222.084.345-.09.375-.293 1.199-.334 1.363-.053.225-.177.271-.407.163-1.499-.698-2.436-2.889-2.436-4.649 0-3.785 2.75-7.262 7.929-7.262 4.163 0 7.398 2.967 7.398 6.931 0 4.136-2.607 7.464-6.227 7.464-1.216 0-2.359-.631-2.75-1.378l-.748 2.853c-.271 1.043-1.002 2.35-1.492 3.146C9.57 23.812 10.763 24 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0z"/>
       </svg>
     ),
@@ -99,7 +87,7 @@ const SOCIAL_ICONS = [
     key: 'tiktok',
     label: 'TikTok',
     icon: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
         <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1v-3.5a6.37 6.37 0 0 0-.79-.05A6.34 6.34 0 0 0 3.15 15a6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.34-6.34V8.76a8.26 8.26 0 0 0 4.76 1.5v-3.4a4.83 4.83 0 0 1-1-.17z"/>
       </svg>
     ),
@@ -133,29 +121,49 @@ export default function PremiumFooter() {
     })()
   }, [])
 
-  let countryFlag = '🇬🇧'
-  let countryLabel = 'UK'
-  try {
-    const code = localStorage.getItem('selected_country') || 'GB'
-    const map = {
-      GB: ['🇬🇧', 'UK'], US: ['🇺🇸', 'USA'], AE: ['🇦🇪', 'UAE'], SA: ['🇸🇦', 'Saudi Arabia'],
-      OM: ['🇴🇲', 'Oman'], BH: ['🇧🇭', 'Bahrain'], IN: ['🇮🇳', 'India'], KW: ['🇰🇼', 'Kuwait'],
-      QA: ['🇶🇦', 'Qatar'], JO: ['🇯🇴', 'Jordan'], PK: ['🇵🇰', 'Pakistan'], CA: ['🇨🇦', 'Canada'],
-      AU: ['🇦🇺', 'Australia'],
-    }
-    if (map[code]) { countryFlag = map[code][0]; countryLabel = map[code][1] }
-  } catch {}
-
   return (
     <footer className="sf-root">
       {/* ── Trust strip ── */}
       <div className="sf-trust">
         <div className="sf-trust-inner">
           {[
-            {icon:'🚀', label:'Fast Delivery'},
-            {icon:'🔒', label:'Secure Payment'},
-            {icon:'↩️', label:'Easy Returns'},
-            {icon:'🎯', label:'Buyer Protection'},
+            {
+              label: 'Fast Delivery',
+              icon: (
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="1" y="3" width="15" height="13" rx="2" ry="2"/>
+                  <polygon points="16 8 20 8 23 11 23 16 16 16"/>
+                  <circle cx="5.5" cy="18.5" r="2.5"/>
+                  <circle cx="18.5" cy="18.5" r="2.5"/>
+                </svg>
+              )
+            },
+            {
+              label: 'Secure Payment',
+              icon: (
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+              )
+            },
+            {
+              label: 'Easy Returns',
+              icon: (
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                  <polyline points="3 3 3 8 8 8"/>
+                </svg>
+              )
+            },
+            {
+              label: 'Buyer Protection',
+              icon: (
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+              )
+            },
           ].map(f => (
             <div key={f.label} className="sf-trust-item">
               <span className="sf-trust-icon">{f.icon}</span>
@@ -169,7 +177,7 @@ export default function PremiumFooter() {
       <div className="sf-main">
         {/* Brand column */}
         <div className="sf-brand-col">
-          <img src={logoUrl || '/BSBackgroundremoved.png'} alt="BuySial" className="sf-brand-logo" />
+          <img src={logoUrl || '/BuySial2.png'} alt="BuySial" className="sf-brand-logo" />
           <p className="sf-brand-tagline">Smart shopping, trusted marketplace. Supporting businesses worldwide.</p>
           <div className="sf-social-row">
             {SOCIAL_ICONS.map(({ key, icon, label }) => {
@@ -191,6 +199,16 @@ export default function PremiumFooter() {
               ))}
             </div>
           ))}
+        </div>
+
+        {/* Newsletter column */}
+        <div className="sf-news-col">
+          <h4 className="sf-col-title">Newsletter</h4>
+          <p className="sf-news-text">Subscribe to receive updates, access to exclusive deals, and more.</p>
+          <form onSubmit={(e) => { e.preventDefault(); alert('Subscribed!') }} className="sf-news-form">
+            <input type="email" placeholder="Enter your email" required className="sf-news-input" />
+            <button type="submit" className="sf-news-btn">Subscribe</button>
+          </form>
         </div>
 
         {/* Accordion – mobile only */}
@@ -252,72 +270,232 @@ export default function PremiumFooter() {
 
       <style>{`
         .sf-root {
-          background: #1a1a1a;
+          background: linear-gradient(180deg, #121214 0%, #0a0a0b 100%);
           color: #d1d5db;
-          font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+          font-family: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
           margin-top: 24px;
+          border-top: 1px solid rgba(255, 255, 255, 0.05);
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
         }
         /* Trust strip */
         .sf-trust {
-          background: #111;
-          border-bottom: 1px solid #2a2a2a;
+          background: rgba(255, 255, 255, 0.01);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+          backdrop-filter: blur(10px);
         }
         .sf-trust-inner {
           max-width: 1280px;
           margin: 0 auto;
-          padding: 14px 24px;
-          display: flex;
-          justify-content: center;
-          gap: 40px;
-          flex-wrap: wrap;
+          padding: 24px;
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 24px;
         }
-        .sf-trust-item { display: flex; align-items: center; gap: 8px; }
-        .sf-trust-icon { font-size: 18px; }
-        .sf-trust-label { font-size: 13px; font-weight: 600; color: #9ca3af; letter-spacing: 0.01em; }
+        .sf-trust-item {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          justify-content: center;
+          transition: transform 0.25s ease;
+        }
+        .sf-trust-item:hover {
+          transform: translateY(-2px);
+        }
+        .sf-trust-icon {
+          color: #f97316;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: rgba(249, 115, 22, 0.1);
+          padding: 8px;
+          border-radius: 8px;
+          transition: background 0.25s, color 0.25s;
+        }
+        .sf-trust-item:hover .sf-trust-icon {
+          background: #f97316;
+          color: #fff;
+        }
+        .sf-trust-label {
+          font-size: 14px;
+          font-weight: 600;
+          color: #e5e7eb;
+          letter-spacing: 0.01em;
+        }
 
         /* Main columns */
         .sf-main {
           max-width: 1280px;
           margin: 0 auto;
-          padding: 40px 24px 32px;
-          display: flex;
-          gap: 32px;
+          padding: 60px 24px 48px;
+          display: grid;
+          grid-template-columns: 1.2fr 3fr 1.5fr;
+          gap: 48px;
           align-items: flex-start;
         }
-        .sf-brand-col { flex-shrink: 0; width: 220px; }
-        .sf-brand-logo { height: 44px; object-fit: contain; filter: brightness(0) invert(1); opacity: 0.9; margin-bottom: 12px; }
-        .sf-brand-tagline { font-size: 13px; color: #9ca3af; line-height: 1.6; margin: 0 0 16px; }
-        .sf-social-row { display: flex; gap: 10px; flex-wrap: wrap; }
+        .sf-brand-col {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+        }
+        .sf-brand-logo {
+          height: 48px;
+          object-fit: contain;
+          filter: brightness(0) invert(1);
+          opacity: 0.95;
+          margin-bottom: 16px;
+          transition: transform 0.2s ease;
+        }
+        .sf-brand-logo:hover {
+          transform: scale(1.03);
+        }
+        .sf-brand-tagline {
+          font-size: 13.5px;
+          color: #9ca3af;
+          line-height: 1.6;
+          margin: 0 0 20px;
+        }
+        .sf-social-row {
+          display: flex;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
         .sf-social-btn {
-          display: flex; align-items: center; justify-content: center;
-          width: 34px; height: 34px; border-radius: '50%';
-          background: #2a2a2a; color: #d1d5db;
-          text-decoration: none; border-radius: 50%;
-          transition: background 0.15s, color 0.15s;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          background: rgba(255, 255, 255, 0.03);
+          color: #9ca3af;
+          text-decoration: none;
+          border: 1px solid rgba(255, 255, 255, 0.05);
+          transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
           cursor: pointer;
         }
-        .sf-social-btn:hover { background: #f97316; color: #fff; }
-        .sf-social-dim { opacity: 0.35; cursor: default; }
+        .sf-social-btn:hover {
+          background: #f97316;
+          color: #fff;
+          transform: translateY(-3px);
+          box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
+          border-color: #f97316;
+        }
+        .sf-social-dim {
+          opacity: 0.35;
+          cursor: default;
+        }
+        
         .sf-cols {
-          flex: 1;
           display: grid;
           grid-template-columns: repeat(4, 1fr);
           gap: 24px;
         }
-        .sf-col-title { font-size: 13px; font-weight: 700; color: #fff; margin: 0 0 12px; text-transform: uppercase; letter-spacing: 0.06em; }
-        .sf-col-link { display: block; font-size: 13px; color: #9ca3af; text-decoration: none; padding: 4px 0; transition: color 0.15s; }
-        .sf-col-link:hover { color: #f97316; }
+        .sf-col {
+          display: flex;
+          flex-direction: column;
+        }
+        .sf-col-title {
+          font-size: 12px;
+          font-weight: 700;
+          color: #ffffff;
+          margin: 0 0 16px;
+          text-transform: uppercase;
+          letter-spacing: 0.1em;
+        }
+        .sf-col-link {
+          display: block;
+          font-size: 13px;
+          color: #9ca3af;
+          text-decoration: none;
+          padding: 6px 0;
+          transition: all 0.2s ease;
+        }
+        .sf-col-link:hover {
+          color: #f97316;
+          transform: translateX(4px);
+        }
+
+        /* Newsletter */
+        .sf-news-col {
+          display: flex;
+          flex-direction: column;
+        }
+        .sf-news-text {
+          font-size: 13px;
+          color: #9ca3af;
+          line-height: 1.6;
+          margin: 0 0 16px;
+        }
+        .sf-news-form {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+        .sf-news-input {
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 6px;
+          padding: 10px 14px;
+          color: #fff;
+          font-size: 13px;
+          outline: none;
+          transition: all 0.2s ease;
+        }
+        .sf-news-input:focus {
+          border-color: #f97316;
+          background: rgba(255, 255, 255, 0.06);
+          box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.2);
+        }
+        .sf-news-btn {
+          background: #f97316;
+          color: #fff;
+          border: none;
+          border-radius: 6px;
+          padding: 10px 14px;
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          text-align: center;
+        }
+        .sf-news-btn:hover {
+          background: #ea580c;
+          box-shadow: 0 4px 12px rgba(249, 115, 22, 0.2);
+        }
+        .sf-news-btn:active {
+          transform: scale(0.98);
+        }
 
         /* Accordion – mobile only */
-        .sf-accordion { display: none; flex: 1; }
-        .sf-acc-item { border-bottom: 1px solid #2a2a2a; }
-        .sf-acc-btn { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 14px 0; background: none; border: none; color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; }
-        .sf-acc-links { padding: 4px 0 14px; display: flex; flex-direction: column; }
+        .sf-accordion {
+          display: none;
+        }
+        .sf-acc-item {
+          border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .sf-acc-btn {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          width: 100%;
+          padding: 14px 0;
+          background: none;
+          border: none;
+          color: #fff;
+          font-size: 14px;
+          font-weight: 600;
+          cursor: pointer;
+        }
+        .sf-acc-links {
+          padding: 4px 0 14px;
+          display: flex;
+          flex-direction: column;
+        }
 
         /* Payments */
         .sf-payments {
-          border-top: 1px solid #2a2a2a;
-          padding: 20px 24px;
+          border-top: 1px solid rgba(255, 255, 255, 0.05);
+          padding: 24px;
           max-width: 1280px;
           margin: 0 auto;
           display: flex;
@@ -325,19 +503,41 @@ export default function PremiumFooter() {
           gap: 16px;
           flex-wrap: wrap;
         }
-        .sf-payments-label { font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.06em; }
-        .sf-payment-badges { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-        .sf-pay {
-          display: flex; align-items: center; gap: 2px;
-          background: #fff; border-radius: 4px; padding: 4px 8px;
-          height: 28px; min-width: 42px; justify-content: center;
+        .sf-payments-label {
+          font-size: 12px;
+          font-weight: 600;
+          color: #6b7280;
+          text-transform: uppercase;
+          letter-spacing: 0.06em;
         }
-        .sf-pay-dark { background: #1a1a1a; border: 1px solid #333; }
+        .sf-payment-badges {
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+          align-items: center;
+        }
+        .sf-pay {
+          display: flex;
+          align-items: center;
+          gap: 2px;
+          background: #fff;
+          border-radius: 4px;
+          padding: 4px 8px;
+          height: 28px;
+          min-width: 42px;
+          justify-content: center;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .sf-pay-dark {
+          background: #1a1a1a;
+          border: 1px solid #333;
+          box-shadow: none;
+        }
 
         /* Bottom bar */
         .sf-bottom {
-          border-top: 1px solid #2a2a2a;
-          padding: 16px 24px;
+          border-top: 1px solid rgba(255, 255, 255, 0.05);
+          padding: 20px 24px;
           max-width: 1280px;
           margin: 0 auto;
           display: flex;
@@ -348,23 +548,61 @@ export default function PremiumFooter() {
           color: #6b7280;
           flex-wrap: wrap;
         }
-        .sf-bottom-links { display: flex; gap: 16px; }
-        .sf-bottom-link { color: #6b7280; text-decoration: none; }
-        .sf-bottom-link:hover { color: #f97316; }
+        .sf-bottom-links {
+          display: flex;
+          gap: 16px;
+        }
+        .sf-bottom-link {
+          color: #6b7280;
+          text-decoration: none;
+          transition: color 0.2s ease;
+        }
+        .sf-bottom-link:hover {
+          color: #f97316;
+        }
 
-        /* Responsive */
-        @media (max-width: 900px) {
-          .sf-main { flex-direction: column; gap: 0; padding: 24px 16px 0; }
-          .sf-brand-col { width: 100%; margin-bottom: 24px; }
-          .sf-cols { display: none; }
-          .sf-accordion { display: block; }
-          .sf-trust-inner { gap: 20px; padding: 12px 16px; }
-          .sf-payments { padding: 16px; }
-          .sf-bottom { padding: 14px 16px; }
+        /* Responsive Breakpoints */
+        @media (max-width: 1024px) {
+          .sf-main {
+            grid-template-columns: 1fr;
+            gap: 40px;
+            padding: 48px 24px 32px;
+          }
+          .sf-cols {
+            grid-template-columns: repeat(4, 1fr);
+          }
+          .sf-brand-col {
+            max-width: 480px;
+          }
+        }
+        @media (max-width: 768px) {
+          .sf-trust-inner {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+          }
+          .sf-cols {
+            display: none;
+          }
+          .sf-accordion {
+            display: block;
+          }
+          .sf-brand-col {
+            max-width: 100%;
+            width: 100%;
+          }
+          .sf-news-col {
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding-top: 32px;
+          }
         }
         @media (max-width: 480px) {
-          .sf-trust-item { flex-direction: column; gap: 4px; text-align: center; }
-          .sf-trust-inner { gap: 14px; }
+          .sf-trust-inner {
+            grid-template-columns: 1fr;
+            gap: 16px;
+          }
+          .sf-trust-item {
+            justify-content: flex-start;
+          }
         }
       `}</style>
     </footer>
