@@ -167,7 +167,7 @@ export default function MobileBottomNav({ onCartClick }) {
                 border: active ? '2.5px solid #f97316' : '2.5px solid #e8e8e8',
                 overflow: 'hidden',
               }}>
-                <img src="/mobile-app-launcher.png" alt="BuySial" style={{ width: 46, height: 46, objectFit: 'cover', borderRadius: '50%' }} />
+                <img src="/mobile-app-launcher.png?v=2" alt="BuySial" style={{ width: 46, height: 46, objectFit: 'cover', borderRadius: '50%' }} />
                 {cartCount > 0 && (
                   <span style={{
                     position: 'absolute', top: -4, right: -4,

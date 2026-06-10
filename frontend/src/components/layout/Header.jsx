@@ -4,7 +4,7 @@ import { Capacitor } from '@capacitor/core'
 import { COUNTRY_LIST } from '../../utils/constants'
 import { useCountry } from '../../contexts/CountryContext'
 import { readWishlistIds, syncWishlistFromServer } from '../../util/wishlist'
-import { apiGet } from '../../api.js'
+import { apiGet, API_BASE } from '../../api.js'
 
 const getCartItemCount = () => {
   try {
@@ -73,7 +73,7 @@ export default function Header({ onCartClick, editMode = false, editState = {}, 
   const [isCountryOpen, setIsCountryOpen] = useState(false)
   const { country: selectedCountry, setCountry: setSelectedCountry } = useCountry()
   const countryRef = useRef(null)
-  const brandLogoSrc = isNativeMobileApp() ? '/mobile-app-launcher.png' : '/BSBackgroundremoved.png'
+  const brandLogoSrc = isNativeMobileApp() ? '/mobile-app-launcher.png?v=2' : '/BuySial2.png?v=2'
   const navigate = useNavigate()
   const [logoUrl, setLogoUrl] = useState(null)
   const [catNavItems, setCatNavItems] = useState([])
@@ -101,13 +101,20 @@ export default function Header({ onCartClick, editMode = false, editState = {}, 
       } else {
         setAnnBar(null)
       }
-      const lu = get('logo_url', '')
-      if (lu) setLogoUrl(lu)
       const catEnabled = get('catNav_enabled', 'true') !== 'false'
       setCatNavEnabled(catEnabled)
       const catStr = get('catNav_categories', '')
       if (catStr) setCatNavItems(catStr.split(',').map(s => s.trim()).filter(Boolean))
     }).catch(() => {})
+
+    apiGet('/api/settings/branding').then(res => {
+      if (!alive) return
+      if (res?.headerLogo) {
+        const url = res.headerLogo.startsWith('http') ? res.headerLogo : `${API_BASE || ''}${res.headerLogo}`
+        setLogoUrl(url + '?v=2')
+      }
+    }).catch(() => {})
+
     return () => { alive = false }
   }, [])
 

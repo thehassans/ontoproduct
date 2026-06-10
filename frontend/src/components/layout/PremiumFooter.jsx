@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { apiGet } from '../../api'
+import { apiGet, API_BASE } from '../../api'
 
 const SECTIONS = [
   {
@@ -113,10 +113,13 @@ export default function PremiumFooter() {
     })()
     ;(async () => {
       try {
-        const res = await apiGet('/api/settings/website/content?page=home')
-        const els = Array.isArray(res?.content?.elements) ? res.content.elements : []
-        const lu = (els.find(x => x?.id === 'logo_url') || {}).text || ''
-        if (lu) setLogoUrl(lu)
+        const res = await apiGet('/api/settings/branding')
+        if (res?.headerLogo) {
+          const url = res.headerLogo.startsWith('http')
+            ? res.headerLogo
+            : `${API_BASE || ''}${res.headerLogo}`
+          setLogoUrl(url + '?v=2')
+        }
       } catch {}
     })()
   }, [])
@@ -177,7 +180,9 @@ export default function PremiumFooter() {
       <div className="sf-main">
         {/* Brand column */}
         <div className="sf-brand-col">
-          <img src={logoUrl || '/BuySial2.png'} alt="BuySial" className="sf-brand-logo" />
+          <Link to="/">
+            <img src={logoUrl || '/BuySial2.png?v=2'} alt="BuySial" className="sf-brand-logo" />
+          </Link>
           <p className="sf-brand-tagline">Smart shopping, trusted marketplace. Supporting businesses worldwide.</p>
           <div className="sf-social-row">
             {SOCIAL_ICONS.map(({ key, icon, label }) => {
@@ -262,6 +267,7 @@ export default function PremiumFooter() {
       <div className="sf-bottom">
         <span>&copy; {currentYear} BuySial. All rights reserved.</span>
         <div className="sf-bottom-links">
+          <Link to="/" className="sf-bottom-link">Home</Link>
           <Link to="/privacy" className="sf-bottom-link">Privacy</Link>
           <Link to="/terms" className="sf-bottom-link">Terms</Link>
           <Link to="/contact" className="sf-bottom-link">Contact</Link>
@@ -270,18 +276,17 @@ export default function PremiumFooter() {
 
       <style>{`
         .sf-root {
-          background: linear-gradient(180deg, #121214 0%, #0a0a0b 100%);
-          color: #d1d5db;
+          background: var(--theme-secondary, #ffffff);
+          color: var(--theme-primary, #000000);
           font-family: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
           margin-top: 24px;
-          border-top: 1px solid rgba(255, 255, 255, 0.05);
-          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+          border-top: var(--theme-border, 1px solid #e5e7eb);
+          box-shadow: var(--theme-shadow);
         }
         /* Trust strip */
         .sf-trust {
-          background: rgba(255, 255, 255, 0.01);
-          border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-          backdrop-filter: blur(10px);
+          background: rgba(0,0,0,0.01);
+          border-bottom: var(--theme-border, 1px solid #e5e7eb);
         }
         .sf-trust-inner {
           max-width: 1280px;
@@ -302,7 +307,7 @@ export default function PremiumFooter() {
           transform: translateY(-2px);
         }
         .sf-trust-icon {
-          color: #f97316;
+          color: var(--theme-accent, #f97316);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -312,13 +317,13 @@ export default function PremiumFooter() {
           transition: background 0.25s, color 0.25s;
         }
         .sf-trust-item:hover .sf-trust-icon {
-          background: #f97316;
-          color: #fff;
+          background: var(--theme-accent, #f97316);
+          color: var(--theme-secondary, #ffffff);
         }
         .sf-trust-label {
           font-size: 14px;
           font-weight: 600;
-          color: #e5e7eb;
+          color: var(--theme-primary, #000000);
           letter-spacing: 0.01em;
         }
 
@@ -340,8 +345,6 @@ export default function PremiumFooter() {
         .sf-brand-logo {
           height: 48px;
           object-fit: contain;
-          filter: brightness(0) invert(1);
-          opacity: 0.95;
           margin-bottom: 16px;
           transition: transform 0.2s ease;
         }
@@ -350,7 +353,8 @@ export default function PremiumFooter() {
         }
         .sf-brand-tagline {
           font-size: 13.5px;
-          color: #9ca3af;
+          color: var(--theme-primary, #000000);
+          opacity: 0.75;
           line-height: 1.6;
           margin: 0 0 20px;
         }
@@ -366,19 +370,21 @@ export default function PremiumFooter() {
           width: 36px;
           height: 36px;
           border-radius: 50%;
-          background: rgba(255, 255, 255, 0.03);
-          color: #9ca3af;
+          background: var(--theme-secondary, #ffffff);
+          color: var(--theme-primary, #000000);
+          opacity: 0.8;
           text-decoration: none;
-          border: 1px solid rgba(255, 255, 255, 0.05);
+          border: var(--theme-border, 1px solid #e5e7eb);
           transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
           cursor: pointer;
         }
         .sf-social-btn:hover {
-          background: #f97316;
-          color: #fff;
+          background: var(--theme-accent, #f97316);
+          color: var(--theme-secondary, #ffffff);
+          opacity: 1;
           transform: translateY(-3px);
           box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
-          border-color: #f97316;
+          border-color: var(--theme-accent, #f97316);
         }
         .sf-social-dim {
           opacity: 0.35;
@@ -397,7 +403,7 @@ export default function PremiumFooter() {
         .sf-col-title {
           font-size: 12px;
           font-weight: 700;
-          color: #ffffff;
+          color: var(--theme-primary, #000000);
           margin: 0 0 16px;
           text-transform: uppercase;
           letter-spacing: 0.1em;
@@ -405,13 +411,15 @@ export default function PremiumFooter() {
         .sf-col-link {
           display: block;
           font-size: 13px;
-          color: #9ca3af;
+          color: var(--theme-primary, #000000);
+          opacity: 0.75;
           text-decoration: none;
           padding: 6px 0;
           transition: all 0.2s ease;
         }
         .sf-col-link:hover {
-          color: #f97316;
+          color: var(--theme-accent, #f97316);
+          opacity: 1;
           transform: translateX(4px);
         }
 
@@ -422,7 +430,8 @@ export default function PremiumFooter() {
         }
         .sf-news-text {
           font-size: 13px;
-          color: #9ca3af;
+          color: var(--theme-primary, #000000);
+          opacity: 0.75;
           line-height: 1.6;
           margin: 0 0 16px;
         }
@@ -432,23 +441,22 @@ export default function PremiumFooter() {
           gap: 8px;
         }
         .sf-news-input {
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.08);
+          background: var(--theme-secondary, #ffffff);
+          border: var(--theme-border, 1px solid #e5e7eb);
           border-radius: 6px;
           padding: 10px 14px;
-          color: #fff;
+          color: var(--theme-primary, #000000);
           font-size: 13px;
           outline: none;
           transition: all 0.2s ease;
         }
         .sf-news-input:focus {
-          border-color: #f97316;
-          background: rgba(255, 255, 255, 0.06);
+          border-color: var(--theme-accent, #f97316);
           box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.2);
         }
         .sf-news-btn {
-          background: #f97316;
-          color: #fff;
+          background: var(--theme-accent, #f97316);
+          color: var(--theme-secondary, #ffffff);
           border: none;
           border-radius: 6px;
           padding: 10px 14px;
@@ -471,7 +479,7 @@ export default function PremiumFooter() {
           display: none;
         }
         .sf-acc-item {
-          border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+          border-bottom: var(--theme-border, 1px solid #e5e7eb);
         }
         .sf-acc-btn {
           display: flex;
@@ -481,7 +489,7 @@ export default function PremiumFooter() {
           padding: 14px 0;
           background: none;
           border: none;
-          color: #fff;
+          color: var(--theme-primary, #000000);
           font-size: 14px;
           font-weight: 600;
           cursor: pointer;
@@ -494,7 +502,7 @@ export default function PremiumFooter() {
 
         /* Payments */
         .sf-payments {
-          border-top: 1px solid rgba(255, 255, 255, 0.05);
+          border-top: var(--theme-border, 1px solid #e5e7eb);
           padding: 24px;
           max-width: 1280px;
           margin: 0 auto;
@@ -506,7 +514,8 @@ export default function PremiumFooter() {
         .sf-payments-label {
           font-size: 12px;
           font-weight: 600;
-          color: #6b7280;
+          color: var(--theme-primary, #000000);
+          opacity: 0.6;
           text-transform: uppercase;
           letter-spacing: 0.06em;
         }
@@ -520,7 +529,8 @@ export default function PremiumFooter() {
           display: flex;
           align-items: center;
           gap: 2px;
-          background: #fff;
+          background: #ffffff;
+          border: 1px solid #e5e7eb;
           border-radius: 4px;
           padding: 4px 8px;
           height: 28px;
@@ -536,7 +546,7 @@ export default function PremiumFooter() {
 
         /* Bottom bar */
         .sf-bottom {
-          border-top: 1px solid rgba(255, 255, 255, 0.05);
+          border-top: var(--theme-border, 1px solid #e5e7eb);
           padding: 20px 24px;
           max-width: 1280px;
           margin: 0 auto;
@@ -545,7 +555,8 @@ export default function PremiumFooter() {
           justify-content: space-between;
           gap: 12px;
           font-size: 12px;
-          color: #6b7280;
+          color: var(--theme-primary, #000000);
+          opacity: 0.8;
           flex-wrap: wrap;
         }
         .sf-bottom-links {
@@ -553,12 +564,14 @@ export default function PremiumFooter() {
           gap: 16px;
         }
         .sf-bottom-link {
-          color: #6b7280;
+          color: var(--theme-primary, #000000);
+          opacity: 0.8;
           text-decoration: none;
           transition: color 0.2s ease;
         }
         .sf-bottom-link:hover {
-          color: #f97316;
+          color: var(--theme-accent, #f97316);
+          opacity: 1;
         }
 
         /* Responsive Breakpoints */
@@ -591,7 +604,7 @@ export default function PremiumFooter() {
             width: 100%;
           }
           .sf-news-col {
-            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            border-top: var(--theme-border, 1px solid #e5e7eb);
             padding-top: 32px;
           }
         }
