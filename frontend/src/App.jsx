@@ -96,7 +96,6 @@ const HomeHeadline = lazyWithRetry(() => import('./pages/user/HomeHeadline.jsx')
 const HomeHeader = lazyWithRetry(() => import('./pages/user/HomeHeader.jsx'))
 const ProductHeadline = lazyWithRetry(() => import('./pages/user/ProductHeadline.jsx'))
 const HomeBanners = lazy(() => import('./pages/user/HomeBanners.jsx'))
-const WebDesigner = lazy(() => import('./pages/user/WebDesigner.jsx'))
 const HomeMiniBanners = lazy(() => import('./pages/user/HomeMiniBanners.jsx'))
 const SocialLinks = lazy(() => import('./pages/user/SocialLinks.jsx'))
 const WebsiteModification = lazy(() => import('./pages/user/WebsiteModification.jsx'))
@@ -1022,7 +1021,6 @@ export default function App() {
               <Route path="home-header" element={<HomeHeader />} />
               <Route path="product-headline" element={<ProductHeadline />} />
               <Route path="home-banners" element={<HomeBanners />} />
-              <Route path="web-designer" element={<WebDesigner />} />
               <Route path="home-mini-banners" element={<HomeMiniBanners />} />
               <Route path="social-links" element={<SocialLinks />} />
               <Route path="website-modification" element={<WebsiteModification />} />

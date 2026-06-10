@@ -202,7 +202,7 @@ function MetricRail({ title, subtitle, items }) {
   )
 }
 
-function CountryPill({ active, label, flag, code, onClick }) {
+function CountryPill({ active, label, flag, onClick }) {
   return (
     <button
       type="button"
@@ -222,15 +222,7 @@ function CountryPill({ active, label, flag, code, onClick }) {
         fontWeight: 700,
       }}
     >
-      {code ? (
-        <img
-          src={`https://flagcdn.com/w40/${String(code).toLowerCase()}.png`}
-          alt={label}
-          style={{ width: 24, height: 16, objectFit: 'cover', borderRadius: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.15)' }}
-        />
-      ) : (
-        <span style={{ fontSize: 18 }}>{flag}</span>
-      )}
+      <span style={{ fontSize: 18 }}>{flag}</span>
       <span style={{ fontSize: 13 }}>{label}</span>
     </button>
   )
@@ -496,13 +488,13 @@ export default function DashboardPremium({ mode = 'user' } = {}) {
                   (() => {
                     const countryName = report?.countries?.[0]?.country || report?.summary?.country
                     const meta = getCountryMetaFromName(countryName) || activeMeta || countryMetaOptions[0]
-                    return <CountryPill active label={meta?.label || countryName || 'Country'} flag={meta?.flag || '🌐'} code={meta?.code} onClick={() => {}} />
+                    return <CountryPill active label={meta?.label || countryName || 'Country'} flag={meta?.flag || '🌐'} onClick={() => {}} />
                   })()
                 ) : (
                   <>
                     <CountryPill active={selectedCountryCode === 'all'} label="All Countries" flag="🌐" onClick={() => handleCountrySelect('all')} />
                     {countryMetaOptions.map((item) => (
-                      <CountryPill key={item.code} active={selectedCountryCode === item.code} label={item.label} flag={item.flag} code={item.code} onClick={() => handleCountrySelect(item.code)} />
+                      <CountryPill key={item.code} active={selectedCountryCode === item.code} label={item.label} flag={item.flag} onClick={() => handleCountrySelect(item.code)} />
                     ))}
                   </>
                 )}
@@ -515,18 +507,7 @@ export default function DashboardPremium({ mode = 'user' } = {}) {
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
               <div style={{ display: 'grid', gap: 4 }}>
-                <div style={{ fontWeight: 900, color: '#0f172a', fontSize: 18, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  {selectedCountryCode === 'all' ? (
-                    'Global view'
-                  ) : (
-                    <>
-                      {activeMeta?.code && (
-                        <img src={`https://flagcdn.com/w40/${activeMeta.code.toLowerCase()}.png`} alt={activeMeta.label} style={{ width: 24, height: 16, objectFit: 'cover', borderRadius: 3 }} />
-                      )}
-                      {`${activeMeta?.label || 'Selected country'} view`}
-                    </>
-                  )}
-                </div>
+                <div style={{ fontWeight: 900, color: '#0f172a', fontSize: 18 }}>{selectedCountryCode === 'all' ? 'Global view' : `${activeMeta?.flag || ''} ${activeMeta?.label || 'Selected country'} view`}</div>
                 <div style={{ color: '#64748b', fontSize: 14 }}>{loading ? 'Loading dashboard data...' : report.periodLabel || `${monthNames[selectedMonth - 1]} ${selectedYear}`}</div>
               </div>
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
@@ -625,18 +606,8 @@ export default function DashboardPremium({ mode = 'user' } = {}) {
         }
       >
         <div style={{ display: 'grid', gap: 14 }}>
-          <div style={{ color: '#64748b', fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
-            {selectedCountryCode === 'all' ? (
-              'All countries'
-            ) : (
-              <>
-                {activeMeta?.code && (
-                  <img src={`https://flagcdn.com/w40/${activeMeta.code.toLowerCase()}.png`} alt={activeMeta.label} style={{ width: 20, height: 14, objectFit: 'cover', borderRadius: 2 }} />
-                )}
-                {`${activeMeta?.label || 'Selected country'}`}
-              </>
-            )}{' '}
-            pending orders for {report?.periodLabel || `${monthNames[selectedMonth - 1]} ${selectedYear}`}
+          <div style={{ color: '#64748b', fontSize: 14 }}>
+            {selectedCountryCode === 'all' ? 'All countries' : `${activeMeta?.flag || ''} ${activeMeta?.label || 'Selected country'}`} pending orders for {report?.periodLabel || `${monthNames[selectedMonth - 1]} ${selectedYear}`}
           </div>
 
           {!filteredPendingOrders.length ? (

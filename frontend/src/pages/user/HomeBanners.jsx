@@ -3,7 +3,7 @@ import { apiGet, apiPost, apiUploadWithProgress, mediaUrl } from '../../api'
 
 import { categories as STATIC_CATEGORY_LIST } from '../../components/ecommerce/CategoryFilter'
 
-export default function HomeBanners({ onUpdate }) {
+export default function HomeBanners() {
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
@@ -140,7 +140,6 @@ export default function HomeBanners({ onUpdate }) {
         await load()
         setForm((p) => ({ ...p, title: '', bannerDesktop: null, bannerMobile: null }))
         setNotice('Saved')
-        if (onUpdate) onUpdate()
         try { document.getElementById('homeBannerDesktop').value = '' } catch {}
         try { document.getElementById('homeBannerMobile').value = '' } catch {}
       } else {
@@ -171,7 +170,6 @@ export default function HomeBanners({ onUpdate }) {
       } else {
         await load()
       }
-      if (onUpdate) onUpdate()
     } catch (err) {
       console.error(err)
       setNotice(err?.message || 'Toggle failed')
@@ -196,7 +194,6 @@ export default function HomeBanners({ onUpdate }) {
       setEditBanner(null)
       await load()
       setNotice('Updated')
-      if (onUpdate) onUpdate()
     } catch (err) {
       console.error(err)
       setNotice(err?.message || 'Edit failed')
@@ -211,7 +208,6 @@ export default function HomeBanners({ onUpdate }) {
     try {
       await apiPost(`/api/settings/website/banners/${id}/delete`, {})
       await load()
-      if (onUpdate) onUpdate()
     } catch (err) {
       console.error(err)
       setNotice(err?.message || 'Delete failed')
