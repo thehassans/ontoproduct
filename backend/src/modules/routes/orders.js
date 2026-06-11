@@ -7116,6 +7116,44 @@ router.delete("/:id", auth, allowRoles("admin", "user", "manager"), async (req, 
   }
 });
 
+// Notify Khayyat (Tailor) via WhatsApp
+router.post(
+  "/:id/notify-khayyat",
+  auth,
+  allowRoles("admin", "user", "manager"),
+  async (req, res) => {
+    try {
+      const order = await Order.findById(req.params.id);
+      if (!order) return res.status(404).json({ message: "Order not found" });
+
+      const { tailorPhone } = req.body;
+      if (!tailorPhone) {
+        return res.status(400).json({ message: "tailorPhone is required in request body" });
+      }
+
+      const statusAr = order.paymentStatus === "paid" ? "مدفوع" : "قيد الانتظار";
+      const message = `طلب جديد للخياط ✂️\nاسم الزبون: ${order.customerName || "غير محدد"}\nحالة الدفع: ${statusAr}`;
+
+      try {
+        const mod = await import("../services/whatsappCloud.js");
+        const wa = mod.default || mod;
+        
+        const cleanPhone = String(tailorPhone).replace(/\D/g, "");
+        const jid = `${cleanPhone}@s.whatsapp.net`;
+        await wa.sendText(jid, message);
+      } catch (waErr) {
+        console.warn("Failed to send Khayyat WhatsApp:", waErr?.message);
+        return res.status(500).json({ message: "WhatsApp not configured or failed", error: waErr?.message });
+      }
+
+      res.json({ message: "Notification sent to Khayyat" });
+    } catch (err) {
+      console.error("Notify Khayyat error:", err);
+      res.status(500).json({ message: "Failed to notify Khayyat" });
+    }
+  }
+);
+
 export default router;
 
 // Analytics: last 7 days sales by country
