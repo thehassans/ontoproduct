@@ -101,6 +101,7 @@ const WebsiteModification = lazy(() => import('./pages/user/WebsiteModification.
 const ErrorLogs = lazy(() => import('./pages/user/ErrorLogs.jsx'))
 const Reports = lazy(() => import('./pages/user/Reports.jsx'))
 const DailyReports = lazy(() => import('./pages/user/DailyReports.jsx'))
+const ClosingReports = lazy(() => import('./pages/user/ClosingReports.jsx'))
 const DriverReports = lazy(() => import('./pages/user/DriverReports.jsx'))
 const ProfitLoss = lazy(() => import('./pages/user/ProfitLoss.jsx'))
 const UserFinances = lazy(() => import('./pages/user/Finances.jsx'))
@@ -860,6 +861,7 @@ export default function App() {
               <Route path="profile" element={<DriverProfile />} />
               <Route path="payout" element={<DriverPayout />} />
               <Route path="closings" element={<DriverClosings />} />
+              <Route path="support" element={<Support />} />
             </Route>
 
             <Route
@@ -967,6 +969,7 @@ export default function App() {
               <Route path="shipments" element={<Shipments />} />
               <Route path="reports" element={<Reports />} />
               <Route path="daily-reports" element={<DailyReports />} />
+              <Route path="closing-reports" element={<ClosingReports />} />
               <Route path="driver-reports" element={<DriverReports />} />
               <Route path="profit-loss" element={<ProfitLoss />} />
               <Route path="references" element={<References />} />

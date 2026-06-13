@@ -13,6 +13,7 @@ import BrandBrowser from '../../components/ecommerce/BrandBrowser'
 import ExploreMoreBlock from '../../components/ecommerce/ExploreMoreBlock'
 import PromoBlock from '../../components/ecommerce/PromoBlock'
 import ProductCardMini from '../../components/ecommerce/ProductCardMini'
+import VideoToaster from '../../components/ecommerce/VideoToaster'
 import { readCartItems } from '../../utils/cartStorage'
 import { trackPageView, trackSectionView, trackSectionClick } from '../../utils/analytics'
 import { COUNTRY_LIST } from '../../utils/constants'
@@ -727,6 +728,9 @@ export default function Home(){
         isOpen={isCartOpen} 
         onClose={() => setIsCartOpen(false)} 
       />
+
+      {/* Video Toaster Widget */}
+      <VideoToaster />
 
       {/* Mobile Bottom Navigation */}
       <MobileBottomNav onCartClick={() => setIsCartOpen(true)} />
