@@ -9,8 +9,7 @@ export default function VideoToaster() {
   const [selectedVideo, setSelectedVideo] = useState(null);
   const navigate = useNavigate();
 
-  // Position state
-  const [position, setPosition] = useState({ x: window.innerWidth - 160, y: window.innerHeight - 300 });
+  const [position, setPosition] = useState({ x: window.innerWidth - 280, y: window.innerHeight - 200 });
   const [isDragging, setIsDragging] = useState(false);
   const dragRef = useRef({ dragging: false, startX: 0, startY: 0, currentX: position.x, currentY: position.y, hasMoved: false });
   const containerRef = useRef(null);
@@ -36,8 +35,8 @@ export default function VideoToaster() {
   useEffect(() => {
     // Center it somewhat or position relative to screen size
     setPosition({
-      x: window.innerWidth > 500 ? window.innerWidth - 180 : window.innerWidth - 160,
-      y: window.innerHeight - 300
+      x: window.innerWidth > 500 ? window.innerWidth - 280 : window.innerWidth - 260,
+      y: window.innerHeight - 200
     });
   }, []);
 
@@ -78,8 +77,8 @@ export default function VideoToaster() {
     let newY = dragRef.current.currentY + dy;
     
     // Bounds check
-    const maxX = window.innerWidth - 140; // width
-    const maxY = window.innerHeight - 250; // height
+    const maxX = window.innerWidth - 260; // width
+    const maxY = window.innerHeight - 146; // height
     if (newX < 0) newX = 0;
     if (newX > maxX) newX = maxX;
     if (newY < 0) newY = 0;
@@ -103,6 +102,21 @@ export default function VideoToaster() {
 
   if (!isVisible || isClosed || !selectedVideo) return null;
 
+  const isYouTube = (url) => {
+    return url && (url.includes('youtube.com') || url.includes('youtu.be'));
+  };
+
+  const getYouTubeEmbedUrl = (url) => {
+    if (!url) return '';
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    const videoId = (match && match[2].length === 11) ? match[2] : null;
+    if (videoId) {
+      return `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&controls=0&loop=1&playlist=${videoId}&playsinline=1`;
+    }
+    return url;
+  };
+
   return (
     <div
       ref={containerRef}
@@ -115,9 +129,9 @@ export default function VideoToaster() {
         position: 'fixed',
         left: position.x,
         top: position.y,
-        width: '140px',
-        height: '250px',
-        borderRadius: '16px',
+        width: '260px',
+        height: '146px',
+        borderRadius: '12px',
         overflow: 'hidden',
         boxShadow: '0 8px 30px rgba(0,0,0,0.3)',
         zIndex: 9999,
@@ -159,19 +173,33 @@ export default function VideoToaster() {
       </button>
 
       {/* Video */}
-      <video
-        autoPlay
-        loop
-        muted
-        playsInline
-        style={{
-          width: '100%',
-          height: '100%',
-          objectFit: 'cover',
-          pointerEvents: 'none' // Let container handle events
-        }}
-        src={selectedVideo.videoUrl}
-      />
+      {isYouTube(selectedVideo.videoUrl) ? (
+        <iframe
+          src={getYouTubeEmbedUrl(selectedVideo.videoUrl)}
+          style={{
+            width: '100%',
+            height: '100%',
+            border: 'none',
+            pointerEvents: 'none' // Let container handle clicks
+          }}
+          allow="autoplay; encrypted-media"
+          title="YouTube video"
+        />
+      ) : (
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            pointerEvents: 'none' // Let container handle events
+          }}
+          src={selectedVideo.videoUrl}
+        />
+      )}
 
       <style>{`
         @keyframes slideUpToaster {
