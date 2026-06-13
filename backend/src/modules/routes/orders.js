@@ -5,7 +5,6 @@ import path from "path";
 import Order from "../models/Order.js";
 import WebOrder from "../models/WebOrder.js";
 import Product from "../models/Product.js";
-import Shop from "../models/Shop.js";
 import Setting from "../models/Setting.js";
 import ManagerProductStock from "../models/ManagerProductStock.js";
 import Counter from "../models/Counter.js";
@@ -263,7 +262,6 @@ async function getDeliveryWorkflowConfig() {
     return {
       requireBarcodeScanForPickup: true,
       allowManualPickupVerification: true,
-      autoAssignNearestShop: false,
       enableDriverLiveTracking: true,
       ...(doc?.value && typeof doc.value === "object" ? doc.value : {}),
     };
@@ -271,7 +269,6 @@ async function getDeliveryWorkflowConfig() {
     return {
       requireBarcodeScanForPickup: true,
       allowManualPickupVerification: true,
-      autoAssignNearestShop: false,
       enableDriverLiveTracking: true,
     };
   }
@@ -529,59 +526,12 @@ async function resolveOrderDropoffInput(body = {}) {
   return null;
 }
 
-async function getCandidateShopsForOrder(order) {
-  const ownerId = await resolveOrderOwnerId(order);
-  const productIds = getOrderProductIds(order)
-    .filter((id) => mongoose.Types.ObjectId.isValid(id))
-    .map((id) => new mongoose.Types.ObjectId(id));
-  if (!ownerId || !productIds.length) return [];
 
-  const products = await Product.find({
-    _id: { $in: productIds },
-    createdBy: ownerId,
-    "shops.0": { $exists: true },
-  })
-    .select("name shops")
-    .lean();
-
-  const matched = new Map();
-  for (const product of products) {
-    for (const assignment of Array.isArray(product.shops) ? product.shops : []) {
-      const key = String(assignment?.shopId || "");
-      if (!key) continue;
-      if (!matched.has(key)) {
-        matched.set(key, {
-          shopId: key,
-          matchedProducts: [],
-        });
-      }
-      matched.get(key).matchedProducts.push({
-        productId: String(product._id),
-        productName: product.name,
-        shopBuyingPrice: Number(assignment?.shopBuyingPrice || 0),
-      });
-    }
-  }
-
-  const shops = await Shop.find({
-    _id: { $in: Array.from(matched.keys()) },
-    createdBy: ownerId,
-    isActive: true,
-  }).lean();
-
-  return shops
-    .map((shop) => ({
-      ...shop,
-      matchedProducts: matched.get(String(shop._id))?.matchedProducts || [],
-      matchedProductCount: matched.get(String(shop._id))?.matchedProducts?.length || 0,
-    }))
-    .sort((a, b) => b.matchedProductCount - a.matchedProductCount);
-}
 
 function getDestinationPoint(order) {
   const phase = String(order?.logisticsPhase || "");
   const shipmentStatus = String(order?.shipmentStatus || "").toLowerCase();
-  const pickupPhase = new Set(["assigned_to_shop", "driver_assigned", "to_pickup", "at_pickup"]);
+  const pickupPhase = new Set(["driver_assigned", "to_pickup", "at_pickup"]);
   if (
     pickupPhase.has(phase) ||
     (!order?.pickupVerification?.verifiedAt &&
@@ -604,7 +554,7 @@ async function syncDriverOrderState(driverId, order) {
   const phase = String(order?.logisticsPhase || "");
   let stage = "idle";
   let currentOrder = null;
-  if (["assigned_to_shop", "driver_assigned", "to_pickup", "at_pickup"].includes(phase)) {
+  if (["driver_assigned", "to_pickup", "at_pickup"].includes(phase)) {
     stage = "to_pickup";
     currentOrder = order?._id || null;
   } else if (["picked_up", "to_dropoff"].includes(phase)) {
@@ -626,9 +576,7 @@ async function canAccessOrderForLogistics(reqUser, order) {
   if (reqUser.role === "driver") {
     return String(order.deliveryBoy || "") === String(reqUser.id);
   }
-  if (reqUser.role === "shop_vendor") {
-    return String(order.assignedShop || "") === String(reqUser.shopId || reqUser.id);
-  }
+
 
   const ownerId = await resolveOrderOwnerId(order);
   if (reqUser.role === "user") {
@@ -670,18 +618,7 @@ async function emitOrderChange(ord, action = "updated") {
         });
       } catch {}
     }
-    if (ord?.assignedShop) {
-      try {
-        io.to(`shop:${String(ord.assignedShop)}`).emit("shop.orders.changed", {
-          orderId,
-          invoiceNumber,
-          action,
-          status,
-          logisticsPhase,
-          order: ord,
-        });
-      } catch {}
-    }
+
     // Notify the order creator directly as well (e.g., agent who submitted the order)
     try {
       io.to(`user:${String(ord.createdBy)}`).emit("orders.changed", {
@@ -6600,75 +6537,7 @@ router.post(
   }
 );
 
-router.get(
-  "/:id/candidate-shops",
-  auth,
-  allowRoles("admin", "user", "agent", "manager", "dropshipper"),
-  async (req, res) => {
-    try {
-      const order = await Order.findById(req.params.id).lean();
-      if (!order) return res.status(404).json({ message: "Order not found" });
-      if (!(await canAccessOrderForLogistics(req.user, order))) {
-        return res.status(403).json({ message: "Not allowed" });
-      }
-      const shops = await getCandidateShopsForOrder(order);
-      return res.json({ shops });
-    } catch (err) {
-      return res.status(500).json({ message: err?.message || "Failed to load candidate shops" });
-    }
-  }
-);
 
-router.post(
-  "/:id/assign-shop",
-  auth,
-  allowRoles("admin", "user", "manager"),
-  async (req, res) => {
-    try {
-      const { shopId } = req.body || {};
-      if (!shopId || !mongoose.Types.ObjectId.isValid(String(shopId))) {
-        return res.status(400).json({ message: "Valid shopId is required" });
-      }
-
-      const order = await Order.findById(req.params.id);
-      if (!order) return res.status(404).json({ message: "Order not found" });
-      if (!(await canAccessOrderForLogistics(req.user, order))) {
-        return res.status(403).json({ message: "Not allowed" });
-      }
-
-      const ownerId = await resolveOrderOwnerId(order);
-      const shop = await Shop.findOne({
-        _id: shopId,
-        createdBy: ownerId,
-        isActive: true,
-      });
-      if (!shop) {
-        return res.status(404).json({ message: "Shop not found" });
-      }
-
-      order.assignedShop = shop._id;
-      order.assignedShopName = shop.name || "";
-      order.assignedShopAssignedAt = new Date();
-      order.assignedShopAssignedBy = req.user.id;
-      if (shop.pickupLocation?.coordinates?.length === 2) {
-        order.pickupLocationSnapshot = {
-          type: "Point",
-          coordinates: [...shop.pickupLocation.coordinates],
-          address: shop.pickupLocation.address || shop.address || "",
-          placeId: shop.pickupLocation.placeId || "",
-          googleMapsUrl: "",
-        };
-      }
-
-      await order.save();
-      await syncDriverOrderState(order.deliveryBoy, order);
-      emitOrderChange(order, "shop_assigned").catch(() => {});
-      return res.json({ message: "Shop assigned", order });
-    } catch (err) {
-      return res.status(500).json({ message: err?.message || "Failed to assign shop" });
-    }
-  }
-);
 
 router.post(
   "/:id/pickup-verify",
@@ -6833,7 +6702,6 @@ router.post(
           polyline: order.driverTracking?.directionsPolyline || "",
         };
         if (ownerId) io.to(`workspace:${ownerId}`).emit("driver.location.updated", payload);
-        if (order.assignedShop) io.to(`shop:${String(order.assignedShop)}`).emit("shop.driver.location", payload);
         if (order.createdBy) io.to(`user:${String(order.createdBy)}`).emit("driver.location.updated", payload);
       } catch {}
 
@@ -7115,44 +6983,6 @@ router.delete("/:id", auth, allowRoles("admin", "user", "manager"), async (req, 
     res.status(500).json({ message: error.message || "Failed to delete order" });
   }
 });
-
-// Notify Khayyat (Tailor) via WhatsApp
-router.post(
-  "/:id/notify-khayyat",
-  auth,
-  allowRoles("admin", "user", "manager"),
-  async (req, res) => {
-    try {
-      const order = await Order.findById(req.params.id);
-      if (!order) return res.status(404).json({ message: "Order not found" });
-
-      const { tailorPhone } = req.body;
-      if (!tailorPhone) {
-        return res.status(400).json({ message: "tailorPhone is required in request body" });
-      }
-
-      const statusAr = order.paymentStatus === "paid" ? "مدفوع" : "قيد الانتظار";
-      const message = `طلب جديد للخياط ✂️\nاسم الزبون: ${order.customerName || "غير محدد"}\nحالة الدفع: ${statusAr}`;
-
-      try {
-        const mod = await import("../services/whatsappCloud.js");
-        const wa = mod.default || mod;
-        
-        const cleanPhone = String(tailorPhone).replace(/\D/g, "");
-        const jid = `${cleanPhone}@s.whatsapp.net`;
-        await wa.sendText(jid, message);
-      } catch (waErr) {
-        console.warn("Failed to send Khayyat WhatsApp:", waErr?.message);
-        return res.status(500).json({ message: "WhatsApp not configured or failed", error: waErr?.message });
-      }
-
-      res.json({ message: "Notification sent to Khayyat" });
-    } catch (err) {
-      console.error("Notify Khayyat error:", err);
-      res.status(500).json({ message: "Failed to notify Khayyat" });
-    }
-  }
-);
 
 export default router;
 

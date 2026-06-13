@@ -2029,9 +2029,6 @@ router.post(
               destinationKind: activeOrder.driverTracking?.destinationKind || "none",
             };
             io.to(`workspace:${ownerId}`).emit("driver.location.updated", payload);
-            if (activeOrder.assignedShop) {
-              io.to(`shop:${String(activeOrder.assignedShop)}`).emit("shop.driver.location", payload);
-            }
           } catch {}
         }
       } catch {}
@@ -2593,6 +2590,128 @@ router.put(
     }
   }
 );
+
+// Create Web Designer (admin, user)
+router.post(
+  "/web-designers",
+  auth,
+  allowRoles("admin", "user"),
+  async (req, res) => {
+    try {
+      const { firstName, lastName, email, password, phone } = req.body || {};
+      
+      if (!firstName || !lastName || !email || !password) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+      
+      const exists = await User.findOne({ email });
+      if (exists) {
+        return res.status(400).json({ message: "Email already in use" });
+      }
+      
+      const webDesigner = new User({
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: email.trim().toLowerCase(),
+        password,
+        phone: phone || "",
+        role: "web_designer",
+        createdBy: req.user.id,
+      });
+      
+      await webDesigner.save();
+      
+      res.status(201).json({
+        message: "Web Designer created",
+        user: {
+          id: webDesigner._id,
+          firstName,
+          lastName,
+          email,
+          phone,
+          role: "web_designer",
+        },
+      });
+    } catch (err) {
+      console.error("Error creating Web Designer:", err);
+      res.status(500).json({ message: "Failed to create Web Designer", error: err?.message });
+    }
+  }
+);
+
+// Get all Web Designers (admin, user)
+router.get(
+  "/web-designers",
+  auth,
+  allowRoles("admin", "user"),
+  async (req, res) => {
+    try {
+      const webDesigners = await User.find({ 
+        role: "web_designer",
+        createdBy: req.user.role === "admin" ? { $exists: true } : req.user.id 
+      })
+        .select("firstName lastName email phone createdAt")
+        .sort({ createdAt: -1 })
+        .lean();
+      
+      res.json({ webDesigners });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to fetch Web Designers", error: err?.message });
+    }
+  }
+);
+
+// Delete Web Designer (admin, user)
+router.delete(
+  "/web-designers/:id",
+  auth,
+  allowRoles("admin", "user"),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const webDesigner = await User.findOne({ _id: id, role: "web_designer" });
+      
+      if (!webDesigner) {
+        return res.status(404).json({ message: "Web Designer not found" });
+      }
+      
+      if (req.user.role !== "admin" && String(webDesigner.createdBy) !== String(req.user.id)) {
+        return res.status(403).json({ message: "Not allowed" });
+      }
+      
+      await User.deleteOne({ _id: id });
+      res.json({ message: "Web Designer deleted" });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to delete Web Designer", error: err?.message });
+    }
+  }
+);
+
+// Update Web Designer (admin, user)
+router.put(
+  "/web-designers/:id",
+  auth,
+  allowRoles("admin", "user"),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const webDesigner = await User.findOne({ _id: id, role: "web_designer" });
+      if (!webDesigner) return res.status(404).json({ message: "Web Designer not found" });
+      if (req.user.role !== "admin" && String(webDesigner.createdBy) !== String(req.user.id)) {
+        return res.status(403).json({ message: "Not allowed" });
+      }
+      const { firstName, lastName, phone } = req.body || {};
+      if (firstName) webDesigner.firstName = firstName.trim();
+      if (lastName) webDesigner.lastName = lastName.trim();
+      if (typeof phone === "string") webDesigner.phone = phone.trim();
+      await webDesigner.save();
+      res.json({ message: "Web Designer updated", user: { id: webDesigner._id, firstName: webDesigner.firstName, lastName: webDesigner.lastName, email: webDesigner.email, phone: webDesigner.phone } });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to update Web Designer", error: err?.message });
+    }
+  }
+);
+
 
 // Update manager (admin, user-owner): name, password, country, permissions, assigned countries
 router.patch(

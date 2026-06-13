@@ -40,7 +40,7 @@ const catStorage = multer.diskStorage({
 const catUpload = multer({ storage: catStorage, limits: { fileSize: 10 * 1024 * 1024 } })
 
 // GET /api/categories - Get all categories (tree structure)
-router.get('/', auth, allowRoles('admin', 'user', 'manager'), async (req, res) => {
+router.get('/', auth, allowRoles('admin', 'user', 'manager', 'web_designer'), async (req, res) => {
   try {
     const categories = await Category.find({}).sort({ sortOrder: 1, name: 1 }).lean()
     // Build tree
@@ -101,7 +101,7 @@ router.get('/public', async (req, res) => {
 })
 
 // POST /api/categories - Create category
-router.post('/', auth, allowRoles('admin', 'user', 'manager'), async (req, res) => {
+router.post('/', auth, allowRoles('admin', 'user', 'manager', 'web_designer'), async (req, res) => {
   try {
     const { name, parent, description, image, icon, sortOrder, publishedCountries, unpublishedCountries, isPublished } = req.body
     if (!name || !String(name).trim()) {
@@ -178,7 +178,7 @@ router.post('/', auth, allowRoles('admin', 'user', 'manager'), async (req, res) 
 })
 
 // PUT /api/categories/:id - Update category
-router.put('/:id', auth, allowRoles('admin', 'user', 'manager'), async (req, res) => {
+router.put('/:id', auth, allowRoles('admin', 'user', 'manager', 'web_designer'), async (req, res) => {
   try {
     const { id } = req.params
     const updates = req.body
@@ -277,7 +277,7 @@ router.put('/:id', auth, allowRoles('admin', 'user', 'manager'), async (req, res
 })
 
 // PUT /api/categories/:id/country-toggle - Toggle country publish status
-router.put('/:id/country-toggle', auth, allowRoles('admin', 'user', 'manager'), async (req, res) => {
+router.put('/:id/country-toggle', auth, allowRoles('admin', 'user', 'manager', 'web_designer'), async (req, res) => {
   try {
     const { id } = req.params
     const { country, action } = req.body // action: 'publish' or 'unpublish'
@@ -322,7 +322,7 @@ router.put('/:id/country-toggle', auth, allowRoles('admin', 'user', 'manager'), 
 })
 
 // DELETE /api/categories/:id
-router.delete('/:id', auth, allowRoles('admin', 'user'), async (req, res) => {
+router.delete('/:id', auth, allowRoles('admin', 'user', 'web_designer'), async (req, res) => {
   try {
     const { id } = req.params
     // Check if has subcategories
@@ -402,7 +402,7 @@ router.post('/sync-from-products', auth, allowRoles('admin', 'user'), async (req
 })
 
 // POST /api/categories/:id/image - Upload category image
-router.post('/:id/image', auth, allowRoles('admin', 'user', 'manager'), catUpload.single('image'), async (req, res) => {
+router.post('/:id/image', auth, allowRoles('admin', 'user', 'manager', 'web_designer'), catUpload.single('image'), async (req, res) => {
   try {
     const { id } = req.params
     const cat = await Category.findById(id)

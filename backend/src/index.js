@@ -26,7 +26,6 @@ import geocodeRoutes from "./modules/routes/geocode.js";
 import partnerRoutes from "./modules/routes/partners.js";
 import shopifyRoutes from "./modules/routes/shopify.js";
 import websiteSettingsRoutes from "./modules/routes/websiteSettings.js";
-import shopsRoutes from "./modules/routes/shops.js";
 import dropshipperRoutes from "./modules/routes/dropshippers.js";
 import dropshipperShopifyRoutes from "./modules/routes/dropshipperShopify.js";
 import settingsShopifyRoutes from "./modules/routes/settingsShopify.js";
@@ -206,7 +205,6 @@ app.use("/api/shopify", requireDbReady, shopifyRoutes);
 app.use("/api/settings/shopify", requireDbReady, settingsShopifyRoutes);
 app.use("/api/settings/shopify", requireDbReady, shopifyOAuthRoutes); // OAuth app config routes
 app.use("/api/settings/website", requireDbReady, websiteSettingsRoutes);
-app.use("/api/shops", requireDbReady, shopsRoutes);
 app.use("/api/dropshippers", requireDbReady, dropshipperRoutes);
 app.use("/api/dropshippers/shopify", requireDbReady, dropshipperShopifyRoutes);
 app.use("/api/shopify", requireDbReady, shopifyOAuthRoutes);

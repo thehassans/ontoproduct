@@ -97,6 +97,12 @@ export default function HomeBanners() {
     load()
   }, [])
 
+  useEffect(() => {
+    try {
+      localStorage.setItem('__designer_preview_home_banners', JSON.stringify(banners))
+    } catch {}
+  }, [banners])
+
   const MAX_FILE_MB = 15
   const MAX_FILE_BYTES = MAX_FILE_MB * 1024 * 1024
 

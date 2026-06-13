@@ -77,7 +77,6 @@ function defaultDeliveryWorkflowConfig() {
   return {
     requireBarcodeScanForPickup: true,
     allowManualPickupVerification: true,
-    autoAssignNearestShop: false,
     enableDriverLiveTracking: true,
     updatedAt: new Date(),
   };
@@ -239,11 +238,6 @@ router.post(
         out.allowManualPickupVerification =
           body.allowManualPickupVerification === true ||
           String(body.allowManualPickupVerification).toLowerCase() === "true";
-      }
-      if (body.autoAssignNearestShop != null) {
-        out.autoAssignNearestShop =
-          body.autoAssignNearestShop === true ||
-          String(body.autoAssignNearestShop).toLowerCase() === "true";
       }
       if (body.enableDriverLiveTracking != null) {
         out.enableDriverLiveTracking =

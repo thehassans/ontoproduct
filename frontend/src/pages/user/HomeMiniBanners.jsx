@@ -25,6 +25,12 @@ export default function HomeMiniBanners() {
     loadBanners()
   }, [])
 
+  useEffect(() => {
+    try {
+      localStorage.setItem('__designer_home_mini_banners_updated', Date.now().toString())
+    } catch {}
+  }, [banners])
+
   async function loadBanners() {
     try {
       setLoading(true)

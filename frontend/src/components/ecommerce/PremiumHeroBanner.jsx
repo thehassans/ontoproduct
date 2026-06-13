@@ -53,6 +53,28 @@ export default function PremiumHeroBanner() {
     }
   }, [country])
 
+  useEffect(() => {
+    const handleStorage = (e) => {
+      if (e.key === '__designer_preview_home_banners') {
+        try {
+          const val = JSON.parse(e.newValue)
+          if (Array.isArray(val)) {
+            setBanners(val)
+          }
+        } catch {}
+      }
+    }
+    window.addEventListener('storage', handleStorage)
+    try {
+      const raw = localStorage.getItem('__designer_preview_home_banners')
+      if (raw) {
+        const val = JSON.parse(raw)
+        if (Array.isArray(val)) setBanners(val)
+      }
+    } catch {}
+    return () => window.removeEventListener('storage', handleStorage)
+  }, [])
+
   const slides = useMemo(() => {
     const list = Array.isArray(banners) ? banners : []
     if (!list.length) {

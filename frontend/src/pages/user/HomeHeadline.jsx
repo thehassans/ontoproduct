@@ -34,6 +34,12 @@ export default function HomeHeadline() {
   })
 
   useEffect(() => {
+    try {
+      localStorage.setItem('__designer_preview_home_headline', JSON.stringify(form))
+    } catch {}
+  }, [form])
+
+  useEffect(() => {
     let alive = true
     ;(async () => {
       try {

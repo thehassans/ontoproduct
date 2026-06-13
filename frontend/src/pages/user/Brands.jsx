@@ -14,6 +14,12 @@ export default function Brands() {
 
   useEffect(() => { loadBrands() }, [])
 
+  useEffect(() => {
+    try {
+      localStorage.setItem('__designer_brands_updated', Date.now().toString())
+    } catch {}
+  }, [brands])
+
   async function loadBrands() {
     try {
       setLoading(true)

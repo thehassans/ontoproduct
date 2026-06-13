@@ -35,6 +35,12 @@ export default function ExploreMore() {
 
   useEffect(() => { load() }, [load])
 
+  useEffect(() => {
+    try {
+      localStorage.setItem('__designer_explore_more_updated', Date.now().toString())
+    } catch {}
+  }, [items])
+
   const handleAdd = async () => {
     if (!form.name.trim()) return showToast('Name required', 'error')
     try {

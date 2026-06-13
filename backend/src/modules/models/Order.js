@@ -64,8 +64,7 @@ const OrderSchema = new mongoose.Schema(
     },
     createdByRole: {
       type: String,
-      enum: ["admin", "user", "agent", "manager", "dropshipper", "shop_vendor"],
-      required: true,
+      enum: ["admin", "user", "agent", "manager", "dropshipper"],
     },
 
     // Shipment
@@ -90,10 +89,6 @@ const OrderSchema = new mongoose.Schema(
     assignedManagerName: { type: String, default: "" },
     assignedManagerAssignedAt: { type: Date },
     assignedManagerAssignedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-    assignedShop: { type: mongoose.Schema.Types.ObjectId, ref: "Shop" },
-    assignedShopName: { type: String, default: "" },
-    assignedShopAssignedAt: { type: Date },
-    assignedShopAssignedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     pickupLocationSnapshot: { type: GeoPointSchema, default: undefined },
     dropoffLocation: { type: GeoPointSchema, default: undefined },
     shippingFee: { type: Number, default: 0 },
@@ -105,9 +100,6 @@ const OrderSchema = new mongoose.Schema(
     shipmentStatus: { type: String, default: "pending" },
     logisticsPhase: {
       type: String,
-      enum: [
-        "awaiting_shop_assignment",
-        "assigned_to_shop",
         "driver_assigned",
         "to_pickup",
         "at_pickup",
@@ -117,7 +109,7 @@ const OrderSchema = new mongoose.Schema(
         "returned",
         "cancelled",
       ],
-      default: "awaiting_shop_assignment",
+      default: "to_dropoff",
       index: true,
     },
     shippedAt: { type: Date },
@@ -157,7 +149,7 @@ const OrderSchema = new mongoose.Schema(
       },
       destinationKind: {
         type: String,
-        enum: ["none", "shop", "customer"],
+        enum: ["none", "customer"],
         default: "none",
       },
       lastPingAt: { type: Date },
@@ -285,7 +277,6 @@ OrderSchema.index({ orderCountry: 1 });
 OrderSchema.index({ city: 1 });
 OrderSchema.index({ createdBy: 1 });
 OrderSchema.index({ deliveryBoy: 1 });
-OrderSchema.index({ assignedShop: 1 });
 OrderSchema.index({ assignedManager: 1 });
 OrderSchema.index({ status: 1 });
 OrderSchema.index({ shipmentStatus: 1 });
@@ -310,7 +301,7 @@ OrderSchema.pre("save", function (next) {
   }
 
   const shipmentStatus = String(this.shipmentStatus || "").toLowerCase();
-  const hasShopPickup = Boolean(this.assignedShop || this.pickupLocationSnapshot);
+  const hasShopPickup = Boolean(this.pickupLocationSnapshot);
   const pickupVerified =
     Boolean(this.pickupVerification?.verifiedAt) ||
     Boolean(this.barcode?.isVerified) ||
@@ -328,18 +319,16 @@ OrderSchema.pre("save", function (next) {
     this.logisticsPhase = "picked_up";
   } else if (this.deliveryBoy) {
     this.logisticsPhase = hasShopPickup ? "to_pickup" : "to_dropoff";
-  } else if (hasShopPickup) {
-    this.logisticsPhase = "assigned_to_shop";
   } else {
-    this.logisticsPhase = "awaiting_shop_assignment";
+    this.logisticsPhase = "to_dropoff";
   }
 
   if (["cancelled", "returned", "delivered"].includes(String(this.logisticsPhase || ""))) {
     this.driverTracking.routeStage = "idle";
     this.driverTracking.destinationKind = "none";
-  } else if (["to_pickup", "assigned_to_shop", "driver_assigned", "at_pickup"].includes(String(this.logisticsPhase || ""))) {
+  } else if (["to_pickup", "driver_assigned", "at_pickup"].includes(String(this.logisticsPhase || ""))) {
     this.driverTracking.routeStage = "to_pickup";
-    this.driverTracking.destinationKind = hasShopPickup ? "shop" : "customer";
+    this.driverTracking.destinationKind = "none";
   } else if (["picked_up", "to_dropoff"].includes(String(this.logisticsPhase || ""))) {
     this.driverTracking.routeStage = "to_dropoff";
     this.driverTracking.destinationKind = "customer";

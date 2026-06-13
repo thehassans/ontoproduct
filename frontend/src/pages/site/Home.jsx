@@ -227,6 +227,69 @@ export default function Home(){
     trackPageView('/', 'Home')
   }, [])
 
+  // Auto-scroll to selected section in live preview
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const previewSec = params.get('preview_section')
+      if (previewSec) {
+        setTimeout(() => {
+          const el = sectionRefs.current[previewSec]
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          }
+        }, 800)
+      }
+    } catch {}
+  }, [])
+
+  // Listen to storage events for real-time Home Headline updates
+  useEffect(() => {
+    const handleStorageUpdate = (e) => {
+      if (e.key === '__designer_preview_home_headline') {
+        try {
+          const val = JSON.parse(e.newValue)
+          if (val) {
+            setHomeHeadline(prev => ({
+              ...prev,
+              enabled: !!val.enabled,
+              badge: val.badge || '',
+              title: val.title || '',
+              subtitle: val.subtitle || '',
+              chips: [val.chip1, val.chip2, val.chip3, val.chip4].filter(Boolean),
+              speed: Number(val.speed) || 18,
+              bg1: val.bg1 || '#0b5ed7',
+              bg2: val.bg2 || '#f97316',
+              textColor: val.textColor || '#ffffff'
+            }))
+          }
+        } catch {}
+      }
+    }
+    window.addEventListener('storage', handleStorageUpdate)
+    try {
+      const raw = localStorage.getItem('__designer_preview_home_headline')
+      if (raw) {
+        const val = JSON.parse(raw)
+        if (val) {
+          setHomeHeadline(prev => ({
+            ...prev,
+            enabled: !!val.enabled,
+            badge: val.badge || '',
+            title: val.title || '',
+            subtitle: val.subtitle || '',
+            chips: [val.chip1, val.chip2, val.chip3, val.chip4].filter(Boolean),
+            speed: Number(val.speed) || 18,
+            bg1: val.bg1 || '#0b5ed7',
+            bg2: val.bg2 || '#f97316',
+            textColor: val.textColor || '#ffffff'
+          }))
+        }
+      }
+    } catch {}
+    return () => window.removeEventListener('storage', handleStorageUpdate)
+  }, [])
+
   useEffect(() => {
     const observer = new IntersectionObserver((entries) => {
       entries.forEach((entry) => {
@@ -370,7 +433,7 @@ export default function Home(){
       <h1 className="sr-only">BuySial Commerce</h1>
 
       {/* Hero Banner */}
-      <div className="relative lg:hidden">
+      <div ref={setSectionRef('home_banners')} className="relative lg:hidden">
         <PremiumHeroBanner />
 
         {/* ── Shein-style 2x2 category image tiles ── */}

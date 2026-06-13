@@ -43,12 +43,12 @@ const UserSchema = new mongoose.Schema(
         "investor",
         "driver",
         "customer",
-        "shop_vendor",
         "dropshipper",
         "reference",
         "commissioner",
         "confirmer",
         "seo_manager",
+        "web_designer",
       ],
       default: "user",
       index: true,
@@ -183,17 +183,6 @@ const UserSchema = new mongoose.Schema(
       commissionRate: { type: Number, default: 8 },
       totalCommission: { type: Number, default: 0 }, // Total commission earned from all delivered orders
       paidCommission: { type: Number, default: 0 }, // Total commission already paid via remittances
-    },
-    shopVendorProfile: {
-      shop: { type: mongoose.Schema.Types.ObjectId, ref: "Shop" },
-      permissions: [
-        {
-          type: String,
-          enum: ["dashboard", "orders", "products", "payments"],
-        },
-      ],
-      lastSeenAt: { type: Date },
-    },
     // Dropshipper-specific profile
     dropshipperProfile: {
       businessName: { type: String, default: "" },
@@ -251,7 +240,6 @@ const UserSchema = new mongoose.Schema(
 );
 
 UserSchema.index({ lastKnownLocation: "2dsphere" });
-UserSchema.index({ "shopVendorProfile.shop": 1 });
 
 UserSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();

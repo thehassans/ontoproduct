@@ -42,6 +42,12 @@ export default function Categories() {
 
   useEffect(() => { load() }, [load])
 
+  useEffect(() => {
+    try {
+      localStorage.setItem('__designer_categories_updated', Date.now().toString())
+    } catch {}
+  }, [categories])
+
   const handleSync = async () => {
     setSyncing(true)
     try {

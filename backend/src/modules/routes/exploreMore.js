@@ -43,7 +43,7 @@ router.get('/', auth, async (req, res) => {
     if (user.role === 'manager') {
       const perms = user.managerPermissions || {}
       if (!perms.canManageExploreMore) return res.status(403).json({ message: 'No permission' })
-    } else if (user.role !== 'user') {
+    } else if (user.role !== 'user' && user.role !== 'web_designer') {
       return res.status(403).json({ message: 'Forbidden' })
     }
     const items = await ExploreMore.find().sort({ sortOrder: 1, createdAt: -1 }).lean()
@@ -66,7 +66,7 @@ router.post('/', auth, async (req, res) => {
     if (user.role === 'manager') {
       const perms = user.managerPermissions || {}
       if (!perms.canManageExploreMore) return res.status(403).json({ message: 'No permission' })
-    } else if (user.role !== 'user') {
+    } else if (user.role !== 'user' && user.role !== 'web_designer') {
       return res.status(403).json({ message: 'Forbidden' })
     }
     const { name, link, sortOrder, isPublished } = req.body
@@ -89,7 +89,7 @@ router.put('/:id', auth, async (req, res) => {
     if (user.role === 'manager') {
       const perms = user.managerPermissions || {}
       if (!perms.canManageExploreMore) return res.status(403).json({ message: 'No permission' })
-    } else if (user.role !== 'user') {
+    } else if (user.role !== 'user' && user.role !== 'web_designer') {
       return res.status(403).json({ message: 'Forbidden' })
     }
     const update = {}
@@ -110,7 +110,7 @@ router.delete('/:id', auth, async (req, res) => {
     if (user.role === 'manager') {
       const perms = user.managerPermissions || {}
       if (!perms.canManageExploreMore) return res.status(403).json({ message: 'No permission' })
-    } else if (user.role !== 'user') {
+    } else if (user.role !== 'user' && user.role !== 'web_designer') {
       return res.status(403).json({ message: 'Forbidden' })
     }
     await ExploreMore.findByIdAndDelete(req.params.id)
@@ -125,7 +125,7 @@ router.post('/:id/image', auth, upload.single('image'), async (req, res) => {
     if (user.role === 'manager') {
       const perms = user.managerPermissions || {}
       if (!perms.canManageExploreMore) return res.status(403).json({ message: 'No permission' })
-    } else if (user.role !== 'user') {
+    } else if (user.role !== 'user' && user.role !== 'web_designer') {
       return res.status(403).json({ message: 'Forbidden' })
     }
     if (!req.file) return res.status(400).json({ message: 'No file' })

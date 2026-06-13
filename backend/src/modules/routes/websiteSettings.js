@@ -234,7 +234,7 @@ router.get('/banners', async (req, res) => {
 router.post(
   '/banners',
   auth,
-  allowRoles('admin', 'user', 'manager'),
+  allowRoles('admin', 'user', 'manager', 'web_designer'),
   allowBannerManagers,
   upload.fields([
     { name: 'banner', maxCount: 1 },
@@ -337,7 +337,7 @@ router.post(
 })
 
 // Edit banner metadata (title, country, linkCategory, active)
-router.post('/banners/:id/edit', auth, allowRoles('admin', 'user', 'manager'), allowBannerManagers, async (req, res) => {
+router.post('/banners/:id/edit', auth, allowRoles('admin', 'user', 'manager', 'web_designer'), allowBannerManagers, async (req, res) => {
   try {
     const { id } = req.params
     const { title, country, linkCategory, active } = req.body || {}
@@ -402,8 +402,8 @@ async function deleteBanner(req, res) {
 /**
  * Delete a banner (authenticated)
  */
-router.get('/banners/:id/delete', auth, allowRoles('admin', 'user', 'manager'), allowBannerManagers, deleteBanner)
-router.post('/banners/:id/delete', auth, allowRoles('admin', 'user', 'manager'), allowBannerManagers, deleteBanner)
+router.get('/banners/:id/delete', auth, allowRoles('admin', 'user', 'manager', 'web_designer'), allowBannerManagers, deleteBanner)
+router.post('/banners/:id/delete', auth, allowRoles('admin', 'user', 'manager', 'web_designer'), allowBannerManagers, deleteBanner)
 
 async function toggleBanner(req, res) {
   try {
@@ -436,13 +436,13 @@ async function toggleBanner(req, res) {
 /**
  * Toggle banner active status (authenticated)
  */
-router.get('/banners/:id/toggle', auth, allowRoles('admin', 'user', 'manager'), allowBannerManagers, toggleBanner)
-router.post('/banners/:id/toggle', auth, allowRoles('admin', 'user', 'manager'), allowBannerManagers, toggleBanner)
+router.get('/banners/:id/toggle', auth, allowRoles('admin', 'user', 'manager', 'web_designer'), allowBannerManagers, toggleBanner)
+router.post('/banners/:id/toggle', auth, allowRoles('admin', 'user', 'manager', 'web_designer'), allowBannerManagers, toggleBanner)
 
 /**
  * Update banner order (authenticated)
  */
-router.post('/banners/reorder', auth, allowRoles('admin', 'user', 'manager'), allowBannerManagers, async (req, res) => {
+router.post('/banners/reorder', auth, allowRoles('admin', 'user', 'manager', 'web_designer'), allowBannerManagers, async (req, res) => {
   try {
     const { bannerIds } = req.body
     
@@ -510,7 +510,7 @@ router.get('/content', async (req, res) => {
  * Save page content (authenticated)
  * Body: { page, elements: [{ id, text, styles }] }
  */
-router.post('/content', auth, allowRoles('admin', 'user'), async (req, res) => {
+router.post('/content', auth, allowRoles('admin', 'user', 'web_designer'), async (req, res) => {
   try {
     const { page, elements } = req.body
     
@@ -556,7 +556,7 @@ router.post('/content', auth, allowRoles('admin', 'user'), async (req, res) => {
 /**
  * Delete page content (authenticated)
  */
-router.delete('/content/:page', auth, allowRoles('admin', 'user'), async (req, res) => {
+router.delete('/content/:page', auth, allowRoles('admin', 'user', 'web_designer'), async (req, res) => {
   try {
     const { page } = req.params
     
