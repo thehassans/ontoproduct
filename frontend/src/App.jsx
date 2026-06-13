@@ -1002,6 +1002,7 @@ export default function App() {
               <Route path="product-headline" element={<ProductHeadline />} />
               <Route path="home-banners" element={<HomeBanners />} />
               <Route path="home-mini-banners" element={<HomeMiniBanners />} />
+              <Route path="video-products" element={<DesignerVideoProducts />} />
               <Route path="social-links" element={<SocialLinks />} />
               <Route path="website-modification" element={<WebsiteModification />} />
               <Route path="error-logs" element={<ErrorLogs />} />
