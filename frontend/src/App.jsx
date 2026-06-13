@@ -1074,6 +1074,7 @@ export default function App() {
               <Route path="product-headline" element={<ProductHeadline />} />
               <Route path="home-banners" element={<HomeBanners />} />
               <Route path="home-mini-banners" element={<HomeMiniBanners />} />
+              <Route path="video-products" element={<DesignerVideoProducts />} />
               <Route path="brands" element={<UserBrands />} />
               <Route path="explore-more" element={<UserExploreMore />} />
             </Route>

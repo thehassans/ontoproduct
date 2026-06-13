@@ -20,6 +20,7 @@ export default function WebDesignerLayout() {
     { path: '/designer/product-headline', label: 'Product Headline', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6h16M4 12h16M4 18h12"/></svg>, preview: '/catalog' },
     { path: '/designer/home-banners', label: 'Home Banners', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="14" rx="2" ry="2"/><path d="M3 14l4-4a3 3 0 014 0l3 3M14 13l2-2a3 3 0 014 0l1 1M8 20h8"/></svg>, preview: '/home?preview_section=home_banners' },
     { path: '/designer/home-mini-banners', label: 'Home Mini Banners', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="10" rx="2"/><path d="M6 12h4M14 10h4v4h-4z"/></svg>, preview: '/home?preview_section=home_mini_banner' },
+    { path: '/designer/video-products', label: 'Video Products', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>, preview: '/home' },
     { path: '/designer/brands', label: 'Brands', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>, preview: '/home?preview_section=brand_browser' },
     { path: '/designer/explore-more', label: 'Explore More', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>, preview: '/home?preview_section=explore_more' },
   ]
@@ -45,7 +46,8 @@ export default function WebDesignerLayout() {
         '__designer_categories_updated',
         '__designer_brands_updated',
         '__designer_explore_more_updated',
-        '__designer_home_mini_banners_updated'
+        '__designer_home_mini_banners_updated',
+        '__designer_home_video_products_updated'
       ]
       if (keysToReload.includes(e.key)) {
         forceReload()
