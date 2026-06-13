@@ -183,6 +183,7 @@ const UserSchema = new mongoose.Schema(
       commissionRate: { type: Number, default: 8 },
       totalCommission: { type: Number, default: 0 }, // Total commission earned from all delivered orders
       paidCommission: { type: Number, default: 0 }, // Total commission already paid via remittances
+    },
     // Dropshipper-specific profile
     dropshipperProfile: {
       businessName: { type: String, default: "" },

@@ -1,6 +1,5 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
-import Shop from '../models/Shop.js';
 
 // Use a default secret in development so the app works without .env
 const SECRET = process.env.JWT_SECRET || 'devsecret-change-me';
@@ -22,20 +21,6 @@ export async function auth(req, res, next) {
     if (user) {
       req.user = { ...decoded, id: String(user._id), role: user.role };
       return next();
-    }
-    if (decoded?.actorType === 'shop' || decoded?.role === 'shop_vendor') {
-      const shop = await Shop.findById(decoded.id).select('_id role createdBy isActive');
-      if (shop && shop.isActive !== false) {
-        req.user = {
-          ...decoded,
-          id: String(shop._id),
-          role: shop.role,
-          actorType: 'shop',
-          shopId: String(shop._id),
-          createdBy: shop.createdBy ? String(shop.createdBy) : '',
-        };
-        return next();
-      }
     }
   } catch (e) {
     // JWT verification failed, check if it's a Shopify Session Token

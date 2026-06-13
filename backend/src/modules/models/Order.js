@@ -100,6 +100,7 @@ const OrderSchema = new mongoose.Schema(
     shipmentStatus: { type: String, default: "pending" },
     logisticsPhase: {
       type: String,
+      enum: [
         "driver_assigned",
         "to_pickup",
         "at_pickup",
