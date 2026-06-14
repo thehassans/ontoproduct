@@ -101,6 +101,9 @@ const OrderSchema = new mongoose.Schema(
     logisticsPhase: {
       type: String,
       enum: [
+        "pending",
+        "awaiting_shop_assignment",
+        "assigned_to_shop",
         "driver_assigned",
         "to_pickup",
         "at_pickup",
@@ -110,7 +113,7 @@ const OrderSchema = new mongoose.Schema(
         "returned",
         "cancelled",
       ],
-      default: "to_dropoff",
+      default: "pending",
       index: true,
     },
     shippedAt: { type: Date },
@@ -321,7 +324,7 @@ OrderSchema.pre("save", function (next) {
   } else if (this.deliveryBoy) {
     this.logisticsPhase = hasShopPickup ? "to_pickup" : "to_dropoff";
   } else {
-    this.logisticsPhase = "to_dropoff";
+    this.logisticsPhase = "pending";
   }
 
   if (["cancelled", "returned", "delivered"].includes(String(this.logisticsPhase || ""))) {
