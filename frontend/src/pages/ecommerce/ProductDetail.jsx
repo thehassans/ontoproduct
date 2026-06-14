@@ -6,6 +6,7 @@ import { useToast } from '../../ui/Toast'
 import Header from '../../components/layout/Header'
 
 import ShoppingCart from '../../components/ecommerce/ShoppingCart'
+import VideoToaster from '../../components/ecommerce/VideoToaster'
 import { trackPageView, trackProductView, trackAddToCart } from '../../utils/analytics'
 import { getCurrencyConfig, convert as fxConvert, formatMoney } from '../../util/currency'
 import FormattedPrice from '../../components/ui/FormattedPrice'
@@ -980,7 +981,7 @@ const ProductDetail = () => {
               {(images.length > 1 || hasVideo) && (
                 <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 flex gap-3 bg-white/70 backdrop-blur-md px-4 py-2.5 rounded-2xl shadow-xl">
                   {images.map((img, idx) => <button key={idx} onClick={() => setSelectedImage(idx)} className={`w-14 h-14 rounded-xl overflow-hidden transition-all ${selectedImage === idx && !isVideoSelected ? 'ring-2 ring-orange-500 scale-110' : 'opacity-60 hover:opacity-100'}`}><img src={img} alt="" className="w-full h-full object-contain" onError={e => { e.target.src = '/placeholder-product.svg' }} /></button>)}
-                  {hasVideo && <button onClick={() => setSelectedImage(images.length)} className={`w-14 h-14 rounded-xl bg-gray-900 grid place-items-center transition-all ${isVideoSelected ? 'ring-2 ring-orange-500 scale-110' : 'opacity-60 hover:opacity-100'}`}><svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg></button>}
+                  {hasVideo && <button onClick={() => setSelectedImage(images.length)} className={`w-14 h-14 rounded-xl bg-gray-900 grid place-items-center transition-all ${isVideoSelected ? 'ring-2 ring-orange-500 scale-110' : 'opacity-60 hover:opacity-100'}`}><svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg></button>}
                 </div>
               )}
             </div>
@@ -1176,7 +1177,7 @@ const ProductDetail = () => {
         </div>
       )}
 
-
+      {hasVideo && <VideoToaster specificVideo={{ videoUrl: videoUrl, productId: product._id }} />}
     </div>
   )
 }

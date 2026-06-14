@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiGet, mediaUrl } from '../../api';
 
-export default function VideoToaster() {
+export default function VideoToaster({ specificVideo }) {
   const [isVisible, setIsVisible] = useState(false);
   const [isClosed, setIsClosed] = useState(false);
   const [videoProducts, setVideoProducts] = useState([]);
@@ -15,6 +15,12 @@ export default function VideoToaster() {
   const containerRef = useRef(null);
 
   useEffect(() => {
+    if (specificVideo) {
+      setSelectedVideo(specificVideo);
+      const timer = setTimeout(() => setIsVisible(true), 1500);
+      return () => clearTimeout(timer);
+    }
+
     // Fetch video products
     apiGet('/api/settings/website/content?page=home_video_products')
       .then(res => {
