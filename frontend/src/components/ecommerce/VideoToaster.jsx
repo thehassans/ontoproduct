@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { apiGet } from '../../api';
+import { apiGet, mediaUrl } from '../../api';
 
 export default function VideoToaster() {
   const [isVisible, setIsVisible] = useState(false);
@@ -197,7 +197,7 @@ export default function VideoToaster() {
             objectFit: 'cover',
             pointerEvents: 'none' // Let container handle events
           }}
-          src={selectedVideo.videoUrl}
+          src={mediaUrl(selectedVideo.videoUrl)}
         />
       )}
 

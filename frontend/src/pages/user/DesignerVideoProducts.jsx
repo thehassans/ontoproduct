@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { apiGet, apiPost } from '../../api';
+import { apiGet, apiPost, mediaUrl } from '../../api';
 
 export default function DesignerVideoProducts() {
   const [loading, setLoading] = useState(true);
@@ -122,7 +122,7 @@ export default function DesignerVideoProducts() {
                   {selectedProducts.map(p => (
                     <div key={p.productId} style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
                       <div style={{ aspectRatio: '9/16', background: '#000', borderRadius: 6, overflow: 'hidden', position: 'relative' }}>
-                        <video src={p.videoUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted loop playsInline />
+                        <video src={mediaUrl(p.videoUrl)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted loop playsInline />
                       </div>
                       <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {p.name}
@@ -153,7 +153,7 @@ export default function DesignerVideoProducts() {
                   {availableProducts.map(p => (
                     <div key={p.productId} style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
                       <div style={{ aspectRatio: '9/16', background: '#000', borderRadius: 6, overflow: 'hidden', position: 'relative' }}>
-                        <video src={p.videoUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted loop playsInline />
+                        <video src={mediaUrl(p.videoUrl)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted loop playsInline />
                       </div>
                       <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {p.name}
