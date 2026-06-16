@@ -93,7 +93,12 @@ router.get("/overview", auth, async (req, res) => {
 
     // Build order filter based on role
     let orderFilter = { createdAt: { $gte: start, $lte: end } };
-    
+
+    // Country Panel Scoping: X-Country header from country subdomains
+    if (req.countryCode && req.countryAliases && (req.user.role === 'admin' || req.user.role === 'user')) {
+      orderFilter.orderCountry = { $in: req.countryAliases };
+    }
+
     if (req.user.role === "manager") {
       const mgr = await User.findById(req.user.id)
         .select("assignedCountry assignedCountries")

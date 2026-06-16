@@ -42,6 +42,7 @@ import exploreMoreRoutes from "./modules/routes/exploreMore.js";
 import waRoutes from "./modules/routes/wa.js";
 import { bootstrapSuperAdminFromEnv } from "./modules/services/bootstrapSuperAdmin.js";
 import scrapeImportRoutes from "./modules/routes/scrapeImport.js";
+import { countryScope } from "./modules/middleware/countryScope.js";
 
 
 dotenv.config();
@@ -185,6 +186,9 @@ function requireDbReady(req, res, next) {
     db,
   });
 }
+
+// Apply country scope middleware globally — reads X-Country header from country subdomain panels
+app.use("/api", countryScope);
 
 app.use("/api/auth", requireDbReady, authRoutes);
 app.use("/api/users", requireDbReady, userRoutes);

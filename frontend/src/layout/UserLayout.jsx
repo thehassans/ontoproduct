@@ -6,6 +6,7 @@ import Modal from '../components/Modal.jsx'
 import NotificationsDropdown from '../components/NotificationsDropdown.jsx'
 import NotificationListener from '../components/NotificationListener.jsx'
 import { io } from 'socket.io-client'
+import { DEFAULT_COUNTRY_LIST } from '../utils/constants.js'
 
 export default function UserLayout() {
   const navigate = useNavigate()
@@ -204,6 +205,17 @@ export default function UserLayout() {
         </svg>
       ),
       children: [
+        {
+          to: '/user/country-panels',
+          label: 'Country Panels',
+          icon: (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="2" y1="12" x2="22" y2="12" />
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+            </svg>
+          ),
+        },
         {
           to: '/user/agents',
           label: 'Agents',
@@ -1808,6 +1820,33 @@ export default function UserLayout() {
                 </div>
               </div>
             )}
+
+            {/* Country panel badge — visible when logged in from a country subdomain */}
+            {(() => {
+              try {
+                const lockedCode = String(localStorage.getItem('country_domain_locked_code') || '').toUpperCase().trim()
+                if (!lockedCode) return null
+                const countryEntry = DEFAULT_COUNTRY_LIST.find(c => c.code === lockedCode)
+                if (!countryEntry) return null
+                return (
+                  <div style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 7,
+                    padding: '6px 14px',
+                    borderRadius: 100,
+                    background: 'rgba(99,102,241,0.12)',
+                    border: '1px solid rgba(99,102,241,0.3)',
+                    fontSize: 12, fontWeight: 700,
+                    color: '#818cf8',
+                    letterSpacing: '0.04em',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                  }}>
+                    <span style={{ fontSize: 16 }}>{countryEntry.flag}</span>
+                    {countryEntry.name} Panel
+                  </div>
+                )
+              } catch { return null }
+            })()}
           </div>
           <div
             className="flex items-center gap-3"

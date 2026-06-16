@@ -1319,6 +1319,11 @@ router.get(
       const mgr = await User.findById(req.user.id).select("createdBy");
       base.createdBy = mgr?.createdBy || "__none__";
     }
+
+    if (req.countryCode && req.countryAliases && (req.user.role === 'admin' || req.user.role === 'user')) {
+      base.country = { $in: req.countryAliases };
+    }
+
     const text = q.trim();
     const cond = text
       ? {
@@ -1377,6 +1382,11 @@ router.get(
           cond.country = { $in: Array.from(set) };
         }
       }
+
+      if (req.countryCode && req.countryAliases && (req.user.role === 'admin' || req.user.role === 'user')) {
+        cond.country = { $in: req.countryAliases };
+      }
+
       const country = String(req.query.country || "").trim();
       if (country) {
         const aliases = expand(country);
@@ -2286,6 +2296,11 @@ router.get("/managers", auth, allowRoles("admin", "user"), async (req, res) => {
   const { q = "" } = req.query || {};
   const base = { role: "manager" };
   if (req.user.role !== "admin") base.createdBy = req.user.id;
+
+  if (req.countryCode && req.countryAliases && (req.user.role === 'admin' || req.user.role === 'user')) {
+    base.country = { $in: req.countryAliases };
+  }
+
   const text = q.trim();
   const cond = text
     ? {
@@ -2524,10 +2539,20 @@ router.get(
   allowRoles("admin", "user"),
   async (req, res) => {
     try {
-      const seoManagers = await User.find({ 
+      const base = { 
         role: "seo_manager",
         createdBy: req.user.role === "admin" ? { $exists: true } : req.user.id 
-      })
+      };
+
+      if (req.countryCode && req.countryAliases && (req.user.role === 'admin' || req.user.role === 'user')) {
+        // Since SEO managers use seoCountries array or country, we can check country or seoCountries
+        base.$or = [
+          { country: { $in: req.countryAliases } },
+          { seoCountries: { $in: req.countryAliases } }
+        ];
+      }
+
+      const seoManagers = await User.find(base)
         .select("firstName lastName email phone seoCountries createdAt")
         .sort({ createdAt: -1 })
         .lean();
@@ -2646,10 +2671,16 @@ router.get(
   allowRoles("admin", "user"),
   async (req, res) => {
     try {
-      const webDesigners = await User.find({ 
+      const base = { 
         role: "web_designer",
         createdBy: req.user.role === "admin" ? { $exists: true } : req.user.id 
-      })
+      };
+
+      if (req.countryCode && req.countryAliases && (req.user.role === 'admin' || req.user.role === 'user')) {
+        base.country = { $in: req.countryAliases };
+      }
+
+      const webDesigners = await User.find(base)
         .select("firstName lastName email phone createdAt")
         .sort({ createdAt: -1 })
         .lean();
@@ -4113,6 +4144,11 @@ router.get(
         { createdBy: null }
       ];
     }
+
+    if (req.countryCode && req.countryAliases && (req.user.role === 'admin' || req.user.role === 'user')) {
+      base.country = { $in: req.countryAliases };
+    }
+
     const text = q.trim();
     const cond = text
       ? {

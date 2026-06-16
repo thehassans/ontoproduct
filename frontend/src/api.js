@@ -251,9 +251,20 @@ async function authHeader() {
   if (!token) {
     token = localStorage.getItem('token')
   }
-  
-  return token ? { Authorization: `Bearer ${token}` } : {}
+
+  const headers = token ? { Authorization: `Bearer ${token}` } : {}
+
+  // Inject X-Country header when on a country-subdomain panel (e.g. pk.buysial.com)
+  try {
+    const lockedCode = String(localStorage.getItem('country_domain_locked_code') || '').toUpperCase().trim()
+    if (lockedCode) {
+      headers['X-Country'] = lockedCode
+    }
+  } catch {}
+
+  return headers
 }
+
 
 // Optional toast helpers (kept for compatibility, no-ops here)
 function toastError(_message) {

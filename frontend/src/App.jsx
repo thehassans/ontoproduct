@@ -68,6 +68,8 @@ const NavigationMenu = lazy(() => import('./pages/admin/NavigationMenu.jsx'))
 
 // Auth pages - keep UserLogin eager for fast login
 import UserLogin from './pages/user/Login.jsx'
+const CountryStaffLogin = lazy(() => import('./pages/country/CountryStaffLogin.jsx'))
+const CountryPanels = lazy(() => import('./pages/country/CountryPanels.jsx'))
 const CustomerLogin = lazy(() => import('./pages/ecommerce/CustomerLogin.jsx'))
 const Register = lazy(() => import('./pages/ecommerce/Register.jsx'))
 
@@ -591,16 +593,22 @@ function CountryGatewayMounter() {
   )
 }
 
-// Smart Login component - redirects to customer login on e-commerce sites, shows staff login on admin
+// Smart Login component:
+// - On country subdomains (pk.buysial.com, ar.buysial.com etc.) → CountryStaffLogin for panel staff
+// - On main domain (buysial.com) → Staff UserLogin
 function SmartLogin() {
   const isCustomDomain = useIsCustomDomain()
-  
-  // On custom domains (e-commerce sites), redirect to customer login
+
+  // On country-specific subdomains, show the branded country staff login
   if (isCustomDomain) {
-    return <Navigate to="/customer/login" replace />
+    return (
+      <Suspense fallback={null}>
+        <CountryStaffLogin />
+      </Suspense>
+    )
   }
-  
-  // On admin/localhost, show staff login
+
+  // On main domain / localhost, show staff login
   return <UserLogin />
 }
 
@@ -937,6 +945,7 @@ export default function App() {
               <Route path="inbox/connect" element={<WhatsAppConnect />} />
               <Route path="inbox/whatsapp" element={<WhatsAppInbox />} />
               <Route path="agents" element={<Agents />} />
+              <Route path="country-panels" element={<CountryPanels />} />
               <Route path="managers" element={<Managers />} />
               <Route path="partners" element={<Partners />} />
               <Route path="seo-managers" element={<SEOManagers />} />

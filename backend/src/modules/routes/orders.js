@@ -2202,6 +2202,12 @@ router.get(
         base = { createdBy: req.user.id };
       }
 
+      // Country Panel Scoping: X-Country header from country subdomain panels (pk.buysial.com etc.)
+      // restricts admin/user views to that country only. Manager/agent are already scoped by assignedCountry.
+      if (req.countryCode && req.countryAliases && (req.user.role === 'admin' || req.user.role === 'user')) {
+        base.orderCountry = { $in: req.countryAliases };
+      }
+
       // Pagination and filters
       const page = Math.max(1, Number(req.query.page || 1));
       const limit = Math.min(2000, Math.max(1, Number(req.query.limit || 20)));
