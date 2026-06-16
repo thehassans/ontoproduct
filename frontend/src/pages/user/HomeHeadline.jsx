@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { apiGet, apiPost } from '../../api'
+import { useDesigner } from '../../designer-theme/DesignerContext.jsx'
+import { DesignerPageShell, BtnPrimary, BtnSecondary } from '../../designer-theme/components/DesignerPageShell.jsx'
 
 const COUNTRIES = [
   { code: '', name: 'All Countries (Default)' },
@@ -13,6 +15,7 @@ const COUNTRIES = [
 ]
 
 export default function HomeHeadline() {
+  const { reloadPreview, setPreviewData } = useDesigner()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [notice, setNotice] = useState('')
@@ -36,8 +39,9 @@ export default function HomeHeadline() {
   useEffect(() => {
     try {
       localStorage.setItem('__designer_preview_home_headline', JSON.stringify(form))
+      setPreviewData({ homeHeadline: form })
     } catch {}
-  }, [form])
+  }, [form, setPreviewData])
 
   useEffect(() => {
     let alive = true
@@ -102,6 +106,7 @@ export default function HomeHeadline() {
 
       await apiPost('/api/settings/website/content', { page: pageKey, elements })
       setNotice('Saved')
+      reloadPreview()
     } catch (err) {
       console.error(err)
       setNotice(err?.message || 'Save failed')
@@ -110,14 +115,21 @@ export default function HomeHeadline() {
     }
   }
 
+  const toast = notice ? { msg: notice, type: notice === 'Saved' ? 'success' : 'error' } : null
+
   return (
-    <div className="section">
-      <div style={{ marginBottom: 16 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8 }}>Home Headline</h1>
-        <p style={{ color: 'var(--muted)', fontSize: 14 }}>
-          Configure the premium headline strip shown on the homepage below the banner.
-        </p>
-      </div>
+    <DesignerPageShell
+      title="Home Headline"
+      subtitle="Configure the premium headline strip shown on the homepage below the banner."
+      loading={loading}
+      toast={toast}
+      actions={
+        <>
+          <BtnSecondary onClick={() => window.location.reload()}>Reset</BtnSecondary>
+          <BtnPrimary onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save Changes'}</BtnPrimary>
+        </>
+      }
+    >
 
       <div className="card" style={{ padding: 20, maxWidth: 900, marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
@@ -286,6 +298,6 @@ export default function HomeHeadline() {
           </div>
         )}
       </div>
-    </div>
+    </DesignerPageShell>
   )
 }

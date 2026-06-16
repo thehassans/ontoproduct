@@ -73,6 +73,7 @@ const COUNTRIES = [
 ]
 
 export default function ProductHeadline() {
+  const { reloadPreview } = useDesigner()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [notice, setNotice] = useState('')

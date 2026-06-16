@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { apiGet, apiPost, apiPut, apiDelete, apiUpload, mediaUrl } from '../../api'
 
 export default function ExploreMore() {
+  const { reloadPreview } = useDesigner()
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState(null)

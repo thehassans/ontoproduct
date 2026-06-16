@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { apiGet, apiPost, apiUpload, mediaUrl } from '../../api'
 
 export default function HomeMiniBanners() {
+  const { reloadPreview } = useDesigner()
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [banners, setBanners] = useState([])

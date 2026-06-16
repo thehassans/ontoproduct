@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { apiGet, apiPost, mediaUrl } from '../../api';
 
 export default function DesignerVideoProducts() {
+  const { reloadPreview } = useDesigner()
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState('');

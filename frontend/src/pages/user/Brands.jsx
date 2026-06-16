@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { apiGet, apiPost, apiPut, apiDelete, API_BASE } from '../../api'
 
 export default function Brands() {
+  const { reloadPreview } = useDesigner()
   const [brands, setBrands] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)

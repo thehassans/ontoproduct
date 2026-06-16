@@ -4,6 +4,7 @@ import { apiGet, apiPost, apiUploadWithProgress, mediaUrl } from '../../api'
 import { categories as STATIC_CATEGORY_LIST } from '../../components/ecommerce/CategoryFilter'
 
 export default function HomeBanners() {
+  const { reloadPreview } = useDesigner()
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)

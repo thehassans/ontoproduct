@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { DesignerProvider, useDesigner } from '../designer-theme/DesignerContext.jsx'
+import { SiteConfigProvider } from '../designer-theme/SiteConfigContext.jsx'
 
 function LayoutInner() {
   const navigate = useNavigate()
@@ -62,40 +63,35 @@ function LayoutInner() {
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#f8fafc', fontFamily: 'Inter, system-ui, sans-serif' }}>
-      {/* Sidebar Navigation */}
+      {/* Sidebar Navigation — Ultra Premium */}
       <aside style={{
-        width: 240,
-        background: '#0f172a',
+        width: 260,
+        background: 'linear-gradient(180deg, #0f172a 0%, #1e293b 100%)',
         display: 'flex',
         flexDirection: 'column',
         flexShrink: 0,
         color: '#f8fafc',
-        boxShadow: '4px 0 24px rgba(15, 23, 42, 0.08)'
+        boxShadow: '4px 0 32px rgba(15, 23, 42, 0.12)'
       }}>
-        {/* Designer Header */}
-        <div style={{ padding: '24px 20px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{
-            width: 32,
-            height: 32,
-            borderRadius: 8,
-            background: 'linear-gradient(135deg, #f97316, #ea580c)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'white',
-            fontWeight: 800,
-            fontSize: 16
-          }}>
+        {/* Designer Header — Ultra Premium */}
+        <div style={{ padding: '22px 20px 18px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <img
+            src="/logo.png"
+            alt="Buysial"
+            style={{ width: 34, height: 34, borderRadius: 8, objectFit: 'contain', flexShrink: 0 }}
+            onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex' }}
+          />
+          <div style={{ display: 'none', width: 34, height: 34, borderRadius: 8, background: 'linear-gradient(135deg, #f97316, #ea580c)', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 800, fontSize: 16 }}>
             B
           </div>
           <div>
-            <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.02em' }}>Buysial Designer</div>
-            <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500, marginTop: 1 }}>Storefront Editor</div>
+            <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.02em', color: '#ffffff' }}>Buysial Designer</div>
+            <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500, marginTop: 2, letterSpacing: '0.02em' }}>STOREFRONT EDITOR</div>
           </div>
         </div>
 
-        {/* Navigation Items */}
-        <nav style={{ flex: 1, padding: '16px 12px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {/* Navigation Items — Ultra Premium */}
+        <nav style={{ flex: 1, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 3 }}>
           {navItems.map(item => (
             <NavLink
               key={item.path}
@@ -105,18 +101,48 @@ function LayoutInner() {
                 alignItems: 'center',
                 gap: 12,
                 padding: '10px 14px',
-                borderRadius: 8,
+                borderRadius: 10,
                 textDecoration: 'none',
                 fontSize: 13,
                 fontWeight: isActive ? 600 : 500,
                 color: isActive ? '#fff' : '#94a3b8',
                 background: isActive ? 'linear-gradient(135deg, #2563eb, #1d4ed8)' : 'transparent',
-                boxShadow: isActive ? '0 4px 12px rgba(37, 99, 235, 0.25)' : 'none',
+                boxShadow: isActive ? '0 4px 14px rgba(37, 99, 235, 0.3)' : 'none',
                 transition: 'all 0.2s ease',
+                position: 'relative',
+                overflow: 'hidden',
               })}
+              onMouseOver={e => {
+                if (!e.currentTarget.classList.contains('active')) {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.04)'
+                  e.currentTarget.style.color = '#e2e8f0'
+                }
+              }}
+              onMouseOut={e => {
+                if (!e.currentTarget.classList.contains('active')) {
+                  e.currentTarget.style.background = 'transparent'
+                  e.currentTarget.style.color = '#94a3b8'
+                }
+              }}
             >
-              <span style={{ display: 'flex', opacity: 0.9 }}>{item.icon}</span>
-              <span>{item.label}</span>
+              {({ isActive }) => (
+                <>
+                  {isActive && (
+                    <span style={{
+                      position: 'absolute',
+                      left: 0,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      width: 3,
+                      height: 20,
+                      borderRadius: '0 4px 4px 0',
+                      background: '#60a5fa',
+                    }} />
+                  )}
+                  <span style={{ display: 'flex', opacity: isActive ? 1 : 0.75, transition: 'opacity 0.2s' }}>{item.icon}</span>
+                  <span>{item.label}</span>
+                </>
+              )}
             </NavLink>
           ))}
         </nav>
@@ -327,7 +353,9 @@ function LayoutInner() {
 export default function WebDesignerLayout() {
   return (
     <DesignerProvider>
-      <LayoutInner />
+      <SiteConfigProvider>
+        <LayoutInner />
+      </SiteConfigProvider>
     </DesignerProvider>
   )
 }
