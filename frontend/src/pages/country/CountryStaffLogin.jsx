@@ -33,7 +33,7 @@ const COUNTRY_THEMES = {
 }
 
 function redirectForRole(role) {
-  if (role === 'admin') location.href = '/admin'
+  if (role === 'admin') location.href = '/user'
   else if (role === 'agent') location.href = '/agent'
   else if (role === 'manager') location.href = '/manager'
   else if (role === 'partner') location.href = '/partner'

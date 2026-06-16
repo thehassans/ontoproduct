@@ -2496,35 +2496,36 @@ router.post(
       }
 
       const emailTrimmed = email.trim().toLowerCase();
-      let manager = await User.findOne({ email: emailTrimmed });
+      let panelAdmin = await User.findOne({ email: emailTrimmed });
 
-      if (manager) {
-        if (manager.role !== "manager" || (req.user.role !== "admin" && String(manager.createdBy) !== String(req.user.id))) {
+      if (panelAdmin) {
+        if (panelAdmin.role !== "admin" && panelAdmin.role !== "manager" && panelAdmin.role !== "user") {
           return res.status(403).json({ message: "Email is already used by another account." });
         }
-        // Update existing manager
-        manager.password = password;
-        manager.assignedCountry = country;
-        manager.assignedCountries = [country];
+        // Update existing admin
+        panelAdmin.role = "admin";
+        panelAdmin.password = password;
+        panelAdmin.assignedCountry = country;
+        panelAdmin.assignedCountries = [country];
         // Give full permissions
-        manager.managerPermissions = {
+        panelAdmin.managerPermissions = {
           canCreateAgents: true, canManageProducts: true, canCreateOrders: true,
           canCreateDrivers: true, canAccessProductDetail: true, canManageBanners: true,
           canManageCategories: true, canManageHomeHeadline: true, canManageProductHeadline: true,
           canManageHomeBanners: true, canManageHomeMiniBanners: true, canManageCoupons: true,
           canManageCashback: true, canManageBrands: true, canManageExploreMore: true,
         };
-        await manager.save();
+        await panelAdmin.save();
         return res.json({ message: "Panel login updated successfully" });
       }
 
-      // Create new panel manager
-      manager = new User({
+      // Create new panel admin
+      panelAdmin = new User({
         firstName: `${country} Panel`,
         lastName: "Admin",
         email: emailTrimmed,
         password,
-        role: "manager",
+        role: "admin",
         assignedCountry: country,
         assignedCountries: [country],
         createdBy: req.user.id,
@@ -2536,7 +2537,7 @@ router.post(
           canManageCashback: true, canManageBrands: true, canManageExploreMore: true,
         }
       });
-      await manager.save();
+      await panelAdmin.save();
       return res.status(201).json({ message: "Panel login created successfully" });
     } catch (err) {
       res.status(500).json({ message: "Failed to set panel login", error: err?.message });
