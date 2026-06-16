@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
+import { useDesigner } from '../../designer-theme/DesignerContext.jsx'
+import { DesignerPageShell, BtnPrimary, BtnSecondary } from '../../designer-theme/components/DesignerPageShell.jsx'
 import { apiGet, apiPost, apiUploadWithProgress, mediaUrl } from '../../api'
 
 import { categories as STATIC_CATEGORY_LIST } from '../../components/ecommerce/CategoryFilter'
@@ -147,6 +149,7 @@ export default function HomeBanners() {
         await load()
         setForm((p) => ({ ...p, title: '', bannerDesktop: null, bannerMobile: null }))
         setNotice('Saved')
+      reloadPreview()
         try { document.getElementById('homeBannerDesktop').value = '' } catch {}
         try { document.getElementById('homeBannerMobile').value = '' } catch {}
       } else {
@@ -201,6 +204,7 @@ export default function HomeBanners() {
       setEditBanner(null)
       await load()
       setNotice('Updated')
+      reloadPreview()
     } catch (err) {
       console.error(err)
       setNotice(err?.message || 'Edit failed')

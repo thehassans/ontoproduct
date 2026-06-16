@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { useDesigner } from '../../designer-theme/DesignerContext.jsx'
+import { DesignerPageShell, BtnPrimary, BtnSecondary } from '../../designer-theme/components/DesignerPageShell.jsx'
 import { apiGet, apiPost, mediaUrl } from '../../api';
 
 export default function DesignerVideoProducts() {
@@ -81,7 +83,8 @@ export default function DesignerVideoProducts() {
       
       // Update local storage so WebDesignerLayout forces iframe reload
       localStorage.setItem('__designer_home_video_products_updated', Date.now().toString());
-      setNotice('Saved successfully');
+      setNotice('Saved successfully')
+      reloadPreview();
     } catch (err) {
       console.error(err);
       setNotice(err?.message || 'Save failed');

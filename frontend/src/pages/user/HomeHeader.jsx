@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
+import { useDesigner } from '../../designer-theme/DesignerContext.jsx'
+import { DesignerPageShell, BtnPrimary, BtnSecondary } from '../../designer-theme/components/DesignerPageShell.jsx'
 import { apiGet, apiPost, clearApiCache } from '../../api'
 
 const DEFAULT_TILES = [
@@ -85,6 +87,7 @@ export default function HomeHeader() {
       await apiPost('/api/settings/website/content', { page: 'home', elements: Array.from(byId.values()) })
       clearApiCache('/api/settings/website/content')
       setNotice({ msg: 'Saved!', ok: true })
+      reloadPreview()
     } catch (err) { setNotice({ msg: err?.message || 'Save failed', ok: false }) }
     finally { setSaving(false); setTimeout(() => setNotice({ msg: '', ok: true }), 3000) }
   }

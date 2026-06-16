@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { useDesigner } from '../../designer-theme/DesignerContext.jsx'
+import { DesignerPageShell, BtnPrimary, BtnSecondary } from '../../designer-theme/components/DesignerPageShell.jsx'
 import { apiGet, apiPost, apiPut, apiDelete, API_BASE } from '../../api'
 
 export default function Brands() {
@@ -58,9 +60,11 @@ export default function Brands() {
       if (editingBrand) {
         await apiPut(`/api/brands/${editingBrand._id}`, form)
         showMsg('Brand updated')
+      reloadPreview()
       } else {
         await apiPost('/api/brands', form)
         showMsg('Brand created')
+      reloadPreview()
       }
       setShowModal(false)
       loadBrands()

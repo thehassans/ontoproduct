@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react'
+import { useDesigner } from '../../designer-theme/DesignerContext.jsx'
+import { DesignerPageShell, BtnPrimary, BtnSecondary } from '../../designer-theme/components/DesignerPageShell.jsx'
 import { apiGet, apiPost, apiUpload, mediaUrl } from '../../api'
 
 export default function HomeMiniBanners() {
@@ -64,6 +66,7 @@ export default function HomeMiniBanners() {
 
       await apiUpload('/api/settings/website/banners', fd)
       setNotice('Banner uploaded successfully!')
+      reloadPreview()
       setForm({ title: '', active: true, link: '', country: '', bannerDesktop: null, bannerMobile: null })
       // Reset file inputs
       const inputs = document.querySelectorAll('input[type="file"]')
@@ -80,6 +83,7 @@ export default function HomeMiniBanners() {
     try {
       await apiPost(`/api/settings/website/banners/${id}/toggle`)
       loadBanners()
+      reloadPreview()
     } catch {}
   }
 
@@ -88,6 +92,7 @@ export default function HomeMiniBanners() {
     try {
       await apiPost(`/api/settings/website/banners/${id}/delete`)
       loadBanners()
+      reloadPreview()
     } catch {}
   }
 

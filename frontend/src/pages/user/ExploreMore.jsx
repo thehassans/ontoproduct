@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
+import { useDesigner } from '../../designer-theme/DesignerContext.jsx'
+import { DesignerPageShell, BtnPrimary, BtnSecondary } from '../../designer-theme/components/DesignerPageShell.jsx'
 import { apiGet, apiPost, apiPut, apiDelete, apiUpload, mediaUrl } from '../../api'
 
 export default function ExploreMore() {
@@ -53,6 +55,7 @@ export default function ExploreMore() {
         await apiUpload(`/api/explore-more/${newItem._id}/image`, fd)
       }
       showToast('Created')
+      reloadPreview()
       setForm({ name: '', link: '', sortOrder: 0 })
       clearImg()
       setShowAdd(false)
@@ -70,6 +73,7 @@ export default function ExploreMore() {
         await apiUpload(`/api/explore-more/${editItem._id}/image`, fd)
       }
       showToast('Updated')
+      reloadPreview()
       setEditItem(null)
       clearImg()
       await load()
@@ -81,6 +85,7 @@ export default function ExploreMore() {
     try {
       await apiDelete(`/api/explore-more/${id}`)
       showToast('Deleted')
+      reloadPreview()
       await load()
     } catch (e) { showToast(e?.message || 'Failed', 'error') }
   }
@@ -89,6 +94,7 @@ export default function ExploreMore() {
     try {
       await apiPut(`/api/explore-more/${item._id}`, { isPublished: !item.isPublished })
       showToast(item.isPublished ? 'Unpublished' : 'Published')
+      reloadPreview()
       await load()
     } catch (e) { showToast(e?.message || 'Failed', 'error') }
   }
@@ -118,6 +124,7 @@ export default function ExploreMore() {
         fd.append('image', file)
         await apiUpload(`/api/explore-more/${item._id}/image`, fd)
         showToast('Image uploaded')
+      reloadPreview()
         await load()
       } catch (err) { showToast(err?.message || 'Upload failed', 'error') }
       finally { setUploading(false); if (ref.current) ref.current.value = '' }

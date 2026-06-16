@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react'
+import { useDesigner } from '../../designer-theme/DesignerContext.jsx'
+import { DesignerPageShell, BtnPrimary, BtnSecondary } from '../../designer-theme/components/DesignerPageShell.jsx'
 import { apiGet, apiPost, clearApiCache } from '../../api'
 
 const defaultSlides = [
@@ -201,6 +203,7 @@ export default function ProductHeadline() {
       await apiPost('/api/settings/website/content', { page: pageKey, elements: mergedElements })
       clearApiCache('/api/settings/website/content')
       setNotice('Saved')
+      reloadPreview()
     } catch (err) {
       console.error(err)
       setNotice(err?.message || 'Save failed')
