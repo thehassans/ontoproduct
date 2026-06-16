@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { apiGet, apiPost, apiPut, apiDelete, apiUpload, mediaUrl } from '../../api'
+import { useDesigner } from '../../designer-theme/DesignerContext.jsx'
 
 const COUNTRIES = [
   { code: 'UAE', name: 'UAE' }, { code: 'Saudi Arabia', name: 'KSA' },
@@ -12,6 +13,7 @@ const COUNTRIES = [
 ]
 
 export default function Categories() {
+  const { setPreviewData, reloadPreview } = useDesigner()
   const [categories, setCategories] = useState([])
   const [flat, setFlat] = useState([])
   const [managers, setManagers] = useState([])
@@ -33,12 +35,14 @@ export default function Categories() {
         apiGet('/api/categories'),
         apiGet('/api/users?role=manager&limit=100').catch(() => ({ users: [] })),
       ])
-      setCategories(catRes?.categories || [])
+      const cats = catRes?.categories || []
+      setCategories(cats)
       setFlat(catRes?.flat || [])
       setManagers(Array.isArray(mgrRes?.users) ? mgrRes.users : [])
+      setPreviewData({ categories: cats })
     } catch { showToast('Failed to load categories', 'error') }
     finally { setLoading(false) }
-  }, [])
+  }, [setPreviewData])
 
   useEffect(() => { load() }, [load])
 
@@ -54,6 +58,7 @@ export default function Categories() {
       const res = await apiPost('/api/categories/sync-from-products', {})
       showToast(`Synced ${res?.created || 0} categories from products`)
       await load()
+      reloadPreview()
     } catch { showToast('Sync failed', 'error') }
     finally { setSyncing(false) }
   }
@@ -66,6 +71,7 @@ export default function Categories() {
       setForm({ name: '', parent: '', description: '', sortOrder: 0 })
       setShowAdd(false)
       await load()
+      reloadPreview()
     } catch (e) { showToast(e?.message || 'Failed', 'error') }
   }
 
@@ -76,6 +82,7 @@ export default function Categories() {
       showToast('Updated')
       setEditCat(null)
       await load()
+      reloadPreview()
     } catch (e) { showToast(e?.message || 'Failed', 'error') }
   }
 
@@ -85,6 +92,7 @@ export default function Categories() {
       await apiDelete(`/api/categories/${id}`)
       showToast('Deleted')
       await load()
+      reloadPreview()
     } catch (e) { showToast(e?.message || 'Failed', 'error') }
   }
 
@@ -93,6 +101,7 @@ export default function Categories() {
       await apiPut(`/api/categories/${catId}/country-toggle`, { country, action })
       showToast(`${action === 'unpublish' ? 'Unpublished' : 'Published'} in ${country}`)
       await load()
+      reloadPreview()
     } catch (e) { showToast(e?.message || 'Failed', 'error') }
   }
 
@@ -101,6 +110,7 @@ export default function Categories() {
       await apiPut(`/api/categories/${cat._id}`, { isPublished: !cat.isPublished })
       showToast(cat.isPublished ? 'Unpublished globally' : 'Published globally')
       await load()
+      reloadPreview()
     } catch (e) { showToast(e?.message || 'Failed', 'error') }
   }
 
@@ -114,7 +124,7 @@ export default function Categories() {
 
   const S = {
     page: { padding: 24, maxWidth: 1200, margin: '0 auto' },
-    card: { background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: 20, marginBottom: 16 },
+    card: { background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '16px 20px', marginBottom: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.04)' },
     btn: { padding: '8px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13, transition: 'all 0.2s' },
     btnPrimary: { background: '#f97316', color: '#fff' },
     btnSec: { background: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb' },
@@ -187,7 +197,7 @@ export default function Categories() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {cat.image ? (
-              <img src={mediaUrl(cat.image)} alt="" style={{ width: 32, height: 32, borderRadius: 6, objectFit: 'cover', border: '1px solid #e5e7eb', cursor: 'pointer' }} onClick={() => imgInputRef.current?.click()} title="Click to change image" />
+              <img src={mediaUrl(cat.image)} alt="" style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover', border: '1px solid #e2e8f0', cursor: 'pointer' }} onClick={() => imgInputRef.current?.click()} title="Click to change image" />
             ) : null}
             <span style={{ fontWeight: 700, fontSize: 15 }}>{cat.name}</span>
             {cat.parent && <span style={{ ...S.badge, background: '#f3f4f6', color: '#6b7280' }}>Sub</span>}
@@ -221,7 +231,7 @@ export default function Categories() {
             <button style={{ ...S.btn, ...S.btnSec, fontSize: 11 }} onClick={() => setShowManagers(!showManagers)}>
               Managers
             </button>
-            <button style={{ ...S.btn, ...(cat.isPublished ? S.btnDanger : S.btnSuccess), fontSize: 11 }} onClick={() => handlePublishToggle(cat)}>
+            <button style={{ ...S.btn, background: 'transparent', color: '#dc2626', border: 'none', fontSize: 11 }} onClick={() => handlePublishToggle(cat)}>
               {cat.isPublished ? 'Unpublish' : 'Publish'}
             </button>
             <button style={{ ...S.btn, ...S.btnSec, fontSize: 11 }} onClick={() => { setEditCat(cat); setForm({ name: cat.name, parent: cat.parent || '', description: cat.description || '', sortOrder: cat.sortOrder || 0 }) }}>

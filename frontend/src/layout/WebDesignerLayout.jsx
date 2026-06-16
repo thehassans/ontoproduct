@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
+import { DesignerProvider, useDesigner } from '../designer-theme/DesignerContext.jsx'
 
-export default function WebDesignerLayout() {
+function LayoutInner() {
   const navigate = useNavigate()
   const location = useLocation()
   const iframeRef = useRef(null)
+  const { theme, reloadPreview } = useDesigner()
   const [reloadKey, setReloadKey] = useState(0)
+  const t = theme
 
   const handleLogout = () => {
     localStorage.removeItem('token')
@@ -318,5 +321,13 @@ export default function WebDesignerLayout() {
         </section>
       </div>
     </div>
+  )
+}
+
+export default function WebDesignerLayout() {
+  return (
+    <DesignerProvider>
+      <LayoutInner />
+    </DesignerProvider>
   )
 }
