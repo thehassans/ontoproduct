@@ -129,7 +129,7 @@ export function SiteConfigProvider({ children }) {
 
   // Load from backend on mount
   useEffect(() => {
-    apiGet('/api/site-config')
+    apiGet('/api/settings/site-config')
       .then((res) => {
         if (res?.config) dispatch({ type: LOAD_CONFIG, payload: res.config })
       })
@@ -171,7 +171,7 @@ export function SiteConfigProvider({ children }) {
   }, [])
 
   const saveToBackend = useCallback(async () => {
-    await apiPost('/api/site-config', { config })
+    await apiPost('/api/settings/site-config', { config })
   }, [config])
 
   const value = {

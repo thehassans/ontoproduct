@@ -507,6 +507,37 @@ router.get("/maps-key", async (_req, res) => {
   }
 });
 
+// ── Site Config (Global editable header/footer/theme/meta) ──
+
+// GET /api/settings/site-config
+router.get("/site-config", async (_req, res) => {
+  try {
+    const doc = await Setting.findOne({ key: "site_config" }).lean();
+    const config = doc?.value || {};
+    res.json({ config });
+  } catch (e) {
+    res.status(500).json({ error: e?.message || "failed" });
+  }
+});
+
+// POST /api/settings/site-config
+router.post("/site-config", auth, allowRoles("admin", "user", "web_designer"), async (req, res) => {
+  try {
+    const { config } = req.body || {};
+    if (!config || typeof config !== "object") {
+      return res.status(400).json({ error: "config object required" });
+    }
+    await Setting.findOneAndUpdate(
+      { key: "site_config" },
+      { $set: { value: config, category: "theme", updatedBy: req.user?._id } },
+      { upsert: true, new: true }
+    );
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e?.message || "failed" });
+  }
+});
+
 export default router;
 
 // AI settings: store/retrieve keys for Gemini and Image Generation
