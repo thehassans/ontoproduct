@@ -103,17 +103,15 @@ export default function HomeMiniBanners() {
     btn: { padding: '10px 20px', borderRadius: 10, border: 'none', fontWeight: 600, fontSize: 14, cursor: 'pointer' },
   }
 
+  const toast = notice ? { msg: notice, type: notice.includes('success') ? 'success' : 'error' } : null
+
   return (
-    <div style={{ maxWidth: 900, margin: '0 auto', padding: 24 }}>
-      <h2 style={{ fontSize: 20, fontWeight: 700, color: '#111827', marginBottom: 4 }}>Home Mini Banners</h2>
-      <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 24 }}>Promotional banners shown on the home page before categories. Supports country targeting and custom links.</p>
-
-      {notice && (
-        <div style={{ padding: '10px 16px', borderRadius: 10, marginBottom: 16, fontSize: 13, fontWeight: 600, background: notice.includes('success') ? '#dcfce7' : '#fef2f2', color: notice.includes('success') ? '#166534' : '#991b1b' }}>
-          {notice}
-        </div>
-      )}
-
+    <DesignerPageShell
+      title="Home Mini Banners"
+      subtitle="Promotional banners shown on the home page before categories. Supports country targeting and custom links."
+      loading={loading}
+      toast={toast}
+    >
       {/* Upload Form */}
       <div style={s.card}>
         <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700, color: '#1f2937' }}>Upload New Banner</h3>
@@ -209,6 +207,6 @@ export default function HomeMiniBanners() {
           </div>
         )}
       </div>
-    </div>
+    </DesignerPageShell>
   )
 }

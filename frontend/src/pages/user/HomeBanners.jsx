@@ -225,14 +225,15 @@ export default function HomeBanners() {
     }
   }
 
+  const toast = notice ? { msg: typeof notice === 'object' ? notice.msg || notice.message : notice, type: (typeof notice === 'object' ? notice.type : (String(notice).includes('Saved') || String(notice).includes('success') ? 'success' : 'error')) || 'error' } : null
+
   return (
-    <div className="section">
-      <div style={{ marginBottom: 16 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8 }}>Home Banners</h1>
-        <p style={{ color: 'var(--muted)', fontSize: 14 }}>
-          Upload banners for the homepage hero. Images are converted to WebP automatically.
-        </p>
-      </div>
+    <DesignerPageShell
+      title="Home Banners"
+      subtitle="Full-width promotional banners for the homepage."
+      loading={loading}
+      toast={toast}
+    >
 
       <div className="card" style={{ padding: 20, maxWidth: 1000, marginBottom: 16 }}>
         {notice ? (
@@ -441,6 +442,6 @@ export default function HomeBanners() {
           </div>
         )}
       </div>
-    </div>
+    </DesignerPageShell>
   )
 }

@@ -104,16 +104,15 @@ export default function HomeHeader() {
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
-  if (loading) return <div style={{ padding: 48, textAlign: 'center', color: '#9ca3af', fontSize: 14 }}>Loading...</div>
+  const toast = notice ? { msg: typeof notice === 'object' ? notice.msg || notice.message : notice, type: (typeof notice === 'object' ? notice.type : (String(notice).includes('Saved') || String(notice).includes('success') ? 'success' : 'error')) || 'error' } : null
 
   return (
-    <div style={{ maxWidth: 740, margin: '0 auto', padding: '32px 24px', fontFamily: 'system-ui,-apple-system,sans-serif' }}>
-
-      {/* Page header */}
-      <div style={{ marginBottom: 32 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: '#111827', margin: 0, letterSpacing: '-0.3px' }}>Home Header</h1>
-        <p style={{ color: '#9ca3af', fontSize: 13, margin: '4px 0 0' }}>Announcement bar &amp; category navigation bar settings</p>
-      </div>
+    <DesignerPageShell
+      title="Home Header"
+      subtitle="Announcement bar & category navigation bar settings"
+      loading={loading}
+      toast={toast}
+    >
 
       <div style={{ display: 'grid', gap: 20 }}>
 
@@ -340,7 +339,7 @@ export default function HomeHeader() {
           )}
         </div>
       </div>
-    </div>
+    </DesignerPageShell>
   )
 }
 

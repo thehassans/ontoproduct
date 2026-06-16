@@ -123,20 +123,15 @@ export default function Brands() {
     return `${API_BASE}${p}`
   }
 
-  return (
-    <div style={{ padding: 24, maxWidth: 900, margin: '0 auto' }}>
-      {msg.text && (
-        <div style={{
-          position: 'fixed', top: 20, right: 20, zIndex: 10000,
-          padding: '12px 20px', borderRadius: 8, fontSize: 14, fontWeight: 600, color: '#fff',
-          background: msg.type === 'error' ? '#ef4444' : '#10b981',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-          animation: 'slideIn 0.3s ease',
-        }}>
-          {msg.text}
-        </div>
-      )}
+  const toast = msg.text ? { msg: msg.text, type: msg.type } : null
 
+  return (
+    <DesignerPageShell
+      title="Brands"
+      subtitle="Manage brand logos and visibility across the storefront."
+      loading={loading}
+      toast={toast}
+    >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0, color: '#1e293b' }}>Brand Management</h1>
@@ -336,6 +331,6 @@ export default function Brands() {
           </div>
         </div>
       )}
-    </div>
+    </DesignerPageShell>
   )
 }

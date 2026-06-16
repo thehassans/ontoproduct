@@ -212,14 +212,15 @@ export default function ProductHeadline() {
     }
   }
 
+  const toast = notice ? { msg: typeof notice === 'object' ? notice.msg || notice.message : notice, type: (typeof notice === 'object' ? notice.type : (String(notice).includes('Saved') || String(notice).includes('success') ? 'success' : 'error')) || 'error' } : null
+
   return (
-    <div className="section">
-      <div style={{ marginBottom: 16 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8 }}>Product Headline</h1>
-        <p style={{ color: 'var(--muted)', fontSize: 14 }}>
-          Configure the premium offer headline strip shown on the catalog page.
-        </p>
-      </div>
+    <DesignerPageShell
+      title="Product Headline"
+      subtitle="Configure the premium offer headline strip shown on the catalog page."
+      loading={loading}
+      toast={toast}
+    >
 
       <div className="card" style={{ padding: 20, maxWidth: 980, marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 0 }}>
@@ -248,9 +249,7 @@ export default function ProductHeadline() {
           <div style={{ padding: 24, color: 'var(--muted)' }}>Loading...</div>
         ) : (
           <div style={{ display: 'grid', gap: 14 }}>
-            {notice ? (
-              <div style={{ fontSize: 13, color: notice === 'Saved' ? '#10b981' : '#ef4444' }}>{notice}</div>
-            ) : null}
+            
 
             <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14 }}>
               <input
@@ -395,6 +394,6 @@ export default function ProductHeadline() {
           </div>
         )}
       </div>
-    </div>
+    </DesignerPageShell>
   )
 }

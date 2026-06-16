@@ -166,22 +166,17 @@ export default function ExploreMore() {
   }
 
   return (
-    <div style={S.page}>
-      {toast && (
-        <div style={{ position: 'fixed', top: 20, right: 20, zIndex: 9999, padding: '10px 20px', background: toast.type === 'error' ? '#ef4444' : '#10b981', color: '#fff', borderRadius: 8, fontWeight: 600, fontSize: 13, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
-          {toast.msg}
-        </div>
-      )}
-
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
-        <div>
-          <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>Explore More</h1>
-          <p style={{ color: '#6b7280', fontSize: 13, margin: '4px 0 0' }}>Manage promotional blocks shown on home page</p>
-        </div>
-        <button style={{ ...S.btn, ...S.btnPrimary }} onClick={() => { setShowAdd(true); setEditItem(null); setForm({ name: '', link: '', sortOrder: 0 }); clearImg() }}>
+    <DesignerPageShell
+      title="Explore More"
+      subtitle="Manage promotional blocks shown on home page"
+      loading={loading}
+      toast={toast}
+      actions={
+        <BtnPrimary onClick={() => { setShowAdd(true); setEditItem(null); setForm({ name: '', link: '', sortOrder: 0 }); clearImg() }}>
           + Add Block
-        </button>
-      </div>
+        </BtnPrimary>
+      }
+    >
 
       {(showAdd || editItem) && (
         <div style={{ ...S.card, border: '2px solid #f97316' }}>
@@ -237,6 +232,6 @@ export default function ExploreMore() {
       ) : (
         items.map(item => <ItemRow key={item._id} item={item} />)
       )}
-    </div>
+    </DesignerPageShell>
   )
 }

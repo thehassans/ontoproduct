@@ -93,26 +93,20 @@ export default function DesignerVideoProducts() {
     }
   };
 
-  return (
-    <div className="section">
-      <div style={{ marginBottom: 16 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8 }}>Video Products</h1>
-        <p style={{ color: 'var(--muted)', fontSize: 14 }}>
-          Select which products with videos should appear as floating "Video Toasters" on the home page. 
-          If you select more than one, a random one will be chosen each time the page loads.
-        </p>
-      </div>
+  const toast = notice ? { msg: notice, type: notice.includes('Saved') ? 'success' : 'error' } : null
 
+  return (
+    <DesignerPageShell
+      title="Video Products"
+      subtitle="Select which products with videos should appear as floating Video Toasters on the home page."
+      loading={loading}
+      toast={toast}
+    >
       <div className="card" style={{ padding: 20, maxWidth: 900 }}>
         {loading ? (
           <div style={{ padding: 24, color: 'var(--muted)' }}>Loading...</div>
         ) : (
           <div style={{ display: 'grid', gap: 24 }}>
-            {notice && (
-              <div style={{ fontSize: 13, color: notice.includes('Saved') ? '#10b981' : '#ef4444' }}>
-                {notice}
-              </div>
-            )}
 
             {/* Selected Products */}
             <div>
@@ -182,6 +176,6 @@ export default function DesignerVideoProducts() {
           </div>
         )}
       </div>
-    </div>
+    </DesignerPageShell>
   );
 }
