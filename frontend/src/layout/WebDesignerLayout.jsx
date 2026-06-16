@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { DesignerProvider, useDesigner } from '../designer-theme/DesignerContext.jsx'
 import { SiteConfigProvider } from '../designer-theme/SiteConfigContext.jsx'
+import ThemeEditor from '../designer-theme/components/ThemeEditor.jsx'
 
 function LayoutInner() {
   const navigate = useNavigate()
@@ -146,6 +147,9 @@ function LayoutInner() {
             </NavLink>
           ))}
         </nav>
+
+        {/* Theme Editor — Collapsible */}
+        <ThemeEditor />
 
         {/* Logout Section */}
         <div style={{ padding: '16px 12px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
