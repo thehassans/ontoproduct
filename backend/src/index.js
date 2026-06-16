@@ -40,6 +40,7 @@ import categoriesRoutes from "./modules/routes/categories.js";
 import brandsRoutes from "./modules/routes/brands.js";
 import exploreMoreRoutes from "./modules/routes/exploreMore.js";
 import waRoutes from "./modules/routes/wa.js";
+import themeBuilderRoutes from "./modules/routes/themeBuilder.js";
 import { bootstrapSuperAdminFromEnv } from "./modules/services/bootstrapSuperAdmin.js";
 import scrapeImportRoutes from "./modules/routes/scrapeImport.js";
 import { countryScope } from "./modules/middleware/countryScope.js";
@@ -222,6 +223,7 @@ app.use("/api/categories", requireDbReady, categoriesRoutes);
 app.use("/api/brands", requireDbReady, brandsRoutes);
 app.use("/api/explore-more", exploreMoreRoutes);
 app.use("/api/wa", waRoutes);
+app.use("/api/theme-builder", requireDbReady, themeBuilderRoutes);
 
 // Serve uploaded product images from a robustly resolved directory
 function resolveUploadsDir() {

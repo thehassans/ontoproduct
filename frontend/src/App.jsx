@@ -243,6 +243,10 @@ const OrderSuccess = lazyWithRetry(() => import('./pages/ecommerce/OrderSuccess.
 const PaymentSuccess = lazy(() => import('./pages/payment/PaymentSuccess.jsx'))
 const PaymentCancelled = lazy(() => import('./pages/payment/PaymentCancelled.jsx'))
 
+// Theme Builder
+const BuilderWorkspace = lazy(() => import('./theme-builder/BuilderWorkspace.jsx'))
+const LivePreview = lazy(() => import('./theme-builder/LivePreview.jsx'))
+
 // Site pages
 const SiteHome = lazy(() => import('./pages/site/Home.jsx'))
 const SiteAbout = lazy(() => import('./pages/site/About.jsx'))
@@ -1115,6 +1119,19 @@ export default function App() {
               <Route path="closings" element={<AgentClosings />} />
               <Route path="support" element={<Support />} />
             </Route>
+
+            {/* Theme Builder */}
+            <Route
+              path="/theme-builder"
+              element={
+                <RequireAuth>
+                  <RequireRole roles={['admin', 'user', 'web_designer']}>
+                    <BuilderWorkspace />
+                  </RequireRole>
+                </RequireAuth>
+              }
+            />
+            <Route path="/theme-preview" element={<LivePreview />} />
           </Routes>
           </Suspense>
           </CountryProvider>
