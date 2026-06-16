@@ -5,6 +5,7 @@ import crypto from "crypto";
 import User from "../models/User.js";
 import Setting from "../models/Setting.js";
 import rateLimit from "../middleware/rateLimit.js";
+import { auth, allowRoles } from "../middleware/auth.js";
 import { OAuth2Client } from "google-auth-library";
 
 // Use a default secret in development so the app works without .env
@@ -473,6 +474,64 @@ router.post(
     } catch (err) {
       console.error("[auth/register-investor] error", err?.message || err);
       return res.status(500).json({ message: "Registration failed" });
+    }
+  }
+);
+
+// Impersonation: admin/user can generate a token for any user to login as them
+router.post(
+  "/impersonate",
+  auth,
+  allowRoles("admin", "user"),
+  async (req, res) => {
+    try {
+      const { userId } = req.body || {};
+      if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+        return res.status(400).json({ message: "Valid userId is required" });
+      }
+
+      const target = await User.findById(userId);
+      if (!target) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const token = jwt.sign(
+        {
+          id: target._id,
+          role: target.role,
+          firstName: target.firstName,
+          lastName: target.lastName,
+        },
+        SECRET,
+        { expiresIn: "7d" }
+      );
+
+      return res.json({
+        token,
+        user: {
+          id: target._id,
+          role: target.role,
+          firstName: target.firstName,
+          lastName: target.lastName,
+          email: target.email,
+          phone: target.phone,
+          ...(target.role === "partner"
+            ? {
+                assignedCountry: target.assignedCountry,
+                assignedCountries: target.assignedCountries,
+              }
+            : {}),
+          ...(target.role === "seo_manager" && Array.isArray(target.seoCountries)
+            ? { seoCountries: target.seoCountries }
+            : {}),
+          ...(target.role === "manager" && target.managerPermissions
+            ? { managerPermissions: target.managerPermissions }
+            : {}),
+        },
+      });
+    } catch (err) {
+      console.error("[auth/impersonate] error", err?.message || err);
+      return res.status(500).json({ message: "Impersonation failed" });
     }
   }
 );

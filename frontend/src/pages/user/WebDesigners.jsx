@@ -89,6 +89,33 @@ export default function WebDesigners() {
     setShowModal(true)
   }
 
+  async function handleLoginAs(designer) {
+    if (!window.confirm(`Login as ${designer.firstName} ${designer.lastName}?\n\nYou will be redirected to their dashboard.`)) return
+    try {
+      const res = await apiPost('/api/auth/impersonate', { userId: designer._id })
+      localStorage.setItem('token', res.token)
+      localStorage.setItem('me', JSON.stringify(res.user))
+      toast.success(`Logged in as ${res.user.firstName} ${res.user.lastName}`)
+      // Redirect based on role
+      const role = res.user.role
+      if (role === 'web_designer') window.location.href = '/designer'
+      else if (role === 'admin' || role === 'user') window.location.href = '/user'
+      else if (role === 'manager') window.location.href = '/manager'
+      else if (role === 'agent') window.location.href = '/agent'
+      else if (role === 'driver') window.location.href = '/driver'
+      else if (role === 'partner') window.location.href = '/partner'
+      else if (role === 'dropshipper') window.location.href = '/dropshipper'
+      else if (role === 'investor') window.location.href = '/investor'
+      else if (role === 'commissioner') window.location.href = '/commissioner'
+      else if (role === 'confirmer') window.location.href = '/confirmer'
+      else if (role === 'seo_manager') window.location.href = '/seo'
+      else if (role === 'customer') window.location.href = '/customer'
+      else window.location.href = '/'
+    } catch (err) {
+      toast.error(err?.message || 'Failed to login as this user')
+    }
+  }
+
   async function handleDelete(id) {
     if (!window.confirm('Are you sure you want to delete this Web Designer?')) return
     try {
@@ -196,6 +223,21 @@ export default function WebDesigners() {
                 }}>
                   Web Designer
                 </span>
+                <button
+                  onClick={() => handleLoginAs(designer)}
+                  style={{
+                    background: '#ecfdf5',
+                    color: '#059669',
+                    border: 'none',
+                    padding: '6px 12px',
+                    borderRadius: 6,
+                    cursor: 'pointer',
+                    fontSize: 13,
+                    fontWeight: 500,
+                  }}
+                >
+                  Login As
+                </button>
                 <button
                   onClick={() => openEdit(designer)}
                   style={{
