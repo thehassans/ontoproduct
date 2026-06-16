@@ -2483,6 +2483,67 @@ router.post(
   }
 );
 
+// Quick set country panel login (admin, user)
+router.post(
+  "/panel-login",
+  auth,
+  allowRoles("admin", "user"),
+  async (req, res) => {
+    try {
+      const { country, email, password } = req.body || {};
+      if (!country || !email || !password) {
+        return res.status(400).json({ message: "Missing country, email, or password" });
+      }
+
+      const emailTrimmed = email.trim().toLowerCase();
+      let manager = await User.findOne({ email: emailTrimmed });
+
+      if (manager) {
+        if (manager.role !== "manager" || (req.user.role !== "admin" && String(manager.createdBy) !== String(req.user.id))) {
+          return res.status(403).json({ message: "Email is already used by another account." });
+        }
+        // Update existing manager
+        manager.password = password;
+        manager.assignedCountry = country;
+        manager.assignedCountries = [country];
+        // Give full permissions
+        manager.managerPermissions = {
+          canCreateAgents: true, canManageProducts: true, canCreateOrders: true,
+          canCreateDrivers: true, canAccessProductDetail: true, canManageBanners: true,
+          canManageCategories: true, canManageHomeHeadline: true, canManageProductHeadline: true,
+          canManageHomeBanners: true, canManageHomeMiniBanners: true, canManageCoupons: true,
+          canManageCashback: true, canManageBrands: true, canManageExploreMore: true,
+        };
+        await manager.save();
+        return res.json({ message: "Panel login updated successfully" });
+      }
+
+      // Create new panel manager
+      manager = new User({
+        firstName: `${country} Panel`,
+        lastName: "Admin",
+        email: emailTrimmed,
+        password,
+        role: "manager",
+        assignedCountry: country,
+        assignedCountries: [country],
+        createdBy: req.user.id,
+        managerPermissions: {
+          canCreateAgents: true, canManageProducts: true, canCreateOrders: true,
+          canCreateDrivers: true, canAccessProductDetail: true, canManageBanners: true,
+          canManageCategories: true, canManageHomeHeadline: true, canManageProductHeadline: true,
+          canManageHomeBanners: true, canManageHomeMiniBanners: true, canManageCoupons: true,
+          canManageCashback: true, canManageBrands: true, canManageExploreMore: true,
+        }
+      });
+      await manager.save();
+      return res.status(201).json({ message: "Panel login created successfully" });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to set panel login", error: err?.message });
+    }
+  }
+);
+
 // Create SEO Manager (admin, user)
 router.post(
   "/seo-managers",

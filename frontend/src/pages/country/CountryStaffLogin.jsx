@@ -72,8 +72,33 @@ export default function CountryStaffLogin() {
 
   useEffect(() => { requestAnimationFrame(() => setMounted(true)) }, [])
 
-  // Check if already logged in
+  // Check if already logged in or auto-logging in via URL
   useEffect(() => {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlToken = urlParams.get('token');
+      const urlMe = urlParams.get('me');
+      
+      if (urlToken && urlMe) {
+        localStorage.setItem('token', urlToken);
+        const meStr = decodeURIComponent(atob(urlMe));
+        localStorage.setItem('me', meStr);
+        
+        // Lock this country for the panel session
+        if (country?.code) {
+          localStorage.setItem('country_domain_locked_code', country.code);
+          localStorage.setItem('country_domain_locked', 'true');
+          localStorage.setItem('selected_country', country.code);
+          localStorage.removeItem('country_selected_manually');
+          localStorage.removeItem('country_auto_defaulted');
+        }
+        
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    } catch (e) {
+      console.error("Failed to parse auto-login token", e);
+    }
+
     const token = localStorage.getItem('token')
     if (token) {
       try {
@@ -81,7 +106,7 @@ export default function CountryStaffLogin() {
         if (me.role) redirectForRole(me.role)
       } catch {}
     }
-  }, [])
+  }, [country?.code])
 
   // Health check
   useEffect(() => {
