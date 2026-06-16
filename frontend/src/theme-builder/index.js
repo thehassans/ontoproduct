@@ -19,7 +19,7 @@ export {
   resolveComponent,
   injectTokens,
   toStyle,
-} from './ComponentRegistry.js';
+} from './ComponentRegistry.jsx';
 export {
   PreviewBridge,
   PreviewHost,

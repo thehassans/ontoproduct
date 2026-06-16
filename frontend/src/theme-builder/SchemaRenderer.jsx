@@ -1,5 +1,5 @@
 import React, { memo, useCallback, useMemo } from 'react';
-import { resolveComponent } from './ComponentRegistry.js';
+import { resolveComponent } from './ComponentRegistry.jsx';
 
 /**
  * SchemaRenderer
