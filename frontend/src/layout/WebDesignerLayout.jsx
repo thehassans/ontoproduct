@@ -68,32 +68,27 @@ function LayoutInner() {
       {/* Sidebar Navigation — Ultra Premium */}
       <aside style={{
         width: 260,
-        background: 'linear-gradient(180deg, #0f172a 0%, #1e293b 100%)',
+        background: '#ffffff',
         display: 'flex',
         flexDirection: 'column',
         flexShrink: 0,
-        color: '#f8fafc',
-        boxShadow: '4px 0 32px rgba(15, 23, 42, 0.12)'
+        color: '#334155',
+        borderRight: '1px solid #e2e8f0',
+        zIndex: 50
       }}>
-        {/* Designer Header — Ultra Premium */}
-        <div style={{ padding: '22px 20px 18px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: 12 }}>
+        {/* Designer Header — Ultra Minimalist */}
+        <div style={{ padding: '24px 20px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <img
-            src="/logo.png"
-            alt="Buysial"
-            style={{ width: 34, height: 34, borderRadius: 8, objectFit: 'contain', flexShrink: 0 }}
+            src="/BSBackgroundremoved.png"
+            alt="Buysial Designer"
+            style={{ height: 42, objectFit: 'contain' }}
             onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex' }}
           />
-          <div style={{ display: 'none', width: 34, height: 34, borderRadius: 8, background: 'linear-gradient(135deg, #f97316, #ea580c)', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 800, fontSize: 16 }}>
-            B
-          </div>
-          <div>
-            <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.02em', color: '#ffffff' }}>Buysial Designer</div>
-            <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500, marginTop: 2, letterSpacing: '0.02em' }}>STOREFRONT EDITOR</div>
-          </div>
+          <div style={{ display: 'none', fontSize: 18, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em' }}>Buysial Designer</div>
         </div>
 
-        {/* Navigation Items — Ultra Premium */}
-        <nav style={{ flex: 1, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 3 }}>
+        {/* Navigation Items */}
+        <nav style={{ flex: 1, padding: '16px 12px', display: 'flex', flexDirection: 'column', gap: 4, overflowY: 'auto' }}>
           {navItems.map(item => (
             <NavLink
               key={item.path}
@@ -103,45 +98,32 @@ function LayoutInner() {
                 alignItems: 'center',
                 gap: 12,
                 padding: '10px 14px',
-                borderRadius: 10,
+                borderRadius: 8,
                 textDecoration: 'none',
                 fontSize: 13,
                 fontWeight: isActive ? 600 : 500,
-                color: isActive ? '#fff' : '#94a3b8',
-                background: isActive ? 'linear-gradient(135deg, #2563eb, #1d4ed8)' : 'transparent',
-                boxShadow: isActive ? '0 4px 14px rgba(37, 99, 235, 0.3)' : 'none',
-                transition: 'all 0.2s ease',
-                position: 'relative',
-                overflow: 'hidden',
+                color: isActive ? '#0f172a' : '#64748b',
+                background: isActive ? '#f1f5f9' : 'transparent',
+                transition: 'all 0.15s ease',
               })}
               onMouseOver={e => {
                 if (!e.currentTarget.classList.contains('active')) {
-                  e.currentTarget.style.background = 'rgba(255,255,255,0.04)'
-                  e.currentTarget.style.color = '#e2e8f0'
+                  e.currentTarget.style.background = '#f8fafc'
+                  e.currentTarget.style.color = '#334155'
                 }
               }}
               onMouseOut={e => {
                 if (!e.currentTarget.classList.contains('active')) {
                   e.currentTarget.style.background = 'transparent'
-                  e.currentTarget.style.color = '#94a3b8'
+                  e.currentTarget.style.color = '#64748b'
                 }
               }}
             >
               {({ isActive }) => (
                 <>
-                  {isActive && (
-                    <span style={{
-                      position: 'absolute',
-                      left: 0,
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      width: 3,
-                      height: 20,
-                      borderRadius: '0 4px 4px 0',
-                      background: '#60a5fa',
-                    }} />
-                  )}
-                  <span style={{ display: 'flex', opacity: isActive ? 1 : 0.75, transition: 'opacity 0.2s' }}>{item.icon}</span>
+                  <div style={{ color: isActive ? '#3b82f6' : '#94a3b8', display: 'flex' }}>
+                    {item.icon}
+                  </div>
                   <span>{item.label}</span>
                 </>
               )}
@@ -153,32 +135,29 @@ function LayoutInner() {
         <ThemeEditor />
 
         {/* Logout Section */}
-        <div style={{ padding: '16px 12px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{ padding: '16px', borderTop: '1px solid #f1f5f9' }}>
           <button
             onClick={handleLogout}
             style={{
               width: '100%',
               display: 'flex',
               alignItems: 'center',
-              gap: 12,
+              gap: 10,
               padding: '10px 14px',
               borderRadius: 8,
-              border: 'none',
               background: 'transparent',
-              color: '#94a3b8',
-              cursor: 'pointer',
+              border: 'none',
+              color: '#ef4444',
               fontSize: 13,
-              fontWeight: 500,
-              textAlign: 'left',
-              transition: 'all 0.2s ease',
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'background 0.2s',
             }}
-            onMouseOver={e => e.currentTarget.style.color = '#fff'}
-            onMouseOut={e => e.currentTarget.style.color = '#94a3b8'}
+            onMouseOver={e => e.currentTarget.style.background = '#fef2f2'}
+            onMouseOut={e => e.currentTarget.style.background = 'transparent'}
           >
-            <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-            <span>Sign out</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" /></svg>
+            Sign out
           </button>
         </div>
       </aside>
