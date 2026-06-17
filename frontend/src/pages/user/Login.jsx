@@ -6,7 +6,6 @@ export default function UserLogin() {
   const toast = useToast()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [loginMode, setLoginMode] = useState('staff')
   const [showPw, setShowPw] = useState(false)
   const [loading, setLoading] = useState(false)
   const [health, setHealth] = useState({ checked: false, reachable: false, ready: false, dbLabel: 'unknown' })
@@ -27,6 +26,7 @@ export default function UserLogin() {
     else if (role === 'driver') location.href = '/driver'
     else if (role === 'shop_vendor') location.href = '/shop'
     else if (role === 'seo_manager') location.href = '/seo'
+    else if (role === 'web_designer') location.href = '/designer'
     else if (role === 'user') location.href = '/user'
   }
 
@@ -93,13 +93,7 @@ export default function UserLogin() {
     }
     setLoading(true)
     try {
-      const isShop = loginMode === 'shop'
-      const data = await apiPost(
-        isShop ? '/api/auth/shop/login' : '/api/auth/login',
-        isShop
-          ? { username: email.trim().toLowerCase(), password }
-          : { email: email.trim().toLowerCase(), password }
-      )
+      const data = await apiPost('/api/auth/login', { email: email.trim().toLowerCase(), password })
       localStorage.setItem('token', data.token)
       localStorage.setItem('me', JSON.stringify(data.user))
       redirectForRole(data?.user?.role || 'user')
@@ -149,19 +143,11 @@ export default function UserLogin() {
 
           {/* Heading */}
           <div className="pl-heading">
-            <div className="pl-tabs">
-              <button type="button" className={`pl-tab ${loginMode === 'staff' ? 'pl-tab--active' : ''}`} onClick={() => setLoginMode('staff')}>
-                Staff
-              </button>
-              <button type="button" className={`pl-tab ${loginMode === 'shop' ? 'pl-tab--active' : ''}`} onClick={() => setLoginMode('shop')}>
-                Shop vendor
-              </button>
-            </div>
             <h1 className="pl-title">Welcome back</h1>
-            <p className="pl-subtitle">{loginMode === 'shop' ? 'Access the premium shop operations console' : 'Sign in to your Buysial workspace'}</p>
+            <p className="pl-subtitle">Sign in to your Buysial workspace</p>
           </div>
 
-          <label className="pl-label">{loginMode === 'shop' ? 'Username or Email' : 'Email or Phone'}</label>
+          <label className="pl-label">Email or Phone</label>
           <div className={`pl-field ${emailFocus ? 'pl-field--focus' : ''}`}>
             <svg className="pl-field-icon" width="18" height="18" viewBox="0 0 24 24" fill="none">
               <rect x="2" y="4" width="20" height="16" rx="3" stroke="currentColor" strokeWidth="1.6"/>
@@ -173,8 +159,8 @@ export default function UserLogin() {
               onChange={e => setEmail(e.target.value)}
               onFocus={() => setEmailFocus(true)}
               onBlur={() => setEmailFocus(false)}
-              placeholder={loginMode === 'shop' ? 'shop-login or shop@company.com' : 'you@company.com or +9665xxxxxxx'}
-              autoComplete={loginMode === 'shop' ? 'username' : 'username'}
+              placeholder="you@company.com or +9665xxxxxxx"
+              autoComplete="username"
               required
               className="pl-input"
             />

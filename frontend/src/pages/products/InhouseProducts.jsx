@@ -4142,9 +4142,7 @@ export default function InhouseProducts() {
                 {renderVariantEditor(editForm, setEditForm, editVariantImageOptions)}
               </div>
               <div style={{ display: 'grid', gap: 12 }}>
-                <div style={{ fontWeight: 700 }}>Shop Assignment</div>
-                {!shops.length ? (
-                  <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>
+                <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>
                     No shops found yet. Create shop vendors first to assign this product.
                   </div>
                 ) : (
