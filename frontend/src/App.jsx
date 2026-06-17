@@ -583,7 +583,7 @@ function CustomDomainRouter({ children }) {
   )
 }
 
-const GATEWAY_BLOCKED_PREFIXES = ['/user', '/manager', '/admin', '/dropshipper', '/seo', '/inbox', '/customer', '/login', '/signup', '/register']
+const GATEWAY_BLOCKED_PREFIXES = ['/user', '/manager', '/admin', '/dropshipper', '/seo', '/designer', '/inbox', '/customer', '/login', '/signup', '/register']
 
 // Renders CountryGateway only on the main domain storefront (not on any panel routes)
 function CountryGatewayMounter() {
