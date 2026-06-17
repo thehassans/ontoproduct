@@ -4141,57 +4141,7 @@ export default function InhouseProducts() {
                 <div style={{ fontWeight: 700 }}>Variations</div>
                 {renderVariantEditor(editForm, setEditForm, editVariantImageOptions)}
               </div>
-              <div style={{ display: 'grid', gap: 12 }}>
-                <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>
-                    No shops found yet. Create shop vendors first to assign this product.
-                  </div>
-                ) : (
-                  shops.map((shop) => {
-                    const entry = (editForm.shops || []).find((item) => String(item.shopId) === String(shop._id))
-                    const enabled = !!entry
-                    return (
-                      <div
-                        key={shop._id}
-                        style={{
-                          borderRadius: 20,
-                          border: '1px solid rgba(226,232,240,0.95)',
-                          background: 'rgba(255,255,255,0.96)',
-                          padding: 16,
-                          display: 'grid',
-                          gap: 12,
-                        }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-                          <div style={{ display: 'grid', gap: 4 }}>
-                            <div style={{ fontWeight: 900, color: '#0f172a' }}>{shop.name || 'Shop'}</div>
-                            <div style={{ color: '#64748b', fontSize: 13 }}>{shop.ownerName || '-'} • {shop.phone || '-'}</div>
-                          </div>
-                          <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontWeight: 800, color: '#0f172a' }}>
-                            <input type="checkbox" checked={enabled} onChange={(e) => toggleShopAssignment(setEditForm, shop._id, e.target.checked)} />
-                            Assigned
-                          </label>
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '220px minmax(0,1fr)', gap: 12, alignItems: 'center' }}>
-                          <input
-                            className="input"
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={enabled ? entry?.shopBuyingPrice ?? '' : ''}
-                            disabled={!enabled}
-                            onChange={(e) => updateShopAssignmentPrice(setEditForm, shop._id, e.target.value)}
-                            placeholder="Shop buying price"
-                            style={{ padding: 12, borderRadius: 16 }}
-                          />
-                          <div style={{ color: '#64748b', fontSize: 13 }}>
-                            {enabled ? 'This value is used for vendor payout and routing logic.' : 'Enable this shop if it should be able to fulfill the product.'}
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })
-                )}
-              </div>
+
               <div
                 style={{
                   display: 'grid',
