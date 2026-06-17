@@ -14,6 +14,8 @@ import ExploreMoreBlock from '../../components/ecommerce/ExploreMoreBlock'
 import PromoBlock from '../../components/ecommerce/PromoBlock'
 import ProductCardMini from '../../components/ecommerce/ProductCardMini'
 import VideoToaster from '../../components/ecommerce/VideoToaster'
+import NewArrivalsBlock from '../../components/ecommerce/NewArrivalsBlock'
+import CustomBlock from '../../components/ecommerce/CustomBlock'
 import { readCartItems } from '../../utils/cartStorage'
 import { trackPageView, trackSectionView, trackSectionClick } from '../../utils/analytics'
 import { COUNTRY_LIST } from '../../utils/constants'
@@ -40,6 +42,14 @@ export default function Home(){
     try { return JSON.parse(localStorage.getItem('_ann_bar') || 'null') } catch { return null }
   })
   const [navScrolled, setNavScrolled] = useState(false)
+  const [layoutArray, setLayoutArray] = useState([
+    { type: 'HomeMiniBanner' },
+    { type: 'CategoryBrowser' },
+    { type: 'NewArrivals' },
+    { type: 'BrandBrowser' },
+    { type: 'ExploreMoreBlock' },
+    { type: 'PromoBlock' }
+  ])
   const [homeHeadline, setHomeHeadline] = useState({
     enabled: true,
     badge: 'Premium Shopping',
@@ -165,6 +175,19 @@ export default function Home(){
           } else {
             setAnnBar(null)
             try { localStorage.removeItem('_ann_bar') } catch {}
+          }
+
+          // Parse layout array
+          try {
+            const layoutRaw = getText('homepage_layout_sections', '')
+            if (layoutRaw) {
+              const parsedLayout = JSON.parse(layoutRaw)
+              if (Array.isArray(parsedLayout) && parsedLayout.length > 0) {
+                setLayoutArray(parsedLayout)
+              }
+            }
+          } catch (e) {
+            console.error('Failed to parse layout array', e)
           }
         }
       } catch (_err) {
@@ -673,53 +696,58 @@ export default function Home(){
         )}
       </div>
 
-      {/* Home Mini Banner — promotional block before categories */}
-      <section ref={setSectionRef('home_mini_banner')} data-analytics-section="home_mini_banner" onClickCapture={createSectionClickCapture('home_mini_banner')}>
-        <HomeMiniBanner selectedCountry={selectedCountry} />
-      </section>
-
-      <section ref={setSectionRef('category_browser')} data-analytics-section="category_browser" onClickCapture={createSectionClickCapture('category_browser')}>
-        <CategoryBrowser selectedCountry={selectedCountry} />
-      </section>
-
-      {newArrivals.length > 0 && (
-        <section ref={setSectionRef('new_arrivals')} data-analytics-section="new_arrivals" data-analytics-count={String(newArrivals.length)} onClickCapture={createSectionClickCapture('new_arrivals', { item_count: newArrivals.length })} className="max-w-7xl mx-auto px-2 sm:px-3 lg:px-4 mt-4 mb-2">
-          <div className="flex items-center justify-between px-1 mb-3">
-            <div>
-              <div className="text-[11px] font-black uppercase tracking-[0.24em] text-emerald-500 mb-1">Fresh drops</div>
-              <h2 className="text-[18px] font-extrabold tracking-[-0.02em] text-slate-900">New Arrivals</h2>
-            </div>
-            <Link to="/catalog?filter=newArrival" onClick={() => trackHomeSectionClick('new_arrivals', 'view_all', { item_count: newArrivals.length })} className="inline-flex items-center gap-1 text-sm font-semibold text-slate-600 hover:text-slate-900">
-              View all
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
-            </Link>
-          </div>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-2 lg:grid-cols-4 sm:gap-4">
-            {newArrivals.map((product) => (
-              <div key={product._id} data-analytics-label={product?.name || product?._id || 'new_arrival_product'} onClickCapture={() => trackHomeSectionClick('new_arrivals_product', product?._id || product?.name || 'product', { item_id: product?._id || '', item_name: product?.name || '', item_count: newArrivals.length })}>
-                <ProductCardMini
-                  product={product}
-                  selectedCountry={selectedCountry}
-                  showVideo={false}
-                  showActions={false}
-                />
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      <section ref={setSectionRef('brand_browser')} data-analytics-section="brand_browser" onClickCapture={createSectionClickCapture('brand_browser')}>
-        <BrandBrowser />
-      </section>
-
-      <section ref={setSectionRef('explore_more')} data-analytics-section="explore_more" onClickCapture={createSectionClickCapture('explore_more')}>
-        <ExploreMoreBlock />
-      </section>
-
-      <section ref={setSectionRef('promo_block')} data-analytics-section="promo_block" onClickCapture={createSectionClickCapture('promo_block')}>
-        <PromoBlock />
-      </section>
+      {/* Dynamic Sections Loop */}
+      {layoutArray.map((section, idx) => {
+        const key = `${section.type}-${section.id || idx}`
+        switch (section.type) {
+          case 'HomeMiniBanner':
+            return (
+              <section key={key} ref={setSectionRef(`home_mini_banner_${idx}`)} data-analytics-section="home_mini_banner" onClickCapture={createSectionClickCapture('home_mini_banner')}>
+                <HomeMiniBanner selectedCountry={selectedCountry} />
+              </section>
+            )
+          case 'CategoryBrowser':
+            return (
+              <section key={key} ref={setSectionRef(`category_browser_${idx}`)} data-analytics-section="category_browser" onClickCapture={createSectionClickCapture('category_browser')}>
+                <CategoryBrowser selectedCountry={selectedCountry} />
+              </section>
+            )
+          case 'NewArrivals':
+            return (
+              <NewArrivalsBlock key={key} newArrivals={newArrivals} selectedCountry={selectedCountry} />
+            )
+          case 'BrandBrowser':
+            return (
+              <section key={key} ref={setSectionRef(`brand_browser_${idx}`)} data-analytics-section="brand_browser" onClickCapture={createSectionClickCapture('brand_browser')}>
+                <BrandBrowser />
+              </section>
+            )
+          case 'ExploreMoreBlock':
+            return (
+              <section key={key} ref={setSectionRef(`explore_more_${idx}`)} data-analytics-section="explore_more" onClickCapture={createSectionClickCapture('explore_more')}>
+                <ExploreMoreBlock />
+              </section>
+            )
+          case 'PromoBlock':
+            return (
+              <section key={key} ref={setSectionRef(`promo_block_${idx}`)} data-analytics-section="promo_block" onClickCapture={createSectionClickCapture('promo_block')}>
+                <PromoBlock />
+              </section>
+            )
+          case 'CustomBlock':
+            return (
+              <CustomBlock 
+                key={key} 
+                content={section.content} 
+                background={section.background} 
+                textColor={section.textColor} 
+                padding={section.padding} 
+              />
+            )
+          default:
+            return null
+        }
+      })}
 
       <PremiumFooter />
 

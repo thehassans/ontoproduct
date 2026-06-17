@@ -134,6 +134,7 @@ const GoogleOAuthSettings = lazy(() => import('./pages/user/GoogleOAuthSettings.
 const UserCategories = lazy(() => import('./pages/user/Categories.jsx'))
 const UserBrands = lazy(() => import('./pages/user/Brands.jsx'))
 const UserExploreMore = lazy(() => import('./pages/user/ExploreMore.jsx'))
+const LayoutManager = lazy(() => import('./pages/designer/LayoutManager.jsx'))
 const DeliveryWorkflow = lazy(() => import('./pages/user/DeliveryWorkflow.jsx'))
 
 // Agent pages
@@ -1082,7 +1083,8 @@ export default function App() {
                 </RequireAuth>
               }
             >
-              <Route index element={<Navigate to="/designer/categories" replace />} />
+              <Route index element={<Navigate to="/designer/layout" replace />} />
+              <Route path="layout" element={<LayoutManager />} />
               <Route path="categories" element={<UserCategories />} />
               <Route path="home-headline" element={<HomeHeadline />} />
               <Route path="home-header" element={<HomeHeader />} />
