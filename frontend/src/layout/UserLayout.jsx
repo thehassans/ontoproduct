@@ -1750,8 +1750,8 @@ export default function UserLayout() {
             justifyContent: 'space-between',
             flexWrap: 'wrap',
             rowGap: '10px',
-            minHeight: isMobile ? '48px' : '60px',
-            padding: isMobile ? '6px 8px' : '10px 1rem',
+            minHeight: isMobile ? '40px' : '60px',
+            padding: isMobile ? '2px 6px' : '10px 1rem',
           }}
         >
           {/* Mobile hamburger button */}
@@ -1763,9 +1763,9 @@ export default function UserLayout() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                width: '40px',
-                height: '40px',
-                borderRadius: '10px',
+                width: '32px',
+                height: '32px',
+                borderRadius: '8px',
                 background: 'rgba(255,255,255,0.08)',
                 border: '1px solid rgba(255,255,255,0.12)',
                 cursor: 'pointer',
@@ -1781,7 +1781,11 @@ export default function UserLayout() {
             </button>
           )}
           <div className="flex items-center gap-3" style={{ flex: '1 1 280px', minWidth: 0 }}>
-            {(!isCompact || isMobile) && (
+            {isMobile ? (
+              <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--fg)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {me.firstName || 'User'}
+              </span>
+            ) : !isCompact && (
               <div
                 style={{
                   display: 'inline-flex',
@@ -1865,10 +1869,10 @@ export default function UserLayout() {
                   </span>
                 </div>
               </div>
-            )}
+            )})
 
-            {/* Country panel badge — visible when logged in from a country subdomain */}
-            {(() => {
+            {/* Country panel badge — hidden on mobile, visible on desktop */}
+            {!isMobile && (() => {
               try {
                 const lockedCode = String(localStorage.getItem('country_domain_locked_code') || '').toUpperCase().trim()
                 if (!lockedCode) return null
@@ -1906,91 +1910,95 @@ export default function UserLayout() {
               scrollbarWidth: 'none',
             }}
           >
-            {/* Quick Access Links */}
-            <button
-              onClick={() => navigate('/user/orders')}
-              title="Orders"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '8px 14px',
-                background: 'var(--nav-btn, #1a1a1a)',
-                border: '1px solid transparent',
-                borderRadius: '10px',
-                color: 'var(--nav-btn-fg, #ffffff)',
-                fontSize: '13px',
-                fontWeight: 600,
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                flex: '0 0 auto',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.filter = 'brightness(1.15)'
-                e.currentTarget.style.transform = 'translateY(-1px)'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.filter = 'none'
-                e.currentTarget.style.transform = 'translateY(0)'
-              }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                <polyline points="14 2 14 8 20 8" />
-                <line x1="16" y1="13" x2="8" y2="13" />
-                <line x1="16" y1="17" x2="8" y2="17" />
-              </svg>
-              {!isMobile && 'Orders'}
-            </button>
-            <button
-              onClick={() => navigate('/user/products')}
-              title="Products"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '8px 14px',
-                background: 'var(--nav-btn, #1a1a1a)',
-                border: '1px solid transparent',
-                borderRadius: '10px',
-                color: 'var(--nav-btn-fg, #ffffff)',
-                fontSize: '13px',
-                fontWeight: 600,
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                flex: '0 0 auto',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.filter = 'brightness(1.15)'
-                e.currentTarget.style.transform = 'translateY(-1px)'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.filter = 'none'
-                e.currentTarget.style.transform = 'translateY(0)'
-              }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-                <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-                <line x1="12" y1="22.08" x2="12" y2="12" />
-              </svg>
-              {!isMobile && 'Products'}
-            </button>
+            {/* Quick Access Links — hidden on mobile for ultra-minimal header */}
+            {!isMobile && (
+              <>
+                <button
+                  onClick={() => navigate('/user/orders')}
+                  title="Orders"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '8px 14px',
+                    background: 'var(--nav-btn, #1a1a1a)',
+                    border: '1px solid transparent',
+                    borderRadius: '10px',
+                    color: 'var(--nav-btn-fg, #ffffff)',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    flex: '0 0 auto',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.filter = 'brightness(1.15)'
+                    e.currentTarget.style.transform = 'translateY(-1px)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.filter = 'none'
+                    e.currentTarget.style.transform = 'translateY(0)'
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                    <line x1="16" y1="13" x2="8" y2="13" />
+                    <line x1="16" y1="17" x2="8" y2="17" />
+                  </svg>
+                  Orders
+                </button>
+                <button
+                  onClick={() => navigate('/user/products')}
+                  title="Products"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '8px 14px',
+                    background: 'var(--nav-btn, #1a1a1a)',
+                    border: '1px solid transparent',
+                    borderRadius: '10px',
+                    color: 'var(--nav-btn-fg, #ffffff)',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    flex: '0 0 auto',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.filter = 'brightness(1.15)'
+                    e.currentTarget.style.transform = 'translateY(-1px)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.filter = 'none'
+                    e.currentTarget.style.transform = 'translateY(0)'
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                    <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                    <line x1="12" y1="22.08" x2="12" y2="12" />
+                  </svg>
+                  Products
+                </button>
+              </>
+            )}
 
-            {/* Premium Theme Toggle Switch */}
+            {/* Premium Theme Toggle Switch — compact on mobile */}
             <button
               onClick={toggleTheme}
               title={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
               aria-label={theme === 'light' ? 'Dark mode' : 'Light mode'}
               style={{
                 position: 'relative',
-                width: '70px',
-                height: '34px',
+                width: isMobile ? '44px' : '70px',
+                height: isMobile ? '28px' : '34px',
                 background:
                   theme === 'dark'
                     ? 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)'
                     : 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)',
-                borderRadius: '17px',
+                borderRadius: isMobile ? '14px' : '17px',
                 border: theme === 'dark' ? '2px solid #334155' : '2px solid #cbd5e1',
                 cursor: 'pointer',
                 transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -2062,10 +2070,10 @@ export default function UserLayout() {
               <div
                 style={{
                   position: 'absolute',
-                  top: '3px',
-                  left: theme === 'dark' ? 'calc(100% - 31px)' : '3px',
-                  width: '28px',
-                  height: '28px',
+                  top: isMobile ? '2px' : '3px',
+                  left: theme === 'dark' ? (isMobile ? 'calc(100% - 22px)' : 'calc(100% - 31px)') : (isMobile ? '2px' : '3px'),
+                  width: isMobile ? '22px' : '28px',
+                  height: isMobile ? '22px' : '28px',
                   background:
                     theme === 'dark'
                       ? 'linear-gradient(135deg, #e6e6e6 0%, #d1d1d1 100%)'
@@ -2133,9 +2141,9 @@ export default function UserLayout() {
                   setSettingsView('main')
                 }}
                 style={{
-                  width: '44px',
-                  height: '44px',
-                  borderRadius: '14px',
+                  width: isMobile ? '32px' : '44px',
+                  height: isMobile ? '32px' : '44px',
+                  borderRadius: isMobile ? '8px' : '14px',
                   background:
                     'linear-gradient(145deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
                   border: '1px solid rgba(255,255,255,0.15)',
