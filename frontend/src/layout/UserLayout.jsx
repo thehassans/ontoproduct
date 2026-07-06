@@ -1770,7 +1770,7 @@ export default function UserLayout() {
                 border: '1px solid rgba(255,255,255,0.12)',
                 cursor: 'pointer',
                 flexShrink: 0,
-                color: 'var(--fg)',
+                color: 'var(--nav-btn-fg, #ffffff)',
               }}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1781,7 +1781,7 @@ export default function UserLayout() {
             </button>
           )}
           <div className="flex items-center gap-3" style={{ flex: '1 1 280px', minWidth: 0 }}>
-            {!isCompact && (
+            {(!isCompact || isMobile) && (
               <div
                 style={{
                   display: 'inline-flex',
@@ -1918,7 +1918,7 @@ export default function UserLayout() {
                 background: 'var(--nav-btn, #1a1a1a)',
                 border: '1px solid transparent',
                 borderRadius: '10px',
-                color: 'var(--fg)',
+                color: 'var(--nav-btn-fg, #ffffff)',
                 fontSize: '13px',
                 fontWeight: 600,
                 cursor: 'pointer',
@@ -1953,7 +1953,7 @@ export default function UserLayout() {
                 background: 'var(--nav-btn, #1a1a1a)',
                 border: '1px solid transparent',
                 borderRadius: '10px',
-                color: 'var(--fg)',
+                color: 'var(--nav-btn-fg, #ffffff)',
                 fontSize: '13px',
                 fontWeight: 600,
                 cursor: 'pointer',
@@ -2142,7 +2142,7 @@ export default function UserLayout() {
                   backdropFilter: 'blur(20px)',
                   boxShadow: '0 8px 32px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.1)',
                   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                  color: 'var(--fg)',
+                  color: 'var(--nav-btn-fg, #ffffff)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',

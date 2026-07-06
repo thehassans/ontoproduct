@@ -21,6 +21,7 @@ img.emoji {
   --btn-secondary: #e5e7eb;
   --btn-danger: #dc2626;
   --nav-btn: #1a1a1a;
+  --nav-btn-fg: #ffffff;
   --input-bg: #ffffff;
   --input-border: #d1d7db;
   /* Accent success (used across Agent Me achievements and badges) */
@@ -229,6 +230,7 @@ img.emoji {
   --btn-secondary: #1f1f1f;
   --btn-danger: #dc2626;
   --nav-btn: #e6e6e6;
+  --nav-btn-fg: #0a0a0a;
   /* Inputs */
   --input-bg: #0d0d0d;
   --input-border: #262626;
@@ -1635,13 +1637,13 @@ a {
 .btn {
   background: var(--btn);
   border: 1px solid transparent;
-  color: white;
+  color: var(--nav-btn-fg, #ffffff);
   padding: 10px 14px;
   border-radius: 8px;
   cursor: pointer;
 }
 :root[data-theme='dark'] .btn {
-  color: #0a0a0a;
+  color: var(--nav-btn-fg, #0a0a0a);
 }
 .btn.secondary {
   background: var(--btn-secondary);
@@ -1652,11 +1654,11 @@ a {
 }
 .btn.success {
   background: var(--nav-btn, #1a1a1a);
-  color: #ffffff;
+  color: var(--nav-btn-fg, #ffffff);
   border-color: transparent;
 }
 :root[data-theme='dark'] .btn.success {
-  color: #0a0a0a;
+  color: var(--nav-btn-fg, #0a0a0a);
 }
 .btn.small {
   padding: 6px 10px;
@@ -2054,6 +2056,11 @@ a {
   }
   .topbar.premium button {
     flex-shrink: 0;
+  }
+
+  /* Double flag emoji size on mobile */
+  .country-flag-pill {
+    font-size: 36px !important;
   }
 
   /* Reduce card padding on mobile */
@@ -3536,7 +3543,7 @@ a {
     background: var(--btn) !important;
   }
   :root[data-theme='dark'] .btn {
-    color: #0a0a0a !important;
+    color: var(--nav-btn-fg, #0a0a0a) !important;
   }
   .btn:focus {
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--btn) 30%, transparent) !important;
@@ -3555,7 +3562,7 @@ a {
   }
   :root[data-theme='dark'] .btn.success {
     background: var(--nav-btn, #e6e6e6) !important;
-    color: #0a0a0a !important;
+    color: var(--nav-btn-fg, #0a0a0a) !important;
   }
   .btn.small {
     @apply px-2.5 py-1.5 text-sm;

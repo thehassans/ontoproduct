@@ -222,7 +222,7 @@ function CountryPill({ active, label, flag, onClick }) {
         fontWeight: 700,
       }}
     >
-      <span style={{ fontSize: 18 }}>{flag}</span>
+      <span className="country-flag-pill" style={{ fontSize: 18 }}>{flag}</span>
     </button>
   )
 }
@@ -474,10 +474,10 @@ export default function DashboardPremium({ mode = 'user' } = {}) {
             </div>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              <button type="button" onClick={() => navigate(isPartner ? '/partner/orders' : '/user/orders')} style={{ borderRadius: 999, border: '1px solid transparent', background: 'var(--nav-btn, #1a1a1a)', color: 'var(--fg)', padding: '8px 14px', fontWeight: 800, cursor: 'pointer', fontSize: 13 }}>Orders</button>
-              <button type="button" onClick={() => navigate(isPartner ? '/partner/total-amounts' : '/user/total-amounts')} style={{ borderRadius: 999, border: '1px solid transparent', background: 'var(--nav-btn, #1a1a1a)', color: 'var(--fg)', padding: '8px 14px', fontWeight: 800, cursor: 'pointer', fontSize: 13 }}>Closing Reports</button>
-              {!isPartner ? <button type="button" onClick={() => setExpenseOpen(true)} style={{ borderRadius: 999, border: '1px solid transparent', background: 'var(--nav-btn, #1a1a1a)', color: 'var(--fg)', padding: '8px 14px', fontWeight: 800, cursor: 'pointer', fontSize: 13 }}>Add Expense</button> : null}
-              {!isPartner ? <button type="button" onClick={() => navigate('/user/expense')} style={{ borderRadius: 999, border: '1px solid transparent', background: 'var(--nav-btn, #1a1a1a)', color: 'var(--fg)', padding: '8px 14px', fontWeight: 800, cursor: 'pointer', fontSize: 13 }}>Expense Mgmt</button> : null}
+              <button type="button" onClick={() => navigate(isPartner ? '/partner/orders' : '/user/orders')} style={{ borderRadius: 999, border: '1px solid transparent', background: 'var(--nav-btn, #1a1a1a)', color: 'var(--nav-btn-fg, #ffffff)', padding: '8px 14px', fontWeight: 800, cursor: 'pointer', fontSize: 13 }}>Orders</button>
+              <button type="button" onClick={() => navigate(isPartner ? '/partner/total-amounts' : '/user/total-amounts')} style={{ borderRadius: 999, border: '1px solid transparent', background: 'var(--nav-btn, #1a1a1a)', color: 'var(--nav-btn-fg, #ffffff)', padding: '8px 14px', fontWeight: 800, cursor: 'pointer', fontSize: 13 }}>Closing Reports</button>
+              {!isPartner ? <button type="button" onClick={() => setExpenseOpen(true)} style={{ borderRadius: 999, border: '1px solid transparent', background: 'var(--nav-btn, #1a1a1a)', color: 'var(--nav-btn-fg, #ffffff)', padding: '8px 14px', fontWeight: 800, cursor: 'pointer', fontSize: 13 }}>Add Expense</button> : null}
+              {!isPartner ? <button type="button" onClick={() => navigate('/user/expense')} style={{ borderRadius: 999, border: '1px solid transparent', background: 'var(--nav-btn, #1a1a1a)', color: 'var(--nav-btn-fg, #ffffff)', padding: '8px 14px', fontWeight: 800, cursor: 'pointer', fontSize: 13 }}>Expense Mgmt</button> : null}
             </div>
 
             <div style={{ display: 'grid', gap: 10 }}>
@@ -536,7 +536,7 @@ export default function DashboardPremium({ mode = 'user' } = {}) {
               <div style={{ fontSize: 14, color: '#475569' }}>{isPartner ? 'Country-scoped expenses are included in the totals below for your assigned market.' : 'Integrated advertising expense view with direct expense creation and recent activity.'}</div>
             </div>
             {!isPartner ? <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              <button type="button" onClick={() => setExpenseOpen(true)} style={{ borderRadius: 16, border: 'none', background: 'var(--nav-btn, #1a1a1a)', color: 'var(--fg)', padding: '12px 16px', fontWeight: 800, cursor: 'pointer' }}>Add Expense</button>
+              <button type="button" onClick={() => setExpenseOpen(true)} style={{ borderRadius: 16, border: 'none', background: 'var(--nav-btn, #1a1a1a)', color: 'var(--nav-btn-fg, #ffffff)', padding: '12px 16px', fontWeight: 800, cursor: 'pointer' }}>Add Expense</button>
               <button type="button" onClick={() => navigate('/user/expense')} style={{ borderRadius: 16, border: '1px solid var(--border)', background: 'var(--panel)', color: 'var(--fg)', padding: '12px 16px', fontWeight: 800, cursor: 'pointer' }}>Open Expense Management</button>
             </div> : null}
           </div>
