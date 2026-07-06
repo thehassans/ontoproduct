@@ -613,23 +613,23 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#f8fafc' }}>
-      <div className="px-6 py-6">
-        <div className="mx-auto max-w-[1700px] space-y-6">
+      <div className="px-3 py-4 sm:px-6 sm:py-6">
+        <div className="mx-auto max-w-[1700px] space-y-4 sm:space-y-6">
           {/* Premium Header */}
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-col gap-3 sm:gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <h1 className="text-3xl font-bold" style={{ color: '#0f172a' }}>Dashboard</h1>
-              <p className="mt-1 text-sm" style={{ color: '#64748b' }}>
+              <h1 className="text-2xl sm:text-3xl font-bold" style={{ color: '#0f172a' }}>Dashboard</h1>
+              <p className="mt-1 text-xs sm:text-sm" style={{ color: '#64748b' }}>
                 Welcome back! Here's your business overview for {monthNames[selectedMonth - 1]} {selectedYear}
               </p>
             </div>
-            <div className="flex items-center gap-3">
-              <select className="rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+            <div className="flex items-center gap-2 sm:gap-3">
+              <select className="rounded-xl px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-orange-500/20"
                 style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', color: '#334155' }}
                 value={selectedMonth} onChange={(e) => setSelectedMonth(Number(e.target.value))}>
                 {monthNames.map((name, idx) => <option key={idx} value={idx + 1}>{name}</option>)}
               </select>
-              <select className="rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+              <select className="rounded-xl px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-orange-500/20"
                 style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', color: '#334155' }}
                 value={selectedYear} onChange={(e) => setSelectedYear(Number(e.target.value))}>
                 {yearOptions.map((year) => <option key={year} value={year}>{year}</option>)}
@@ -638,7 +638,7 @@ export default function Dashboard() {
           </div>
 
           {/* KPI Cards Row */}
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-6">
             <KpiCard icon={Icons.orders} label="Total Orders" value={<LiveNumber value={statusTotals.total} maximumFractionDigits={0} />} loading={loading} />
             <KpiCard icon={Icons.revenue} label="Revenue" iconColor="text-emerald-600" iconBg="#ecfdf5"
               value={<><span className="text-lg" style={{ color: '#94a3b8' }}>AED </span><LiveNumber value={metrics?.profitLoss?.revenue || 0} maximumFractionDigits={0} /></>}
@@ -660,7 +660,7 @@ export default function Dashboard() {
           </div>
 
           {/* Performance Metrics */}
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             <MetricCard title="Delivery Rate" value={`${deliveryRate}%`} subtitle="Success rate" icon={Icons.target} color="#10b981" trend={5} />
             <MetricCard title="Return Rate" value={`${returnRate}%`} subtitle="Returned orders" icon={Icons.truck} color="#ef4444" trend={-2} />
             <MetricCard title="Cancelled Orders" value={fmtNum(statusTotals.cancelled)} 
@@ -670,9 +670,9 @@ export default function Dashboard() {
           </div>
 
           {/* Main Charts Row */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
             <Card title="Sales Trend" icon={Icons.chart} className="lg:col-span-2">
-              <div className="h-auto min-h-[450px] overflow-visible">
+              <div className="h-auto min-h-[300px] sm:min-h-[450px] overflow-visible">
                 {!hydrated || loading ? (
                   <div className="h-[400px] w-full animate-pulse rounded-xl" style={{ backgroundColor: '#f1f5f9' }} />
                 ) : (
@@ -689,7 +689,7 @@ export default function Dashboard() {
           </div>
 
           {/* Secondary Row */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
             {/* Order Status Breakdown */}
             <Card title="Order Status" icon={Icons.orders}>
               <div className="space-y-2">

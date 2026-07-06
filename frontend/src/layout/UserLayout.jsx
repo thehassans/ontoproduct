@@ -16,6 +16,7 @@ export default function UserLayout() {
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth <= 768 : false
   )
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [isCompact, setIsCompact] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth <= 1180 : false
   )
@@ -37,6 +38,7 @@ export default function UserLayout() {
       setIsMobile(mobile)
       setIsCompact(compact)
       if (compact) setClosed(true)
+      if (!mobile) setMobileSidebarOpen(false)
     }
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
@@ -1712,12 +1714,30 @@ export default function UserLayout() {
   return (
     <div>
       <NotificationListener />
+      {/* Mobile backdrop overlay */}
+      {isMobile && mobileSidebarOpen && (
+        <div
+          onClick={() => setMobileSidebarOpen(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            zIndex: 1999,
+            backdropFilter: 'blur(2px)',
+          }}
+        />
+      )}
       <Sidebar
-        closed={closed}
+        closed={isMobile ? !mobileSidebarOpen : closed}
         links={visibleLinks}
         hiddenItems={hiddenNavItems}
-        onToggle={() => setClosed((c) => !c)}
+        onToggle={() => {
+          if (isMobile) setMobileSidebarOpen((o) => !o)
+          else setClosed((c) => !c)
+        }}
         premium
+        isMobile={isMobile}
+        onNavigate={() => isMobile && setMobileSidebarOpen(false)}
       />
       <div className={`main ${closed ? 'full' : ''}`}>
         <div
@@ -1731,9 +1751,35 @@ export default function UserLayout() {
             flexWrap: 'wrap',
             rowGap: '10px',
             minHeight: '60px',
-            padding: '10px 1rem',
+            padding: isMobile ? '10px 8px' : '10px 1rem',
           }}
         >
+          {/* Mobile hamburger button */}
+          {isMobile && (
+            <button
+              onClick={() => setMobileSidebarOpen(true)}
+              aria-label="Open menu"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '40px',
+                height: '40px',
+                borderRadius: '10px',
+                background: 'rgba(255,255,255,0.08)',
+                border: '1px solid rgba(255,255,255,0.12)',
+                cursor: 'pointer',
+                flexShrink: 0,
+                color: 'var(--fg)',
+              }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="3" y1="12" x2="21" y2="12" />
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <line x1="3" y1="18" x2="21" y2="18" />
+              </svg>
+            </button>
+          )}
           <div className="flex items-center gap-3" style={{ flex: '1 1 280px', minWidth: 0 }}>
             {!isCompact && (
               <div
@@ -1894,7 +1940,7 @@ export default function UserLayout() {
                 <line x1="16" y1="13" x2="8" y2="13" />
                 <line x1="16" y1="17" x2="8" y2="17" />
               </svg>
-              Orders
+              {!isMobile && 'Orders'}
             </button>
             <button
               onClick={() => navigate('/user/products')}
@@ -1928,7 +1974,7 @@ export default function UserLayout() {
                 <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
                 <line x1="12" y1="22.08" x2="12" y2="12" />
               </svg>
-              Products
+              {!isMobile && 'Products'}
             </button>
 
             {/* Premium Theme Toggle Switch */}
@@ -2138,7 +2184,8 @@ export default function UserLayout() {
                     position: 'absolute',
                     top: 'calc(100% + 12px)',
                     right: 0,
-                    width: '320px',
+                    width: isMobile ? 'calc(100vw - 24px)' : '320px',
+                    maxWidth: '360px',
                     background: 'var(--panel)',
                     border: '1px solid var(--border)',
                     borderRadius: '24px',
@@ -2745,7 +2792,7 @@ export default function UserLayout() {
         </div>
         <div
           className={`container ${location.pathname.includes('/inbox/whatsapp') ? 'edge-to-edge' : ''}`}
-          style={{ paddingInline: 'clamp(10px, 1.6vw, 20px)' }}
+          style={{ paddingInline: isMobile ? '8px' : 'clamp(10px, 1.6vw, 20px)' }}
         >
           <Outlet />
         </div>

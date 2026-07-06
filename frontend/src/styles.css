@@ -1954,45 +1954,46 @@ a {
     white-space: nowrap;
   }
 
-  /* Mobile sidebar behavior: open = drawer, closed = slim icon rail */
+  /* Mobile sidebar behavior: off-screen drawer, toggled by hamburger */
   .sidebar {
     position: fixed;
     top: 0;
     left: 0;
     height: 100dvh;
     width: 86vw;
-    max-width: 360px;
+    max-width: 320px;
     z-index: 2000;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
     transform: translateX(-100%);
     transition:
-      transform 0.2s ease,
+      transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
       width 0.2s ease;
   }
   /* Open drawer (not closed) */
   .sidebar:not(.closed) {
     transform: translateX(0);
   }
-  /* Closed = persistent icon rail */
+  /* Closed = completely hidden on mobile */
   .sidebar.closed {
-    transform: translateX(0);
-    width: 56px;
+    transform: translateX(-100%);
+    width: 86vw;
+    max-width: 320px;
     box-shadow: none;
   }
   .sidebar .brand {
     display: inline-flex;
   }
   .sidebar-toggle {
-    right: -10px;
+    display: none;
   }
 
-  /* Main content: default no offset; when sidebar is closed (rail visible), add a small left gutter */
+  /* Main content: full width on mobile, no left offset */
   .main {
     margin-left: 0;
     min-width: 0;
   }
   .main.full {
-    margin-left: 56px;
+    margin-left: 0;
   }
   .main.full-mobile {
     margin-left: 0;
@@ -2027,6 +2028,28 @@ a {
   }
   .input {
     padding: 10px 12px;
+  }
+
+  /* User panel mobile topbar adjustments */
+  .topbar.premium {
+    padding: 8px 6px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .topbar.premium::-webkit-scrollbar {
+    display: none;
+  }
+  .topbar.premium > div:first-child {
+    gap: 6px !important;
+  }
+  .topbar.premium button {
+    flex-shrink: 0;
+  }
+
+  /* Reduce card padding on mobile */
+  .card {
+    padding: 12px;
   }
 
   /* WhatsApp-like helpers on mobile */
@@ -2148,6 +2171,16 @@ a {
   .with-mobile-tabs {
     padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
   } /* give space above tabs */
+}
+
+/* Very small screen adjustments for user panel */
+@media (max-width: 480px) {
+  .topbar.premium {
+    padding: 6px 4px;
+  }
+  .topbar.premium button {
+    padding: 6px 8px !important;
+  }
 }
 
 /* WhatsApp-like responsive helpers */

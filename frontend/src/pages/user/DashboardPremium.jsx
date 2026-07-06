@@ -190,7 +190,7 @@ function MetricRail({ title, subtitle, items }) {
         <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748b' }}>{title}</div>
         <div style={{ fontSize: 14, color: '#475569' }}>{subtitle}</div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(160px, 100%), 1fr))', gap: 'clamp(10px, 1.5vw, 14px)' }}>
         {items.map((item) => (
           <div key={item.label} style={{ borderRadius: 22, padding: 'clamp(14px, 3.5vw, 18px)', border: '1px solid rgba(148,163,184,0.14)', background: item.background || '#fff', display: 'grid', gap: 8, minWidth: 0 }}>
             <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', color: item.labelColor || '#64748b', lineHeight: 1.35 }}>{item.label}</div>
@@ -452,33 +452,33 @@ export default function DashboardPremium({ mode = 'user' } = {}) {
 
   return (
     <div style={{ minHeight: '100%', background: 'radial-gradient(circle at top left, rgba(59,130,246,0.10), transparent 28%), radial-gradient(circle at top right, rgba(168,85,247,0.08), transparent 24%), #f8fafc' }}>
-      <div style={{ maxWidth: 1680, margin: '0 auto', padding: 'clamp(14px, 2vw, 28px)', display: 'grid', gap: 22 }}>
+      <div style={{ maxWidth: 1680, margin: '0 auto', padding: 'clamp(10px, 2vw, 28px)', display: 'grid', gap: 'clamp(14px, 2vw, 22px)' }}>
         <section style={{ ...sectionCardStyle(), padding: 'clamp(18px, 2.2vw, 30px)', background: 'linear-gradient(135deg, #ffffff 0%, #f8fbff 55%, #f8fafc 100%)' }}>
           <div style={{ display: 'grid', gap: 20 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 'clamp(10px, 2vw, 16px)', flexWrap: 'wrap' }}>
               <div style={{ display: 'grid', gap: 8, minWidth: 0 }}>
-                <div style={{ fontSize: 12, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#64748b', fontWeight: 800 }}>{isPartner ? 'Partner dashboard' : 'User dashboard'}</div>
-                <div style={{ fontSize: 'clamp(28px, 4vw, 52px)', fontWeight: 950, letterSpacing: '-0.06em', color: '#0f172a', lineHeight: 1 }}>{isPartner ? 'Country business command center' : 'Business command center'}</div>
-                <div style={{ color: '#475569', fontSize: 15, maxWidth: 820 }}>{isPartner ? 'Track country-scoped orders, commissions, online sales, purchasing, and net results for your assigned market in one dashboard.' : 'Track all orders, commissions, online sales, purchasing, and expenses in one minimalist dashboard with country-first controls.'}</div>
+                <div style={{ fontSize: 'clamp(10px, 1.2vw, 12px)', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#64748b', fontWeight: 800 }}>{isPartner ? 'Partner dashboard' : 'User dashboard'}</div>
+                <div style={{ fontSize: 'clamp(22px, 4vw, 52px)', fontWeight: 950, letterSpacing: '-0.06em', color: '#0f172a', lineHeight: 1 }}>{isPartner ? 'Country business command center' : 'Business command center'}</div>
+                <div style={{ color: '#475569', fontSize: 'clamp(13px, 1.4vw, 15px)', maxWidth: 820 }}>{isPartner ? 'Track country-scoped orders, commissions, online sales, purchasing, and net results for your assigned market in one dashboard.' : 'Track all orders, commissions, online sales, purchasing, and expenses in one minimalist dashboard with country-first controls.'}</div>
               </div>
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-                <select value={selectedMonth} onChange={(event) => setSelectedMonth(Number(event.target.value))} style={{ borderRadius: 16, border: '1px solid rgba(148,163,184,0.24)', background: '#fff', padding: '12px 16px', fontWeight: 700, color: '#0f172a' }}>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                <select value={selectedMonth} onChange={(event) => setSelectedMonth(Number(event.target.value))} style={{ borderRadius: 14, border: '1px solid rgba(148,163,184,0.24)', background: '#fff', padding: '10px 14px', fontWeight: 700, color: '#0f172a', fontSize: 14 }}>
                   {monthNames.map((name, index) => <option key={name} value={index + 1}>{name}</option>)}
                 </select>
-                <select value={selectedYear} onChange={(event) => setSelectedYear(Number(event.target.value))} style={{ borderRadius: 16, border: '1px solid rgba(148,163,184,0.24)', background: '#fff', padding: '12px 16px', fontWeight: 700, color: '#0f172a' }}>
+                <select value={selectedYear} onChange={(event) => setSelectedYear(Number(event.target.value))} style={{ borderRadius: 14, border: '1px solid rgba(148,163,184,0.24)', background: '#fff', padding: '10px 14px', fontWeight: 700, color: '#0f172a', fontSize: 14 }}>
                   {yearOptions.map((year) => <option key={year} value={year}>{year}</option>)}
                 </select>
-                <button type="button" onClick={loadDashboard} style={{ borderRadius: 16, border: '1px solid rgba(148,163,184,0.18)', background: '#fff', padding: '12px 16px', fontWeight: 800, color: '#0f172a', cursor: 'pointer' }}>
+                <button type="button" onClick={loadDashboard} style={{ borderRadius: 14, border: '1px solid rgba(148,163,184,0.18)', background: '#fff', padding: '10px 14px', fontWeight: 800, color: '#0f172a', cursor: 'pointer', fontSize: 14 }}>
                   Refresh
                 </button>
               </div>
             </div>
 
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-              <button type="button" onClick={() => navigate(isPartner ? '/partner/orders' : '/user/orders')} style={{ borderRadius: 999, border: '1px solid rgba(37,99,235,0.18)', background: 'rgba(37,99,235,0.08)', color: '#1d4ed8', padding: '10px 16px', fontWeight: 800, cursor: 'pointer' }}>Orders</button>
-              <button type="button" onClick={() => navigate(isPartner ? '/partner/total-amounts' : '/user/total-amounts')} style={{ borderRadius: 999, border: '1px solid rgba(124,58,237,0.18)', background: 'rgba(124,58,237,0.08)', color: '#6d28d9', padding: '10px 16px', fontWeight: 800, cursor: 'pointer' }}>Closing Reports</button>
-              {!isPartner ? <button type="button" onClick={() => setExpenseOpen(true)} style={{ borderRadius: 999, border: '1px solid rgba(5,150,105,0.18)', background: 'rgba(5,150,105,0.08)', color: '#047857', padding: '10px 16px', fontWeight: 800, cursor: 'pointer' }}>Add Expense</button> : null}
-              {!isPartner ? <button type="button" onClick={() => navigate('/user/expense')} style={{ borderRadius: 999, border: '1px solid rgba(249,115,22,0.18)', background: 'rgba(249,115,22,0.08)', color: '#ea580c', padding: '10px 16px', fontWeight: 800, cursor: 'pointer' }}>Expense Management</button> : null}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              <button type="button" onClick={() => navigate(isPartner ? '/partner/orders' : '/user/orders')} style={{ borderRadius: 999, border: '1px solid rgba(37,99,235,0.18)', background: 'rgba(37,99,235,0.08)', color: '#1d4ed8', padding: '8px 14px', fontWeight: 800, cursor: 'pointer', fontSize: 13 }}>Orders</button>
+              <button type="button" onClick={() => navigate(isPartner ? '/partner/total-amounts' : '/user/total-amounts')} style={{ borderRadius: 999, border: '1px solid rgba(124,58,237,0.18)', background: 'rgba(124,58,237,0.08)', color: '#6d28d9', padding: '8px 14px', fontWeight: 800, cursor: 'pointer', fontSize: 13 }}>Closing Reports</button>
+              {!isPartner ? <button type="button" onClick={() => setExpenseOpen(true)} style={{ borderRadius: 999, border: '1px solid rgba(5,150,105,0.18)', background: 'rgba(5,150,105,0.08)', color: '#047857', padding: '8px 14px', fontWeight: 800, cursor: 'pointer', fontSize: 13 }}>Add Expense</button> : null}
+              {!isPartner ? <button type="button" onClick={() => navigate('/user/expense')} style={{ borderRadius: 999, border: '1px solid rgba(249,115,22,0.18)', background: 'rgba(249,115,22,0.08)', color: '#ea580c', padding: '8px 14px', fontWeight: 800, cursor: 'pointer', fontSize: 13 }}>Expense Mgmt</button> : null}
             </div>
 
             <div style={{ display: 'grid', gap: 10 }}>
@@ -501,23 +501,23 @@ export default function DashboardPremium({ mode = 'user' } = {}) {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))', gap: 'clamp(10px, 1.5vw, 14px)' }}>
               {overviewCards.map((card) => <SummaryCard key={card.label} {...card} />)}
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'clamp(10px, 1.5vw, 14px)', flexWrap: 'wrap' }}>
               <div style={{ display: 'grid', gap: 4 }}>
                 <div style={{ fontWeight: 900, color: '#0f172a', fontSize: 18 }}>{selectedCountryCode === 'all' ? 'Global view' : `${activeMeta?.flag || ''} ${activeMeta?.label || 'Selected country'} view`}</div>
                 <div style={{ color: '#64748b', fontSize: 14 }}>{loading ? 'Loading dashboard data...' : report.periodLabel || `${monthNames[selectedMonth - 1]} ${selectedYear}`}</div>
               </div>
-              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                <div style={{ borderRadius: 18, padding: '12px 16px', background: 'rgba(15,23,42,0.04)', border: '1px solid rgba(148,163,184,0.12)' }}>
-                  <div style={{ fontSize: 11, color: '#64748b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Net Profit / Loss</div>
-                  <div style={{ fontWeight: 950, fontSize: 20, color: Number(activeRow?.netProfitAmount || 0) < 0 ? '#dc2626' : '#059669' }}>{formatMoney(Math.abs(Number(activeRow?.netProfitAmount || 0)), activeCurrency)}</div>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <div style={{ borderRadius: 16, padding: '10px 14px', background: 'rgba(15,23,42,0.04)', border: '1px solid rgba(148,163,184,0.12)' }}>
+                  <div style={{ fontSize: 10, color: '#64748b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Net Profit / Loss</div>
+                  <div style={{ fontWeight: 950, fontSize: 'clamp(16px, 2vw, 20px)', color: Number(activeRow?.netProfitAmount || 0) < 0 ? '#dc2626' : '#059669' }}>{formatMoney(Math.abs(Number(activeRow?.netProfitAmount || 0)), activeCurrency)}</div>
                 </div>
-                <div style={{ borderRadius: 18, padding: '12px 16px', background: 'rgba(15,23,42,0.04)', border: '1px solid rgba(148,163,184,0.12)' }}>
-                  <div style={{ fontSize: 11, color: '#64748b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Total Expense</div>
-                  <div style={{ fontWeight: 950, fontSize: 20, color: '#0f172a' }}>{formatMoney(activeRow?.totalExpense, activeCurrency)}</div>
+                <div style={{ borderRadius: 16, padding: '10px 14px', background: 'rgba(15,23,42,0.04)', border: '1px solid rgba(148,163,184,0.12)' }}>
+                  <div style={{ fontSize: 10, color: '#64748b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Total Expense</div>
+                  <div style={{ fontWeight: 950, fontSize: 'clamp(16px, 2vw, 20px)', color: '#0f172a' }}>{formatMoney(activeRow?.totalExpense, activeCurrency)}</div>
                 </div>
               </div>
             </div>
@@ -542,7 +542,7 @@ export default function DashboardPremium({ mode = 'user' } = {}) {
             </div> : null}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14, marginBottom: 18 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))', gap: 'clamp(10px, 1.5vw, 14px)', marginBottom: 18 }}>
             <SummaryCard label="Expense Total" value={formatMoney(activeRow?.totalExpense, activeCurrency)} hint="Approved expense total in selected scope" accent="#dc2626" />
             <SummaryCard label="Recent Expenses" value={formatCount(filteredExpenses.length)} hint="Approved advertising entries" accent="#7c3aed" />
             <SummaryCard label="Pending Approvals" value={formatCount(pendingManagerExpenses.length)} hint="Manager submissions waiting review" accent="#f59e0b" />

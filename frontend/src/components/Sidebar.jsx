@@ -11,6 +11,8 @@ export default function Sidebar({
   hiddenItems = [],
   premium = false,
   onLogout,
+  isMobile = false,
+  onNavigate,
 }) {
   const location = useLocation()
   const [openGroups, setOpenGroups] = useState(() => new Set())
@@ -410,6 +412,7 @@ export default function Sidebar({
               end
               className={({ isActive }) => (isActive ? 'active' : '')}
               style={{ width: '100%', justifyContent: 'center' }}
+              onClick={() => isMobile && onNavigate && onNavigate()}
             >
               <span className="nav-icon" aria-hidden>
                 <Icon name={item.icon || item.label} />
@@ -458,6 +461,7 @@ export default function Sidebar({
           title={item.label}
           className={({ isActive }) => (isActive ? 'active' : '')}
           style={{ display: isHidden ? 'none' : undefined }}
+          onClick={() => isMobile && onNavigate && onNavigate()}
         >
           <span className="nav-icon" aria-hidden>
             <Icon name={item.icon || item.label} />
@@ -526,6 +530,7 @@ export default function Sidebar({
                       to={ch.to}
                       end
                       className={({ isActive }) => (isActive ? 'active' : '')}
+                      onClick={() => isMobile && onNavigate && onNavigate()}
                     >
                       <span
                         className="nav-icon child"
@@ -578,6 +583,7 @@ export default function Sidebar({
                 end
                 className={({ isActive }) => (isActive ? 'active' : '')}
                 title={ch.label}
+                onClick={() => isMobile && onNavigate && onNavigate()}
               >
                 <span className="nav-icon child" aria-hidden>
                   <Icon name={ch.icon || ch.label} />
