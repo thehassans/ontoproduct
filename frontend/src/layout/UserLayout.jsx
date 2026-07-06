@@ -1372,7 +1372,7 @@ export default function UserLayout() {
             width: '44px',
             height: '24px',
             borderRadius: '12px',
-            background: hiddenNavItems.includes(link.label) ? 'var(--border)' : '#10b981',
+            background: hiddenNavItems.includes(link.label) ? 'var(--border)' : 'var(--nav-btn, #1a1a1a)',
             position: 'relative',
             border: 'none',
             cursor: 'pointer',
@@ -1750,8 +1750,8 @@ export default function UserLayout() {
             justifyContent: 'space-between',
             flexWrap: 'wrap',
             rowGap: '10px',
-            minHeight: '60px',
-            padding: isMobile ? '10px 8px' : '10px 1rem',
+            minHeight: isMobile ? '48px' : '60px',
+            padding: isMobile ? '6px 8px' : '10px 1rem',
           }}
         >
           {/* Mobile hamburger button */}
@@ -1915,10 +1915,10 @@ export default function UserLayout() {
                 alignItems: 'center',
                 gap: '6px',
                 padding: '8px 14px',
-                background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(37, 99, 235, 0.15) 100%)',
-                border: '1px solid rgba(59, 130, 246, 0.3)',
+                background: 'var(--nav-btn, #1a1a1a)',
+                border: '1px solid transparent',
                 borderRadius: '10px',
-                color: '#3b82f6',
+                color: 'var(--fg)',
                 fontSize: '13px',
                 fontWeight: 600,
                 cursor: 'pointer',
@@ -1926,11 +1926,11 @@ export default function UserLayout() {
                 flex: '0 0 auto',
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'linear-gradient(135deg, rgba(59, 130, 246, 0.25) 0%, rgba(37, 99, 235, 0.25) 100%)'
+                e.currentTarget.style.filter = 'brightness(1.15)'
                 e.currentTarget.style.transform = 'translateY(-1px)'
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(37, 99, 235, 0.15) 100%)'
+                e.currentTarget.style.filter = 'none'
                 e.currentTarget.style.transform = 'translateY(0)'
               }}
             >
@@ -1950,10 +1950,10 @@ export default function UserLayout() {
                 alignItems: 'center',
                 gap: '6px',
                 padding: '8px 14px',
-                background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%)',
-                border: '1px solid rgba(168, 85, 247, 0.3)',
+                background: 'var(--nav-btn, #1a1a1a)',
+                border: '1px solid transparent',
                 borderRadius: '10px',
-                color: '#a855f7',
+                color: 'var(--fg)',
                 fontSize: '13px',
                 fontWeight: 600,
                 cursor: 'pointer',
@@ -1961,11 +1961,11 @@ export default function UserLayout() {
                 flex: '0 0 auto',
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'linear-gradient(135deg, rgba(168, 85, 247, 0.25) 0%, rgba(139, 92, 246, 0.25) 100%)'
+                e.currentTarget.style.filter = 'brightness(1.15)'
                 e.currentTarget.style.transform = 'translateY(-1px)'
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'linear-gradient(135deg, rgba(168, 85, 247, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%)'
+                e.currentTarget.style.filter = 'none'
                 e.currentTarget.style.transform = 'translateY(0)'
               }}
             >
@@ -2068,8 +2068,8 @@ export default function UserLayout() {
                   height: '28px',
                   background:
                     theme === 'dark'
-                      ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'
-                      : 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
+                      ? 'linear-gradient(135deg, #e6e6e6 0%, #d1d1d1 100%)'
+                      : 'linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%)',
                   borderRadius: '50%',
                   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                   boxShadow:

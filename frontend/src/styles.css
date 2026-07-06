@@ -17,9 +17,10 @@ img.emoji {
   --panel: #ffffff;
   --panel-2: #ffffff;
   --border: #e2e8f0;
-  --btn: #00a884;
+  --btn: #1a1a1a;
   --btn-secondary: #e5e7eb;
   --btn-danger: #dc2626;
+  --nav-btn: #1a1a1a;
   --input-bg: #ffffff;
   --input-border: #d1d7db;
   /* Accent success (used across Agent Me achievements and badges) */
@@ -223,10 +224,11 @@ img.emoji {
   --sidebar-border: #1a1a1a;
   --nav-active-bg: #141414;
   --nav-active-fg: #e6e6e6;
-  /* Buttons retain brand color for contrast */
-  --btn: #2563eb;
+  /* Buttons: matte white for dark theme */
+  --btn: #e6e6e6;
   --btn-secondary: #1f1f1f;
   --btn-danger: #dc2626;
+  --nav-btn: #e6e6e6;
   /* Inputs */
   --input-bg: #0d0d0d;
   --input-border: #262626;
@@ -1638,6 +1640,9 @@ a {
   border-radius: 8px;
   cursor: pointer;
 }
+:root[data-theme='dark'] .btn {
+  color: #0a0a0a;
+}
 .btn.secondary {
   background: var(--btn-secondary);
   color: inherit;
@@ -1646,9 +1651,12 @@ a {
   background: var(--btn-danger);
 }
 .btn.success {
-  background: var(--wa-accent);
+  background: var(--nav-btn, #1a1a1a);
   color: #ffffff;
   border-color: transparent;
+}
+:root[data-theme='dark'] .btn.success {
+  color: #0a0a0a;
 }
 .btn.small {
   padding: 6px 10px;
@@ -2032,10 +2040,11 @@ a {
 
   /* User panel mobile topbar adjustments */
   .topbar.premium {
-    padding: 8px 6px;
+    padding: 4px 6px !important;
     flex-wrap: nowrap;
     overflow-x: auto;
     scrollbar-width: none;
+    min-height: 48px !important;
   }
   .topbar.premium::-webkit-scrollbar {
     display: none;
@@ -3526,6 +3535,9 @@ a {
   .btn {
     background: var(--btn) !important;
   }
+  :root[data-theme='dark'] .btn {
+    color: #0a0a0a !important;
+  }
   .btn:focus {
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--btn) 30%, transparent) !important;
   }
@@ -3539,7 +3551,11 @@ a {
     @apply text-white;
   }
   .btn.success {
-    background: var(--wa-accent) !important;
+    background: var(--nav-btn, #1a1a1a) !important;
+  }
+  :root[data-theme='dark'] .btn.success {
+    background: var(--nav-btn, #e6e6e6) !important;
+    color: #0a0a0a !important;
   }
   .btn.small {
     @apply px-2.5 py-1.5 text-sm;
@@ -4583,7 +4599,10 @@ button.btn.login-submit {
 
 /* Premium gradient backgrounds */
 .gradient-blue {
-  background: linear-gradient(135deg, #60a5fa 0%, #2563eb 100%);
+  background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+}
+:root[data-theme='dark'] .gradient-blue {
+  background: linear-gradient(135deg, #f0f0f0 0%, #e6e6e6 100%);
 }
 
 .gradient-purple {
@@ -4591,7 +4610,10 @@ button.btn.login-submit {
 }
 
 .gradient-green {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+}
+:root[data-theme='dark'] .gradient-green {
+  background: linear-gradient(135deg, #f0f0f0 0%, #e6e6e6 100%);
 }
 
 .gradient-orange {

@@ -675,9 +675,9 @@ export default function AgentLayout() {
                   gap: '10px',
                   padding: '8px 16px',
                   borderRadius: '12px',
-                  background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(99, 102, 241, 0.1) 100%)',
-                  border: '1px solid rgba(59, 130, 246, 0.2)',
-                  boxShadow: '0 4px 12px rgba(59, 130, 246, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+                  background: 'linear-gradient(135deg, rgba(26,26,26,0.08) 0%, rgba(26,26,26,0.06) 100%)',
+                  border: '1px solid rgba(26,26,26,0.15)',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
                   backdropFilter: 'blur(10px)',
                   whiteSpace: 'nowrap'
                 }}
@@ -689,8 +689,8 @@ export default function AgentLayout() {
                   width: '28px',
                   height: '28px',
                   borderRadius: '6px',
-                  background: 'linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)',
-                  boxShadow: '0 2px 8px rgba(59, 130, 246, 0.3)',
+                  background: 'linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%)',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
                   fontSize: '16px'
                 }}>🧑‍💼</span>
                 <div style={{display: 'flex', flexDirection: 'column', gap: '1px'}}>
@@ -699,7 +699,7 @@ export default function AgentLayout() {
                     fontWeight: 600,
                     textTransform: 'uppercase',
                     letterSpacing: '0.5px',
-                    background: 'linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)',
+                    background: 'linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%)',
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent',
                     backgroundClip: 'text'
@@ -708,7 +708,7 @@ export default function AgentLayout() {
                     fontSize: '14px',
                     fontWeight: 700,
                     letterSpacing: '-0.02em',
-                    background: 'linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)',
+                    background: 'linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%)',
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent',
                     backgroundClip: 'text'
@@ -743,7 +743,7 @@ export default function AgentLayout() {
                   transform: 'translateY(-50%)',
                   width: '22px',
                   height: '22px',
-                  background: theme === 'dark' ? 'linear-gradient(135deg, #818cf8 0%, #6366f1 100%)' : 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
+                  background: theme === 'dark' ? 'linear-gradient(135deg, #e6e6e6 0%, #d1d1d1 100%)' : 'linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%)',
                   borderRadius: '50%',
                   transition: 'left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                   boxShadow: '0 2px 4px rgba(0,0,0,0.2)',

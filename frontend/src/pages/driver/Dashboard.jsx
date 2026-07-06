@@ -425,7 +425,7 @@ export default function DriverDashboard() {
         <div style={{ position: 'absolute', bottom: -30, left: -30, width: 160, height: 160, background: 'radial-gradient(circle, rgba(59,130,246,0.1), transparent 68%)', pointerEvents: 'none' }} />
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 18, position: 'relative' }}>
-          <div style={{ width: 50, height: 50, borderRadius: 16, background: 'linear-gradient(135deg, #10b981, #059669)', display: 'grid', placeItems: 'center', fontSize: 20, fontWeight: 900, color: '#fff', boxShadow: '0 8px 20px rgba(16,185,129,0.4)', flexShrink: 0 }}>
+          <div style={{ width: 50, height: 50, borderRadius: 16, background: 'linear-gradient(135deg, #2a2a2a, #1a1a1a)', display: 'grid', placeItems: 'center', fontSize: 20, fontWeight: 900, color: '#fff', boxShadow: '0 8px 20px rgba(0,0,0,0.2)', flexShrink: 0 }}>
             {String(driverName || 'D').charAt(0).toUpperCase()}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -461,9 +461,9 @@ export default function DriverDashboard() {
       {/* ── Stats Grid ── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
         {[
-          { key: 'pickup', label: 'Ready to Pick Up', value: loading ? '…' : readyToPickupOrders.length, accent: '#3b82f6', bg: 'rgba(59,130,246,0.1)', border: 'rgba(59,130,246,0.2)', iconBg: 'linear-gradient(135deg,#3b82f6,#2563eb)', glow: 'rgba(59,130,246,0.35)', onClick: () => nav('/driver/orders/assigned'), icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg> },
+          { key: 'pickup', label: 'Ready to Pick Up', value: loading ? '…' : readyToPickupOrders.length, accent: '#1a1a1a', bg: 'rgba(26,26,26,0.08)', border: 'rgba(26,26,26,0.15)', iconBg: 'linear-gradient(135deg,#2a2a2a,#1a1a1a)', glow: 'rgba(0,0,0,0.15)', onClick: () => nav('/driver/orders/assigned'), icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg> },
           { key: 'pickedup', label: 'Picked Up', value: loading ? '…' : pickedUpOrders.length, accent: '#f59e0b', bg: 'rgba(245,158,11,0.1)', border: 'rgba(245,158,11,0.22)', iconBg: 'linear-gradient(135deg,#f59e0b,#d97706)', glow: 'rgba(245,158,11,0.35)', onClick: null, icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg> },
-          { key: 'collected', label: 'Collected', value: loading ? '…' : formatMoney(currencyCode, summary.totalCollectedAmount), accent: '#10b981', bg: 'rgba(16,185,129,0.1)', border: 'rgba(16,185,129,0.2)', iconBg: 'linear-gradient(135deg,#10b981,#059669)', glow: 'rgba(16,185,129,0.35)', onClick: () => nav('/driver/orders/delivered'), icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg> },
+          { key: 'collected', label: 'Collected', value: loading ? '…' : formatMoney(currencyCode, summary.totalCollectedAmount), accent: '#1a1a1a', bg: 'rgba(26,26,26,0.08)', border: 'rgba(26,26,26,0.15)', iconBg: 'linear-gradient(135deg,#2a2a2a,#1a1a1a)', glow: 'rgba(0,0,0,0.15)', onClick: () => nav('/driver/orders/delivered'), icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg> },
           { key: 'pending', label: 'Pending Pay', value: loading ? '…' : formatMoney(currencyCode, pendingToCompany), accent: '#fb923c', bg: 'rgba(251,146,60,0.1)', border: 'rgba(251,146,60,0.22)', iconBg: 'linear-gradient(135deg,#fb923c,#ea580c)', glow: 'rgba(251,146,60,0.35)', onClick: null, icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> },
         ].map(({ key, label, value, accent, bg, border, iconBg, glow, onClick, icon }) => (
           <div key={key} onClick={onClick || undefined} style={{ background: bg, border: `1px solid ${border}`, borderRadius: 20, padding: '14px 14px 12px', display: 'grid', gap: 10, cursor: onClick ? 'pointer' : 'default' }}>
@@ -513,7 +513,7 @@ export default function DriverDashboard() {
                       <a href={`tel:${order.customerPhone}`} style={{ fontSize: 11, fontWeight: 700, color: '#2563eb', background: 'rgba(37,99,235,0.1)', border: '1px solid rgba(37,99,235,0.18)', borderRadius: 8, padding: '4px 10px', textDecoration: 'none' }}>Call</a>
                     ) : null}
                     <button onClick={() => nav('/driver/live-map')} style={{ fontSize: 11, fontWeight: 700, color: '#7c3aed', background: 'rgba(124,58,237,0.1)', border: '1px solid rgba(124,58,237,0.18)', borderRadius: 8, padding: '4px 10px', cursor: 'pointer' }}>Map</button>
-                    <button onClick={() => markPickedUp(order)} disabled={busy} style={{ fontSize: 11, fontWeight: 800, color: '#fff', background: busy ? '#9ca3af' : 'linear-gradient(135deg,#10b981,#059669)', border: 'none', borderRadius: 8, padding: '4px 14px', cursor: busy ? 'default' : 'pointer', boxShadow: busy ? 'none' : '0 4px 10px rgba(16,185,129,0.35)' }}>
+                    <button onClick={() => markPickedUp(order)} disabled={busy} style={{ fontSize: 11, fontWeight: 800, color: '#fff', background: busy ? '#9ca3af' : 'linear-gradient(135deg,#2a2a2a,#1a1a1a)', border: 'none', borderRadius: 8, padding: '4px 14px', cursor: busy ? 'default' : 'pointer', boxShadow: busy ? 'none' : '0 4px 10px rgba(0,0,0,0.2)' }}>
                       {busy ? '…' : 'Pick Up'}
                     </button>
                   </div>
@@ -543,7 +543,7 @@ export default function DriverDashboard() {
 
           <div style={{ display: 'flex', gap: 8 }}>
             {['hand', 'transfer'].map((m) => (
-              <button key={m} onClick={() => setForm((prev) => ({ ...prev, method: m, file: null }))} style={{ flex: 1, padding: '10px 0', borderRadius: 12, cursor: 'pointer', fontWeight: 700, fontSize: 13, border: form.method === m ? 'none' : '1px solid var(--border)', background: form.method === m ? 'linear-gradient(135deg,#10b981,#059669)' : 'var(--bg)', color: form.method === m ? '#fff' : 'var(--muted)', boxShadow: form.method === m ? '0 4px 12px rgba(16,185,129,0.3)' : 'none', transition: 'all 0.2s' }}>
+              <button key={m} onClick={() => setForm((prev) => ({ ...prev, method: m, file: null }))} style={{ flex: 1, padding: '10px 0', borderRadius: 12, cursor: 'pointer', fontWeight: 700, fontSize: 13, border: form.method === m ? 'none' : '1px solid var(--border)', background: form.method === m ? 'linear-gradient(135deg,#2a2a2a,#1a1a1a)' : 'var(--bg)', color: form.method === m ? '#fff' : 'var(--muted)', boxShadow: form.method === m ? '0 4px 12px rgba(0,0,0,0.2)' : 'none', transition: 'all 0.2s' }}>
                 {m === 'hand' ? '🤝 Hand' : '🔁 Transfer'}
               </button>
             ))}
@@ -560,10 +560,10 @@ export default function DriverDashboard() {
               const mLabel = getManagerLabel(manager)
               const active = String(form?.paidToId || '').trim() === mId
               return (
-                <button key={mId || mLabel} onClick={() => setForm((prev) => ({ ...prev, paidToId: mId, paidToName: mLabel }))} style={{ padding: '7px 15px', borderRadius: 11, cursor: 'pointer', fontWeight: 700, fontSize: 12, border: active ? 'none' : '1px solid var(--border)', background: active ? 'linear-gradient(135deg,#2563eb,#1d4ed8)' : 'var(--bg)', color: active ? '#fff' : 'var(--text)', boxShadow: active ? '0 4px 10px rgba(37,99,235,0.3)' : 'none', transition: 'all 0.15s' }}>{mLabel}</button>
+                <button key={mId || mLabel} onClick={() => setForm((prev) => ({ ...prev, paidToId: mId, paidToName: mLabel }))} style={{ padding: '7px 15px', borderRadius: 11, cursor: 'pointer', fontWeight: 700, fontSize: 12, border: active ? 'none' : '1px solid var(--border)', background: active ? 'linear-gradient(135deg,#2a2a2a,#1a1a1a)' : 'var(--bg)', color: active ? '#fff' : 'var(--text)', boxShadow: active ? '0 4px 10px rgba(0,0,0,0.2)' : 'none', transition: 'all 0.15s' }}>{mLabel}</button>
               )
             })}
-            <button onClick={() => setForm((prev) => ({ ...prev, paidToId: '', paidToName: ownerLabel }))} style={{ padding: '7px 15px', borderRadius: 11, cursor: 'pointer', fontWeight: 700, fontSize: 12, border: !String(form?.paidToId || '').trim() ? 'none' : '1px solid var(--border)', background: !String(form?.paidToId || '').trim() ? 'linear-gradient(135deg,#2563eb,#1d4ed8)' : 'var(--bg)', color: !String(form?.paidToId || '').trim() ? '#fff' : 'var(--text)', boxShadow: !String(form?.paidToId || '').trim() ? '0 4px 10px rgba(37,99,235,0.3)' : 'none', transition: 'all 0.15s' }}>{ownerLabel}</button>
+            <button onClick={() => setForm((prev) => ({ ...prev, paidToId: '', paidToName: ownerLabel }))} style={{ padding: '7px 15px', borderRadius: 11, cursor: 'pointer', fontWeight: 700, fontSize: 12, border: !String(form?.paidToId || '').trim() ? 'none' : '1px solid var(--border)', background: !String(form?.paidToId || '').trim() ? 'linear-gradient(135deg,#2a2a2a,#1a1a1a)' : 'var(--bg)', color: !String(form?.paidToId || '').trim() ? '#fff' : 'var(--text)', boxShadow: !String(form?.paidToId || '').trim() ? '0 4px 10px rgba(0,0,0,0.2)' : 'none', transition: 'all 0.15s' }}>{ownerLabel}</button>
           </div>
 
           {form.method === 'transfer' ? (
@@ -588,7 +588,7 @@ export default function DriverDashboard() {
               if (form.method === 'transfer' && !form.file) { toast.error('Upload a proof image'); return }
               setConfirmOpen(true)
             }}
-            style={{ padding: '14px', borderRadius: 14, border: 'none', cursor: submitting || pendingToCompany <= 0 || !!pendingApprovalRemittance ? 'default' : 'pointer', background: submitting || pendingToCompany <= 0 || !!pendingApprovalRemittance ? '#e5e7eb' : 'linear-gradient(135deg,#10b981,#059669)', color: submitting || pendingToCompany <= 0 || !!pendingApprovalRemittance ? '#9ca3af' : '#fff', fontWeight: 800, fontSize: 15, boxShadow: pendingToCompany > 0 && !pendingApprovalRemittance ? '0 6px 18px rgba(16,185,129,0.38)' : 'none', transition: 'all 0.2s' }}
+            style={{ padding: '14px', borderRadius: 14, border: 'none', cursor: submitting || pendingToCompany <= 0 || !!pendingApprovalRemittance ? 'default' : 'pointer', background: submitting || pendingToCompany <= 0 || !!pendingApprovalRemittance ? '#e5e7eb' : 'linear-gradient(135deg,#2a2a2a,#1a1a1a)', color: submitting || pendingToCompany <= 0 || !!pendingApprovalRemittance ? '#9ca3af' : '#fff', fontWeight: 800, fontSize: 15, boxShadow: pendingToCompany > 0 && !pendingApprovalRemittance ? '0 6px 18px rgba(0,0,0,0.2)' : 'none', transition: 'all 0.2s' }}
           >
             {submitting ? 'Sending…' : 'Send Payment'}
           </button>
