@@ -99,6 +99,26 @@ class SocketManager {
       socket.conn.on('upgradeError', (error) => {
         console.error('Transport upgrade error for', socket.id, ':', error);
       });
+
+      // ─── Public order tracking ───
+      // Allows unauthenticated users (customers) to join an order room
+      // to receive real-time driver location updates for that specific order
+      socket.on('track:join', (orderId) => {
+        try {
+          const id = String(orderId || '').trim();
+          if (id && id.length >= 8) {
+            socket.join(`order:${id}`);
+            console.log(`[socket] ${socket.id} joined public tracking for order:${id}`);
+          }
+        } catch {}
+      });
+
+      socket.on('track:leave', (orderId) => {
+        try {
+          const id = String(orderId || '').trim();
+          if (id) socket.leave(`order:${id}`);
+        } catch {}
+      });
     });
 
     // Add engine.io monitoring with detailed error logging

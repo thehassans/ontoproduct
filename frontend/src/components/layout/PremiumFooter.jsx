@@ -126,6 +126,9 @@ export default function PremiumFooter() {
 
   return (
     <footer className="sf-root">
+      <div className="sf-glow sf-glow-1" />
+      <div className="sf-glow sf-glow-2" />
+      <div className="sf-top-line" />
       {/* ── Trust strip ── */}
       <div className="sf-trust">
         <div className="sf-trust-inner">
@@ -276,22 +279,47 @@ export default function PremiumFooter() {
 
       <style>{`
         .sf-root {
-          background: var(--theme-secondary, #ffffff);
-          color: var(--theme-primary, #000000);
+          position: relative;
+          overflow: hidden;
+          background: linear-gradient(180deg, #0b1220 0%, #0f172a 45%, #0a0f1c 100%);
+          color: rgba(255,255,255,0.92);
           font-family: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
           margin-top: 24px;
-          border-top: var(--theme-border, 1px solid #e5e7eb);
-          box-shadow: var(--theme-shadow);
+        }
+        .sf-top-line {
+          position: absolute;
+          top: 0; left: 0; right: 0;
+          height: 2px;
+          background: linear-gradient(90deg, transparent, #f97316 20%, #fb923c 50%, #f97316 80%, transparent);
+          opacity: 0.9;
+        }
+        .sf-glow {
+          position: absolute;
+          border-radius: 50%;
+          filter: blur(90px);
+          pointer-events: none;
+          opacity: 0.16;
+        }
+        .sf-glow-1 {
+          width: 420px; height: 420px;
+          top: -160px; left: -100px;
+          background: #f97316;
+        }
+        .sf-glow-2 {
+          width: 380px; height: 380px;
+          bottom: -180px; right: -80px;
+          background: #3b82f6;
         }
         /* Trust strip */
         .sf-trust {
-          background: rgba(0,0,0,0.01);
-          border-bottom: var(--theme-border, 1px solid #e5e7eb);
+          position: relative;
+          background: rgba(255,255,255,0.02);
+          border-bottom: 1px solid rgba(255,255,255,0.07);
         }
         .sf-trust-inner {
           max-width: 1280px;
           margin: 0 auto;
-          padding: 24px;
+          padding: 26px 24px;
           display: grid;
           grid-template-columns: repeat(4, 1fr);
           gap: 24px;
@@ -304,26 +332,29 @@ export default function PremiumFooter() {
           transition: transform 0.25s ease;
         }
         .sf-trust-item:hover {
-          transform: translateY(-2px);
+          transform: translateY(-3px);
         }
         .sf-trust-icon {
-          color: var(--theme-accent, #f97316);
+          color: #fb923c;
           display: flex;
           align-items: center;
           justify-content: center;
-          background: rgba(249, 115, 22, 0.1);
-          padding: 8px;
-          border-radius: 8px;
-          transition: background 0.25s, color 0.25s;
+          background: rgba(249, 115, 22, 0.12);
+          border: 1px solid rgba(249, 115, 22, 0.22);
+          padding: 9px;
+          border-radius: 12px;
+          transition: background 0.25s, color 0.25s, box-shadow 0.25s;
         }
         .sf-trust-item:hover .sf-trust-icon {
-          background: var(--theme-accent, #f97316);
-          color: var(--theme-secondary, #ffffff);
+          background: linear-gradient(135deg, #f97316, #ea580c);
+          color: #ffffff;
+          box-shadow: 0 8px 22px rgba(249,115,22,0.35);
+          border-color: transparent;
         }
         .sf-trust-label {
-          font-size: 14px;
+          font-size: 13.5px;
           font-weight: 600;
-          color: var(--theme-primary, #000000);
+          color: rgba(255,255,255,0.88);
           letter-spacing: 0.01em;
         }
 
@@ -353,10 +384,10 @@ export default function PremiumFooter() {
         }
         .sf-brand-tagline {
           font-size: 13.5px;
-          color: var(--theme-primary, #000000);
-          opacity: 0.75;
-          line-height: 1.6;
-          margin: 0 0 20px;
+          color: rgba(255,255,255,0.65);
+          line-height: 1.65;
+          margin: 0 0 22px;
+          max-width: 320px;
         }
         .sf-social-row {
           display: flex;
@@ -367,27 +398,25 @@ export default function PremiumFooter() {
           display: flex;
           align-items: center;
           justify-content: center;
-          width: 36px;
-          height: 36px;
+          width: 38px;
+          height: 38px;
           border-radius: 50%;
-          background: var(--theme-secondary, #ffffff);
-          color: var(--theme-primary, #000000);
-          opacity: 0.8;
+          background: rgba(255,255,255,0.06);
+          color: rgba(255,255,255,0.75);
           text-decoration: none;
-          border: var(--theme-border, 1px solid #e5e7eb);
+          border: 1px solid rgba(255,255,255,0.1);
           transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
           cursor: pointer;
         }
         .sf-social-btn:hover {
-          background: var(--theme-accent, #f97316);
-          color: var(--theme-secondary, #ffffff);
-          opacity: 1;
+          background: linear-gradient(135deg, #f97316, #ea580c);
+          color: #ffffff;
           transform: translateY(-3px);
-          box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
-          border-color: var(--theme-accent, #f97316);
+          box-shadow: 0 8px 20px rgba(249, 115, 22, 0.35);
+          border-color: transparent;
         }
         .sf-social-dim {
-          opacity: 0.35;
+          opacity: 0.3;
           cursor: default;
         }
         
@@ -401,25 +430,23 @@ export default function PremiumFooter() {
           flex-direction: column;
         }
         .sf-col-title {
-          font-size: 12px;
+          font-size: 11.5px;
           font-weight: 700;
-          color: var(--theme-primary, #000000);
-          margin: 0 0 16px;
+          color: #fb923c;
+          margin: 0 0 18px;
           text-transform: uppercase;
-          letter-spacing: 0.1em;
+          letter-spacing: 0.12em;
         }
         .sf-col-link {
           display: block;
-          font-size: 13px;
-          color: var(--theme-primary, #000000);
-          opacity: 0.75;
+          font-size: 13.5px;
+          color: rgba(255,255,255,0.68);
           text-decoration: none;
-          padding: 6px 0;
+          padding: 7px 0;
           transition: all 0.2s ease;
         }
         .sf-col-link:hover {
-          color: var(--theme-accent, #f97316);
-          opacity: 1;
+          color: #ffffff;
           transform: translateX(4px);
         }
 
@@ -430,45 +457,49 @@ export default function PremiumFooter() {
         }
         .sf-news-text {
           font-size: 13px;
-          color: var(--theme-primary, #000000);
-          opacity: 0.75;
-          line-height: 1.6;
-          margin: 0 0 16px;
+          color: rgba(255,255,255,0.6);
+          line-height: 1.65;
+          margin: 0 0 18px;
         }
         .sf-news-form {
           display: flex;
           flex-direction: column;
-          gap: 8px;
+          gap: 10px;
         }
         .sf-news-input {
-          background: var(--theme-secondary, #ffffff);
-          border: var(--theme-border, 1px solid #e5e7eb);
-          border-radius: 6px;
-          padding: 10px 14px;
-          color: var(--theme-primary, #000000);
-          font-size: 13px;
+          background: rgba(255,255,255,0.06);
+          border: 1px solid rgba(255,255,255,0.12);
+          border-radius: 10px;
+          padding: 12px 16px;
+          color: #ffffff;
+          font-size: 13.5px;
           outline: none;
           transition: all 0.2s ease;
         }
+        .sf-news-input::placeholder {
+          color: rgba(255,255,255,0.4);
+        }
         .sf-news-input:focus {
-          border-color: var(--theme-accent, #f97316);
-          box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.2);
+          border-color: #f97316;
+          background: rgba(255,255,255,0.09);
+          box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.15);
         }
         .sf-news-btn {
-          background: #f97316;
+          background: linear-gradient(135deg, #f97316, #ea580c);
           color: #ffffff;
           border: none;
-          border-radius: 6px;
-          padding: 10px 14px;
-          font-size: 13px;
-          font-weight: 600;
+          border-radius: 10px;
+          padding: 12px 16px;
+          font-size: 13.5px;
+          font-weight: 700;
           cursor: pointer;
           transition: all 0.2s ease;
           text-align: center;
+          box-shadow: 0 6px 18px rgba(249,115,22,0.3);
         }
         .sf-news-btn:hover {
-          background: #ea580c;
-          box-shadow: 0 4px 12px rgba(249, 115, 22, 0.2);
+          transform: translateY(-2px);
+          box-shadow: 0 10px 26px rgba(249, 115, 22, 0.42);
         }
         .sf-news-btn:active {
           transform: scale(0.98);
@@ -479,7 +510,7 @@ export default function PremiumFooter() {
           display: none;
         }
         .sf-acc-item {
-          border-bottom: var(--theme-border, 1px solid #e5e7eb);
+          border-bottom: 1px solid rgba(255,255,255,0.08);
         }
         .sf-acc-btn {
           display: flex;
@@ -489,7 +520,7 @@ export default function PremiumFooter() {
           padding: 14px 0;
           background: none;
           border: none;
-          color: var(--theme-primary, #000000);
+          color: rgba(255,255,255,0.9);
           font-size: 14px;
           font-weight: 600;
           cursor: pointer;
@@ -502,7 +533,8 @@ export default function PremiumFooter() {
 
         /* Payments */
         .sf-payments {
-          border-top: var(--theme-border, 1px solid #e5e7eb);
+          position: relative;
+          border-top: 1px solid rgba(255,255,255,0.08);
           padding: 24px;
           max-width: 1280px;
           margin: 0 auto;
@@ -514,10 +546,9 @@ export default function PremiumFooter() {
         .sf-payments-label {
           font-size: 12px;
           font-weight: 600;
-          color: var(--theme-primary, #000000);
-          opacity: 0.6;
+          color: rgba(255,255,255,0.5);
           text-transform: uppercase;
-          letter-spacing: 0.06em;
+          letter-spacing: 0.08em;
         }
         .sf-payment-badges {
           display: flex;
@@ -530,23 +561,27 @@ export default function PremiumFooter() {
           align-items: center;
           gap: 2px;
           background: #ffffff;
-          border: 1px solid #e5e7eb;
-          border-radius: 4px;
-          padding: 4px 8px;
-          height: 28px;
-          min-width: 42px;
+          border: 1px solid rgba(255,255,255,0.15);
+          border-radius: 8px;
+          padding: 5px 10px;
+          height: 30px;
+          min-width: 44px;
           justify-content: center;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+          box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+          transition: transform 0.2s ease;
+        }
+        .sf-pay:hover {
+          transform: translateY(-2px);
         }
         .sf-pay-dark {
-          background: #1a1a1a;
-          border: 1px solid #333;
-          box-shadow: none;
+          background: #0a0a0a;
+          border: 1px solid rgba(255,255,255,0.15);
         }
 
         /* Bottom bar */
         .sf-bottom {
-          border-top: var(--theme-border, 1px solid #e5e7eb);
+          position: relative;
+          border-top: 1px solid rgba(255,255,255,0.08);
           padding: 20px 24px;
           max-width: 1280px;
           margin: 0 auto;
@@ -554,24 +589,21 @@ export default function PremiumFooter() {
           align-items: center;
           justify-content: space-between;
           gap: 12px;
-          font-size: 12px;
-          color: var(--theme-primary, #000000);
-          opacity: 0.8;
+          font-size: 12.5px;
+          color: rgba(255,255,255,0.55);
           flex-wrap: wrap;
         }
         .sf-bottom-links {
           display: flex;
-          gap: 16px;
+          gap: 20px;
         }
         .sf-bottom-link {
-          color: var(--theme-primary, #000000);
-          opacity: 0.8;
+          color: rgba(255,255,255,0.55);
           text-decoration: none;
           transition: color 0.2s ease;
         }
         .sf-bottom-link:hover {
-          color: var(--theme-accent, #f97316);
-          opacity: 1;
+          color: #fb923c;
         }
 
         /* Responsive Breakpoints */
@@ -604,7 +636,7 @@ export default function PremiumFooter() {
             width: 100%;
           }
           .sf-news-col {
-            border-top: var(--theme-border, 1px solid #e5e7eb);
+            border-top: 1px solid rgba(255,255,255,0.08);
             padding-top: 32px;
           }
         }

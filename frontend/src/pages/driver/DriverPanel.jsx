@@ -266,6 +266,24 @@ export default function DriverPanel() {
     }
   }
 
+  function openNavigation(order) {
+    const destLat = order?.locationLat
+    const destLng = order?.locationLng
+    const originLat = driverLocation?.lat
+    const originLng = driverLocation?.lng
+    let url = 'https://www.google.com/maps/dir/?api=1&travelmode=driving'
+    if (typeof originLat === 'number' && typeof originLng === 'number') {
+      url += `&origin=${originLat},${originLng}`
+    }
+    if (typeof destLat === 'number' && typeof destLng === 'number') {
+      url += `&destination=${destLat},${destLng}`
+    } else {
+      const addr = order?.customerAddress || order?.customerLocation || ''
+      if (addr) url += `&destination=${encodeURIComponent(addr)}`
+    }
+    window.open(url, '_blank', 'noopener,noreferrer')
+  }
+
   function openWhatsApp(phone) {
     if (phone) {
       const cleanPhone = phone.replace(/[^\d+]/g, '')
@@ -811,6 +829,16 @@ export default function DriverPanel() {
                 <path d="M20.52 3.48A11.82 11.82 0 0 0 .155 18.07L0 24l5.93-1.56A11.82 11.82 0 0 0 12.02 24c6.56 0 11.87-5.31 11.87-11.87 0-3.18-1.24-6.16-3.37-8.39zm-8.5 19.33c-1.95 0-3.85-.51-5.52-1.47l-.4-.24-3.51.93.94-3.43-.26-.42a9.7 9.7 0 0 1-1.47-5.17c0-5.38 4.37-9.75 9.75-9.75 2.61 0 5.06 1.02 6.91 2.87a9.65 9.65 0 0 1 2.84 6.88c0 5.38-4.37 9.75-9.75 9.75zm5.74-7.3c-.31-.16-1.82-.91-2.1-1.02-.28-.1-.48-.16-.68.16-.2.3-.78.96-.96 1.16-.18.2-.36.22-.66.08-.3-.14-1.29-.47-2.46-1.49-.91-.81-1.53-1.8-1.71-2.1-.18-.3-.02-.46.14-.62.14-.14.3-.36.46-.56.15-.2.2-.3.3-.5.1-.2.05-.38-.03-.56-.08-.16-.72-1.73-.98-2.37-.26-.64-.52-.55-.72-.56-.18-.01-.4-.02-.61-.02-.21 0-.56.08-.86.38-.3.3-1.13 1.1-1.13 2.68 0 1.58 1.12 3.1 1.28 3.31.16.2 2.22 3.4 5.35 4.76.75.33 1.34.53 1.8.68.76.24 1.45.21 2.01.13.61-.09 1.87-.77 2.13-1.52.26-.75.26-1.36.18-1.56-.08-.2-.29-.31-.6-.47z" />
               </svg>
             </button>
+            <button
+              onClick={() => openNavigation(order)}
+              title="Navigate"
+              aria-label="Turn-by-turn navigation"
+              style={{ width: 44, height: 44, borderRadius: 12, border: '1px solid rgba(16,185,129,0.3)', background: 'linear-gradient(135deg, rgba(16,185,129,0.15), rgba(5,150,105,0.2))', color: '#10b981', cursor: 'pointer', display: 'grid', placeItems: 'center' }}
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <polygon points="3 11 22 2 13 21 11 13 3 11" />
+              </svg>
+            </button>
           </div>
 
           {showActions && (
@@ -1011,6 +1039,15 @@ export default function DriverPanel() {
         </button>
       </div>
 
+      {/* Route Optimization */}
+      {assigned.length > 1 && (
+        <RouteOptimizer
+          orders={assigned}
+          driverLocation={driverLocation}
+          onNavigate={(order) => openNavigation(order)}
+        />
+      )}
+
       {/* Live Map Component */}
       {showMap && (
         <div style={{ marginBottom: 24 }}>
@@ -1068,6 +1105,163 @@ export default function DriverPanel() {
       {/* History removed: drivers access full history at /driver/orders/history */}
 
       {/* Available orders section removed: drivers see only their assigned orders */}
+    </div>
+  )
+}
+
+function RouteOptimizer({ orders, driverLocation, onNavigate }) {
+  const [optimizing, setOptimizing] = useState(false)
+  const [result, setResult] = useState(null)
+  const [error, setError] = useState('')
+
+  async function optimize() {
+    setOptimizing(true)
+    setError('')
+    try {
+      const orderIds = orders
+        .filter(o => Number.isFinite(Number(o.locationLat)) && Number.isFinite(Number(o.locationLng)))
+        .map(o => o._id || o.id)
+      if (orderIds.length < 2) {
+        setError('Need at least 2 orders with valid coordinates')
+        setOptimizing(false)
+        return
+      }
+      const res = await apiPost('/api/orders/route-optimize', {
+        orderIds,
+        origin: driverLocation || undefined,
+      })
+      if (res.optimized) {
+        setResult(res)
+      } else {
+        setError(res.message || 'Optimization failed')
+      }
+    } catch (err) {
+      setError(err?.message || 'Optimization failed')
+    } finally {
+      setOptimizing(false)
+    }
+  }
+
+  function formatDist(m) {
+    if (!m && m !== 0) return '—'
+    if (m >= 1000) return `${(m / 1000).toFixed(1)} km`
+    return `${Math.round(m)} m`
+  }
+
+  function formatTime(s) {
+    if (!s && s !== 0) return '—'
+    const mins = Math.round(s / 60)
+    if (mins < 60) return `${mins} min`
+    const h = Math.floor(mins / 60)
+    const r = mins % 60
+    return r ? `${h}h ${r}m` : `${h}h`
+  }
+
+  return (
+    <div style={{
+      marginBottom: 20,
+      padding: 16,
+      borderRadius: 16,
+      border: '1px solid rgba(59,130,246,0.2)',
+      background: 'linear-gradient(135deg, rgba(59,130,246,0.06), rgba(37,99,235,0.04))',
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 18 }}>🧭</span>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>Route Optimization</div>
+            <div style={{ fontSize: 11, color: 'var(--text-soft, #888)' }}>Optimize delivery sequence for {orders.length} orders</div>
+          </div>
+        </div>
+        <button
+          onClick={optimize}
+          disabled={optimizing}
+          style={{
+            padding: '8px 16px',
+            borderRadius: 10,
+            border: 'none',
+            background: optimizing ? '#64748b' : 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
+            color: 'white',
+            fontWeight: 700,
+            fontSize: 12,
+            cursor: optimizing ? 'not-allowed' : 'pointer',
+            opacity: optimizing ? 0.7 : 1,
+          }}
+        >
+          {optimizing ? 'Optimizing...' : 'Optimize Route'}
+        </button>
+      </div>
+
+      {error && (
+        <div style={{ color: '#ef4444', fontSize: 12, marginBottom: 8 }}>{error}</div>
+      )}
+
+      {result && (
+        <div>
+          {result.totalDistance != null && (
+            <div style={{ display: 'flex', gap: 16, marginBottom: 12, flexWrap: 'wrap' }}>
+              <div style={{
+                padding: '8px 14px', borderRadius: 10, background: 'rgba(59,130,246,0.1)',
+                border: '1px solid rgba(59,130,246,0.2)',
+              }}>
+                <span style={{ fontSize: 11, color: '#888' }}>Total Distance: </span>
+                <span style={{ fontWeight: 700, color: '#3b82f6', fontSize: 13 }}>{formatDist(result.totalDistance)}</span>
+              </div>
+              <div style={{
+                padding: '8px 14px', borderRadius: 10, background: 'rgba(16,185,129,0.1)',
+                border: '1px solid rgba(16,185,129,0.2)',
+              }}>
+                <span style={{ fontSize: 11, color: '#888' }}>Total Time: </span>
+                <span style={{ fontWeight: 700, color: '#10b981', fontSize: 13 }}>{formatTime(result.totalDuration)}</span>
+              </div>
+            </div>
+          )}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {result.optimized.map((stop, idx) => (
+              <div key={stop.orderId} style={{
+                display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px',
+                borderRadius: 10, background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.06)',
+              }}>
+                <div style={{
+                  width: 28, height: 28, borderRadius: 8, flexShrink: 0,
+                  background: 'linear-gradient(135deg, #f97316, #ea580c)',
+                  color: 'white', fontWeight: 800, fontSize: 12,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>{stop.sequence}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, fontSize: 12, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    #{stop.order?.invoiceNumber || stop.orderId.slice(-6)}
+                  </div>
+                  <div style={{ fontSize: 10, color: '#888', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {stop.order?.customerAddress || stop.order?.city || ''}
+                  </div>
+                </div>
+                {stop.legDistance != null && (
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: '#3b82f6' }}>{formatDist(stop.legDistance)}</div>
+                    <div style={{ fontSize: 9, color: '#888' }}>{formatTime(stop.legDuration)}</div>
+                  </div>
+                )}
+                <button
+                  onClick={() => onNavigate(stop.order)}
+                  title="Navigate"
+                  style={{
+                    width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+                    border: '1px solid rgba(16,185,129,0.3)',
+                    background: 'rgba(16,185,129,0.1)', color: '#10b981',
+                    cursor: 'pointer', display: 'grid', placeItems: 'center',
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="3 11 22 2 13 21 11 13 3 11" />
+                  </svg>
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

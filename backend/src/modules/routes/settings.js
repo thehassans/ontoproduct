@@ -1240,13 +1240,34 @@ router.get(
       const mask = (s) => s ? "••••••••" : "";
       
       res.json({
+        provider: val.provider || "smtp",
         smtpHost: val.smtpHost || "",
         smtpPort: val.smtpPort || 587,
         smtpUser: val.smtpUser || "",
         smtpPass: val.smtpPass ? mask(val.smtpPass) : "",
         fromName: val.fromName || "BuySial",
         fromEmail: val.fromEmail || "shop@buysial.com",
-        enabled: val.enabled !== false
+        enabled: val.enabled !== false,
+        brevoApiKey: val.brevoApiKey ? mask(val.brevoApiKey) : "",
+        brevoSenderName: val.brevoSenderName || val.fromName || "BuySial",
+        brevoSenderEmail: val.brevoSenderEmail || val.fromEmail || "shop@buysial.com",
+        mailgunApiKey: val.mailgunApiKey ? mask(val.mailgunApiKey) : "",
+        mailgunDomain: val.mailgunDomain || "",
+        mailgunSenderName: val.mailgunSenderName || val.fromName || "BuySial",
+        mailgunSenderEmail: val.mailgunSenderEmail || val.fromEmail || "shop@buysial.com",
+        whatsappNotifyEnabled: val.whatsappNotifyEnabled || false,
+        whatsappNotifyNumber: val.whatsappNotifyNumber || "",
+        automation: val.automation || {
+          orderCreated: true,
+          orderDelivered: true,
+          agentCommission: true,
+          driverCommission: true,
+          totalAmountReport: false,
+          attachPdf: true,
+          notifyAgentEmail: true,
+          notifyDriverEmail: true,
+          notifyOwnerEmail: true,
+        },
       });
     } catch (e) {
       res.status(500).json({ error: e?.message || "failed" });
@@ -1261,13 +1282,19 @@ router.post(
   allowRoles("admin", "user"),
   async (req, res) => {
     try {
-      const { smtpHost, smtpPort, smtpUser, smtpPass, fromName, fromEmail, enabled } = req.body || {};
+      const {
+        provider, smtpHost, smtpPort, smtpUser, smtpPass, fromName, fromEmail, enabled,
+        brevoApiKey, brevoSenderName, brevoSenderEmail,
+        mailgunApiKey, mailgunDomain, mailgunSenderName, mailgunSenderEmail,
+        whatsappNotifyEnabled, whatsappNotifyNumber, automation,
+      } = req.body || {};
       
       let doc = await Setting.findOne({ key: "email" });
       if (!doc) doc = new Setting({ key: "email", value: {} });
       
       const value = doc.value && typeof doc.value === "object" ? doc.value : {};
       
+      if (typeof provider === "string") value.provider = provider.trim();
       if (typeof smtpHost === "string") value.smtpHost = smtpHost.trim();
       if (typeof smtpPort !== "undefined") value.smtpPort = Number(smtpPort) || 587;
       if (typeof smtpUser === "string") value.smtpUser = smtpUser.trim();
@@ -1277,6 +1304,29 @@ router.post(
       if (typeof fromName === "string") value.fromName = fromName.trim();
       if (typeof fromEmail === "string") value.fromEmail = fromEmail.trim();
       if (typeof enabled === "boolean") value.enabled = enabled;
+      // Brevo
+      if (typeof brevoApiKey === "string" && brevoApiKey.trim() && !brevoApiKey.includes("••")) {
+        value.brevoApiKey = brevoApiKey.trim();
+      }
+      if (typeof brevoSenderName === "string") value.brevoSenderName = brevoSenderName.trim();
+      if (typeof brevoSenderEmail === "string") value.brevoSenderEmail = brevoSenderEmail.trim();
+      // Mailgun
+      if (typeof mailgunApiKey === "string" && mailgunApiKey.trim() && !mailgunApiKey.includes("••")) {
+        value.mailgunApiKey = mailgunApiKey.trim();
+      }
+      if (typeof mailgunDomain === "string") value.mailgunDomain = mailgunDomain.trim();
+      if (typeof mailgunSenderName === "string") value.mailgunSenderName = mailgunSenderName.trim();
+      if (typeof mailgunSenderEmail === "string") value.mailgunSenderEmail = mailgunSenderEmail.trim();
+      // WhatsApp
+      if (typeof whatsappNotifyEnabled === "boolean") value.whatsappNotifyEnabled = whatsappNotifyEnabled;
+      if (typeof whatsappNotifyNumber === "string") value.whatsappNotifyNumber = whatsappNotifyNumber.trim();
+      // Automation rules
+      if (automation && typeof automation === "object") {
+        value.automation = {
+          ...(value.automation || {}),
+          ...automation,
+        };
+      }
       
       doc.value = value;
       await doc.save();
@@ -1295,14 +1345,63 @@ router.post(
   allowRoles("admin", "user"),
   async (req, res) => {
     try {
-      const { smtpHost, smtpPort, smtpUser, smtpPass, testEmail } = req.body || {};
+      const { provider, smtpHost, smtpPort, smtpUser, smtpPass, testEmail,
+              brevoApiKey, mailgunApiKey, mailgunDomain } = req.body || {};
+      const prov = (provider || "smtp").toLowerCase();
       
+      const testHtml = `
+        <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 500px; margin: 0 auto;">
+          <h2 style="color: #f97316;">🎉 Email Configuration Successful!</h2>
+          <p>Your BuySial email settings are working correctly via <strong>${prov.toUpperCase()}</strong>.</p>
+          <p style="color: #666; font-size: 14px;">This is a test email sent from your BuySial store.</p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+          <p style="color: #999; font-size: 12px;">© BuySial - Your Premium Shopping Destination</p>
+        </div>`;
+      
+      if (prov === "brevo") {
+        if (!brevoApiKey) return res.status(400).json({ success: false, message: "Brevo API key is required" });
+        const res2 = await fetch("https://api.brevo.com/v3/smtp/email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "api-key": brevoApiKey },
+          body: JSON.stringify({
+            sender: { name: "BuySial", email: smtpUser || "shop@buysial.com" },
+            to: [{ email: testEmail || smtpUser || "shop@buysial.com" }],
+            subject: "✅ BuySial Email Test - Connection Successful!",
+            htmlContent: testHtml,
+          }),
+        });
+        if (!res2.ok) {
+          const errBody = await res2.json().catch(() => ({}));
+          return res.status(400).json({ success: false, message: `Brevo error: ${errBody?.message || res2.statusText}` });
+        }
+        return res.json({ success: true, message: `Test email sent via Brevo to ${testEmail || smtpUser}` });
+      }
+      
+      if (prov === "mailgun") {
+        if (!mailgunApiKey || !mailgunDomain)
+          return res.status(400).json({ success: false, message: "Mailgun API key and domain are required" });
+        const formData = new FormData();
+        formData.append("from", `BuySial <${smtpUser || "shop@buysial.com"}>`);
+        formData.append("to", testEmail || smtpUser || "shop@buysial.com");
+        formData.append("subject", "✅ BuySial Email Test - Connection Successful!");
+        formData.append("html", testHtml);
+        const auth = btoa(`api:${mailgunApiKey}`);
+        const res2 = await fetch(`https://api.mailgun.net/v3/${mailgunDomain}/messages`, {
+          method: "POST", headers: { Authorization: `Basic ${auth}` }, body: formData,
+        });
+        if (!res2.ok) {
+          const errBody = await res2.json().catch(() => ({}));
+          return res.status(400).json({ success: false, message: `Mailgun error: ${errBody?.message || res2.statusText}` });
+        }
+        return res.json({ success: true, message: `Test email sent via Mailgun to ${testEmail || smtpUser}` });
+      }
+      
+      // Default: SMTP
       if (!smtpHost || !smtpUser || !smtpPass) {
         return res.status(400).json({ success: false, message: "SMTP settings are required" });
       }
       
       const nodemailer = (await import("nodemailer")).default;
-      
       const transporter = nodemailer.createTransport({
         host: smtpHost,
         port: Number(smtpPort) || 587,
@@ -1310,24 +1409,14 @@ router.post(
         auth: { user: smtpUser, pass: smtpPass }
       });
       
-      // Verify connection
       await transporter.verify();
       
-      // Send test email if address provided
       if (testEmail && testEmail.includes("@")) {
         await transporter.sendMail({
           from: { name: "BuySial", address: smtpUser },
           to: testEmail,
           subject: "✅ BuySial Email Test - Connection Successful!",
-          html: `
-            <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 500px; margin: 0 auto;">
-              <h2 style="color: #f97316;">🎉 Email Configuration Successful!</h2>
-              <p>Your BuySial email settings are working correctly.</p>
-              <p style="color: #666; font-size: 14px;">This is a test email sent from your BuySial store.</p>
-              <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
-              <p style="color: #999; font-size: 12px;">© BuySial - Your Premium Shopping Destination</p>
-            </div>
-          `
+          html: testHtml
         });
         res.json({ success: true, message: `Test email sent to ${testEmail}` });
       } else {
@@ -1337,7 +1426,7 @@ router.post(
       console.error("Email test error:", e);
       res.status(400).json({ 
         success: false, 
-        message: e?.message || "Failed to connect to SMTP server" 
+        message: e?.message || "Failed to connect to email server" 
       });
     }
   }

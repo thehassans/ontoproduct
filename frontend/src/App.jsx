@@ -206,6 +206,7 @@ const OptimizationPage = lazy(() => import('./pages/seo/OptimizationPage.jsx'))
 const CustomerDashboard = lazy(() => import('./pages/customer/ProfileHub.jsx'))
 const CustomerOrders = lazy(() => import('./pages/customer/Orders.jsx'))
 const TrackOrder = lazy(() => import('./pages/customer/TrackOrder.jsx'))
+const PublicTrackOrder = lazy(() => import('./pages/public/TrackOrder.jsx'))
 const CustomerCoupons = lazy(() => import('./pages/customer/Coupons.jsx'))
 const CustomerWallet = lazy(() => import('./pages/customer/Wallet.jsx'))
 const CustomerWishlist = lazy(() => import('./pages/customer/Wishlist.jsx'))
@@ -583,7 +584,7 @@ function CustomDomainRouter({ children }) {
   )
 }
 
-const GATEWAY_BLOCKED_PREFIXES = ['/user', '/manager', '/admin', '/dropshipper', '/seo', '/designer', '/inbox', '/customer', '/login', '/signup', '/register']
+const GATEWAY_BLOCKED_PREFIXES = ['/user', '/manager', '/admin', '/dropshipper', '/shop-vendor', '/seo', '/designer', '/inbox', '/customer', '/login', '/signup', '/register', '/agent', '/confirmer', '/commissioner', '/investor', '/partner', '/driver']
 
 // Renders CountryGateway only on the main domain storefront (not on any panel routes)
 function CountryGatewayMounter() {
@@ -724,6 +725,9 @@ export default function App() {
             <Route path="/checkout/payment-result" element={<PaymentResult />} />
             <Route path="/payment/success" element={<PaymentSuccess />} />
             <Route path="/payment/cancelled" element={<PaymentCancelled />} />
+
+            {/* Public order tracking (no auth required) */}
+            <Route path="/track-order/:id" element={<PublicTrackOrder />} />
 
             {/* Smart Login - shows customer login on e-commerce, staff on admin */}
             <Route path="/login" element={<SmartLogin />} />

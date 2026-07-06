@@ -5834,6 +5834,17 @@ router.post(
 
     // Stock was already adjusted when order was created, so no need to adjust again on delivery
     emitOrderChange(ord, "delivered").catch(() => {});
+
+    // Send delivered email notification (non-blocking)
+    try {
+      const { sendOrderDeliveredEmail } = await import("../services/emailService.js");
+      sendOrderDeliveredEmail(ord).catch((err) =>
+        console.warn("Failed to send delivered email:", err?.message)
+      );
+    } catch (err) {
+      console.warn("Failed to load email service for delivered email:", err?.message);
+    }
+
     res.json({ message: "Order delivered", order: ord });
   }
 );
@@ -6709,6 +6720,52 @@ router.post(
         };
         if (ownerId) io.to(`workspace:${ownerId}`).emit("driver.location.updated", payload);
         if (order.createdBy) io.to(`user:${String(order.createdBy)}`).emit("driver.location.updated", payload);
+        io.to(`order:${String(order._id)}`).emit("driver.location.updated", payload);
+      } catch {}
+
+      // Geofence check: notify customer when driver is within 500m of delivery destination
+      try {
+        const dest = getDestinationPoint(order);
+        if (dest?.coordinates?.length === 2 && order.shipmentStatus === "out_for_delivery") {
+          const destLat = Number(dest.coordinates[1]);
+          const destLng = Number(dest.coordinates[0]);
+          const R = 6371e3;
+          const dLat = ((Number(lat) - destLat) * Math.PI) / 180;
+          const dLng = ((Number(lng) - destLng) * Math.PI) / 180;
+          const a = Math.sin(dLat / 2) ** 2 + Math.cos((destLat * Math.PI) / 180) * Math.cos((Number(lat) * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+          const distance = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+          if (distance <= 500 && !order.driverTracking?.geofenceTriggered) {
+            order.driverTracking = {
+              ...(order.driverTracking?.toObject?.() || order.driverTracking || {}),
+              geofenceTriggered: true,
+              geofenceTriggeredAt: new Date(),
+            };
+            await order.save();
+
+            // Send WhatsApp notification to customer
+            try {
+              const waService = (await import("../services/whatsappCloud.js")).default;
+              const customerPhone = order.customerPhone || "";
+              if (customerPhone) {
+                await waService.sendText(
+                  customerPhone,
+                  `🚚 Your BuySial order #${order.invoiceNumber || String(order._id).slice(-6)} is arriving soon! The driver is approximately ${Math.round(distance)}m away.`
+                );
+              }
+            } catch {}
+
+            // Emit geofence event to order room
+            try {
+              const io = getIO();
+              io.to(`order:${String(order._id)}`).emit("driver.arriving", {
+                orderId: String(order._id),
+                distance: Math.round(distance),
+                ETA: "2-5 min",
+              });
+            } catch {}
+          }
+        }
       } catch {}
 
       return res.json({
@@ -7272,3 +7329,231 @@ router.get(
     }
   }
 );
+
+// ─── Public Order Tracking (no auth required) ───
+router.get("/public/track/:id", async (req, res) => {
+  try {
+    const orderId = String(req.params.id || "").trim();
+    if (!orderId) return res.status(400).json({ message: "Order ID required" });
+
+    const order = await Order.findById(orderId)
+      .select(
+        "invoiceNumber customerName customerPhone customerAddress city orderCountry locationLat locationLng shipmentStatus logisticsPhase driverTracking deliveryBoy createdAt pickedUpAt deliveredAt total currency items productId"
+      )
+      .populate("deliveryBoy", "firstName lastName phone lastLocation lastKnownLocation driverProfile")
+      .lean();
+
+    if (!order) return res.status(404).json({ message: "Order not found" });
+
+    let driverLocation = null;
+    if (order.deliveryBoy) {
+      const d = order.deliveryBoy;
+      if (d.lastLocation?.lat && d.lastLocation?.lng) {
+        driverLocation = {
+          lat: Number(d.lastLocation.lat),
+          lng: Number(d.lastLocation.lng),
+          heading: d.lastLocation.heading || null,
+          speed: d.lastLocation.speed || null,
+          updatedAt: d.lastLocation.updatedAt || null,
+        };
+      } else if (d.lastKnownLocation?.coordinates?.length === 2) {
+        driverLocation = {
+          lat: Number(d.lastKnownLocation.coordinates[1]),
+          lng: Number(d.lastKnownLocation.coordinates[0]),
+          heading: d.lastKnownLocation.heading || null,
+          speed: d.lastKnownLocation.speed || null,
+          updatedAt: d.lastKnownLocation.updatedAt || null,
+        };
+      }
+    }
+
+    const destination = getDestinationPoint(order);
+    let destinationCoords = null;
+    if (destination?.coordinates?.length === 2) {
+      destinationCoords = {
+        lat: Number(destination.coordinates[1]),
+        lng: Number(destination.coordinates[0]),
+      };
+    }
+
+    let eta = null;
+    if (driverLocation && destinationCoords) {
+      try {
+        const distResult = await googleMapsService.getDistance(
+          { lat: driverLocation.lat, lng: driverLocation.lng },
+          destinationCoords
+        );
+        if (distResult?.success) {
+          eta = { distance: distResult.distance, duration: distResult.duration };
+        }
+      } catch {}
+    }
+
+    const timeline = [];
+    if (order.createdAt) timeline.push({ status: "ordered", label: "Order Placed", timestamp: order.createdAt });
+    if (order.logisticsPhase === "driver_assigned" || order.shipmentStatus === "assigned") {
+      timeline.push({ status: "assigned", label: "Driver Assigned", timestamp: order.driverTracking?.assignedAt || null });
+    }
+    if (order.pickedUpAt || order.shipmentStatus === "picked_up") {
+      timeline.push({ status: "picked_up", label: "Picked Up", timestamp: order.pickedUpAt || null });
+    }
+    if (order.shipmentStatus === "out_for_delivery" || order.shipmentStatus === "in_transit") {
+      timeline.push({ status: "out_for_delivery", label: "Out for Delivery", timestamp: order.driverTracking?.outForDeliveryAt || null });
+    }
+    if (order.deliveredAt || order.shipmentStatus === "delivered") {
+      timeline.push({ status: "delivered", label: "Delivered", timestamp: order.deliveredAt || null });
+    }
+
+    let driverInfo = null;
+    if (order.deliveryBoy) {
+      driverInfo = {
+        name: [order.deliveryBoy.firstName, order.deliveryBoy.lastName].filter(Boolean).join(" ").trim() || "Driver",
+        isOnline: order.deliveryBoy.driverProfile?.isOnline || false,
+      };
+    }
+
+    return res.json({
+      order: {
+        _id: String(order._id),
+        invoiceNumber: order.invoiceNumber,
+        customerName: order.customerName,
+        customerAddress: order.customerAddress,
+        city: order.city,
+        orderCountry: order.orderCountry,
+        total: order.total,
+        currency: order.currency,
+        shipmentStatus: order.shipmentStatus,
+        logisticsPhase: order.logisticsPhase,
+        locationLat: order.locationLat,
+        locationLng: order.locationLng,
+        createdAt: order.createdAt,
+        deliveredAt: order.deliveredAt,
+      },
+      driver: driverInfo,
+      driverLocation,
+      destination: destinationCoords,
+      eta,
+      polyline: order.driverTracking?.directionsPolyline || "",
+      geofenceTriggered: order.driverTracking?.geofenceTriggered || false,
+      timeline,
+    });
+  } catch (err) {
+    return res.status(500).json({ message: err?.message || "Failed to load tracking data" });
+  }
+});
+
+// ─── Route Optimization for Multi-Stop Deliveries ───
+router.post(
+  "/route-optimize",
+  auth,
+  allowRoles("admin", "user", "manager", "driver"),
+  async (req, res) => {
+    try {
+      const { orderIds, origin } = req.body || {};
+      if (!Array.isArray(orderIds) || orderIds.length === 0) {
+        return res.status(400).json({ message: "orderIds array is required" });
+      }
+
+      const orders = await Order.find({ _id: { $in: orderIds } })
+        .select("invoiceNumber customerName customerAddress city orderCountry locationLat locationLng shipmentStatus logisticsPhase")
+        .lean();
+
+      if (!orders.length) return res.status(404).json({ message: "No orders found" });
+
+      const waypoints = [];
+      const orderMap = new Map();
+
+      for (const order of orders) {
+        let lat = Number(order.locationLat);
+        let lng = Number(order.locationLng);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+        waypoints.push({ lat, lng, orderId: String(order._id) });
+        orderMap.set(String(order._id), order);
+      }
+
+      if (waypoints.length === 0) {
+        return res.json({ optimized: [], message: "No orders with valid coordinates" });
+      }
+
+      if (waypoints.length === 1) {
+        return res.json({
+          optimized: [{ ...waypoints[0], sequence: 1, order: orderMap.get(waypoints[0].orderId) }],
+          totalDistance: null,
+          totalDuration: null,
+        });
+      }
+
+      const apiKey = await googleMapsService.getApiKey();
+      const originPoint = origin
+        ? { lat: Number(origin.lat), lng: Number(origin.lng) }
+        : waypoints[0];
+
+      const allPoints = [originPoint, ...waypoints];
+      const originsStr = allPoints.map(p => `${p.lat},${p.lng}`).join("|");
+      const destsStr = allPoints.map(p => `${p.lat},${p.lng}`).join("|");
+
+      const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(originsStr)}&destinations=${encodeURIComponent(destsStr)}&key=${encodeURIComponent(apiKey)}&departure_time=now&traffic_model=best_guess`;
+
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (data.status !== "OK") {
+        return res.status(500).json({ message: "Google Distance Matrix failed", error: data.error_message || data.status });
+      }
+
+      const matrix = [];
+      for (let i = 0; i < allPoints.length; i++) {
+        matrix[i] = [];
+        const row = data.rows[i];
+        for (let j = 0; j < allPoints.length; j++) {
+          const el = row?.elements?.[j];
+          matrix[i][j] = el?.status === "OK"
+            ? { distance: el.distance?.value || 0, duration: el.duration_in_traffic?.value || el.duration?.value || 0 }
+            : { distance: Infinity, duration: Infinity };
+        }
+      }
+
+      const visited = new Set([0]);
+      const route = [];
+      let currentIdx = 0;
+      let totalDistance = 0;
+      let totalDuration = 0;
+
+      while (visited.size < allPoints.length) {
+        let nearestIdx = -1;
+        let nearestDist = Infinity;
+        for (let j = 1; j < allPoints.length; j++) {
+          if (visited.has(j)) continue;
+          const d = matrix[currentIdx][j].distance;
+          if (d < nearestDist) {
+            nearestDist = d;
+            nearestIdx = j;
+          }
+        }
+        if (nearestIdx === -1) break;
+        visited.add(nearestIdx);
+        totalDistance += matrix[currentIdx][nearestIdx].distance;
+        totalDuration += matrix[currentIdx][nearestIdx].duration;
+        route.push({
+          ...waypoints[nearestIdx - 1],
+          sequence: route.length + 1,
+          legDistance: matrix[currentIdx][nearestIdx].distance,
+          legDuration: matrix[currentIdx][nearestIdx].duration,
+          order: orderMap.get(waypoints[nearestIdx - 1].orderId),
+        });
+        currentIdx = nearestIdx;
+      }
+
+      return res.json({
+        optimized: route,
+        totalDistance: totalDistance > 0 ? totalDistance : null,
+        totalDuration: totalDuration > 0 ? totalDuration : null,
+        origin: originPoint,
+      });
+    } catch (err) {
+      return res.status(500).json({ message: err?.message || "Route optimization failed" });
+    }
+  }
+);
+
+export default router;

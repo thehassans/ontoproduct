@@ -14,7 +14,7 @@ import { autoDetectCountryMeta, loadCountryRegistry, saveCountryRegistry } from 
 const SECTIONS = [
   { key: 'profile', label: 'Profile' },
   { key: 'api', label: 'API Setup' },
-  { key: 'email', label: 'Email / SMTP' },
+  { key: 'email', label: 'Email & Automation' },
   { key: 'currency', label: 'Currency' },
   { key: 'label', label: 'Labels' },
   { key: 'shopify', label: 'Shopify' },

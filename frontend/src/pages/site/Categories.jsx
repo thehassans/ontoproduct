@@ -72,67 +72,117 @@ export default function Categories() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f8fafc' }}>
+    <div style={{ minHeight: '100vh', background: 'linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)' }}>
       <Header onCartClick={() => {}} />
 
-      {/* Minimal header */}
-      <div style={{ padding: '28px 16px 12px', maxWidth: 1180, margin: '0 auto' }}>
+      {/* Ultra-premium hero header */}
+      <div style={{ padding: '32px 16px 16px', maxWidth: 1180, margin: '0 auto' }}>
         <div style={{
-          borderRadius: 28,
-          padding: '22px 20px',
-          background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 55%, #334155 100%)',
-          boxShadow: '0 22px 60px rgba(15,23,42,0.16)',
+          borderRadius: 32,
+          padding: '36px 32px',
+          background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #1e293b 100%)',
+          boxShadow: '0 30px 80px rgba(15,23,42,0.20), 0 8px 24px rgba(15,23,42,0.08)',
           color: '#fff',
+          position: 'relative',
+          overflow: 'hidden',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+          {/* Decorative glow */}
+          <div style={{
+            position: 'absolute', top: '-40%', right: '-10%',
+            width: 400, height: 400, borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(249,115,22,0.15) 0%, transparent 70%)',
+            pointerEvents: 'none',
+          }} />
+          <div style={{
+            position: 'absolute', bottom: '-30%', left: '-5%',
+            width: 300, height: 300, borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(99,102,241,0.12) 0%, transparent 70%)',
+            pointerEvents: 'none',
+          }} />
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap', position: 'relative' }}>
             <div>
-              <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.24em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.65)', marginBottom: 8 }}>
-                Explore catalog
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                padding: '6px 14px', borderRadius: 999,
+                background: 'rgba(249,115,22,0.12)',
+                border: '1px solid rgba(249,115,22,0.2)',
+                fontSize: 11, fontWeight: 700, letterSpacing: '0.2em',
+                textTransform: 'uppercase', color: '#fb923c',
+                marginBottom: 16,
+              }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round"/></svg>
+                Explore Catalog
               </div>
-              <h1 style={{ fontSize: 28, fontWeight: 800, color: '#fff', margin: 0, letterSpacing: -0.6 }}>
-                Categories
+              <h1 style={{
+                fontSize: 34, fontWeight: 800, color: '#fff',
+                margin: 0, letterSpacing: -0.8,
+                fontFamily: "'Outfit','Inter',-apple-system,sans-serif",
+              }}>
+                Browse Categories
               </h1>
-              <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.72)', margin: '8px 0 0' }}>
-                Tap a category to open its subcategories and jump straight into the right collection.
+              <p style={{
+                fontSize: 15, color: 'rgba(255,255,255,0.65)',
+                margin: '10px 0 0', maxWidth: 480, lineHeight: 1.5,
+              }}>
+                Discover curated collections across every category. Tap to explore subcategories and find exactly what you need.
               </p>
             </div>
             <div style={{
               display: 'inline-flex',
               alignItems: 'center',
               gap: 10,
-              padding: '10px 14px',
+              padding: '12px 18px',
               borderRadius: 999,
-              background: 'rgba(255,255,255,0.08)',
-              border: '1px solid rgba(255,255,255,0.12)',
+              background: 'rgba(255,255,255,0.06)',
+              border: '1px solid rgba(255,255,255,0.1)',
               fontSize: 13,
               fontWeight: 700,
+              backdropFilter: 'blur(8px)',
             }}>
-              <span style={{ opacity: 0.7 }}>Shopping for</span>
-              <span>{countryLabel}</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fb923c" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+              <span style={{ opacity: 0.6 }}>Shopping for</span>
+              <span style={{ color: '#fb923c' }}>{countryLabel}</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* Categories */}
-      <main style={{ maxWidth: 1180, margin: '0 auto', padding: '10px 16px 100px' }}>
+      <main style={{ maxWidth: 1180, margin: '0 auto', padding: '12px 16px 100px' }}>
         {loading ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
             {[1,2,3,4].map(i => (
               <div key={i} style={{
-                height: 144, borderRadius: 24,
-                background: '#f5f5f5',
-                animation: 'pulse 1.5s ease infinite',
+                height: 160, borderRadius: 28,
+                background: 'linear-gradient(135deg, rgba(226,232,240,0.5), rgba(241,245,249,0.3))',
+                border: '1px solid rgba(226,232,240,0.4)',
+                animation: 'catShimmer 1.8s ease infinite',
               }} />
             ))}
-            <style>{`@keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:0.5 } }`}</style>
+            <style>{`@keyframes catShimmer { 0%,100% { opacity:1 } 50% { opacity:0.4 } }`}</style>
           </div>
         ) : categories.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '48px 0', color: '#999' }}>
-            <p style={{ fontSize: 15, fontWeight: 600 }}>No categories available</p>
+          <div style={{
+            textAlign: 'center', padding: '64px 0',
+            background: 'rgba(255,255,255,0.6)',
+            backdropFilter: 'blur(12px)',
+            borderRadius: 28,
+            border: '1px solid rgba(226,232,240,0.4)',
+          }}>
+            <div style={{
+              width: 64, height: 64, borderRadius: 20,
+              margin: '0 auto 16px',
+              background: 'linear-gradient(135deg, rgba(249,115,22,0.1), rgba(249,115,22,0.04))',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2"><path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
+            </div>
+            <p style={{ fontSize: 16, fontWeight: 700, color: '#475569', margin: 0 }}>No categories available</p>
+            <p style={{ fontSize: 13, color: '#94a3b8', margin: '6px 0 0' }}>Check back soon for new collections</p>
           </div>
         ) : (
-          <div style={{ display: 'grid', gap: 14 }}>
+          <div style={{ display: 'grid', gap: 16 }}>
             {categories.map((cat) => {
               const isExpanded = expandedCat === cat._id
               const subs = cat.subcategories || []
@@ -147,39 +197,52 @@ export default function Categories() {
                     onClick={() => handleCatClick(cat)}
                     style={{
                       width: '100%',
-                      display: 'flex', alignItems: 'center', gap: 16,
-                      padding: '18px 18px',
-                      background: '#fff',
-                      border: '1px solid',
-                      borderColor: isExpanded ? '#dbe4ee' : '#e5e7eb',
-                      borderRadius: isExpanded ? '24px 24px 0 0' : 24,
+                      display: 'flex', alignItems: 'center', gap: 18,
+                      padding: '20px 22px',
+                      background: 'rgba(255,255,255,0.8)',
+                      backdropFilter: 'blur(12px)',
+                      border: '1.5px solid',
+                      borderColor: isExpanded ? 'rgba(249,115,22,0.2)' : 'rgba(226,232,240,0.5)',
+                      borderRadius: isExpanded ? '28px 28px 0 0' : 28,
                       cursor: 'pointer',
-                      transition: 'all 0.18s ease',
+                      transition: 'all 0.25s cubic-bezier(0.16,1,0.3,1)',
                       textAlign: 'left',
-                      boxShadow: isExpanded ? '0 24px 55px rgba(15,23,42,0.08)' : '0 10px 28px rgba(15,23,42,0.04)',
+                      boxShadow: isExpanded
+                        ? '0 30px 70px rgba(15,23,42,0.10), 0 4px 12px rgba(15,23,42,0.04)'
+                        : '0 12px 32px rgba(15,23,42,0.05), 0 2px 8px rgba(15,23,42,0.02)',
                     }}
+                    onMouseEnter={e => { if (!isExpanded) { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 20px 50px rgba(15,23,42,0.08), 0 4px 12px rgba(15,23,42,0.03)'; e.currentTarget.style.borderColor = 'rgba(249,115,22,0.15)' } }}
+                    onMouseLeave={e => { if (!isExpanded) { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 12px 32px rgba(15,23,42,0.05), 0 2px 8px rgba(15,23,42,0.02)'; e.currentTarget.style.borderColor = 'rgba(226,232,240,0.5)' } }}
                   >
                     <div style={{
-                      width: 58, height: 58, borderRadius: 18, flexShrink: 0,
+                      width: 64, height: 64, borderRadius: 20, flexShrink: 0,
                       background: img ? 'transparent' : `linear-gradient(135deg, ${accent[0]}, ${accent[1]})`,
                       overflow: 'hidden',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      boxShadow: '0 12px 24px rgba(15,23,42,0.08)',
+                      boxShadow: img ? '0 8px 20px rgba(15,23,42,0.08)' : `0 12px 28px ${accent[0]}33`,
                     }}>
                       {img ? (
                         <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       ) : (
-                        <span style={{ fontSize: 20, fontWeight: 800, color: '#fff' }}>
+                        <span style={{
+                          fontSize: 22, fontWeight: 800, color: '#fff',
+                          textShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                          fontFamily: "'Outfit','Inter',sans-serif",
+                        }}>
                           {(cat.name || '?')[0].toUpperCase()}
                         </span>
                       )}
                     </div>
 
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>
+                      <div style={{
+                        fontSize: 18, fontWeight: 800, color: '#0f172a',
+                        marginBottom: 4, letterSpacing: -0.3,
+                        fontFamily: "'Outfit','Inter',sans-serif",
+                      }}>
                         {cat.name}
                       </div>
-                      <div style={{ fontSize: 13, color: '#64748b' }}>
+                      <div style={{ fontSize: 13, color: '#64748b', fontWeight: 500 }}>
                         {hasSubs ? `${subs.length} subcategories ready to explore` : 'Open this collection'}
                       </div>
                     </div>
@@ -188,59 +251,77 @@ export default function Categories() {
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: 8,
-                      padding: '10px 12px',
+                      padding: '10px 14px',
                       borderRadius: 999,
-                      background: isExpanded ? '#eff6ff' : '#f8fafc',
-                      color: isExpanded ? '#2563eb' : '#475569',
+                      background: isExpanded
+                        ? 'linear-gradient(135deg, rgba(249,115,22,0.1), rgba(249,115,22,0.04))'
+                        : 'rgba(248,250,252,0.6)',
+                      border: isExpanded ? '1px solid rgba(249,115,22,0.15)' : '1px solid transparent',
+                      color: isExpanded ? '#ea580c' : '#475569',
                       fontSize: 12,
-                      fontWeight: 800,
+                      fontWeight: 700,
                       flexShrink: 0,
+                      transition: 'all 0.2s ease',
                     }}>
                       <span>{hasSubs ? `${subs.length} items` : 'Shop now'}</span>
-                    <svg
-                      width="16" height="16" viewBox="0 0 24 24" fill="none"
-                      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                      style={{
-                        transition: 'transform 0.2s ease',
-                        transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)'
-                      }}
-                    >
-                      <path d="M9 18l6-6-6-6" />
-                    </svg>
+                      <svg
+                        width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                        style={{
+                          transition: 'transform 0.25s cubic-bezier(0.16,1,0.3,1)',
+                          transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)'
+                        }}
+                      >
+                        <path d="M9 18l6-6-6-6" />
+                      </svg>
                     </div>
                   </button>
 
                   {isExpanded && hasSubs && (
                     <div style={{
-                      border: '1px solid #dbe4ee',
+                      border: '1.5px solid rgba(249,115,22,0.15)',
                       borderTop: 'none',
-                      borderRadius: '0 0 24px 24px',
-                      background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)',
-                      padding: 18,
-                      boxShadow: '0 24px 55px rgba(15,23,42,0.08)',
+                      borderRadius: '0 0 28px 28px',
+                      background: 'linear-gradient(180deg, rgba(255,255,255,0.9) 0%, rgba(248,250,252,0.6) 100%)',
+                      backdropFilter: 'blur(12px)',
+                      padding: 22,
+                      boxShadow: '0 30px 70px rgba(15,23,42,0.10), 0 4px 12px rgba(15,23,42,0.04)',
                     }}>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 14 }}>
                         <Link
                           to={`/catalog?category=${encodeURIComponent(cat.name)}`}
                           style={{
-                            minHeight: 126,
-                            borderRadius: 22,
+                            minHeight: 140,
+                            borderRadius: 24,
                             textDecoration: 'none',
-                            padding: 18,
+                            padding: 20,
                             color: '#fff',
                             background: `linear-gradient(135deg, ${accent[0]}, ${accent[1]})`,
-                            boxShadow: '0 16px 32px rgba(249,115,22,0.18)',
+                            boxShadow: `0 16px 36px ${accent[0]}30`,
                             display: 'flex',
                             flexDirection: 'column',
                             justifyContent: 'space-between',
+                            transition: 'all 0.25s cubic-bezier(0.16,1,0.3,1)',
+                            position: 'relative',
+                            overflow: 'hidden',
                           }}
+                          onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = `0 24px 48px ${accent[0]}40` }}
+                          onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = `0 16px 36px ${accent[0]}30` }}
                         >
-                          <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.22em', textTransform: 'uppercase', opacity: 0.8 }}>
+                          <div style={{
+                            fontSize: 11, fontWeight: 800, letterSpacing: '0.22em',
+                            textTransform: 'uppercase', opacity: 0.85,
+                          }}>
                             Explore all
                           </div>
                           <div>
-                            <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 6 }}>View all {cat.name}</div>
-                            <div style={{ fontSize: 13, opacity: 0.9 }}>Browse the full collection</div>
+                            <div style={{ fontSize: 19, fontWeight: 800, marginBottom: 6, fontFamily: "'Outfit','Inter',sans-serif" }}>
+                              View all {cat.name}
+                            </div>
+                            <div style={{ fontSize: 13, opacity: 0.9, display: 'flex', alignItems: 'center', gap: 4 }}>
+                              Browse the full collection
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+                            </div>
                           </div>
                         </Link>
 
@@ -252,39 +333,47 @@ export default function Categories() {
                             key={sub._id || i}
                             to={`/catalog?category=${encodeURIComponent(cat.name)}&subcategory=${encodeURIComponent(sub.name)}`}
                             style={{
-                              display: 'flex', alignItems: 'center', gap: 12,
-                              padding: '14px 14px',
+                              display: 'flex', alignItems: 'center', gap: 14,
+                              padding: '16px 16px',
                               textDecoration: 'none',
-                              border: '1px solid #e2e8f0',
-                              borderRadius: 20,
-                              background: '#fff',
-                              transition: 'transform 0.15s ease, box-shadow 0.15s ease',
-                              boxShadow: '0 10px 24px rgba(15,23,42,0.04)',
+                              border: '1px solid rgba(226,232,240,0.5)',
+                              borderRadius: 22,
+                              background: 'rgba(255,255,255,0.7)',
+                              backdropFilter: 'blur(8px)',
+                              transition: 'all 0.25s cubic-bezier(0.16,1,0.3,1)',
+                              boxShadow: '0 8px 20px rgba(15,23,42,0.03)',
                             }}
-                            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 14px 30px rgba(15,23,42,0.08)' }}
-                            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 10px 24px rgba(15,23,42,0.04)' }}
+                            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 16px 36px rgba(15,23,42,0.08)'; e.currentTarget.style.borderColor = 'rgba(249,115,22,0.15)' }}
+                            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 8px 20px rgba(15,23,42,0.03)'; e.currentTarget.style.borderColor = 'rgba(226,232,240,0.5)' }}
                           >
                             <div style={{
-                              width: 42, height: 42, borderRadius: 14, flexShrink: 0,
+                              width: 46, height: 46, borderRadius: 14, flexShrink: 0,
                               background: subImg ? 'transparent' : `linear-gradient(135deg, ${subAccent[0]}, ${subAccent[1]})`,
                               overflow: 'hidden',
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              boxShadow: subImg ? '0 4px 12px rgba(15,23,42,0.06)' : `0 8px 18px ${subAccent[0]}25`,
                             }}>
                               {subImg ? (
                                 <img src={subImg} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                               ) : (
-                                <span style={{ fontSize: 12, fontWeight: 700, color: '#fff' }}>
+                                <span style={{
+                                  fontSize: 13, fontWeight: 800, color: '#fff',
+                                  fontFamily: "'Outfit','Inter',sans-serif",
+                                }}>
                                   {(sub.name || '?')[0].toUpperCase()}
                                 </span>
                               )}
                             </div>
                             <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', marginBottom: 2 }}>
+                              <div style={{
+                                fontSize: 14, fontWeight: 700, color: '#0f172a',
+                                marginBottom: 2, fontFamily: "'Outfit','Inter',sans-serif",
+                              }}>
                                 {sub.name}
                               </div>
-                              <div style={{ fontSize: 12, color: '#64748b' }}>Open products</div>
+                              <div style={{ fontSize: 12, color: '#94a3b8' }}>Open products</div>
                             </div>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2"><path d="M9 18l6-6-6-6" /></svg>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="2"><path d="M9 18l6-6-6-6" /></svg>
                           </Link>
                         )
                       })}
@@ -299,17 +388,24 @@ export default function Categories() {
 
         {/* Browse all link */}
         {!loading && categories.length > 0 && (
-          <div style={{ textAlign: 'center', marginTop: 28 }}>
+          <div style={{ textAlign: 'center', marginTop: 36 }}>
             <Link
               to="/catalog"
               style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                fontSize: 13, fontWeight: 600, color: '#f97316',
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                fontSize: 14, fontWeight: 700, color: '#fff',
                 textDecoration: 'none',
+                padding: '14px 28px',
+                borderRadius: 999,
+                background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
+                boxShadow: '0 8px 24px rgba(249,115,22,0.25)',
+                transition: 'all 0.25s cubic-bezier(0.16,1,0.3,1)',
               }}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 12px 32px rgba(249,115,22,0.35)' }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(249,115,22,0.25)' }}
             >
               Browse all products
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
             </Link>
           </div>
         )}

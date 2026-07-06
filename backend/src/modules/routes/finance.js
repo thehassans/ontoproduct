@@ -3399,6 +3399,22 @@ router.post(
         }
       }
 
+      // Send agent commission email notification (non-blocking)
+      try {
+        const { sendAgentCommissionEmail } = await import("../services/emailService.js");
+        sendAgentCommissionEmail({
+          agent,
+          amount: amt,
+          currency: "PKR",
+          closingData,
+          pdfPath,
+        }).catch((err) =>
+          console.warn("Failed to send agent commission email:", err?.message)
+        );
+      } catch (err) {
+        console.warn("Failed to load email service for agent commission:", err?.message);
+      }
+
       // Create an agent remittance record marking commission payment
       const payableDeliveredCount = Number(
         closingData.totalPayableDelivered ?? closingData.totalDelivered ?? 0
@@ -5044,6 +5060,28 @@ router.post(
             amount: amt,
           });
         } catch {}
+      }
+
+      // Send driver commission email notification (non-blocking, only when accepted)
+      if (status === "accepted") {
+        try {
+          const { sendDriverCommissionEmail } = await import("../services/emailService.js");
+          const driverPdfPath = remit.acceptedPdfPath || null;
+          sendDriverCommissionEmail({
+            driver,
+            amount: amt,
+            currency: closingData.currency || "PKR",
+            summary: {
+              deliveredCount: closingData.totalDelivered,
+              totalCommission: driver.driverProfile?.paidCommission || amt,
+            },
+            pdfPath: driverPdfPath,
+          }).catch((err) =>
+            console.warn("Failed to send driver commission email:", err?.message)
+          );
+        } catch (err) {
+          console.warn("Failed to load email service for driver commission:", err?.message);
+        }
       }
 
       return res.json({

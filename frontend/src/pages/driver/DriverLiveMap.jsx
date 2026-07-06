@@ -666,6 +666,28 @@ export default function DriverLiveMapPage() {
                 Open on Google Maps
               </button>
               <button
+                onClick={() => openExternalDirections(selectedOrder)}
+                style={{
+                  height: 42,
+                  borderRadius: 14,
+                  border: '1px solid rgba(16,185,129,0.3)',
+                  background: 'linear-gradient(135deg, rgba(16,185,129,0.1), rgba(5,150,105,0.15))',
+                  color: '#10b981',
+                  fontWeight: 800,
+                  fontSize: 12,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 7
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="3 11 22 2 13 21 11 13 3 11" />
+                </svg>
+                Navigate
+              </button>
+              <button
                 onClick={() => openWhatsApp(selectedOrder.customerPhone)}
                 style={{
                   height: 42,
