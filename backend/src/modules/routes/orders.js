@@ -950,9 +950,6 @@ router.post(
 
         if (expectedISOCode) {
           // Reverse geocode to get country from coordinates
-          const { default: googleMapsService } = await import(
-            "../services/googleMapsService.js"
-          );
           const geoResult = await googleMapsService.reverseGeocode(
             finalLocationLat,
             finalLocationLng
@@ -1690,7 +1687,6 @@ router.post(
     let stripePaymentUrl = null;
     if (paymentMethod === "stripe" && ordTotal && ordTotal > 0) {
       try {
-        const Setting = (await import("../models/Setting.js")).default;
         const payDoc = await Setting.findOne({ key: "payments" }).lean();
         const payVal = (payDoc && payDoc.value) || {};
         const stripeKey = process.env.STRIPE_SECRET_KEY || payVal.stripeSecretKey;
@@ -1863,7 +1859,6 @@ router.post(
 // Stripe Webhook: handle checkout.session.completed to mark order as paid
 router.post("/stripe-webhook", async (req, res) => {
   try {
-    const Setting = (await import("../models/Setting.js")).default;
     const payDoc = await Setting.findOne({ key: "payments" }).lean();
     const payVal = (payDoc && payDoc.value) || {};
     const stripeKey = process.env.STRIPE_SECRET_KEY || payVal.stripeSecretKey;
@@ -1925,7 +1920,6 @@ router.get("/:id/payment-status", auth, async (req, res) => {
     // If stripe session exists, check with Stripe API
     if (ord.paymentMethod === "stripe" && ord.stripeSessionId) {
       try {
-        const Setting = (await import("../models/Setting.js")).default;
         const payDoc = await Setting.findOne({ key: "payments" }).lean();
         const payVal = (payDoc && payDoc.value) || {};
         const stripeKey = process.env.STRIPE_SECRET_KEY || payVal.stripeSecretKey;
@@ -1963,7 +1957,6 @@ router.post(
       const ordTotal = Number(ord.total || 0);
       if (ordTotal <= 0) return res.status(400).json({ message: "Order total must be greater than zero" });
 
-      const Setting = (await import("../models/Setting.js")).default;
       const payDoc = await Setting.findOne({ key: "payments" }).lean();
       const payVal = (payDoc && payDoc.value) || {};
       const stripeKey = process.env.STRIPE_SECRET_KEY || payVal.stripeSecretKey;
@@ -7046,8 +7039,6 @@ router.delete("/:id", auth, allowRoles("admin", "user", "manager"), async (req, 
     res.status(500).json({ message: error.message || "Failed to delete order" });
   }
 });
-
-export default router;
 
 // Analytics: last 7 days sales by country
 router.get(
