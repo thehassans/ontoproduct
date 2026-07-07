@@ -203,9 +203,6 @@ function MetricRail({ title, subtitle, items }) {
 }
 
 function CountryPill({ active, label, flag, code, onClick }) {
-  const flagUrl = code && code !== 'all'
-    ? `https://flagcdn.com/w80/${code.toLowerCase()}.png`
-    : null
   return (
     <button
       type="button"
@@ -230,30 +227,7 @@ function CountryPill({ active, label, flag, code, onClick }) {
         opacity: active ? 1 : 0.55,
       }}
     >
-      {flagUrl ? (
-        <img
-          src={flagUrl}
-          alt={label || code}
-          className="country-flag-pill"
-          style={{ width: 28, height: 20, borderRadius: 4, objectFit: 'cover', display: 'block', filter: active ? 'none' : 'grayscale(0.3)', boxShadow: '0 1px 3px rgba(0,0,0,0.15)' }}
-          onError={(e) => {
-            e.target.style.display = 'none'
-            const fallback = e.target.nextElementSibling
-            if (fallback) fallback.style.display = 'inline'
-          }}
-        />
-      ) : null}
-      <span
-        className="country-flag-pill"
-        style={{
-          fontSize: 22,
-          lineHeight: 1,
-          filter: active ? 'none' : 'grayscale(0.3)',
-          display: flagUrl ? 'none' : 'inline',
-        }}
-      >
-        {flag}
-      </span>
+      <span className="country-flag-pill" style={{ fontSize: 22, lineHeight: 1, fontFamily: '"Noto Color Emoji", "Segoe UI Emoji", "Apple Color Emoji", sans-serif', filter: active ? 'none' : 'grayscale(0.3)' }}>{flag}</span>
     </button>
   )
 }
