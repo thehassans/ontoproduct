@@ -202,7 +202,10 @@ function MetricRail({ title, subtitle, items }) {
   )
 }
 
-function CountryPill({ active, label, flag, onClick }) {
+function CountryPill({ active, label, flag, code, onClick }) {
+  const flagUrl = code && code !== 'all'
+    ? `https://flagcdn.com/w80/${code.toLowerCase()}.png`
+    : null
   return (
     <button
       type="button"
@@ -227,7 +230,30 @@ function CountryPill({ active, label, flag, onClick }) {
         opacity: active ? 1 : 0.55,
       }}
     >
-      <span className="country-flag-pill" style={{ fontSize: 22, lineHeight: 1, filter: active ? 'none' : 'grayscale(0.3)' }}>{flag}</span>
+      {flagUrl ? (
+        <img
+          src={flagUrl}
+          alt={label || code}
+          className="country-flag-pill"
+          style={{ width: 28, height: 20, borderRadius: 4, objectFit: 'cover', display: 'block', filter: active ? 'none' : 'grayscale(0.3)', boxShadow: '0 1px 3px rgba(0,0,0,0.15)' }}
+          onError={(e) => {
+            e.target.style.display = 'none'
+            const fallback = e.target.nextElementSibling
+            if (fallback) fallback.style.display = 'inline'
+          }}
+        />
+      ) : null}
+      <span
+        className="country-flag-pill"
+        style={{
+          fontSize: 22,
+          lineHeight: 1,
+          filter: active ? 'none' : 'grayscale(0.3)',
+          display: flagUrl ? 'none' : 'inline',
+        }}
+      >
+        {flag}
+      </span>
     </button>
   )
 }
@@ -492,13 +518,13 @@ export default function DashboardPremium({ mode = 'user' } = {}) {
                   (() => {
                     const countryName = report?.countries?.[0]?.country || report?.summary?.country
                     const meta = getCountryMetaFromName(countryName) || activeMeta || countryMetaOptions[0]
-                    return <CountryPill active label={meta?.label || countryName || 'Country'} flag={meta?.flag || '🌐'} onClick={() => {}} />
+                    return <CountryPill active label={meta?.label || countryName || 'Country'} flag={meta?.flag || '🌐'} code={meta?.code} onClick={() => {}} />
                   })()
                 ) : (
                   <>
-                    <CountryPill active={selectedCountryCode === 'all'} label="All Countries" flag="🌐" onClick={() => handleCountrySelect('all')} />
+                    <CountryPill active={selectedCountryCode === 'all'} label="All Countries" flag="🌐" code="all" onClick={() => handleCountrySelect('all')} />
                     {countryMetaOptions.map((item) => (
-                      <CountryPill key={item.code} active={selectedCountryCode === item.code} label={item.label} flag={item.flag} onClick={() => handleCountrySelect(item.code)} />
+                      <CountryPill key={item.code} active={selectedCountryCode === item.code} label={item.label} flag={item.flag} code={item.code} onClick={() => handleCountrySelect(item.code)} />
                     ))}
                   </>
                 )}
