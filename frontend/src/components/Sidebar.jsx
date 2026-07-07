@@ -289,6 +289,7 @@ export default function Sidebar({
       cfg: {
         'sidebar-bg': '#1a1036',
         'sidebar-border': '#2b1856',
+        'sidebar-fg': '#f5f3ff',
         'nav-active-bg': '#3f1d67',
         'nav-active-fg': '#f5f3ff',
       },
@@ -299,6 +300,7 @@ export default function Sidebar({
       cfg: {
         'sidebar-bg': '#06251f',
         'sidebar-border': '#0b3b31',
+        'sidebar-fg': '#c7f9ec',
         'nav-active-bg': '#0f3f33',
         'nav-active-fg': '#c7f9ec',
       },
@@ -309,6 +311,7 @@ export default function Sidebar({
       cfg: {
         'sidebar-bg': '#0b1220',
         'sidebar-border': '#223',
+        'sidebar-fg': '#e2e8f0',
         'nav-active-bg': '#1e293b',
         'nav-active-fg': '#e2e8f0',
       },
@@ -319,6 +322,7 @@ export default function Sidebar({
       cfg: {
         'sidebar-bg': '#0f172a',
         'sidebar-border': '#1e293b',
+        'sidebar-fg': '#e5e7eb',
         'nav-active-bg': '#1f2937',
         'nav-active-fg': '#e5e7eb',
       },
@@ -329,6 +333,7 @@ export default function Sidebar({
       cfg: {
         'sidebar-bg': '#2a1304',
         'sidebar-border': '#3b1d08',
+        'sidebar-fg': '#ffedd5',
         'nav-active-bg': '#4a1f0a',
         'nav-active-fg': '#ffedd5',
       },
@@ -339,6 +344,7 @@ export default function Sidebar({
       cfg: {
         'sidebar-bg': '#2a0b17',
         'sidebar-border': '#3a0f20',
+        'sidebar-fg': '#ffe4e6',
         'nav-active-bg': '#4b1026',
         'nav-active-fg': '#ffe4e6',
       },
@@ -350,7 +356,6 @@ export default function Sidebar({
         __theme: 'light',
         'sidebar-bg': '#ffffff',
         'sidebar-border': '#e5e7eb',
-        'sidebar-fg': '#111b21',
         'nav-active-bg': '#f1f5f9',
         'nav-active-fg': '#111827',
       },

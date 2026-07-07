@@ -24,12 +24,12 @@ img.emoji {
   --nav-btn-fg: #ffffff;
   --input-bg: #ffffff;
   --input-border: #d1d7db;
-  /* Sidebar/topbar: dark by default for premium look */
-  --sidebar-bg: #0f172a;
-  --sidebar-border: #1e293b;
-  --sidebar-fg: #e6e6e6;
-  --nav-active-bg: #1e293b;
-  --nav-active-fg: #e6e6e6;
+  /* Sidebar/topbar: light by default in light theme */
+  --sidebar-bg: #ffffff;
+  --sidebar-border: #e2e8f0;
+  --sidebar-fg: #111b21;
+  --nav-active-bg: #f1f5f9;
+  --nav-active-fg: #111827;
   /* Accent success (used across Agent Me achievements and badges) */
   --success: #10b981; /* emerald-500 */
   --success-dark: #16a34a; /* green-600 */
@@ -1015,15 +1015,15 @@ img.emoji {
 /* Light Mode Premium Sidebar */
 :root .sidebar.premium,
 :root[data-theme='light'] .sidebar.premium {
-  background: linear-gradient(180deg, #0f172a 0%, #0a0f1e 100%);
-  border-right: 1px solid rgba(255,255,255,0.06);
-  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.2);
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  border-right: 1px solid #e2e8f0;
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.05);
 }
 
 :root .sidebar.premium .header,
 :root[data-theme='light'] .sidebar.premium .header {
   background: transparent;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+  border-bottom: 1px solid #e2e8f0;
 }
 
 :root .sidebar.premium .menu a,
@@ -1031,8 +1031,7 @@ img.emoji {
 :root[data-theme='light'] .sidebar.premium .menu a,
 :root[data-theme='light'] .sidebar.premium .menu .group-header {
   border-radius: 12px;
-  color: var(--sidebar-fg, #e6e6e6);
-  opacity: 0.6;
+  color: #64748b;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
 }
@@ -1058,16 +1057,14 @@ img.emoji {
 :root[data-theme='light'] .sidebar.premium .menu a:hover,
 :root[data-theme='light'] .sidebar.premium .menu .group-header:hover {
   background: linear-gradient(90deg, rgba(139, 92, 246, 0.1), rgba(139, 92, 246, 0.05));
-  color: var(--sidebar-fg, #e6e6e6);
-  opacity: 1;
+  color: #1e293b;
 }
 
 :root .sidebar.premium .menu a.active,
 :root[data-theme='light'] .sidebar.premium .menu a.active {
   background: linear-gradient(90deg, rgba(139, 92, 246, 0.15), rgba(139, 92, 246, 0.05));
-  color: #c4b5fd;
+  color: #7c3aed;
   font-weight: 600;
-  opacity: 1;
 }
 
 :root .sidebar.premium .menu a.active::before,
@@ -1077,7 +1074,7 @@ img.emoji {
 
 :root .sidebar.premium .menu .nav-icon,
 :root[data-theme='light'] .sidebar.premium .menu .nav-icon {
-  color: rgba(230,230,230,0.5);
+  color: #94a3b8;
   transition: all 0.2s ease;
 }
 
@@ -1085,22 +1082,22 @@ img.emoji {
 :root .sidebar.premium .menu .group-header:hover .nav-icon,
 :root[data-theme='light'] .sidebar.premium .menu a:hover .nav-icon,
 :root[data-theme='light'] .sidebar.premium .menu .group-header:hover .nav-icon {
-  color: #c4b5fd;
+  color: #7c3aed;
   transform: scale(1.1);
 }
 
 :root .sidebar.premium .menu a.active .nav-icon,
 :root[data-theme='light'] .sidebar.premium .menu a.active .nav-icon {
-  color: #c4b5fd;
+  color: #7c3aed;
 }
 
 :root .sidebar.premium .floating-submenu,
 :root[data-theme='light'] .sidebar.premium .floating-submenu {
-  background: #1e293b;
+  background: #ffffff;
   backdrop-filter: blur(20px);
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid #e2e8f0;
   border-radius: 14px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12);
 }
 
 /* Dark Mode Premium Sidebar */

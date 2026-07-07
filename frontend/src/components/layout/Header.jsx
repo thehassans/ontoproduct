@@ -461,19 +461,21 @@ export default function Header({ onCartClick, editMode = false, editState = {}, 
           align-items: center;
           border: 1.5px solid rgba(226,232,240,0.8);
           border-radius: 999px;
-          height: 44px;
+          height: 48px;
           overflow: hidden;
-          background: rgba(248,250,252,0.6);
+          background: linear-gradient(135deg, rgba(248,250,252,0.8) 0%, rgba(241,245,249,0.6) 100%);
           max-width: 640px;
           min-width: 0;
-          transition: all 0.25s cubic-bezier(0.16,1,0.3,1);
+          transition: all 0.3s cubic-bezier(0.16,1,0.3,1);
+          box-shadow: 0 1px 3px rgba(15,23,42,0.04), inset 0 1px 0 rgba(255,255,255,0.6);
         }
         .sh-search-form:focus-within {
           border-color: #f97316;
           background: #fff;
-          box-shadow: 0 0 0 4px rgba(249,115,22,0.1), 0 4px 16px rgba(249,115,22,0.08);
+          box-shadow: 0 0 0 4px rgba(249,115,22,0.08), 0 8px 28px rgba(249,115,22,0.12), inset 0 1px 0 rgba(255,255,255,0.8);
+          transform: translateY(-1px);
         }
-        .sh-search-icon { margin: 0 12px; color: #94a3b8; flex-shrink: 0; transition: color 0.2s; }
+        .sh-search-icon { margin: 0 14px; color: #94a3b8; flex-shrink: 0; transition: color 0.2s; }
         .sh-search-form:focus-within .sh-search-icon { color: #f97316; }
         .sh-search-input {
           flex: 1;
@@ -484,13 +486,15 @@ export default function Header({ onCartClick, editMode = false, editState = {}, 
           color: #1e293b;
           min-width: 0;
           font-family: 'Outfit','Inter',-apple-system,sans-serif;
+          font-weight: 500;
+          letter-spacing: 0.01em;
         }
-        .sh-search-input::placeholder { color: #94a3b8; }
+        .sh-search-input::placeholder { color: #94a3b8; font-weight: 400; }
         .sh-search-submit {
           background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
           color: #fff;
           border: none;
-          padding: 0 22px;
+          padding: 0 24px;
           height: 100%;
           font-size: 13px;
           font-weight: 600;
@@ -498,12 +502,15 @@ export default function Header({ onCartClick, editMode = false, editState = {}, 
           white-space: nowrap;
           flex-shrink: 0;
           border-radius: 0 999px 999px 0;
-          letter-spacing: 0.02em;
-          transition: all 0.2s ease;
+          letter-spacing: 0.03em;
+          transition: all 0.25s ease;
+          display: flex;
+          align-items: center;
+          gap: 6px;
         }
         .sh-search-submit:hover {
           background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
-          box-shadow: 0 4px 16px rgba(249,115,22,0.3);
+          box-shadow: 0 4px 20px rgba(249,115,22,0.35);
         }
 
         /* Right icons */
@@ -714,13 +721,13 @@ export default function Header({ onCartClick, editMode = false, editState = {}, 
           gap: 12px;
           width: 90%;
           max-width: 580px;
-          height: 54px;
-          padding: 0 18px;
-          background: rgba(255,255,255,0.95);
-          backdrop-filter: blur(20px);
-          border: 1px solid rgba(255,255,255,0.6);
-          border-radius: 14px;
-          box-shadow: 0 20px 60px rgba(15,23,42,0.25);
+          height: 58px;
+          padding: 0 20px;
+          background: rgba(255,255,255,0.98);
+          backdrop-filter: blur(24px);
+          border: 1px solid rgba(255,255,255,0.8);
+          border-radius: 16px;
+          box-shadow: 0 24px 80px rgba(15,23,42,0.3), 0 8px 24px rgba(15,23,42,0.1);
           animation: shSlideDown 0.25s cubic-bezier(0.16,1,0.3,1);
         }
         @keyframes shSlideDown { from{opacity:0;transform:translateY(-20px)} to{opacity:1;transform:translateY(0)} }
@@ -732,14 +739,15 @@ export default function Header({ onCartClick, editMode = false, editState = {}, 
           color: #1e293b;
           background: transparent;
           font-family: 'Outfit','Inter',-apple-system,sans-serif;
+          font-weight: 500;
         }
         .sh-overlay-input::placeholder { color: #94a3b8; }
         .sh-overlay-close {
           background: rgba(243,244,246,0.8);
           border: none;
-          width: 30px;
-          height: 30px;
-          border-radius: 8px;
+          width: 32px;
+          height: 32px;
+          border-radius: 10px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -828,15 +836,15 @@ export default function Header({ onCartClick, editMode = false, editState = {}, 
           .sh-mobile-right { display: flex; }
           .sh-logo-img { height: 36px; }
           .sh-main-row { padding: 10px 14px; gap: 10px; }
-          .sh-search-form { height: 40px; }
+          .sh-search-form { height: 42px; }
           .sh-search-submit { display: none; }
           .sh-search-input { font-size: 13px; }
         }
         @media (max-width: 640px) {
           .sh-ham { display: none; }
           .sh-logo-link { display: none; }
-          .sh-search-form { max-width: none; border-radius: 10px; }
-          .sh-search-submit { display: flex; border-radius: 0 10px 10px 0; padding: 0 16px; font-size: 12px; background: linear-gradient(135deg, #f97316, #ea580c); }
+          .sh-search-form { max-width: none; border-radius: 12px; height: 44px; }
+          .sh-search-submit { display: flex; border-radius: 0 12px 12px 0; padding: 0 18px; font-size: 12px; background: linear-gradient(135deg, #f97316, #ea580c); }
         }
         @media (max-width: 480px) {
           .sh-logo-img { height: 32px; max-width: 130px; }
