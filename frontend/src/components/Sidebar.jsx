@@ -222,7 +222,7 @@ export default function Sidebar({
 
   function applyNavColors(cfg) {
     if (!cfg) return
-    const RESET_KEYS = ['sidebar-bg', 'sidebar-border', 'nav-active-bg', 'nav-active-fg']
+    const RESET_KEYS = ['sidebar-bg', 'sidebar-border', 'sidebar-fg', 'nav-active-bg', 'nav-active-fg']
     const { __theme, __reset, ...vars } = cfg
     // If reset requested or no vars, clear custom vars and stored preset
     if (__reset || Object.keys(vars).length === 0) {
@@ -350,6 +350,7 @@ export default function Sidebar({
         __theme: 'light',
         'sidebar-bg': '#ffffff',
         'sidebar-border': '#e5e7eb',
+        'sidebar-fg': '#111b21',
         'nav-active-bg': '#f1f5f9',
         'nav-active-fg': '#111827',
       },

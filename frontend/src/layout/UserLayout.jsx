@@ -1769,7 +1769,7 @@ export default function UserLayout() {
                 border: 'none',
                 cursor: 'pointer',
                 flexShrink: 0,
-                color: 'var(--fg)',
+                color: 'var(--sidebar-fg, #e6e6e6)',
                 opacity: 0.7,
               }}
             >
@@ -1782,7 +1782,7 @@ export default function UserLayout() {
           )}
           <div className="flex items-center gap-3" style={{ flex: '1 1 280px', minWidth: 0 }}>
             {isMobile ? (
-              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--fg)', letterSpacing: '0.12em', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', opacity: 0.85 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--sidebar-fg, #e6e6e6)', letterSpacing: '0.12em', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', opacity: 0.85 }}>
                 {me.firstName || 'User'}
               </span>
             ) : !isCompact && (
@@ -2000,7 +2000,7 @@ export default function UserLayout() {
                   border: 'none',
                   cursor: 'pointer',
                   flexShrink: 0,
-                  color: 'var(--fg)',
+                  color: 'var(--sidebar-fg, #e6e6e6)',
                   opacity: 0.7,
                 }}
               >
@@ -2188,7 +2188,7 @@ export default function UserLayout() {
                   backdropFilter: isMobile ? 'none' : 'blur(20px)',
                   boxShadow: isMobile ? 'none' : '0 8px 32px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.1)',
                   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                  color: isMobile ? 'var(--fg)' : 'var(--nav-btn-fg, #ffffff)',
+                  color: isMobile ? 'var(--sidebar-fg, #e6e6e6)' : 'var(--nav-btn-fg, #ffffff)',
                   opacity: isMobile ? 0.7 : 1,
                   display: 'flex',
                   alignItems: 'center',
