@@ -1782,7 +1782,7 @@ export default function UserLayout() {
           )}
           <div className="flex items-center gap-3" style={{ flex: '1 1 280px', minWidth: 0 }}>
             {isMobile ? (
-              <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--fg)', opacity: 0.5, letterSpacing: '0.08em', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--fg)', letterSpacing: '0.12em', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', opacity: 0.85 }}>
                 {me.firstName || 'User'}
               </span>
             ) : !isCompact && (
@@ -2165,9 +2165,10 @@ export default function UserLayout() {
               </div>
             </button>
             )}
-            {/* Notifications dropdown component */}
-            <NotificationsDropdown />
-            {/* Settings dropdown */}
+            {/* Notifications dropdown — hidden on mobile */}
+            {!isMobile && <NotificationsDropdown />}
+            {/* Settings dropdown — hidden on mobile */}
+            {!isMobile && (
             <div style={{ position: 'relative' }}>
               <button
                 id="settings-button"
@@ -2834,6 +2835,7 @@ export default function UserLayout() {
                 </div>
               )}
             </div>
+            )}
           </div>
         </div>
         <div

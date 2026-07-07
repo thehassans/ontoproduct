@@ -210,19 +210,24 @@ function CountryPill({ active, label, flag, onClick }) {
       style={{
         display: 'inline-flex',
         alignItems: 'center',
-        gap: 10,
-        padding: '10px 16px',
-        borderRadius: 999,
-        border: active ? '1px solid rgba(59,130,246,0.35)' : '1px solid rgba(148,163,184,0.2)',
-        background: active ? 'linear-gradient(135deg, rgba(59,130,246,0.14) 0%, rgba(99,102,241,0.16) 100%)' : 'rgba(255,255,255,0.88)',
-        color: active ? '#1d4ed8' : '#334155',
-        boxShadow: active ? '0 12px 30px rgba(59, 130, 246, 0.12)' : 'none',
+        justifyContent: 'center',
+        gap: 8,
+        padding: '8px 14px',
+        borderRadius: 14,
+        border: active ? '1px solid rgba(255,255,255,0.15)' : '1px solid rgba(148,163,184,0.12)',
+        background: active
+          ? 'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.03) 100%)'
+          : 'transparent',
+        backdropFilter: active ? 'blur(12px)' : 'none',
+        boxShadow: active ? '0 8px 24px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.06)' : 'none',
         cursor: 'pointer',
         whiteSpace: 'nowrap',
-        fontWeight: 700,
+        fontWeight: 600,
+        transition: 'all 0.25s ease',
+        opacity: active ? 1 : 0.55,
       }}
     >
-      <span className="country-flag-pill" style={{ fontSize: 18 }}>{flag}</span>
+      <span className="country-flag-pill" style={{ fontSize: 22, lineHeight: 1, filter: active ? 'none' : 'grayscale(0.3)' }}>{flag}</span>
     </button>
   )
 }
@@ -481,7 +486,7 @@ export default function DashboardPremium({ mode = 'user' } = {}) {
             </div>
 
             <div style={{ display: 'grid', gap: 10 }}>
-              <div style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#64748b' }}>{isPartner ? 'Assigned country' : 'Country flags'}</div>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#64748b' }}>{isPartner ? 'Assigned Country' : 'Countries'}</div>
               <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4 }}>
                 {isPartner ? (
                   (() => {
