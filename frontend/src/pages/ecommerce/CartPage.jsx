@@ -67,43 +67,10 @@ export default function CartPage() {
   const GOOGLE_PAY_COUNTRIES = ['SA', 'AE', 'OM', 'BH', 'KW', 'QA', 'GB', 'CA', 'AU']
   const isGooglePayAvailable = GOOGLE_PAY_COUNTRIES.includes(form.country) && paymentConfig.googlepay?.enabled
   
-  // Payment processing state
-  const [showStripeModal, setShowStripeModal] = useState(false)
-  const [stripeClientSecret, setStripeClientSecret] = useState(null)
-  const [processingPayment, setProcessingPayment] = useState(false)
-  const [pendingOrderData, setPendingOrderData] = useState(null)
-  
-  // Card input state
-  const [cardNumber, setCardNumber] = useState('')
-  const [cardExpiry, setCardExpiry] = useState('')
-  const [cardCvc, setCardCvc] = useState('')
-  const [cardName, setCardName] = useState('')
-  const [cardError, setCardError] = useState('')
-  const [cardType, setCardType] = useState(null) // visa, mastercard, amex, discover, diners, jcb, unionpay
-  
   // Map picker state
   const [showMapPicker, setShowMapPicker] = useState(false)
   const [mapsApiKey, setMapsApiKey] = useState('')
   const [mapLoaded, setMapLoaded] = useState(false)
-  
-  // Stripe Elements state
-  const [stripeInstance, setStripeInstance] = useState(null)
-  const [stripeElements, setStripeElements] = useState(null)
-  const [cardElement, setCardElement] = useState(null)
-  const [stripeReady, setStripeReady] = useState(false)
-  
-  // Detect card type from number
-  const detectCardType = (number) => {
-    const cleaned = number.replace(/\s/g, '')
-    if (/^4/.test(cleaned)) return 'visa'
-    if (/^5[1-5]/.test(cleaned) || /^2[2-7]/.test(cleaned)) return 'mastercard'
-    if (/^3[47]/.test(cleaned)) return 'amex'
-    if (/^6(?:011|5)/.test(cleaned)) return 'discover'
-    if (/^3(?:0[0-5]|[68])/.test(cleaned)) return 'diners'
-    if (/^35/.test(cleaned)) return 'jcb'
-    if (/^62/.test(cleaned)) return 'unionpay'
-    return null
-  }
   
   // Card brand icons - inline SVG for reliability
   const CardIcon = ({ type, active }) => {
@@ -395,10 +362,6 @@ export default function CartPage() {
         }
       }
       setPaymentConfig(mergedConfig)
-      // Load Stripe.js if enabled
-      if (mergedConfig.stripe?.enabled && mergedConfig.stripe?.publishableKey) {
-        loadStripeJs(mergedConfig.stripe.publishableKey)
-      }
     })
     // Load maps API key
     apiGet('/api/settings/maps-key').then(data => { if (alive && data?.mapsKey) setMapsApiKey(data.mapsKey) }).catch(()=>{})
@@ -464,88 +427,6 @@ export default function CartPage() {
     }
     setShowMapPicker(false)
   }
-  
-  // Load Stripe.js and initialize Elements
-  const loadStripeJs = (publishableKey) => {
-    if (window.Stripe) {
-      initializeStripe(publishableKey)
-      return
-    }
-    const script = document.createElement('script')
-    script.src = 'https://js.stripe.com/v3/'
-    script.async = true
-    script.onload = () => initializeStripe(publishableKey)
-    document.head.appendChild(script)
-  }
-  
-  const initializeStripe = (publishableKey) => {
-    if (!window.Stripe || stripeInstance) return
-    const stripe = window.Stripe(publishableKey)
-    setStripeInstance(stripe)
-    const elements = stripe.elements()
-    setStripeElements(elements)
-  }
-  
-  // Mount Stripe Card Element when payment method is stripe
-  useEffect(() => {
-    if (paymentMethod !== 'stripe' || !stripeElements) return
-    if (cardElement) return // Already mounted
-    
-    let mounted = true
-    let timeoutId = null
-    
-    // Wait for the container to be in DOM
-    const mountCard = () => {
-      if (!mounted) return
-      const container = document.getElementById('stripe-card-element-mount')
-      if (!container) {
-        timeoutId = setTimeout(mountCard, 100)
-        return
-      }
-      try {
-        const card = stripeElements.create('card', {
-          style: {
-            base: {
-              fontSize: '16px',
-              color: '#1e293b',
-              fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-              '::placeholder': { color: '#94a3b8' }
-            },
-            invalid: { color: '#ef4444' }
-          }
-        })
-        card.mount('#stripe-card-element-mount')
-        card.on('ready', () => { if (mounted) setStripeReady(true) })
-        card.on('change', (event) => {
-          if (!mounted) return
-          if (event.error) setCardError(event.error.message)
-          else setCardError('')
-        })
-        if (mounted) setCardElement(card)
-      } catch (err) {
-        console.error('Stripe mount error:', err)
-      }
-    }
-    mountCard()
-    
-    return () => {
-      mounted = false
-      if (timeoutId) clearTimeout(timeoutId)
-    }
-  }, [paymentMethod, stripeElements, cardElement])
-  
-  // Cleanup card element when unmounting or switching payment method
-  useEffect(() => {
-    return () => {
-      if (cardElement) {
-        try {
-          cardElement.unmount()
-        } catch (e) {
-          // Ignore unmount errors
-        }
-      }
-    }
-  }, [])
   
   // Countries where COD is NOT available (online payment only)
   const NO_COD_COUNTRIES = ['GB', 'UK']
@@ -1070,19 +951,6 @@ export default function CartPage() {
 
   async function submitOrder() {
     if (!validateForm()) return
-    
-    // Validate Stripe payment
-    if (paymentMethod === 'stripe') {
-      setCardError('')
-      if (!stripeInstance || !cardElement) {
-        setCardError('Stripe is not loaded. Please refresh the page.')
-        return
-      }
-      if (!cardName.trim()) {
-        setCardError('Please enter cardholder name')
-        return
-      }
-    }
 
     try {
       setIsLoading(true)
@@ -1116,54 +984,7 @@ export default function CartPage() {
   }
 
   async function handleStripePayment(orderData) {
-    try {
-      if (!stripeInstance || !cardElement) {
-        throw new Error('Stripe is not initialized. Please refresh the page.')
-      }
-      
-      const total = getRemainingToPay()
-      
-      // Create payment method using Stripe Elements (secure - no raw card data sent to our server)
-      const { error: pmError, paymentMethod: pm } = await stripeInstance.createPaymentMethod({
-        type: 'card',
-        card: cardElement,
-        billing_details: { name: cardName || form.name }
-      })
-      
-      if (pmError) {
-        throw new Error(pmError.message)
-      }
-      
-      // Send only the payment method ID to our backend (PCI compliant)
-      const res = await apiPost('/api/ecommerce/payments/stripe/process-payment', {
-        amount: total,
-        currency: displayCurrency.toLowerCase(),
-        paymentMethodId: pm.id
-      })
-      
-      if (res.success) {
-        // Payment successful - place order
-        const paidOrderData = { ...orderData, paymentStatus: 'paid', paymentId: res.paymentIntentId }
-        await placeOrder(paidOrderData)
-      } else if (res.requiresAction) {
-        // 3D Secure authentication required
-        const { error: confirmError, paymentIntent } = await stripeInstance.confirmCardPayment(res.clientSecret)
-        if (confirmError) {
-          throw new Error(confirmError.message)
-        }
-        if (paymentIntent.status === 'succeeded') {
-          const paidOrderData = { ...orderData, paymentStatus: 'paid', paymentId: paymentIntent.id }
-          await placeOrder(paidOrderData)
-        } else {
-          throw new Error('Payment authentication failed')
-        }
-      } else {
-        throw new Error(res.message || 'Payment failed')
-      }
-    } catch (err) {
-      setCardError(err?.message || 'Payment failed. Please check your card details.')
-      throw err
-    }
+    await placeOrder(orderData, { redirectToStripe: true })
   }
 
   async function handlePayPalPayment(orderData) {
@@ -1190,7 +1011,7 @@ export default function CartPage() {
     }
   }
 
-  async function placeOrder(orderData) {
+  async function placeOrder(orderData, opts = {}) {
     // If coupon was applied, increment usage count
     if (couponApplied?.code) {
       try {
@@ -1208,6 +1029,12 @@ export default function CartPage() {
       result = await apiPost('/api/ecommerce/customer/orders', orderData)
     } else {
       result = await apiPost('/api/ecommerce/orders', orderData)
+    }
+
+    // If Stripe Checkout URL returned, redirect to Stripe hosted checkout
+    if (opts.redirectToStripe && result?.stripePaymentUrl) {
+      window.location.href = result.stripePaymentUrl
+      return
     }
     
     // Build order info for success page (merge cart items with order response)
@@ -1245,25 +1072,6 @@ export default function CartPage() {
     setCartItems([])
     clearCartItems()
     navigate('/order-success', { state: { order: orderForSuccess } })
-  }
-
-  async function handleStripeSuccess(paymentIntentId) {
-    try {
-      setProcessingPayment(true)
-      // Confirm payment on backend
-      await apiPost('/api/ecommerce/payments/stripe/confirm', {
-        paymentIntentId
-      })
-      
-      // Place the order with paid status
-      const orderData = { ...pendingOrderData, paymentStatus: 'paid', paymentId: paymentIntentId }
-      await placeOrder(orderData)
-      setShowStripeModal(false)
-    } catch (err) {
-      toast.error(err?.message || 'Payment confirmed but order failed. Please contact support.')
-    } finally {
-      setProcessingPayment(false)
-    }
   }
 
   return (
@@ -1502,47 +1310,12 @@ export default function CartPage() {
                     </label>
                     )}
                     
-                    {/* Stripe Card Element - Show when Stripe selected */}
+                    {/* Stripe Info - Show when Stripe selected */}
                     {isStripeAvailable && paymentMethod === 'stripe' && (
                       <div style={{ marginLeft: 26, padding: '16px', background: '#fafafa', borderRadius: 10, border: '1px solid #e2e8f0' }}>
-                        <div style={{ marginBottom: 12 }}>
-                          <label htmlFor="card-holder-name" style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#64748b', marginBottom: 6, textTransform: 'uppercase' }}>Cardholder Name</label>
-                          <input
-                            id="card-holder-name"
-                            name="cardName"
-                            type="text"
-                            autoComplete="cc-name"
-                            value={cardName}
-                            onChange={(e) => setCardName(e.target.value)}
-                            placeholder="John Doe"
-                            style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, background: 'white' }}
-                          />
-                        </div>
-                        <div style={{ marginBottom: 12 }}>
-                          <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#64748b', marginBottom: 6, textTransform: 'uppercase' }}>Card Details</label>
-                          <div 
-                            id="stripe-card-element-mount" 
-                            style={{ 
-                              padding: '12px', 
-                              border: '1px solid #e2e8f0', 
-                              borderRadius: 8, 
-                              background: 'white',
-                              minHeight: 44
-                            }}
-                          >
-                            {!stripeReady && (
-                              <div style={{ color: '#94a3b8', fontSize: 14 }}>Loading secure card input...</div>
-                            )}
-                          </div>
-                        </div>
-                        {cardError && (
-                          <div style={{ marginTop: 12, padding: '8px 12px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 6, color: '#dc2626', fontSize: 12 }}>
-                            {cardError}
-                          </div>
-                        )}
-                        <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 6, color: '#10b981', fontSize: 11 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#10b981', fontSize: 12, fontWeight: 500 }}>
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-                          Secured by Stripe - Your card details are encrypted
+                          You will be redirected to Stripe's secure checkout page to complete your payment.
                         </div>
                       </div>
                     )}
@@ -1817,129 +1590,6 @@ export default function CartPage() {
       {/* Mobile Bottom Navigation */}
       <MobileBottomNav />
 
-      {/* Stripe Payment Modal */}
-      {showStripeModal && stripeClientSecret && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div style={{ background: 'white', borderRadius: 16, width: '100%', maxWidth: 450, padding: 24, boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>💳 Complete Payment</h3>
-              <button onClick={() => { setShowStripeModal(false); setStripeClientSecret(null) }} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', padding: 4 }}>×</button>
-            </div>
-            
-            <div style={{ padding: 16, background: '#f8fafc', borderRadius: 12, marginBottom: 20 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                <span style={{ color: '#64748b' }}>Amount to pay</span>
-                <span style={{ fontWeight: 700, fontSize: 18 }}>{formatPrice(getRemainingToPay(), displayCurrency)}</span>
-              </div>
-            </div>
-
-            {/* Stripe Card Element Container */}
-            <div id="stripe-card-element" style={{ padding: 16, border: '1px solid #e2e8f0', borderRadius: 8, marginBottom: 16 }}>
-              <div style={{ marginBottom: 12 }}>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 6 }}>Card Number</label>
-                <input 
-                  type="text" 
-                  id="stripe-card-number"
-                  placeholder="4242 4242 4242 4242" 
-                  maxLength={19}
-                  style={{ width: '100%', padding: '12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }}
-                  onChange={(e) => {
-                    let v = e.target.value.replace(/\s/g, '').replace(/\D/g, '')
-                    v = v.match(/.{1,4}/g)?.join(' ') || v
-                    e.target.value = v
-                  }}
-                />
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 6 }}>Expiry</label>
-                  <input 
-                    type="text" 
-                    id="stripe-card-expiry"
-                    placeholder="MM/YY" 
-                    maxLength={5}
-                    style={{ width: '100%', padding: '12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }}
-                    onChange={(e) => {
-                      let v = e.target.value.replace(/\D/g, '')
-                      if (v.length >= 2) v = v.slice(0,2) + '/' + v.slice(2,4)
-                      e.target.value = v
-                    }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 6 }}>CVC</label>
-                  <input 
-                    type="text" 
-                    id="stripe-card-cvc"
-                    placeholder="123" 
-                    maxLength={4}
-                    style={{ width: '100%', padding: '12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <button
-              onClick={async () => {
-                const cardNumber = document.getElementById('stripe-card-number')?.value?.replace(/\s/g, '')
-                const expiry = document.getElementById('stripe-card-expiry')?.value
-                const cvc = document.getElementById('stripe-card-cvc')?.value
-                
-                if (!cardNumber || cardNumber.length < 13) {
-                  toast.error('Please enter a valid card number')
-                  return
-                }
-                if (!expiry || expiry.length < 5) {
-                  toast.error('Please enter card expiry date')
-                  return
-                }
-                if (!cvc || cvc.length < 3) {
-                  toast.error('Please enter CVC')
-                  return
-                }
-
-                setProcessingPayment(true)
-                try {
-                  // For demo/sandbox, we'll confirm the payment intent directly
-                  // In production, you'd use Stripe.js Elements
-                  const res = await apiPost('/api/ecommerce/payments/stripe/confirm', {
-                    paymentIntentId: stripeClientSecret.split('_secret_')[0]
-                  })
-                  
-                  if (res.success) {
-                    await handleStripeSuccess(stripeClientSecret.split('_secret_')[0])
-                  } else {
-                    toast.error('Payment failed. Please try again.')
-                  }
-                } catch (err) {
-                  toast.error(err?.message || 'Payment failed')
-                } finally {
-                  setProcessingPayment(false)
-                }
-              }}
-              disabled={processingPayment}
-              style={{
-                width: '100%',
-                padding: '14px 20px',
-                background: processingPayment ? '#94a3b8' : 'linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)',
-                color: 'white',
-                border: 'none',
-                borderRadius: 10,
-                fontSize: 15,
-                fontWeight: 700,
-                cursor: processingPayment ? 'wait' : 'pointer'
-              }}
-            >
-              {processingPayment ? 'Processing...' : `Pay ${formatPrice(getRemainingToPay(), displayCurrency)}`}
-            </button>
-            
-            <p style={{ textAlign: 'center', fontSize: 11, color: '#94a3b8', marginTop: 12 }}>
-              🔒 Secured by Stripe. Your card details are encrypted.
-            </p>
-          </div>
-        </div>
-      )}
-      
       {/* Google Maps Location Picker Modal */}
       {showMapPicker && (
         <div style={{

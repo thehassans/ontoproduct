@@ -1003,8 +1003,105 @@ router.post("/orders", async (req, res) => {
     
     // Send order confirmation email (non-blocking)
     sendOrderConfirmationEmail(doc).catch(err => console.error('Email send error:', err));
-    
-    return res.status(201).json({ message: "Order received", order: doc });
+
+    // If payment method is stripe, create a Stripe Checkout Session and return payment link
+    let stripePaymentUrl = null;
+    const ordTotal = Number(doc.amountDue || doc.total || 0);
+    if (String(paymentMethod || "") === "stripe" && ordTotal > 0) {
+      try {
+        const payDoc = await Setting.findOne({ key: "payments" }).lean();
+        const payVal = (payDoc && payDoc.value) || {};
+        const stripeKey = process.env.STRIPE_SECRET_KEY || payVal.stripeSecretKey;
+
+        if (stripeKey) {
+          const countryCurrencyMap = {
+            UAE: "aed", KSA: "sar", Oman: "omr", Bahrain: "bhd",
+            Kuwait: "kwd", Qatar: "qar", India: "inr", Pakistan: "pkr",
+            Jordan: "jod", USA: "usd", UK: "gbp", Canada: "cad", Australia: "aud",
+          };
+          const stripeCurrency = (String(currency || "").toLowerCase()) || countryCurrencyMap[String(orderCountry || "").trim()] || "sar";
+
+          const brandDoc = await Setting.findOne({ key: "branding" }).lean();
+          const brandVal = (brandDoc && brandDoc.value) || {};
+          const baseUrl = process.env.FRONTEND_URL || process.env.BASE_URL || req.headers.origin || "https://buysial.com";
+          const businessName = brandVal.appName || brandVal.title || "BuySial";
+
+          const absImageUrl = (imgPath) => {
+            if (!imgPath) return null;
+            if (imgPath.startsWith("http")) return imgPath;
+            return `${baseUrl}${imgPath.startsWith("/") ? "" : "/"}${imgPath}`;
+          };
+          const logoUrl = absImageUrl(brandVal.headerLogo || brandVal.loginLogo);
+
+          const lineItems = orderItems.map((it) => {
+            const prod = byId[String(it.productId)];
+            const productImages = [];
+            const imgUrl = absImageUrl(prod?.imagePath || (prod?.images && prod.images[0]));
+            if (imgUrl) productImages.push(imgUrl);
+            else if (logoUrl) productImages.push(logoUrl);
+            return {
+              price_data: {
+                currency: stripeCurrency,
+                product_data: {
+                  name: it.name || "Product",
+                  ...(productImages.length ? { images: productImages.slice(0, 8) } : {}),
+                },
+                unit_amount: Math.round(Number(it.price || 0) * 100),
+              },
+              quantity: Math.max(1, Number(it.quantity || 1)),
+            };
+          });
+
+          if (lineItems.length === 0) {
+            lineItems.push({
+              price_data: {
+                currency: stripeCurrency,
+                product_data: { name: `Order #${doc.invoiceNumber || doc._id}`, ...(logoUrl ? { images: [logoUrl] } : {}) },
+                unit_amount: Math.round(ordTotal * 100),
+              },
+              quantity: 1,
+            });
+          }
+
+          const Stripe = (await import("stripe")).default;
+          const stripe = new Stripe(stripeKey);
+
+          const sessionOpts = {
+            mode: "payment",
+            line_items: lineItems,
+            metadata: {
+              orderId: String(doc._id),
+              invoiceNumber: doc.invoiceNumber || "",
+              customerName: doc.customerName || "",
+              customerPhone: doc.customerPhone || "",
+            },
+            payment_intent_data: {
+              description: `${businessName} - Order #${doc.invoiceNumber || doc._id}`,
+              metadata: { orderId: String(doc._id), invoiceNumber: doc.invoiceNumber || "" },
+            },
+            custom_text: {
+              submit: { message: `Thank you for shopping with ${businessName}!` },
+            },
+            success_url: `${baseUrl}/payment/success?order=${doc._id}&session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${baseUrl}/payment/cancelled?order=${doc._id}`,
+          };
+
+          const session = await stripe.checkout.sessions.create(sessionOpts);
+          stripePaymentUrl = session.url;
+          doc.stripePaymentLink = session.url;
+          doc.stripeSessionId = session.id;
+          await doc.save();
+        }
+      } catch (stripeErr) {
+        console.error("[Ecommerce Guest Orders] Failed to create Stripe session:", stripeErr?.message);
+      }
+    }
+
+    return res.status(201).json({
+      message: "Order received",
+      order: doc,
+      ...(stripePaymentUrl ? { stripePaymentUrl } : {}),
+    });
   } catch (err) {
     return res
       .status(500)
@@ -1194,8 +1291,106 @@ router.post(
       
       // Send order confirmation email (non-blocking)
       sendOrderConfirmationEmail(doc).catch(err => console.error('Email send error:', err));
-      
-      return res.status(201).json({ message: "Order placed successfully", order: doc });
+
+      // If payment method is stripe, create a Stripe Checkout Session and return payment link
+      let stripePaymentUrl = null;
+      const ordTotal = Number(doc.amountDue || doc.total || 0);
+      if (String(paymentMethod || "") === "stripe" && ordTotal > 0) {
+        try {
+          const payDoc = await Setting.findOne({ key: "payments" }).lean();
+          const payVal = (payDoc && payDoc.value) || {};
+          const stripeKey = process.env.STRIPE_SECRET_KEY || payVal.stripeSecretKey;
+
+          if (stripeKey) {
+            const countryCurrencyMap = {
+              UAE: "aed", KSA: "sar", Oman: "omr", Bahrain: "bhd",
+              Kuwait: "kwd", Qatar: "qar", India: "inr", Pakistan: "pkr",
+              Jordan: "jod", USA: "usd", UK: "gbp", Canada: "cad", Australia: "aud",
+            };
+            const stripeCurrency = (String(currency || "").toLowerCase()) || countryCurrencyMap[String(orderCountry || "").trim()] || "sar";
+
+            const brandDoc = await Setting.findOne({ key: "branding" }).lean();
+            const brandVal = (brandDoc && brandDoc.value) || {};
+            const baseUrl = process.env.FRONTEND_URL || process.env.BASE_URL || req.headers.origin || "https://buysial.com";
+            const businessName = brandVal.appName || brandVal.title || "BuySial";
+
+            const absImageUrl = (imgPath) => {
+              if (!imgPath) return null;
+              if (imgPath.startsWith("http")) return imgPath;
+              return `${baseUrl}${imgPath.startsWith("/") ? "" : "/"}${imgPath}`;
+            };
+            const logoUrl = absImageUrl(brandVal.headerLogo || brandVal.loginLogo);
+
+            const lineItems = orderItems.map((it) => {
+              const prod = byId[String(it.productId)];
+              const productImages = [];
+              const imgUrl = absImageUrl(prod?.imagePath || (prod?.images && prod.images[0]));
+              if (imgUrl) productImages.push(imgUrl);
+              else if (logoUrl) productImages.push(logoUrl);
+              return {
+                price_data: {
+                  currency: stripeCurrency,
+                  product_data: {
+                    name: it.name || "Product",
+                    ...(productImages.length ? { images: productImages.slice(0, 8) } : {}),
+                  },
+                  unit_amount: Math.round(Number(it.price || 0) * 100),
+                },
+                quantity: Math.max(1, Number(it.quantity || 1)),
+              };
+            });
+
+            if (lineItems.length === 0) {
+              lineItems.push({
+                price_data: {
+                  currency: stripeCurrency,
+                  product_data: { name: `Order #${doc.invoiceNumber || doc._id}`, ...(logoUrl ? { images: [logoUrl] } : {}) },
+                  unit_amount: Math.round(ordTotal * 100),
+                },
+                quantity: 1,
+              });
+            }
+
+            const Stripe = (await import("stripe")).default;
+            const stripe = new Stripe(stripeKey);
+
+            const sessionOpts = {
+              mode: "payment",
+              line_items: lineItems,
+              customer_email: customer.email || undefined,
+              metadata: {
+                orderId: String(doc._id),
+                invoiceNumber: doc.invoiceNumber || "",
+                customerName: doc.customerName || "",
+                customerPhone: doc.customerPhone || "",
+              },
+              payment_intent_data: {
+                description: `${businessName} - Order #${doc.invoiceNumber || doc._id}`,
+                metadata: { orderId: String(doc._id), invoiceNumber: doc.invoiceNumber || "" },
+              },
+              custom_text: {
+                submit: { message: `Thank you for shopping with ${businessName}!` },
+              },
+              success_url: `${baseUrl}/payment/success?order=${doc._id}&session_id={CHECKOUT_SESSION_ID}`,
+              cancel_url: `${baseUrl}/payment/cancelled?order=${doc._id}`,
+            };
+
+            const session = await stripe.checkout.sessions.create(sessionOpts);
+            stripePaymentUrl = session.url;
+            doc.stripePaymentLink = session.url;
+            doc.stripeSessionId = session.id;
+            await doc.save();
+          }
+        } catch (stripeErr) {
+          console.error("[Ecommerce Customer Orders] Failed to create Stripe session:", stripeErr?.message);
+        }
+      }
+
+      return res.status(201).json({
+        message: "Order placed successfully",
+        order: doc,
+        ...(stripePaymentUrl ? { stripePaymentUrl } : {}),
+      });
     } catch (err) {
       return res.status(500).json({ 
         message: "Failed to submit order", 
