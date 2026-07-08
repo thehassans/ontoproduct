@@ -18,6 +18,7 @@ export default function HomeMiniBanners() {
     bannerDesktop: null,
     bannerMobile: null,
   })
+  const [filterCountry, setFilterCountry] = useState('')
 
   const COUNTRIES = [
     '','UAE','Saudi Arabia','Oman','Bahrain','India','Kuwait',
@@ -164,17 +165,26 @@ export default function HomeMiniBanners() {
 
       {/* Existing Banners */}
       <div style={s.card}>
-        <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700, color: '#1f2937' }}>
-          Existing Banners ({banners.length})
-        </h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#1f2937' }}>
+            Existing Banners ({filterCountry ? banners.filter(b => !b.country || b.country === filterCountry).length : banners.length})
+          </h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <label style={{ fontSize: 12, fontWeight: 600, color: '#6b7280' }}>Filter:</label>
+            <select style={{ ...s.input, width: 'auto', minWidth: 130 }} value={filterCountry} onChange={e => setFilterCountry(e.target.value)}>
+              <option value="">All Countries</option>
+              {COUNTRIES.filter(c => c).map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+        </div>
 
         {loading ? (
           <p style={{ color: '#9ca3af', fontSize: 14 }}>Loading...</p>
-        ) : banners.length === 0 ? (
-          <p style={{ color: '#9ca3af', fontSize: 14 }}>No mini banners uploaded yet.</p>
+        ) : banners.filter(b => !filterCountry || !b.country || b.country === filterCountry).length === 0 ? (
+          <p style={{ color: '#9ca3af', fontSize: 14 }}>No mini banners {filterCountry ? `for ${filterCountry}` : 'uploaded yet'}.</p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {banners.map(b => (
+            {banners.filter(b => !filterCountry || !b.country || b.country === filterCountry).map(b => (
               <div key={b._id} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: 12, background: '#f9fafb', borderRadius: 12, border: '1px solid #f3f4f6' }}>
                 <img
                   src={mediaUrl(b.mobileImageUrl || b.imageUrl || '')}

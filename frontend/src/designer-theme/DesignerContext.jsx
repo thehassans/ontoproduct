@@ -89,10 +89,19 @@ export function DesignerProvider({ children }) {
   );
 }
 
+const noop = () => {};
+const defaultContext = {
+  theme,
+  state: { activeSection: 'categories', previewData: { categories: [], banners: [], brands: [], headlines: {} }, previewReloadKey: 0, isPreviewLoading: false },
+  setPreviewData: noop,
+  toggleCategory: noop,
+  setActiveSection: noop,
+  reloadPreview: noop,
+};
+
 export function useDesigner() {
   const ctx = useContext(DesignerContext);
-  if (!ctx) throw new Error('useDesigner must be used inside DesignerProvider');
-  return ctx;
+  return ctx || defaultContext;
 }
 
 export default DesignerContext;

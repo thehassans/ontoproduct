@@ -25,6 +25,7 @@ export default function HomeBanners() {
   const [editBanner, setEditBanner] = useState(null)
   const [editForm, setEditForm] = useState({ title: '', country: '', linkCategory: '', active: true })
   const [editSaving, setEditSaving] = useState(false)
+  const [filterCountry, setFilterCountry] = useState('')
 
   const COUNTRIES = [
     'UAE','Saudi Arabia','Oman','Bahrain','India','Kuwait',
@@ -227,6 +228,10 @@ export default function HomeBanners() {
 
   const toast = notice ? { msg: typeof notice === 'object' ? notice.msg || notice.message : notice, type: (typeof notice === 'object' ? notice.type : (String(notice).includes('Saved') || String(notice).includes('success') ? 'success' : 'error')) || 'error' } : null
 
+  const filteredBanners = filterCountry
+    ? banners.filter(b => !b.country || b.country === filterCountry)
+    : banners
+
   return (
     <DesignerPageShell
       title="Home Banners"
@@ -345,18 +350,30 @@ export default function HomeBanners() {
       </div>
 
       <div className="card" style={{ padding: 20, maxWidth: 1000 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 10 }}>
           <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Current Home Banners</h2>
-          <div style={{ fontSize: 13, color: 'var(--muted)' }}>{banners.length}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)' }}>Filter by country:</span>
+            <select
+              className="input"
+              style={{ width: 'auto', minWidth: 140 }}
+              value={filterCountry}
+              onChange={(e) => setFilterCountry(e.target.value)}
+            >
+              <option value="">All Countries</option>
+              {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <span style={{ fontSize: 13, color: 'var(--muted)' }}>{filteredBanners.length}</span>
+          </div>
         </div>
 
         {loading ? (
           <div style={{ padding: 24, color: 'var(--muted)' }}>Loading...</div>
-        ) : banners.length === 0 ? (
-          <div style={{ padding: 24, color: 'var(--muted)' }}>No home banners uploaded yet.</div>
+        ) : filteredBanners.length === 0 ? (
+          <div style={{ padding: 24, color: 'var(--muted)' }}>No home banners {filterCountry ? `for ${filterCountry}` : 'uploaded yet'}.</div>
         ) : (
           <div style={{ display: 'grid', gap: 12 }}>
-            {banners.map((b) => (
+            {filteredBanners.map((b) => (
               <div
                 key={b._id}
                 style={{

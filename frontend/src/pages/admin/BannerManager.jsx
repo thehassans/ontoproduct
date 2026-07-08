@@ -7,13 +7,19 @@ export default function BannerManager() {
   const [uploading, setUploading] = useState(false)
   const [selectedPage, setSelectedPage] = useState('catalog')
   const [toast, setToast] = useState(null)
-  const [form, setForm] = useState({ title: '', desktop: null, mobile: null })
+  const [form, setForm] = useState({ title: '', country: '', desktop: null, mobile: null })
+  const [filterCountry, setFilterCountry] = useState('')
 
   const pages = [
     { id: 'catalog', label: 'Product Catalog' },
     { id: 'home', label: 'Home Page' },
     { id: 'checkout', label: 'Checkout' },
     { id: 'cart', label: 'Cart' }
+  ]
+
+  const COUNTRIES = [
+    '','UAE','Saudi Arabia','Oman','Bahrain','India','Kuwait',
+    'Qatar','Jordan','Pakistan','USA','UK','Canada','Australia',
   ]
 
   useEffect(() => {
@@ -59,12 +65,13 @@ export default function BannerManager() {
       formData.append('title', String(form.title || `Banner ${banners.length + 1}`).trim())
       formData.append('page', selectedPage)
       formData.append('active', 'true')
+      formData.append('country', form.country || '')
 
       const result = await apiUpload('/api/settings/website/banners', formData)
       if (result.banner) {
         await loadBanners()
         showToast('✓ Banner uploaded successfully!')
-        setForm({ title: '', desktop: null, mobile: null })
+        setForm({ title: '', country: '', desktop: null, mobile: null })
         try {
           const a = document.getElementById('banner-upload-desktop')
           if (a) a.value = ''
@@ -158,6 +165,17 @@ export default function BannerManager() {
             </div>
 
             <div style={{ display: 'grid', gap: 6 }}>
+              <label style={{ fontSize: '12px', fontWeight: 700, color: '#6b7280' }}>Country (optional)</label>
+              <select
+                value={form.country}
+                onChange={(e) => setForm((p) => ({ ...p, country: e.target.value }))}
+                style={{ padding: '10px 12px', border: '1px solid #e5e7eb', borderRadius: 10, fontSize: 14, background: '#fff' }}
+              >
+                {COUNTRIES.map(c => <option key={c} value={c}>{c || 'All Countries'}</option>)}
+              </select>
+            </div>
+
+            <div style={{ display: 'grid', gap: 6 }}>
               <label style={{ fontSize: '12px', fontWeight: 700, color: '#6b7280' }}>Desktop banner (required)</label>
               <input
                 id="banner-upload-desktop"
@@ -209,9 +227,22 @@ export default function BannerManager() {
 
       {/* Banners List */}
       <div>
-        <h3 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px' }}>
-          Current Banners ({banners.length})
-        </h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: 10 }}>
+          <h3 style={{ fontSize: '18px', fontWeight: 600, margin: 0 }}>
+            Current Banners ({filterCountry ? banners.filter(b => !b.country || b.country === filterCountry).length : banners.length})
+          </h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <label style={{ fontSize: '12px', fontWeight: 700, color: '#6b7280' }}>Filter:</label>
+            <select
+              value={filterCountry}
+              onChange={(e) => setFilterCountry(e.target.value)}
+              style={{ padding: '6px 10px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 13, background: '#fff' }}
+            >
+              <option value="">All Countries</option>
+              {COUNTRIES.filter(c => c).map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+        </div>
 
         {loading ? (
           <div style={{ textAlign: 'center', padding: '60px', color: '#9ca3af' }}>
@@ -226,7 +257,7 @@ export default function BannerManager() {
           </div>
         ) : (
           <div style={{ display: 'grid', gap: '16px' }}>
-            {banners.map((banner, idx) => (
+            {banners.filter(b => !filterCountry || !b.country || b.country === filterCountry).map((banner, idx) => (
               <div key={banner._id} style={{
                 background: 'white',
                 border: '2px solid #e5e7eb',
@@ -258,7 +289,7 @@ export default function BannerManager() {
                     Uploaded: {new Date(banner.createdAt || Date.now()).toLocaleDateString()}
                   </p>
                   <p style={{ fontSize: '12px', color: '#6b7280', marginTop: 4 }}>
-                    {banner.mobileImageUrl ? 'Has mobile banner' : 'Desktop banner only'}
+                    {banner.country || 'All Countries'} • {banner.mobileImageUrl ? 'Has mobile banner' : 'Desktop banner only'}
                   </p>
                 </div>
 
