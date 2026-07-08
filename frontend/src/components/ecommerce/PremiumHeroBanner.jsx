@@ -41,7 +41,7 @@ export default function PremiumHeroBanner() {
         const countryName = COUNTRY_LIST.find((c) => c.code === country)?.name || country || ''
         const qs = new URLSearchParams({ page: 'home' })
         if (countryName) qs.set('country', countryName)
-        const res = await apiGet(`/api/settings/website/banners?${qs}`, { skipCache: true })
+        const res = await apiGet(`/api/settings/website/promos?${qs}`, { skipCache: true })
         const list = Array.isArray(res?.banners) ? res.banners : []
         if (alive) setBanners(list)
       } catch {

@@ -86,7 +86,7 @@ export default function HomeBanners() {
   async function load() {
     setLoading(true)
     try {
-      const res = await apiGet('/api/settings/website/banners?page=home', { skipCache: true })
+      const res = await apiGet('/api/settings/website/promos?page=home', { skipCache: true })
       setBanners(Array.isArray(res?.banners) ? res.banners : [])
     } catch (err) {
       console.error(err)
@@ -142,7 +142,7 @@ export default function HomeBanners() {
         fd.append('linkCategory', String(form.linkCategory))
       }
 
-      const res = await apiUploadWithProgress('/api/settings/website/banners', fd, ({ percent }) => {
+      const res = await apiUploadWithProgress('/api/settings/website/promos', fd, ({ percent }) => {
         setUploadProgress(Math.min(99, Math.round(percent || 0)))
       })
       setUploadProgress(100)
@@ -174,7 +174,7 @@ export default function HomeBanners() {
   async function toggleBanner(id) {
     setNotice('')
     try {
-      const res = await apiPost(`/api/settings/website/banners/${id}/toggle`, {})
+      const res = await apiPost(`/api/settings/website/promos/${id}/toggle`, {})
       const next = res?.banner
       if (next?._id) {
         await load()
@@ -201,7 +201,7 @@ export default function HomeBanners() {
     if (!editBanner) return
     setEditSaving(true)
     try {
-      await apiPost(`/api/settings/website/banners/${editBanner}/edit`, editForm)
+      await apiPost(`/api/settings/website/promos/${editBanner}/edit`, editForm)
       setEditBanner(null)
       await load()
       setNotice('Updated')
@@ -218,7 +218,7 @@ export default function HomeBanners() {
     if (!confirm('Delete this banner?')) return
     setNotice('')
     try {
-      await apiPost(`/api/settings/website/banners/${id}/delete`, {})
+      await apiPost(`/api/settings/website/promos/${id}/delete`, {})
       await load()
     } catch (err) {
       console.error(err)

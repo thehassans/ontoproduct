@@ -78,7 +78,7 @@ export default function EditMode({ page, isActive, onExit, onSave }) {
         applyPageContent(data.content.elements)
       }
       // Load banners
-      const bannersData = await apiGet(`/api/settings/website/banners?page=${page}`, { skipCache: true })
+      const bannersData = await apiGet(`/api/settings/website/promos?page=${page}`, { skipCache: true })
       if (bannersData.banners) {
         setBanners(bannersData.banners)
       }
@@ -270,7 +270,7 @@ export default function EditMode({ page, isActive, onExit, onSave }) {
         formData.append('page', page)
         formData.append('active', 'true')
         
-        const result = await apiUpload('/api/settings/website/banners', formData)
+        const result = await apiUpload('/api/settings/website/promos', formData)
         const newImageUrl = result.banner?.imageUrl || result.imageUrl
         
         if (selectedElement.element && newImageUrl) {
@@ -322,7 +322,7 @@ export default function EditMode({ page, isActive, onExit, onSave }) {
       formData.append('page', page)
       formData.append('active', 'true')
       
-      const result = await apiUpload('/api/settings/website/banners', formData)
+      const result = await apiUpload('/api/settings/website/promos', formData)
       if (result.banner) {
         setBanners(prev => [...prev, result.banner])
         showToast('✓ Banner uploaded successfully!')
@@ -340,7 +340,7 @@ export default function EditMode({ page, isActive, onExit, onSave }) {
   async function handleBannerDelete(bannerId) {
     if (!confirm('Delete this banner?')) return
     try {
-      await apiPost(`/api/settings/website/banners/${bannerId}/delete`, {})
+      await apiPost(`/api/settings/website/promos/${bannerId}/delete`, {})
       setBanners(prev => prev.filter(b => b._id !== bannerId))
       showToast('✓ Banner deleted')
     } catch (err) {
@@ -350,7 +350,7 @@ export default function EditMode({ page, isActive, onExit, onSave }) {
 
   async function handleBannerToggle(bannerId, currentStatus) {
     try {
-      await apiPost(`/api/settings/website/banners/${bannerId}/toggle`, { active: !currentStatus })
+      await apiPost(`/api/settings/website/promos/${bannerId}/toggle`, { active: !currentStatus })
       setBanners(prev => prev.map(b => b._id === bannerId ? { ...b, active: !currentStatus } : b))
       showToast(`✓ Banner ${!currentStatus ? 'activated' : 'deactivated'}`)
     } catch (err) {

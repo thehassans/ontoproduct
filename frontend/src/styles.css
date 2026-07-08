@@ -1655,7 +1655,11 @@ a {
 }
 .btn.secondary {
   background: var(--btn-secondary);
-  color: inherit;
+  color: #1e293b;
+}
+:root[data-theme='dark'] .btn.secondary {
+  background: var(--btn-secondary);
+  color: #e2e8f0;
 }
 .btn.danger {
   background: var(--btn-danger);

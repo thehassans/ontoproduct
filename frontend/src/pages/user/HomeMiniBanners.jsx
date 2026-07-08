@@ -38,7 +38,7 @@ export default function HomeMiniBanners() {
   async function loadBanners() {
     try {
       setLoading(true)
-      const res = await apiGet('/api/settings/website/banners?page=home-mini')
+      const res = await apiGet('/api/settings/website/promos?page=home-mini')
       setBanners(Array.isArray(res?.banners) ? res.banners : [])
     } catch {
       setBanners([])
@@ -65,7 +65,7 @@ export default function HomeMiniBanners() {
       fd.append('page', 'home-mini')
       fd.append('country', form.country || '')
 
-      await apiUpload('/api/settings/website/banners', fd)
+      await apiUpload('/api/settings/website/promos', fd)
       setNotice('Banner uploaded successfully!')
       reloadPreview()
       setForm({ title: '', active: true, link: '', country: '', bannerDesktop: null, bannerMobile: null })
@@ -82,7 +82,7 @@ export default function HomeMiniBanners() {
 
   async function toggleBanner(id) {
     try {
-      await apiPost(`/api/settings/website/banners/${id}/toggle`)
+      await apiPost(`/api/settings/website/promos/${id}/toggle`)
       loadBanners()
       reloadPreview()
     } catch {}
@@ -91,7 +91,7 @@ export default function HomeMiniBanners() {
   async function deleteBanner(id) {
     if (!confirm('Delete this banner?')) return
     try {
-      await apiPost(`/api/settings/website/banners/${id}/delete`)
+      await apiPost(`/api/settings/website/promos/${id}/delete`)
       loadBanners()
       reloadPreview()
     } catch {}

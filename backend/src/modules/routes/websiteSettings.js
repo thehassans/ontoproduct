@@ -181,7 +181,7 @@ const upload = multer({
  * Get all banners (public endpoint)
  * Query params: page (optional) - filter by page (e.g., 'catalog', 'product-detail', 'checkout')
  */
-router.get('/banners', async (req, res) => {
+router.get(['/banners', '/promos'], async (req, res) => {
   try {
     try {
       res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
@@ -232,7 +232,7 @@ router.get('/banners', async (req, res) => {
 })
 
 router.post(
-  '/banners',
+  ['/banners', '/promos'],
   auth,
   allowRoles('admin', 'user', 'manager', 'web_designer'),
   allowBannerManagers,
@@ -337,7 +337,7 @@ router.post(
 })
 
 // Edit banner metadata (title, country, linkCategory, active)
-router.post('/banners/:id/edit', auth, allowRoles('admin', 'user', 'manager', 'web_designer'), allowBannerManagers, async (req, res) => {
+router.post(['/banners/:id/edit', '/promos/:id/edit'], auth, allowRoles('admin', 'user', 'manager', 'web_designer'), allowBannerManagers, async (req, res) => {
   try {
     const { id } = req.params
     const { title, country, linkCategory, active } = req.body || {}
@@ -402,8 +402,8 @@ async function deleteBanner(req, res) {
 /**
  * Delete a banner (authenticated)
  */
-router.get('/banners/:id/delete', auth, allowRoles('admin', 'user', 'manager', 'web_designer'), allowBannerManagers, deleteBanner)
-router.post('/banners/:id/delete', auth, allowRoles('admin', 'user', 'manager', 'web_designer'), allowBannerManagers, deleteBanner)
+router.get(['/banners/:id/delete', '/promos/:id/delete'], auth, allowRoles('admin', 'user', 'manager', 'web_designer'), allowBannerManagers, deleteBanner)
+router.post(['/banners/:id/delete', '/promos/:id/delete'], auth, allowRoles('admin', 'user', 'manager', 'web_designer'), allowBannerManagers, deleteBanner)
 
 async function toggleBanner(req, res) {
   try {
@@ -436,13 +436,13 @@ async function toggleBanner(req, res) {
 /**
  * Toggle banner active status (authenticated)
  */
-router.get('/banners/:id/toggle', auth, allowRoles('admin', 'user', 'manager', 'web_designer'), allowBannerManagers, toggleBanner)
-router.post('/banners/:id/toggle', auth, allowRoles('admin', 'user', 'manager', 'web_designer'), allowBannerManagers, toggleBanner)
+router.get(['/banners/:id/toggle', '/promos/:id/toggle'], auth, allowRoles('admin', 'user', 'manager', 'web_designer'), allowBannerManagers, toggleBanner)
+router.post(['/banners/:id/toggle', '/promos/:id/toggle'], auth, allowRoles('admin', 'user', 'manager', 'web_designer'), allowBannerManagers, toggleBanner)
 
 /**
  * Update banner order (authenticated)
  */
-router.post('/banners/reorder', auth, allowRoles('admin', 'user', 'manager', 'web_designer'), allowBannerManagers, async (req, res) => {
+router.post(['/banners/reorder', '/promos/reorder'], auth, allowRoles('admin', 'user', 'manager', 'web_designer'), allowBannerManagers, async (req, res) => {
   try {
     const { bannerIds } = req.body
     

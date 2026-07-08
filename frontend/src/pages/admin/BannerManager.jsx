@@ -29,7 +29,7 @@ export default function BannerManager() {
   async function loadBanners() {
     setLoading(true)
     try {
-      const data = await apiGet(`/api/settings/website/banners?page=${selectedPage}`, { skipCache: true })
+      const data = await apiGet(`/api/settings/website/promos?page=${selectedPage}`, { skipCache: true })
       setBanners(data.banners || [])
     } catch (err) {
       showToast('Failed to load banners', 'error')
@@ -67,7 +67,7 @@ export default function BannerManager() {
       formData.append('active', 'true')
       formData.append('country', form.country || '')
 
-      const result = await apiUpload('/api/settings/website/banners', formData)
+      const result = await apiUpload('/api/settings/website/promos', formData)
       if (result.banner) {
         await loadBanners()
         showToast('✓ Banner uploaded successfully!')
@@ -90,7 +90,7 @@ export default function BannerManager() {
 
   async function handleToggle(bannerId, currentStatus) {
     try {
-      await apiPost(`/api/settings/website/banners/${bannerId}/toggle`, { active: !currentStatus })
+      await apiPost(`/api/settings/website/promos/${bannerId}/toggle`, { active: !currentStatus })
       await loadBanners()
       showToast(`✓ Banner ${!currentStatus ? 'activated' : 'deactivated'}`)
     } catch (err) {
@@ -101,7 +101,7 @@ export default function BannerManager() {
   async function handleDelete(bannerId) {
     if (!confirm('Delete this banner?')) return
     try {
-      await apiPost(`/api/settings/website/banners/${bannerId}/delete`, {})
+      await apiPost(`/api/settings/website/promos/${bannerId}/delete`, {})
       await loadBanners()
       showToast('✓ Banner deleted')
     } catch (err) {

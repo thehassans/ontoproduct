@@ -36,7 +36,7 @@ export default function WebsiteModification() {
   async function loadBanners() {
     setLoading(true)
     try {
-      const data = await apiGet('/api/settings/website/banners', { skipCache: true })
+      const data = await apiGet('/api/settings/website/promos', { skipCache: true })
       setBanners(data.banners || [])
     } catch (err) {
       console.error('Failed to load banners:', err)

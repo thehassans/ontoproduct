@@ -24,7 +24,7 @@ export default function HomeMiniBanner({ selectedCountry = 'GB' }) {
         const qs = new URLSearchParams()
         qs.set('page', 'home-mini')
         if (countryName) qs.set('country', countryName)
-        const res = await apiGet(`/api/settings/website/banners?${qs.toString()}`)
+        const res = await apiGet(`/api/settings/website/promos?${qs.toString()}`)
         const list = Array.isArray(res?.banners) ? res.banners.filter(b => b.active !== false) : []
         if (alive) { setBanners(list); setCurrent(0) }
       } catch {
